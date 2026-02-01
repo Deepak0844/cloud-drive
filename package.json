@@ -3,15 +3,15 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "web:dev": "turbo run dev --filter=cloud-drive-web",
+    "server:dev": "turbo run dev --filter=cloud-drive-server",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "format": "prettier --write \"**/*.{js,jsx,md}\""
   },
   "devDependencies": {
     "prettier": "^3.7.4",
-    "turbo": "^2.8.1",
-    "typescript": "5.9.2"
+    "turbo": "^2.8.1"
   },
   "engines": {
     "node": ">=18"

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json.schemastore.org/jsconfig",
+  "extends": "./jsconfig-base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  }
+}

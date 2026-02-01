@@ -1,0 +1,13 @@
+{
+  "name": "@repo/js-config",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "jsconfig-base.json",
+    "jsconfig-react.json"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

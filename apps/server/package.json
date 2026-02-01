@@ -1,0 +1,19 @@
+{
+  "name": "cloud-drive-server",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Cloud Drive Server",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node index.js",
+    "build": "echo 'No build needed for Node.js server'",
+    "lint": "eslint ."
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/js-config": "*",
+    "eslint": "^9.39.1"
+  }
+}

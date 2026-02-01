@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@repo/ui/*": ["./packages/ui/src/*"],
+      "@repo/js-config/*": ["./packages/js-config/*"],
+      "web/*": ["./apps/web/src/*"],
+      "server/*": ["./apps/server/*"]
+    }
+  },
+  "exclude": ["node_modules", "**/dist/**", "**/build/**"]
+}
