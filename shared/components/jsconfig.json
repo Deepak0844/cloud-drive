@@ -1,5 +1,5 @@
 {
-  "extends": "@repo/js-config/jsconfig-react.json",
+  "extends": "../js-config/jsconfig-react.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

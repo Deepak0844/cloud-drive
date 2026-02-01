@@ -2,8 +2,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@repo/ui/*": ["./packages/ui/src/*"],
-      "@repo/js-config/*": ["./packages/js-config/*"],
+      "@shared-components/*": ["./shared/components/src/*"],
+      "@shared-js-config/*": ["./shared/js-config/*"],
       "web/*": ["./apps/web/src/*"],
       "server/*": ["./apps/server/*"]
     }

@@ -1,19 +1,20 @@
 {
-  "name": "@repo/ui",
+  "name": "@shared-components/components",
   "version": "0.0.0",
+  "type": "module",
   "private": true,
   "exports": {
-    "./*": "./src/*.jsx"
+    "./*": "./src/*"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
     "generate:component": "turbo gen react-component"
   },
   "devDependencies": {
-    "@repo/eslint-config": "*",
+    "@shared-eslint/config": "*",
     "eslint": "^9.39.1"
   },
-  "dependencies": {
+  "peerDependencies": {
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   }

@@ -1,5 +1,5 @@
 {
-  "name": "@repo/js-config",
+  "name": "@shared-js-config/config",
   "version": "0.0.0",
   "private": true,
   "files": [

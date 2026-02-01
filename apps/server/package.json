@@ -12,8 +12,9 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@repo/eslint-config": "*",
-    "@repo/js-config": "*",
-    "eslint": "^9.39.1"
+    "@shared-eslint/config": "*",
+    "@shared-js-config/config": "*",
+    "eslint": "^9.39.1",
+    "globals": "^17.3.0"
   }
 }

@@ -1,0 +1,14 @@
+{
+  "eslint.workingDirectories": [{ "mode": "auto" }],
+  "eslint.validate": ["javascript", "javascriptreact"],
+  "eslint.probe": ["javascript", "javascriptreact"],
+  "eslint.run": "onType",
+  "eslint.format.enable": true,
+  "javascript.implicitProjectConfig.checkJs": true,
+  "javascript.validate.enable": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "js/ts.implicitProjectConfig.checkJs": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  }
+}

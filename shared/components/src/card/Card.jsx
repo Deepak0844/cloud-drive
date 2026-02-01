@@ -1,4 +1,4 @@
-export function Card({ className, title, children, href }) {
+export default function Card({ className = "", title = "", children = null, href = "#" }) {
   return (
     <a
       className={className}

@@ -1,5 +1,6 @@
 {
   "name": "cloud-drive",
+  "type": "module",
   "private": true,
   "scripts": {
     "build": "turbo run build",
@@ -7,9 +8,27 @@
     "server:dev": "turbo run dev --filter=cloud-drive-server",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{js,jsx,md}\""
+    "format": "prettier --write \"**/*.{js,jsx,md}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,md}\"",
+    "type-check": "turbo run type-check",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "turbo": "^2.8.1"
   },
@@ -19,6 +38,6 @@
   "packageManager": "npm@10.9.4",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "shared/*"
   ]
 }
