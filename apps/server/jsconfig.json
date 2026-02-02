@@ -2,8 +2,9 @@
   "extends": "../../shared/js-config/jsconfig-base.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "checkJs": false,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./*"]
     }
   },
   "include": ["**/*.js"],

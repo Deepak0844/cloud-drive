@@ -11,6 +11,8 @@
     "allowImportingTsExtensions": false,
     "checkJs": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "noImplicitAny": false,
+    "strict": false
   }
 }

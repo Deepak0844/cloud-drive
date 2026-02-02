@@ -1,3 +1,4 @@
+import globals from "globals";
 import { config as reactConfig } from "./shared/eslint-config/react-internal.js";
 
 /**
@@ -6,6 +7,14 @@ import { config as reactConfig } from "./shared/eslint-config/react-internal.js"
  */
 export default [
   ...reactConfig,
+  {
+    files: ["apps/server/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
   {
     files: ["**/*.js", "**/*.jsx", "**/*.mjs"],
   },

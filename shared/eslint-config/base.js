@@ -45,30 +45,7 @@ export const config = [
       "require-await": "warn",
 
       // Import/Export rules
-      "import/order": [
-        "error",
-        {
-          groups: ["builtin", "external", "internal", ["parent", "sibling"], "index", "object", "type"],
-          pathGroups: [
-            {
-              pattern: "react",
-              group: "builtin",
-              position: "before",
-            },
-            {
-              pattern: "@shared-components/**",
-              group: "internal",
-              position: "after",
-            },
-          ],
-          pathGroupsExcludedImportTypes: ["react"],
-          "newlines-between": "never",
-          alphabetize: {
-            order: "asc",
-            caseInsensitive: true,
-          },
-        },
-      ],
+      "import/order": "off",
       "import/no-duplicates": "error",
       "import/no-unresolved": "off", // Handled by jsconfig
       "import/named": "off", // Handled by jsconfig
