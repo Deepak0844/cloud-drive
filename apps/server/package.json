@@ -5,7 +5,7 @@
   "description": "Cloud Drive Server",
   "main": "index.js",
   "scripts": {
-    "dev": "node ./bin/www.js",
+    "dev": "nodemon ./bin/www.js",
     "build": "echo 'No build needed for Node.js server'",
     "lint": "eslint ."
   },
@@ -17,12 +17,16 @@
     "express": "^4.22.1",
     "http-errors": "~1.6.3",
     "morgan": "^1.10.1",
-    "pug": "^3.0.3"
+    "pug": "^3.0.3",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.1.5",
+    "nodemailer": "^8.0.0"
   },
   "devDependencies": {
     "@shared-eslint/config": "*",
     "@shared-js-config/config": "*",
-    "eslint": "^9.39.1",
-    "globals": "^17.3.0"
+    "nodemon": "^3.1.11"
   }
 }
