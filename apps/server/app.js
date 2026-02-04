@@ -11,6 +11,7 @@ import connectToDatabase from "./config/db.js";
 
 // Constants
 import StatusCodes from "./constants/statusCodes.js";
+import ErrorMessages from "./constants/errorMessages.js";
 
 // Routes
 import authRoutes from "./routes/auth.routes.js";
@@ -48,18 +49,25 @@ app.get("/", (req, res) => {
 
 // catch 404 and forward to error handler
 app.use((_req, _res, next) => {
-  next(createError(StatusCodes.NOT_FOUND));
+  next(createError(StatusCodes.NOT_FOUND, ErrorMessages.RESOURCE_NOT_FOUND));
 });
 
 // error handler
 app.use((err, req, res, _next) => {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get("env") === "development" ? err : {};
+  const statusCode = err.status || StatusCodes.INTERNAL_SERVER_ERROR;
+  const message = err.message || ErrorMessages.SERVER_ERROR;
 
-  // render the error page
-  res.status(err.status || StatusCodes.INTERNAL_SERVER_ERROR);
-  res.render("error");
+  // Log error for debugging
+  if (req.app.get("env") === "development") {
+    console.error(`[Error] ${statusCode} - ${message}`);
+  }
+
+  // Always return JSON for errors in this API-centric server
+  res.status(statusCode).json({
+    success: false,
+    error: message,
+    ...(req.app.get("env") === "development" && { stack: err.stack }),
+  });
 });
 
 export default app;
