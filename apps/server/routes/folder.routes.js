@@ -28,4 +28,4 @@ router.post("/:id/move", moveFolder);
 router.post("/:id/copy", copyFolder);
 router.delete("/:id", deleteFolder);
 
-module.exports = router;
+export default router;

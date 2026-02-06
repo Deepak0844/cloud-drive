@@ -13,6 +13,9 @@ import connectToDatabase from "./config/db.js";
 import StatusCodes from "./constants/statusCodes.js";
 import ErrorMessages from "./constants/errorMessages.js";
 
+// Utils
+import CronUtils from "./utils/cronUtils.js";
+
 // Routes
 import authRoutes from "./routes/auth.routes.js";
 
@@ -41,6 +44,9 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Routes
 app.use(`${baseUrl}/auth`, authRoutes);
+
+// Initialize Cron Jobs
+CronUtils.initCronJobs();
 
 // Base route
 app.get("/", (req, res) => {
