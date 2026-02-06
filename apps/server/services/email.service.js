@@ -24,4 +24,10 @@ async function sendEmail(options) {
   console.log("Message sent: %s", info.messageId);
 }
 
-export default sendEmail;
+// Exports
+// -------------------------------
+const EmailService = {
+  sendEmail,
+};
+
+export default EmailService;

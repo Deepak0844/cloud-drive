@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
 // Services
-import sendEmail from "../services/email.service.js";
+import EmailService from "../services/email.service.js";
 
 // Constants
 import ErrorMessages from "../constants/errorMessages.js";
@@ -216,7 +216,7 @@ export async function forgotPassword(req, res) {
 
     // Send email
     try {
-      await sendEmail({
+      await EmailService.sendEmail({
         email: user.email,
         subject: "Password Reset Request",
         message,
