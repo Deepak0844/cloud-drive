@@ -15,6 +15,8 @@ const Env = {
   FROM_NAME: process.env.FROM_NAME || "Cloud Drive",
   FROM_EMAIL: process.env.FROM_EMAIL || "noreply@cloud-drive.com",
   DEFAULT_QUOTA_BYTES: parseInt(process.env.DEFAULT_QUOTA_BYTES, 10) || 1073741824, // 1 GB
+
+  NAS_STORAGE_PATH: process.env.NAS_STORAGE_PATH,
 };
 
 export default Env;

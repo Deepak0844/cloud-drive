@@ -15,6 +15,8 @@ const ErrorMessages = {
   EMAIL_NOT_SENT: "Email could not be sent",
   RESOURCE_NOT_FOUND: "Resource not found",
   BAD_REQUEST: "Please provide required fields",
+  NO_CHUNK_FILE: "No chunk file provided",
+  INVALID_CHUNK_PARAMETERS: "Invalid chunk upload parameters",
 };
 
 export default ErrorMessages;
