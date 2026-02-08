@@ -1,10 +1,10 @@
 // Constants
-import ErrorMessages from "../constants/errorMessages";
-import StatusCodes from "../constants/statusCodes";
+import ErrorMessages from "../constants/errorMessages.js";
+import StatusCodes from "../constants/statusCodes.js";
 
 // Models
-import User from "../models/User";
-import QuotaRequest from "../models/QuotaRequest";
+import User from "../models/User.js";
+import QuotaRequest from "../models/QuotaRequest.js";
 
 /**
  * @desc    Get current quota usage

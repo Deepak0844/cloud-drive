@@ -3,11 +3,11 @@ import fs from "fs";
 import path from "path";
 
 // Config
-import config from "../config/env";
+import config from "../config/env.js";
 
 // Models
-import User from "../models/User";
-import File from "../models/File";
+import User from "../models/User.js";
+import File from "../models/File.js";
 
 /**
  * Initialize cron jobs

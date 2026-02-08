@@ -4,7 +4,7 @@ import express from "express";
 import { getQuotaUsage, requestQuotaIncrease } from "../controllers/quota.controller.js";
 
 // Middleware
-import { protect } from "../middleware/auth";
+import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 router.use(protect);

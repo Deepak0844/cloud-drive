@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 
 // Utils
-import { softDeleteRecursive } from "../utils/db.utils.js";
+import DbUtils from "../utils/dbUtils.js";
 
 // Constants
 import ErrorMessages from "../constants/errorMessages.js";
@@ -228,7 +228,7 @@ export async function renameFolder(req, res) {
  */
 export async function deleteFolder(req, res) {
   try {
-    await softDeleteRecursive("folder", req.params.id, req.user.id, true);
+    await DbUtils.softDeleteRecursive("folder", req.params.id, req.user.id, true);
 
     res.status(StatusCodes.OK).json({ success: true, data: {} });
   } catch (err) {

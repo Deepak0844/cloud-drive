@@ -18,6 +18,10 @@ import CronUtils from "./utils/cronUtils.js";
 
 // Routes
 import authRoutes from "./routes/auth.routes.js";
+import fileRoutes from "./routes/file.routes.js";
+import folderRoutes from "./routes/folder.routes.js";
+import trashRoutes from "./routes/trash.routes.js";
+import quotaRoutes from "./routes/quota.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,6 +48,10 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // Routes
 app.use(`${baseUrl}/auth`, authRoutes);
+app.use(`${baseUrl}/files`, fileRoutes);
+app.use(`${baseUrl}/folders`, folderRoutes);
+app.use(`${baseUrl}/trash`, trashRoutes);
+app.use(`${baseUrl}/quota`, quotaRoutes);
 
 // Initialize Cron Jobs
 CronUtils.initCronJobs();

@@ -3,7 +3,7 @@ import fs from "fs";
 
 // Constants
 import ErrorMessages from "../constants/errorMessages.js";
-import StatusCodes from "@/constants/statusCodes.js";
+import StatusCodes from "../constants/statusCodes.js";
 
 // Utils
 import MimeUtils from "../utils/mimeUtils.js";

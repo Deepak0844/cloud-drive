@@ -1,13 +1,13 @@
 // Utils
-import DbUtils from "../utils/dbUtils";
+import DbUtils from "../utils/dbUtils.js";
 
 // Constants
-import ErrorMessages from "../constants/errorMessages";
-import StatusCodes from "../constants/statusCodes";
+import ErrorMessages from "../constants/errorMessages.js";
+import StatusCodes from "../constants/statusCodes.js";
 
 // Models
-import File from "../models/File";
-import Folder from "../models/Folder";
+import File from "../models/File.js";
+import Folder from "../models/Folder.js";
 
 /**
  * @desc    Get all trashed items
