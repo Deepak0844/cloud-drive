@@ -1,0 +1,30 @@
+meta {
+  name: Copy Folder
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/folders/:id/copy
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "parentId": "target_parent_id"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

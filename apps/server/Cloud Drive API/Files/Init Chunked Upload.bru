@@ -1,0 +1,29 @@
+meta {
+  name: Init Chunked Upload
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/files/upload/init
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "fileName": "example.mp4",
+      "totalChunks": 10,
+      "fileSize": 10485760,
+      "folderId": null
+  }
+}
+
+settings {
+  encodeUrl: true
+}

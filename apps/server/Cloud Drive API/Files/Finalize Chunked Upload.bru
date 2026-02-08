@@ -1,0 +1,28 @@
+meta {
+  name: Finalize Chunked Upload
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/files/upload/finalize
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "uploadId": "",
+      "fileName": "example.mp4",
+      "folderId": null
+  }
+}
+
+settings {
+  encodeUrl: true
+}

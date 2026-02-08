@@ -1,0 +1,19 @@
+meta {
+  name: Empty Trash
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{base_url}}/trash/empty
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+settings {
+  encodeUrl: true
+}

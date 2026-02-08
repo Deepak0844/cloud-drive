@@ -1,0 +1,23 @@
+meta {
+  name: Download File
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/files/:id/download
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+settings {
+  encodeUrl: true
+}

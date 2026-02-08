@@ -1,0 +1,27 @@
+meta {
+  name: Create Folder
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/folders
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "name": "New Folder",
+      "parent": null
+  }
+}
+
+settings {
+  encodeUrl: true
+}

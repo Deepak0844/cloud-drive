@@ -1,0 +1,30 @@
+meta {
+  name: Rename Folder
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{base_url}}/folders/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "name": "Renamed Folder"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

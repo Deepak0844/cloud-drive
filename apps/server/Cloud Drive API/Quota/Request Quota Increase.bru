@@ -1,0 +1,27 @@
+meta {
+  name: Request Quota Increase
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/quota/request
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "requested_bytes": 10737418240,
+      "reason": "Need more space for backups"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

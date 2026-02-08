@@ -1,0 +1,23 @@
+meta {
+  name: Delete Folder
+  type: http
+  seq: 8
+}
+
+delete {
+  url: {{base_url}}/folders/:id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+settings {
+  encodeUrl: true
+}

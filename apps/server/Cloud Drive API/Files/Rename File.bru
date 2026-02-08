@@ -1,0 +1,30 @@
+meta {
+  name: Rename File
+  type: http
+  seq: 8
+}
+
+patch {
+  url: {{base_url}}/files/:id
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "name": "new_name.txt"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

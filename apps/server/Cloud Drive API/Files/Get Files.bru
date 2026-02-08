@@ -1,0 +1,19 @@
+meta {
+  name: Get Files
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/files
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+settings {
+  encodeUrl: true
+}

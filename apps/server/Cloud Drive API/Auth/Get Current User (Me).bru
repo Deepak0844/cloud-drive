@@ -1,0 +1,19 @@
+meta {
+  name: Get Current User (Me)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/auth/me
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+settings {
+  encodeUrl: true
+}

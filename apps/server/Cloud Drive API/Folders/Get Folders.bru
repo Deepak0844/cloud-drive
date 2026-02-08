@@ -1,0 +1,19 @@
+meta {
+  name: Get Folders
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/folders
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+settings {
+  encodeUrl: true
+}

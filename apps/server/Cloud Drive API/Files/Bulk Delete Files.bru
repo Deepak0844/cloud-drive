@@ -1,0 +1,29 @@
+meta {
+  name: Bulk Delete Files
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{base_url}}/files/bulk-delete
+  body: json
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "items": [
+          { "id": "file_id_1", "type": "file" },
+          { "id": "folder_id_1", "type": "folder" }
+      ]
+  }
+}
+
+settings {
+  encodeUrl: true
+}

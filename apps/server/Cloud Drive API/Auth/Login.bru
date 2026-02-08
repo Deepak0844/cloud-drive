@@ -1,0 +1,35 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/auth/login
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "email": "user@example.com",
+      "password": "passw0rd"
+  }
+}
+
+script:post-response {
+  var jsonData = res.getBody();
+  if (jsonData.success && jsonData.token) {
+      bru.setVar("authToken", jsonData.token);
+      console.log("Token set automatically");
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,23 @@
+meta {
+  name: File Preview
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/files/:id/preview
+  body: none
+  auth: inherit
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+settings {
+  encodeUrl: true
+}

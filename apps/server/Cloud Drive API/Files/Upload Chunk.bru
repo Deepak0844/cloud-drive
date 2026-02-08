@@ -1,0 +1,25 @@
+meta {
+  name: Upload Chunk
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/files/upload/chunk
+  body: multipartForm
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+}
+
+body:multipart-form {
+  uploadId: 
+  chunkIndex: 0
+  file: @file()
+}
+
+settings {
+  encodeUrl: true
+}

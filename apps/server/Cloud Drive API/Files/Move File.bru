@@ -1,0 +1,30 @@
+meta {
+  name: Move File
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/files/:id/move
+  body: json
+  auth: inherit
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  Authorization: Bearer {{authToken}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+      "folderId": "target_folder_id"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
