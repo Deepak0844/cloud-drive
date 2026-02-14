@@ -8,7 +8,7 @@ import config from "../config/env.js";
 import User from "../models/User.js";
 
 // Constants
-import { Roles } from "../constants/roles.js";
+import Roles from "../constants/roles.js";
 
 let io = null;
 
