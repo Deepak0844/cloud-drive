@@ -3,6 +3,7 @@ import fs from "fs";
 // Models
 import File from "../models/File.js";
 import Folder from "../models/Folder.js";
+import User from "../models/User.js";
 
 /**
  * Recursively marks an item and its descendants as deleted or restored
@@ -33,7 +34,7 @@ async function softDeleteRecursive(type, id, userId, isDirect = true) {
 
     // Recurse subfolders
     for (const folder of subFolders) {
-      await exports.softDeleteRecursive("folder", folder._id, userId, false);
+      await softDeleteRecursive("folder", folder._id, userId, false);
     }
   }
 }
@@ -57,7 +58,7 @@ async function restoreRecursive(type, id, userId) {
     // Recurse subfolders that were NOT deleted directly
     const subFolders = await Folder.find({ parent: id, user: userId, deleted_directly: false });
     for (const folder of subFolders) {
-      await exports.restoreRecursive("folder", folder._id, userId, false);
+      await restoreRecursive("folder", folder._id, userId);
     }
   }
 }
@@ -84,7 +85,7 @@ async function permanentDeleteRecursive(type, id, userId) {
         }
       }
 
-      const user = await require("../models/User").findById(userId);
+      const user = await User.findById(userId);
       if (user) {
         user.used_bytes = Math.max(0, user.used_bytes - file.size_bytes);
         await user.save();
@@ -96,13 +97,13 @@ async function permanentDeleteRecursive(type, id, userId) {
     // 1. Delete all files in this folder
     const files = await File.find({ folder: id, user: userId });
     for (const file of files) {
-      await exports.permanentDeleteRecursive("file", file._id, userId);
+      await permanentDeleteRecursive("file", file._id, userId);
     }
 
     // 2. Delete all subfolders recursively
     const subFolders = await Folder.find({ parent: id, user: userId });
     for (const folder of subFolders) {
-      await exports.permanentDeleteRecursive("folder", folder._id, userId);
+      await permanentDeleteRecursive("folder", folder._id, userId);
     }
 
     // 3. Delete the folder itself

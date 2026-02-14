@@ -2,12 +2,12 @@ import cron from "node-cron";
 import fs from "fs";
 import path from "path";
 
+// Models
+import File from "../models/File.js";
+import User from "../models/User.js";
+
 // Config
 import config from "../config/env.js";
-
-// Models
-import User from "../models/User.js";
-import File from "../models/File.js";
 
 /**
  * Initialize cron jobs

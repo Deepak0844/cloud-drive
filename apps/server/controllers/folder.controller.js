@@ -1,16 +1,21 @@
 import fs from "fs";
 import path from "path";
 
+// Models
+import File from "../models/File.js";
+import Folder from "../models/Folder.js";
+import User from "../models/User.js";
+
+// Services
+import FileService from "../services/file.service.js";
+import SocketService from "../services/socket.service.js";
+
 // Utils
 import DbUtils from "../utils/dbUtils.js";
 
 // Constants
 import ErrorMessages from "../constants/errorMessages.js";
 import StatusCodes from "../constants/statusCodes.js";
-
-// Models
-import Folder from "../models/Folder.js";
-import File from "../models/File.js";
 
 /**
  * @desc    Get all folders for current user
@@ -136,6 +141,13 @@ export async function createFolder(req, res) {
       success: true,
       data: folder,
     });
+
+    // Emit socket event
+    SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
+      action: "CREATE",
+      folderId: folder._id,
+      parentId: folder.parent,
+    });
   } catch (err) {
     console.error("createFolder Error:", err);
     if (err.code === 11000) {
@@ -207,6 +219,13 @@ export async function renameFolder(req, res) {
     await folder.save();
 
     res.status(StatusCodes.OK).json({ success: true, data: folder });
+
+    // Emit socket event
+    SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
+      action: "RENAME",
+      folderId: folder._id,
+      name: folder.name,
+    });
   } catch (err) {
     if (err.code === 11000) {
       return res.status(StatusCodes.BAD_REQUEST).json({
@@ -231,6 +250,12 @@ export async function deleteFolder(req, res) {
     await DbUtils.softDeleteRecursive("folder", req.params.id, req.user.id, true);
 
     res.status(StatusCodes.OK).json({ success: true, data: {} });
+
+    // Emit socket event
+    SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
+      action: "DELETE",
+      folderId: req.params.id,
+    });
   } catch (err) {
     console.error("deleteFolder Error:", err);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
@@ -302,6 +327,13 @@ export async function moveFolder(req, res) {
     await updateChildPaths(folder._id, folder.path, folder.name);
 
     res.status(200).json({ success: true, data: folder });
+
+    // Emit socket event
+    SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
+      action: "MOVE",
+      folderId: folder._id,
+      destParentId,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: "Server Error" });
@@ -344,8 +376,6 @@ export async function copyFolder(req, res) {
       // 2. Copy all files in this folder
       const files = await File.find({ folder: folderToCopy._id, user: req.user.id, is_deleted: false });
 
-      const FileService = require("../services/file.service");
-      const User = require("../models/User");
       const user = await User.findById(req.user.id);
 
       for (const file of files) {

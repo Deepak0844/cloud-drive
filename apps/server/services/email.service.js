@@ -1,19 +1,21 @@
 import nodemailer from "nodemailer";
-import Env from "../config/env.js";
+
+// Config
+import config from "../config/env.js";
 
 // Send email
 async function sendEmail(options) {
   const transporter = nodemailer.createTransport({
-    host: Env.SMTP_HOST,
-    port: Env.SMTP_PORT,
+    host: config.SMTP_HOST,
+    port: config.SMTP_PORT,
     auth: {
-      user: Env.SMTP_EMAIL,
-      pass: Env.SMTP_PASSWORD,
+      user: config.SMTP_EMAIL,
+      pass: config.SMTP_PASSWORD,
     },
   });
 
   const mailOptions = {
-    from: `${Env.FROM_NAME} <${Env.SMTP_EMAIL}>`,
+    from: `${config.FROM_NAME} <${config.SMTP_EMAIL}>`,
     to: options.email,
     subject: options.subject,
     text: options.message,

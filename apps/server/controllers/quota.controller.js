@@ -6,6 +6,12 @@ import StatusCodes from "../constants/statusCodes.js";
 import User from "../models/User.js";
 import QuotaRequest from "../models/QuotaRequest.js";
 
+// Controllers
+import { createNotification } from "./notification.controller.js";
+
+// Constants
+import Roles from "../constants/roles.js";
+
 /**
  * @desc    Get current quota usage
  * @route   GET /api/v1/quota/usage
@@ -62,6 +68,20 @@ export async function requestQuotaIncrease(req, res) {
       requested_bytes,
       reason,
     });
+
+    // Notify all admins
+    const admins = await User.find({ role: Roles.ADMIN });
+    await Promise.all(
+      admins.map((admin) =>
+        createNotification(
+          admin._id.toString(),
+          "QUOTA_REQUEST",
+          "New Quota Request",
+          `${req.user.name || req.user.email} has requested ${(requested_bytes / (1024 * 1024 * 1024)).toFixed(0)} GB additional storage.`,
+          { requestId: quotaRequest._id }
+        )
+      )
+    );
 
     res.status(StatusCodes.OK).json({
       success: true,

@@ -6,12 +6,12 @@ import User from "../models/User.js";
 // Services
 import EmailService from "../services/email.service.js";
 
+// Config
+import Env from "../config/env.js";
+
 // Constants
 import ErrorMessages from "../constants/errorMessages.js";
 import StatusCodes from "../constants/statusCodes.js";
-
-// Config
-import Env from "../config/env.js";
 
 /**
  * Generates a signed JSON Web Token (JWT) with the provided user ID.

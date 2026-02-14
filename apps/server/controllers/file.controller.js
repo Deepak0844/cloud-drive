@@ -9,13 +9,17 @@ import StatusCodes from "../constants/statusCodes.js";
 // Utils
 import DbUtils from "../utils/dbUtils.js";
 
-// Services;
-import FileService from "../services/file.service.js";
-
 // Models
 import File from "../models/File.js";
 import User from "../models/User.js";
 import Folder from "../models/Folder.js";
+
+// Controllers
+import { createNotification } from "./notification.controller.js";
+
+// Services
+import FileService from "../services/file.service.js";
+import SocketService from "../services/socket.service.js";
 
 // Configure Multer Storage
 const storage = multer.diskStorage({
@@ -88,6 +92,24 @@ export async function uploadFile(req, res) {
 
     // Process thumbnails via service
     await FileService.processThumbnails(file);
+
+    // Notify user
+    await createNotification(
+      req.user.id,
+      "UPLOAD_COMPLETE",
+      "Upload Successful",
+      `File ${req.file.originalname} has been uploaded successfully.`
+    );
+
+    // Emit socket events
+    SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
+      quota_bytes: user.quota_bytes,
+      used_bytes: user.used_bytes,
+    });
+    SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
+      action: "UPLOAD",
+      folderId: file.folder,
+    });
 
     res.status(StatusCodes.CREATED).json({
       success: true,
@@ -188,6 +210,12 @@ export async function downloadFile(req, res) {
 export async function deleteFile(req, res) {
   try {
     await DbUtils.softDeleteRecursive("file", req.params.id, req.user.id, true);
+
+    // Emit socket event
+    SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
+      action: "DELETE",
+      fileId: req.params.id,
+    });
 
     res.status(StatusCodes.OK).json({
       success: true,
@@ -387,6 +415,13 @@ export async function moveFile(req, res) {
     file.folder = destFolderId;
     await file.save();
 
+    // Emit socket event
+    SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
+      action: "MOVE",
+      fileId: file._id,
+      destFolderId,
+    });
+
     res.status(StatusCodes.OK).json({ success: true, data: file });
   } catch (err) {
     console.error("Move file error:", err);
@@ -451,6 +486,17 @@ export async function copyFile(req, res) {
     user.used_bytes += sourceFile.size_bytes;
     await user.save();
 
+    // Emit socket events
+    SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
+      quota_bytes: user.quota_bytes,
+      used_bytes: user.used_bytes,
+    });
+
+    SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
+      action: "COPY",
+      folderId: destFolderId,
+    });
+
     res.status(StatusCodes.CREATED).json({ success: true, data: newFile });
   } catch (err) {
     console.error("Error copying file:", err);
@@ -479,6 +525,12 @@ export async function bulkDelete(req, res) {
     for (const item of items) {
       await DbUtils.softDeleteRecursive(item.type, item.id, req.user.id, true);
     }
+
+    // Emit socket event
+    SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
+      action: "BULK_DELETE",
+      items,
+    });
 
     res.status(StatusCodes.OK).json({ success: true, data: {} });
   } catch (err) {

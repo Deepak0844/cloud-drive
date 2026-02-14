@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+
+// Config
 import Env from "../config/env.js";
+
+// Constants
 import Roles from "../constants/roles.js";
 
 const userSchema = new mongoose.Schema(

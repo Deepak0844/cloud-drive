@@ -1,17 +1,19 @@
-import { fileURLToPath } from "url";
 import path from "path";
+import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import express from "express";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import createError from "http-errors";
 import logger from "morgan";
-import cors from "cors";
 
 // Database connection
 import connectToDatabase from "./config/db.js";
 
 // Constants
-import StatusCodes from "./constants/statusCodes.js";
 import ErrorMessages from "./constants/errorMessages.js";
+import StatusCodes from "./constants/statusCodes.js";
 
 // Utils
 import CronUtils from "./utils/cronUtils.js";
@@ -22,6 +24,9 @@ import fileRoutes from "./routes/file.routes.js";
 import folderRoutes from "./routes/folder.routes.js";
 import trashRoutes from "./routes/trash.routes.js";
 import quotaRoutes from "./routes/quota.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import itemRoutes from "./routes/item.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,11 +40,42 @@ const baseUrl = "/api/v1";
 // Connect to MongoDB
 connectToDatabase();
 
+// Security Middlewares
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "frame-ancestors": ["'self'", "http://localhost:*"],
+        "upgrade-insecure-requests": null, // Allow http for local development
+      },
+    },
+  })
+);
+
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again after 15 minutes",
+});
+
+// Upload specific limiter (much higher limit for chunked uploads)
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 2000, // 2000 chunks per 15 min
+  message: "Upload limit reached, please pause and resume later",
+});
+
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
 
 app.use(cors());
+app.use(limiter); // Apply global limiter
+app.use(`${baseUrl}/files/upload`, uploadLimiter); // Apply upload-specific limiter
+
 app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -52,6 +88,9 @@ app.use(`${baseUrl}/files`, fileRoutes);
 app.use(`${baseUrl}/folders`, folderRoutes);
 app.use(`${baseUrl}/trash`, trashRoutes);
 app.use(`${baseUrl}/quota`, quotaRoutes);
+app.use(`${baseUrl}/admin`, adminRoutes);
+app.use(`${baseUrl}/items`, itemRoutes);
+app.use(`${baseUrl}/notifications`, notificationRoutes);
 
 // Initialize Cron Jobs
 CronUtils.initCronJobs();
