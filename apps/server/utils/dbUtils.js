@@ -11,7 +11,7 @@ import User from "../models/User.js";
 import FileService from "../services/file.service.js";
 
 // Constants
-import { ItemTypes, ErrorMessages } from "../constants/GeneralConstants.js";
+import { ItemTypes, ErrorMessages } from "../constants/generalConstants.js";
 
 // Utils
 import logger from "./logger.js";

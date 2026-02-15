@@ -8,7 +8,7 @@ import User from "../models/User.js";
 import Env from "../config/env.js";
 
 // Constants
-import { ErrorMessages, Roles, StatusCodes } from "../constants/GeneralConstants.js";
+import { ErrorMessages, Roles, StatusCodes } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "./asyncHandler.js";
@@ -33,6 +33,15 @@ export const protect = asyncHandler(async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, Env.JWT_SECRET);
     req.user = await User.findById(decoded.id);
+
+    if (!req.user) {
+      return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);
+    }
+
+    if (req.user.is_active === false) {
+      return ResponseHelper.error(res, ErrorMessages.ACCOUNT_DEACTIVATED, StatusCodes.FORBIDDEN);
+    }
+
     next();
   } catch (_err) {
     return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);

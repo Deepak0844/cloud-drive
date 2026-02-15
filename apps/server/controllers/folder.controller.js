@@ -3,7 +3,7 @@ import Folder from "../models/Folder.js";
 import File from "../models/File.js";
 
 // Constants
-import { ErrorMessages, StatusCodes, ItemTypes } from "../constants/GeneralConstants.js";
+import { ErrorMessages, StatusCodes, ItemTypes } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -90,7 +90,7 @@ export const createFolder = asyncHandler(async (req, res) => {
     return ResponseHelper.success(res, folder, StatusCodes.CREATED);
   } catch (err) {
     if (err.code === 11000) {
-      return ResponseHelper.error(res, "Folder with this name already exists", StatusCodes.BAD_REQUEST);
+      return ResponseHelper.error(res, ErrorMessages.FOLDER_ALREADY_EXISTS, StatusCodes.BAD_REQUEST);
     }
     throw err;
   }

@@ -23,8 +23,8 @@ body:json {
 
 script:post-response {
   var jsonData = res.getBody();
-  if (jsonData.success && jsonData.token) {
-      bru.setVar("authToken", jsonData.token);
+  if (jsonData.success && jsonData.data.token) {
+      bru.setVar("authToken", jsonData.data.token);
       console.log("Token set automatically");
   }
 }

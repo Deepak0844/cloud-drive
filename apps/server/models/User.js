@@ -7,7 +7,7 @@ import crypto from "crypto";
 import Env from "../config/env.js";
 
 // Constants
-import { Roles } from "../constants/GeneralConstants.js";
+import { Roles } from "../constants/generalConstants.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -59,9 +59,9 @@ const userSchema = new mongoose.Schema(
 );
 
 // Encrypt password using bcrypt
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function () {
   if (!this.isModified("password")) {
-    next();
+    return;
   }
 
   const salt = await bcrypt.genSalt(10);
@@ -71,7 +71,7 @@ userSchema.pre("save", async function (next) {
 // Sign JWT and return
 userSchema.methods.getSignedJwtToken = function () {
   return jwt.sign({ id: this._id }, Env.JWT_SECRET, {
-    expiresIn: Env.JWT_EXPIRE,
+    expiresIn: Env.JWT_EXPIRES_IN,
   });
 };
 

@@ -16,6 +16,15 @@ export default [
     },
   },
   {
+    files: ["apps/server/__tests__/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.jest,
+      },
+    },
+  },
+  {
     files: ["**/*.js", "**/*.jsx", "**/*.mjs"],
   },
   {

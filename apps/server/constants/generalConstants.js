@@ -85,6 +85,13 @@ export const ErrorMessages = {
   BAD_REQUEST: "Please provide required fields",
   NO_CHUNK_FILE: "No chunk file provided",
   INVALID_CHUNK_PARAMETERS: "Invalid chunk upload parameters",
+  USER_ALREADY_EXISTS: "User with this email already exists",
+  ACCOUNT_DEACTIVATED: "Your account has been deactivated",
+  FILE_REQUIRED: "Please upload a file",
+  PHYSICAL_FILE_NOT_FOUND: "Physical file not found on server",
+  THUMBNAIL_FAILED: "Thumbnail generation failed",
+  THUMBNAIL_NOT_AVAILABLE: "Thumbnail not available",
+  FOLDER_ALREADY_EXISTS: "Folder with this name already exists",
 };
 
 /**

@@ -7,7 +7,7 @@ import PushService from "../services/push.service.js";
 import SocketService from "../services/socket.service.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, SocketEvents, StatusCodes } from "../constants/GeneralConstants.js";
+import { ErrorMessages, SuccessMessages, SocketEvents, StatusCodes } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";

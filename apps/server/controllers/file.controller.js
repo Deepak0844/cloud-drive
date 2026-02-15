@@ -15,7 +15,7 @@ import FileService from "../services/file.service.js";
 import SocketService from "../services/socket.service.js";
 
 // Constants
-import { ErrorMessages, StatusCodes, ItemTypes } from "../constants/GeneralConstants.js";
+import { ErrorMessages, StatusCodes, ItemTypes } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -74,7 +74,7 @@ export const uploadMiddleware = upload.single("file");
  */
 export const uploadFile = asyncHandler(async (req, res) => {
   if (!req.file) {
-    return ResponseHelper.error(res, "Please upload a file", StatusCodes.BAD_REQUEST);
+    return ResponseHelper.error(res, ErrorMessages.FILE_REQUIRED, StatusCodes.BAD_REQUEST);
   }
 
   const { folderId } = req.body;
@@ -134,7 +134,7 @@ export const downloadFile = asyncHandler(async (req, res) => {
   }
 
   if (!fs.existsSync(file.storage_path)) {
-    return ResponseHelper.error(res, "Physical file not found on server", StatusCodes.NOT_FOUND);
+    return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
   res.download(file.storage_path, file.name);
@@ -206,13 +206,13 @@ export const getFilePreview = asyncHandler(async (req, res) => {
           filePath = thumbPath;
         } catch (e) {
           console.error("On-the-fly video thumbnail failed:", e);
-          return ResponseHelper.error(res, "Thumbnail generation failed", StatusCodes.NOT_FOUND);
+          return ResponseHelper.error(res, ErrorMessages.THUMBNAIL_FAILED, StatusCodes.NOT_FOUND);
         }
       } else {
-        return ResponseHelper.error(res, "Thumbnail not available", StatusCodes.NOT_FOUND);
+        return ResponseHelper.error(res, ErrorMessages.THUMBNAIL_NOT_AVAILABLE, StatusCodes.NOT_FOUND);
       }
     } else {
-      return ResponseHelper.error(res, "File not found", StatusCodes.NOT_FOUND);
+      return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
     }
   }
 
@@ -363,16 +363,16 @@ export const deleteFile = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const bulkDelete = asyncHandler(async (req, res) => {
-  const { ids } = req.body;
+  const { items } = req.body;
 
-  for (const id of ids) {
-    await DbUtils.softDeleteRecursive(ItemTypes.FILE, id, req.user.id, true);
+  for (const item of items) {
+    await DbUtils.softDeleteRecursive(item.type, item.id, req.user.id, true);
   }
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
     action: "BULK_DELETE",
-    items: ids.map((id) => ({ id, type: ItemTypes.FILE })),
+    items,
   });
 
-  return ResponseHelper.success(res, { message: "Files moved to trash" });
+  return ResponseHelper.success(res, { message: "Items moved to trash" });
 });

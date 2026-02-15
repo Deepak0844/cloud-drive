@@ -36,8 +36,10 @@ const app = express();
 // Base URL for API routes
 const baseUrl = "/api/v1";
 
-// Connect to MongoDB
-connectToDatabase();
+// Connect to MongoDB (skip during testing as tests handle their own connection)
+if (process.env.NODE_ENV !== "test") {
+  connectToDatabase();
+}
 
 // Security Middlewares
 app.use(
@@ -95,8 +97,10 @@ app.use(`${baseUrl}/admin`, adminRoutes);
 app.use(`${baseUrl}/items`, itemRoutes);
 app.use(`${baseUrl}/notifications`, notificationRoutes);
 
-// Initialize Cron Jobs
-CronUtils.initCronJobs();
+// Initialize Cron Jobs (skip during testing)
+if (process.env.NODE_ENV !== "test") {
+  CronUtils.initCronJobs();
+}
 
 // Base route
 app.get("/", (req, res) => {

@@ -5,7 +5,7 @@ import User from "../models/User.js";
 import EmailService from "../services/email.service.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, StatusCodes } from "../constants/GeneralConstants.js";
+import { ErrorMessages, SuccessMessages, StatusCodes } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -75,9 +75,9 @@ export const login = asyncHandler(async (req, res) => {
  * @route   GET /api/v1/auth/logout
  * @access  Private
  */
-export const logout = asyncHandler(async (req, res) => {
+export const logout = (req, res) => {
   return ResponseHelper.success(res, {}, StatusCodes.OK, { message: SuccessMessages.LOGOUT_SUCCESS });
-});
+};
 
 /**
  * @desc    Get current logged in user

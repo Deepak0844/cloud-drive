@@ -16,7 +16,7 @@ import {
   QuotaStatus,
   SocketEvents,
   StatusCodes,
-} from "../constants/GeneralConstants.js";
+} from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";

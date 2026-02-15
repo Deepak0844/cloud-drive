@@ -65,7 +65,7 @@ function initCronJobs() {
 
   // Run at defined interval: Cleanup orphaned temp uploads
   const cleanupIntervalHours = config.CLEANUP_INTERVAL_HOURS;
-  cron.schedule(`0 */${cleanupIntervalHours} * * *`, async () => {
+  cron.schedule(`0 */${cleanupIntervalHours} * * *`, () => {
     logger.info("🧹 Running temp upload cleanup...");
     try {
       const tempDir = path.join(config.NAS_STORAGE_PATH, "temp", "uploads");

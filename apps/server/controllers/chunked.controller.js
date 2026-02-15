@@ -11,7 +11,7 @@ import FileService from "../services/file.service.js";
 import SocketService from "../services/socket.service.js";
 
 // Constants
-import { ErrorMessages, StatusCodes } from "../constants/GeneralConstants.js";
+import { ErrorMessages, StatusCodes } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";

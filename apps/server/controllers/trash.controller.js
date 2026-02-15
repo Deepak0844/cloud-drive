@@ -7,7 +7,7 @@ import DbUtils from "../utils/dbUtils.js";
 import ResponseHelper from "../utils/responseHelper.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, ItemTypes, StatusCodes } from "../constants/GeneralConstants.js";
+import { ErrorMessages, SuccessMessages, ItemTypes, StatusCodes } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
