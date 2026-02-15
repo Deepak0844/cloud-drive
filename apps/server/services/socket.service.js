@@ -9,12 +9,12 @@ import User from "../models/User.js";
 
 // Constants
 import Roles from "../constants/roles.js";
+import logger from "../utils/logger.js";
 
 let io = null;
 
 /**
  * Initialize Socket.io with the provided HTTP server.
- * @param {http.Server} server - The HTTP server to attach socket.io to.
  */
 function init(server) {
   io = new Server(server, {
@@ -31,7 +31,7 @@ function init(server) {
     try {
       const token = socket.handshake.auth?.token;
       if (!token) {
-        console.warn("Socket connection rejected: No token");
+        logger.warn("Socket connection rejected: No token");
         return next(new Error("Authentication error: No token"));
       }
 
@@ -41,7 +41,7 @@ function init(server) {
       // Fetch user to confirm existence and role
       const user = await User.findById(userId);
       if (!user) {
-        console.warn(`Socket connection rejected: User ${userId} not found`);
+        logger.warn(`Socket connection rejected: User ${userId} not found`);
         return next(new Error("Authentication error: User not found"));
       }
 
@@ -49,14 +49,14 @@ function init(server) {
       socket.userRole = user.role;
       next();
     } catch (err) {
-      console.error("Socket Auth Error:", err.message);
+      logger.error("Socket Auth Error:", err.message);
       next(new Error("Authentication error: Invalid token"));
     }
   });
 
   io.on("connection", (socket) => {
     const uId = socket.userId;
-    console.log(`🔌 Current socket: ${socket.id} joined as User: ${uId} (Role: ${socket.userRole})`);
+    logger.info(`🔌 Current socket: ${socket.id} joined as User: ${uId} (Role: ${socket.userRole})`);
 
     // Join individual room (ID as string)
     socket.join(uId);
@@ -64,15 +64,15 @@ function init(server) {
     // Join admin room if applicable
     if (socket.userRole === Roles.ADMIN) {
       socket.join("admins");
-      console.log(`👨‍💼 Admin joined room: admins`);
+      logger.info(`👨‍💼 Admin joined room: admins`);
     }
 
     socket.on("error", (err) => {
-      console.error(`Socket error for user ${uId}:`, err);
+      logger.error(`Socket error for user ${uId}:`, err);
     });
 
     socket.on("disconnect", (reason) => {
-      console.log(`❌ Socket disconnected: ${uId} (Reason: ${reason})`);
+      logger.info(`❌ Socket disconnected: ${uId} (Reason: ${reason})`);
     });
   });
 
@@ -88,7 +88,7 @@ function init(server) {
 function emitToRoom(room, event, data) {
   if (io) {
     const roomName = String(room);
-    console.log(`📤 Emitting ${event} to room: ${roomName}`);
+    logger.debug(`📤 Emitting ${event} to room: ${roomName}`);
     io.to(roomName).emit(event, data);
   }
 }
@@ -113,7 +113,6 @@ function emitToAdmins(event, data) {
 }
 
 // Exports
-// -------------------------------
 const SocketService = {
   init,
   emitToRoom,

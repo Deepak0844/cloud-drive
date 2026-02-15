@@ -7,6 +7,9 @@ import fs from "fs";
 import fsPromises from "fs/promises";
 import heicConvert from "heic-convert";
 
+// Utils
+import logger from "./logger.js";
+
 // Set ffmpeg and ffprobe paths
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
@@ -61,10 +64,10 @@ function generateVideoThumbnail(sourcePath, destFolder, filename) {
     ffmpeg(sourcePath)
       .inputOptions(["-ss 0.5"])
       .outputOptions(["-vframes 1", "-q:v 2", "-vf scale=200:200:force_original_aspect_ratio=increase,crop=200:200"])
-      .on("start", (command) => console.log("[FFMPEG] Thumb command:", command))
+      .on("start", (command) => logger.debug("[FFMPEG] Thumb command:", command))
       .on("end", () => resolve(destPath))
       .on("error", (err) => {
-        console.error("[FFMPEG] Thumb error:", err.message);
+        logger.error("[FFMPEG] Thumb error:", err.message);
         // Fallback to 0 seconds if 0.5 failed
         ffmpeg(sourcePath)
           .outputOptions(["-vframes 1", "-vf scale=200:200:force_original_aspect_ratio=increase,crop=200:200"])
@@ -99,13 +102,13 @@ function generateVideoPreview(sourcePath, destPath) {
         "-vf scale=trunc(iw/2)*2:trunc(ih/2)*2",
       ])
       .toFormat("mp4")
-      .on("start", (command) => console.log("[FFMPEG] Transcoding preview:", command))
+      .on("start", (command) => logger.debug("[FFMPEG] Transcoding preview:", command))
       .on("end", () => {
-        console.log("[FFMPEG] Preview generated:", destPath);
+        logger.info("[FFMPEG] Preview generated:", destPath);
         resolve(destPath);
       })
       .on("error", (err) => {
-        console.error("[FFMPEG] Preview generation error:", err.message);
+        logger.error("[FFMPEG] Preview generation error:", err.message);
         reject(err);
       })
       .save(destPath);

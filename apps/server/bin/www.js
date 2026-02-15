@@ -1,10 +1,8 @@
 import http from "http";
-import debugModule from "debug";
 import app from "../app.js";
 
 import SocketService from "../services/socket.service.js";
-
-const debug = debugModule("server1:server");
+import logger from "../utils/logger.js";
 
 /**
  * Get port from environment and store in Express.
@@ -60,11 +58,11 @@ function onError(error) {
   // handle specific listen errors with friendly messages
   switch (error.code) {
     case "EACCES":
-      console.error(bind + " requires elevated privileges");
+      logger.error(bind + " requires elevated privileges");
       process.exit(1);
       break;
     case "EADDRINUSE":
-      console.error(bind + " is already in use");
+      logger.error(bind + " is already in use");
       process.exit(1);
       break;
     default:
@@ -79,5 +77,5 @@ function onError(error) {
 function onListening() {
   const addr = server.address();
   const bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
-  debug("Listening on " + bind);
+  logger.info("Listening on " + bind);
 }

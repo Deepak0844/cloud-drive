@@ -1,15 +1,16 @@
 import fs from "fs";
 import path from "path";
 
-// Utils
-import MediaUtils from "../utils/mediaUtils.js";
-
 // Config
 import config from "../config/env.js";
 
 // Models
 import File from "../models/File.js";
 import User from "../models/User.js";
+
+// Utils
+import MediaUtils from "../utils/mediaUtils.js";
+import logger from "../utils/logger.js";
 
 /**
  * Get core user storage directory
@@ -103,7 +104,7 @@ async function processThumbnails(file) {
       await MediaUtils.generateImageThumbnail(file.storage_path, thumbPath);
       file.thumbnail_path = thumbPath;
     } catch (err) {
-      console.error("[Thumbnail] Image generation failed:", err.message);
+      logger.error("[Thumbnail] Image generation failed:", err.message);
     }
   } else if (isVideo) {
     try {
@@ -112,7 +113,7 @@ async function processThumbnails(file) {
       await MediaUtils.generateVideoThumbnail(file.storage_path, thumbnailDir, `${fileId}.jpg`);
       file.thumbnail_path = thumbPath;
     } catch (err) {
-      console.error("[Thumbnail] Video thumbnail failed:", err.message);
+      logger.error("[Thumbnail] Video thumbnail failed:", err.message);
     }
 
     // Generate preview for MOV files
@@ -124,7 +125,7 @@ async function processThumbnails(file) {
         await MediaUtils.generateVideoPreview(file.storage_path, previewPath);
         file.preview_path = previewPath;
       } catch (err) {
-        console.error("[Preview] Video preview failed:", err.message);
+        logger.error("[Preview] Video preview failed:", err.message);
       }
     }
   }
@@ -134,7 +135,6 @@ async function processThumbnails(file) {
 }
 
 // Exports
-// -------------------------------
 const FileService = {
   getUserDir,
   getThumbnailDir,

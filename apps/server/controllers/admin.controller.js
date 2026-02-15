@@ -13,233 +13,158 @@ import SocketService from "../services/socket.service.js";
 import StatusCodes from "../constants/statusCodes.js";
 import ErrorMessages from "../constants/errorMessages.js";
 
+// Middleware
+import asyncHandler from "../middleware/asyncHandler.js";
+
+// Utils
+import ResponseHelper from "../utils/responseHelper.js";
+
+// Schemas
+import { updateUserQuotaSchema, handleQuotaRequestSchema, updateUserStatusSchema } from "../schemas/admin.schema.js";
+
 /**
  * @desc    Get all users
  * @route   GET /api/v1/admin/users
- * @access  Private/Admin
  */
-export async function getUsers(req, res) {
-  try {
-    const users = await User.find().select("-password");
-    res.status(StatusCodes.OK).json({ success: true, count: users.length, data: users });
-  } catch (err) {
-    console.error("Get Users Error:", err);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      error: ErrorMessages.SERVER_ERROR,
-    });
-  }
-}
+export const getUsers = asyncHandler(async (req, res) => {
+  const users = await User.find().select("-password");
+  return ResponseHelper.success(res, users, StatusCodes.OK, { count: users.length });
+});
 
 /**
  * @desc    Update user quota
  * @route   PATCH /api/v1/admin/users/:id/quota
- * @access  Private/Admin
  */
-export async function updateUserQuota(req, res) {
-  try {
-    const { quota_bytes } = req.body;
+export const updateUserQuota = asyncHandler(async (req, res) => {
+  updateUserQuotaSchema.parse({ body: req.body });
 
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        success: false,
-        error: ErrorMessages.USER_NOT_FOUND,
-      });
-    }
+  const { quota_bytes } = req.body;
+  const user = await User.findById(req.params.id);
 
-    const oldQuota = user.quota_bytes;
-    const isIncrease = quota_bytes > oldQuota;
-
-    user.quota_bytes = quota_bytes;
-    await user.save();
-
-    // Send notification
-    await createNotification(
-      user._id,
-      "QUOTA_CHANGE",
-      isIncrease ? "Quota Increased" : "Quota Decreased",
-      `Your storage quota has been ${isIncrease ? "increased" : "decreased"} to ${(quota_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
-    );
-
-    // Emit socket event for real-time usage sync
-    SocketService.emitToUser(String(user._id), "QUOTA_UPDATE", {
-      quota_bytes: user.quota_bytes,
-      used_bytes: user.used_bytes,
-    });
-
-    res.status(StatusCodes.OK).json({ success: true, data: user });
-  } catch (err) {
-    console.error("Update Quota Error:", err);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      error: ErrorMessages.SERVER_ERROR,
-    });
+  if (!user) {
+    return ResponseHelper.error(res, ErrorMessages.USER_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
-}
+
+  const oldQuota = user.quota_bytes;
+  const isIncrease = quota_bytes > oldQuota;
+
+  user.quota_bytes = quota_bytes;
+  await user.save();
+
+  await createNotification(
+    user._id,
+    "QUOTA_CHANGE",
+    isIncrease ? "Quota Increased" : "Quota Decreased",
+    `Your storage quota has been ${isIncrease ? "increased" : "decreased"} to ${(quota_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+  );
+
+  SocketService.emitToUser(String(user._id), "QUOTA_UPDATE", {
+    quota_bytes: user.quota_bytes,
+    used_bytes: user.used_bytes,
+  });
+
+  return ResponseHelper.success(res, user);
+});
 
 /**
  * @desc    Get system stats
  * @route   GET /api/v1/admin/stats
- * @access  Private/Admin
  */
-export async function getSystemStats(req, res) {
-  try {
-    const userCount = await User.countDocuments();
-    const fileCount = await File.countDocuments({ is_deleted: false });
+export const getSystemStats = asyncHandler(async (req, res) => {
+  const userCount = await User.countDocuments();
+  const fileCount = await File.countDocuments({ is_deleted: false });
 
-    // Aggregation for total storage used
-    const stats = await File.aggregate([
-      { $match: { is_deleted: false } },
-      { $group: { _id: null, totalUsedBytes: { $sum: "$size_bytes" } } },
-    ]);
+  const stats = await File.aggregate([
+    { $match: { is_deleted: false } },
+    { $group: { _id: null, totalUsedBytes: { $sum: "$size_bytes" } } },
+  ]);
 
-    const totalUsedBytes = stats.length > 0 ? stats[0].totalUsedBytes : 0;
+  const totalUsedBytes = stats.length > 0 ? stats[0].totalUsedBytes : 0;
 
-    res.status(StatusCodes.OK).json({
-      success: true,
-      data: {
-        total_users: userCount,
-        total_files: fileCount,
-        total_used_bytes: totalUsedBytes,
-      },
-    });
-  } catch (err) {
-    console.error("Get System Stats Error:", err);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      error: ErrorMessages.SERVER_ERROR,
-    });
-  }
-}
+  return ResponseHelper.success(res, {
+    total_users: userCount,
+    total_files: fileCount,
+    total_used_bytes: totalUsedBytes,
+  });
+});
 
 /**
  * @desc    Get all quota requests
  * @route   GET /api/v1/admin/quota-requests
- * @access  Private/Admin
  */
-export async function getAllQuotaRequests(req, res) {
-  try {
-    const requests = await QuotaRequest.find().populate("user", "name email").sort("-createdAt");
-    res.status(StatusCodes.OK).json({ success: true, count: requests.length, data: requests });
-  } catch (err) {
-    console.error("Get All Quota Requests Error:", err);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      error: ErrorMessages.SERVER_ERROR,
-    });
-  }
-}
+export const getAllQuotaRequests = asyncHandler(async (req, res) => {
+  const requests = await QuotaRequest.find().populate("user", "name email").sort("-createdAt");
+  return ResponseHelper.success(res, requests, StatusCodes.OK, { count: requests.length });
+});
 
 /**
  * @desc    Handle (Approve/Reject) quota request
  * @route   PATCH /api/v1/admin/quota-requests/:id
- * @access  Private/Admin
  */
-export async function handleQuotaRequest(req, res) {
-  try {
-    const { status, admin_note } = req.body;
+export const handleQuotaRequest = asyncHandler(async (req, res) => {
+  handleQuotaRequestSchema.parse({ body: req.body });
 
-    if (!["APPROVED", "REJECTED"].includes(status)) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        success: false,
-        error: "Invalid status. Use APPROVED or REJECTED",
-      });
-    }
+  const { status, admin_note } = req.body;
+  const request = await QuotaRequest.findById(req.params.id);
 
-    const request = await QuotaRequest.findById(req.params.id);
-    if (!request) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        success: false,
-        error: "Quota request not found",
-      });
-    }
-
-    if (request.status !== "PENDING") {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        success: false,
-        error: "Request already processed",
-      });
-    }
-
-    request.status = status;
-    request.admin_note = admin_note;
-    await request.save();
-
-    const user = await User.findById(request.user);
-    if (!user) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        success: false,
-        error: ErrorMessages.USER_NOT_FOUND,
-      });
-    }
-
-    if (status === "APPROVED") {
-      user.quota_bytes += request.requested_bytes;
-      await user.save();
-
-      // Send approved notification
-      await createNotification(
-        user._id,
-        "QUOTA_APPROVED",
-        "Quota Request Approved",
-        `Your request for ${(request.requested_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB storage increase has been approved.`
-      );
-
-      // Emit socket event for real-time update
-      SocketService.emitToUser(String(user._id), "QUOTA_UPDATE", {
-        quota_bytes: user.quota_bytes,
-        used_bytes: user.used_bytes,
-      });
-    } else {
-      await createNotification(
-        user._id,
-        "QUOTA_REJECTED",
-        "Quota Request Rejected",
-        `Your request for ${(request.requested_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB storage increase has been rejected.`
-      );
-
-      // Force UI refresh even for rejection
-      SocketService.emitToUser(String(user._id), "QUOTA_UPDATE", {
-        quota_bytes: user.quota_bytes,
-        used_bytes: user.used_bytes,
-      });
-    }
-
-    await request.populate("user", "name email");
-    res.status(StatusCodes.OK).json({ success: true, data: request });
-  } catch (err) {
-    console.error("Handle Quota Request Error:", err);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      error: ErrorMessages.SERVER_ERROR,
-    });
+  if (!request) {
+    return ResponseHelper.error(res, "Quota request not found", StatusCodes.NOT_FOUND);
   }
-}
+
+  if (request.status !== "PENDING") {
+    return ResponseHelper.error(res, "Request already processed", StatusCodes.BAD_REQUEST);
+  }
+
+  request.status = status;
+  request.admin_note = admin_note;
+  await request.save();
+
+  const user = await User.findById(request.user);
+  if (!user) {
+    return ResponseHelper.error(res, ErrorMessages.USER_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
+
+  if (status === "APPROVED") {
+    user.quota_bytes += request.requested_bytes;
+    await user.save();
+
+    await createNotification(
+      user._id,
+      "QUOTA_APPROVED",
+      "Quota Request Approved",
+      `Your request for ${(request.requested_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB storage increase has been approved.`
+    );
+  } else {
+    await createNotification(
+      user._id,
+      "QUOTA_REJECTED",
+      "Quota Request Rejected",
+      `Your request for ${(request.requested_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB storage increase has been rejected.`
+    );
+  }
+
+  SocketService.emitToUser(String(user._id), "QUOTA_UPDATE", {
+    quota_bytes: user.quota_bytes,
+    used_bytes: user.used_bytes,
+  });
+
+  await request.populate("user", "name email");
+  return ResponseHelper.success(res, request);
+});
 
 /**
  * @desc    Update user status (activate/deactivate)
  * @route   PATCH /api/v1/admin/users/:id/status
- * @access  Private/Admin
  */
-export async function updateUserStatus(req, res) {
-  try {
-    const { is_active } = req.body;
-    const user = await User.findByIdAndUpdate(req.params.id, { is_active }, { new: true });
+export const updateUserStatus = asyncHandler(async (req, res) => {
+  updateUserStatusSchema.parse({ body: req.body });
 
-    if (!user) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        success: false,
-        error: ErrorMessages.USER_NOT_FOUND,
-      });
-    }
+  const { is_active } = req.body;
+  const user = await User.findByIdAndUpdate(req.params.id, { is_active }, { new: true });
 
-    res.status(StatusCodes.OK).json({ success: true, data: user });
-  } catch (err) {
-    console.error("Update User Status Error:", err);
-    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      error: ErrorMessages.SERVER_ERROR,
-    });
+  if (!user) {
+    return ResponseHelper.error(res, ErrorMessages.USER_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
-}
+
+  return ResponseHelper.success(res, user);
+});

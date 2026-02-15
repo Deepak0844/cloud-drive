@@ -5,6 +5,9 @@ import File from "../models/File.js";
 import Folder from "../models/Folder.js";
 import User from "../models/User.js";
 
+// Utils
+import logger from "./logger.js";
+
 /**
  * Recursively marks an item and its descendants as deleted or restored
  */
@@ -74,14 +77,14 @@ async function permanentDeleteRecursive(type, id, userId) {
         try {
           fs.unlinkSync(file.storage_path);
         } catch (e) {
-          console.error(e);
+          logger.error(`Failed to unlink storage path: ${file.storage_path}`, e);
         }
       }
       if (file.thumbnail_path && fs.existsSync(file.thumbnail_path)) {
         try {
           fs.unlinkSync(file.thumbnail_path);
         } catch (e) {
-          console.error(e);
+          logger.error(`Failed to unlink thumbnail path: ${file.thumbnail_path}`, e);
         }
       }
 
@@ -112,7 +115,6 @@ async function permanentDeleteRecursive(type, id, userId) {
 }
 
 // Exports
-// -----------------------------------------------
 const DbUtils = {
   softDeleteRecursive,
   restoreRecursive,

@@ -3,7 +3,13 @@ import nodemailer from "nodemailer";
 // Config
 import config from "../config/env.js";
 
-// Send email
+// Utils
+import logger from "../utils/logger.js";
+
+/**
+ * Send email
+ * @param {Object} options { email, subject, message }
+ */
 async function sendEmail(options) {
   const transporter = nodemailer.createTransport({
     host: config.SMTP_HOST,
@@ -22,12 +28,10 @@ async function sendEmail(options) {
   };
 
   const info = await transporter.sendMail(mailOptions);
-
-  console.log("Message sent: %s", info.messageId);
+  logger.info("Message sent: %s", info.messageId);
 }
 
 // Exports
-// -------------------------------
 const EmailService = {
   sendEmail,
 };

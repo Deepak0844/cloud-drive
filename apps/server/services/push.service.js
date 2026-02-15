@@ -1,4 +1,5 @@
 import { Expo } from "expo-server-sdk";
+import logger from "../utils/logger.js";
 
 const expo = new Expo();
 
@@ -11,7 +12,7 @@ async function sendPushNotifications(pushTokens, payload) {
   const messages = [];
   for (const pushToken of pushTokens) {
     if (!Expo.isExpoPushToken(pushToken)) {
-      console.error(`Push token ${pushToken} is not a valid Expo push token`);
+      logger.error(`Push token ${pushToken} is not a valid Expo push token`);
       continue;
     }
 
@@ -32,7 +33,7 @@ async function sendPushNotifications(pushTokens, payload) {
       const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
       tickets.push(...ticketChunk);
     } catch (error) {
-      console.error("Error sending push chunk:", error);
+      logger.error("Error sending push chunk:", error);
     }
   }
 
@@ -40,7 +41,6 @@ async function sendPushNotifications(pushTokens, payload) {
 }
 
 // Exports
-// -------------------------------
 const PushService = {
   sendPushNotifications,
 };

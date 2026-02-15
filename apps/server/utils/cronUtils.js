@@ -8,6 +8,7 @@ import User from "../models/User.js";
 
 // Config
 import config from "../config/env.js";
+import logger from "./logger.js";
 
 /**
  * Initialize cron jobs
@@ -16,7 +17,7 @@ import config from "../config/env.js";
 function initCronJobs() {
   // Run every day at 00:00
   cron.schedule("0 0 * * *", async () => {
-    console.log("🧹 Running daily trash cleanup...");
+    logger.info("🧹 Running daily trash cleanup...");
     try {
       const expiryDays = config.TRASH_EXPIRY_DAYS;
       const thirtyDaysAgo = new Date();
@@ -27,7 +28,7 @@ function initCronJobs() {
         deleted_at: { $lte: thirtyDaysAgo },
       });
 
-      console.log(`Found ${itemsToDelete.length} items to permanently delete.`);
+      logger.info(`Found ${itemsToDelete.length} items to permanently delete.`);
 
       for (const file of itemsToDelete) {
         const fileSize = file.size_bytes;
@@ -49,16 +50,16 @@ function initCronJobs() {
         });
       }
 
-      console.log("✅ Trash cleanup completed.");
+      logger.info("✅ Trash cleanup completed.");
     } catch (err) {
-      console.error("❌ Trash cleanup error:", err);
+      logger.error("❌ Trash cleanup error:", err);
     }
   });
 
   // Run at defined interval: Cleanup orphaned temp uploads
   const cleanupIntervalHours = config.CLEANUP_INTERVAL_HOURS;
   cron.schedule(`0 */${cleanupIntervalHours} * * *`, async () => {
-    console.log("🧹 Running temp upload cleanup...");
+    logger.info("🧹 Running temp upload cleanup...");
     try {
       const tempDir = path.join(config.NAS_STORAGE_PATH, "temp", "uploads");
       if (!fs.existsSync(tempDir)) {
@@ -74,17 +75,17 @@ function initCronJobs() {
         const sessionPath = path.join(tempDir, session);
         const stats = fs.statSync(sessionPath);
         if (now - stats.mtimeMs > expiryMs) {
-          console.log(`Deleting orphaned session: ${session}`);
+          logger.info(`Deleting orphaned session: ${session}`);
           fs.rmSync(sessionPath, { recursive: true, force: true });
         }
       }
-      console.log("✅ Temp cleanup completed.");
+      logger.info("✅ Temp cleanup completed.");
     } catch (err) {
-      console.error("❌ Temp cleanup error:", err);
+      logger.error("❌ Temp cleanup error:", err);
     }
   });
 
-  console.log("⏰ Cron jobs initialized");
+  logger.info("⏰ Cron jobs initialized");
 }
 
 // Exports
