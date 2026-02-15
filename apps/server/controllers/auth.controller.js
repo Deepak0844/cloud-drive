@@ -40,14 +40,14 @@ export const register = asyncHandler(async (req, res) => {
   // Validate input
   registerSchema.parse({ body: req.body });
 
-  const { email, password } = req.body;
+  const { email, password, name } = req.body;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return ResponseHelper.error(res, "User with this email already exists", StatusCodes.BAD_REQUEST);
   }
 
-  await User.create({ email, password });
+  await User.create({ email, password, name });
 
   return ResponseHelper.success(res, { message: "User registered successfully" }, StatusCodes.CREATED);
 });
