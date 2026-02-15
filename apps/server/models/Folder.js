@@ -38,7 +38,7 @@ const folderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Prevent duplicate folder names in same directory
+// Indexes
 folderSchema.index({ name: 1, user: 1, parent: 1 }, { unique: true });
 
 export default mongoose.model("Folder", folderSchema);

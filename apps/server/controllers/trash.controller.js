@@ -1,3 +1,7 @@
+// Models
+import File from "../models/File.js";
+import Folder from "../models/Folder.js";
+
 // Utils
 import DbUtils from "../utils/dbUtils.js";
 import ResponseHelper from "../utils/responseHelper.js";
@@ -5,16 +9,13 @@ import ResponseHelper from "../utils/responseHelper.js";
 // Constants
 import StatusCodes from "../constants/statusCodes.js";
 
-// Models
-import File from "../models/File.js";
-import Folder from "../models/Folder.js";
-
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
 
 /**
  * @desc    Get all trashed items
  * @route   GET /api/v1/trash
+ * @access  Private
  */
 export const getTrashedItems = asyncHandler(async (req, res) => {
   const query = {
@@ -39,6 +40,7 @@ export const getTrashedItems = asyncHandler(async (req, res) => {
 /**
  * @desc    Restore item from trash
  * @route   POST /api/v1/trash/:id/restore
+ * @access  Private
  */
 export const restoreItem = asyncHandler(async (req, res) => {
   let type = "file";
@@ -61,6 +63,7 @@ export const restoreItem = asyncHandler(async (req, res) => {
 /**
  * @desc    Permanently delete item
  * @route   DELETE /api/v1/trash/:id
+ * @access  Private
  */
 export const deletePermanently = asyncHandler(async (req, res) => {
   let type = "file";
@@ -83,6 +86,7 @@ export const deletePermanently = asyncHandler(async (req, res) => {
 /**
  * @desc    Empty trash
  * @route   DELETE /api/v1/trash/empty
+ * @access  Private
  */
 export const emptyTrash = asyncHandler(async (req, res) => {
   const files = await File.find({ user: req.user.id, is_deleted: true });

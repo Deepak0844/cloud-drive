@@ -1,11 +1,14 @@
-import sharp from "sharp";
-import ffmpeg from "fluent-ffmpeg";
-import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg";
-import { path as ffprobePath } from "@ffprobe-installer/ffprobe";
-import path from "path";
+// Native modules
 import fs from "fs";
 import fsPromises from "fs/promises";
+import path from "path";
+
+// Third-party modules
+import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg";
+import { path as ffprobePath } from "@ffprobe-installer/ffprobe";
+import ffmpeg from "fluent-ffmpeg";
 import heicConvert from "heic-convert";
+import sharp from "sharp";
 
 // Utils
 import logger from "./logger.js";
@@ -15,8 +18,8 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
 
 /**
- * Creates a directory if it does not exist.
- * @param {string} dirPath - The directory path to create.
+ * Creates a directory if it does not exist
+ * @param {string} dirPath - The directory path to create
  */
 function ensureDirectoryExists(dirPath) {
   if (!fs.existsSync(dirPath)) {
@@ -25,9 +28,9 @@ function ensureDirectoryExists(dirPath) {
 }
 
 /**
- * Generates a thumbnail for an image.
- * @param {string} sourcePath - The path to the source image.
- * @param {string} destPath - The path to save the generated thumbnail.
+ * Generates a thumbnail for an image
+ * @param {string} sourcePath - The path to the source image
+ * @param {string} destPath - The path to save the generated thumbnail
  */
 async function generateImageThumbnail(sourcePath, destPath) {
   const destDir = path.dirname(destPath);
@@ -50,11 +53,11 @@ async function generateImageThumbnail(sourcePath, destPath) {
 }
 
 /**
- * Generates a thumbnail for a video.
- * @param {string} sourcePath - The path to the source video.
- * @param {string} destFolder - The folder to save the thumbnail.
- * @param {string} filename - The name of the thumbnail file.
- * @returns {Promise<string>} - The path to the generated thumbnail.
+ * Generates a thumbnail for a video
+ * @param {string} sourcePath - The path to the source video
+ * @param {string} destFolder - The folder to save the thumbnail
+ * @param {string} filename - The name of the thumbnail file
+ * @returns {Promise<string>} - The path to the generated thumbnail
  */
 function generateVideoThumbnail(sourcePath, destFolder, filename) {
   ensureDirectoryExists(destFolder);
@@ -80,10 +83,10 @@ function generateVideoThumbnail(sourcePath, destFolder, filename) {
 }
 
 /**
- * Generates a web-friendly MP4 preview for a video.
- * @param {string} sourcePath - The path to the source video.
- * @param {string} destPath - The path to save the generated preview.
- * @returns {Promise<string>} - The path to the generated preview.
+ * Generates a web-friendly MP4 preview for a video
+ * @param {string} sourcePath - The path to the source video
+ * @param {string} destPath - The path to save the generated preview
+ * @returns {Promise<string>} - The path to the generated preview
  */
 function generateVideoPreview(sourcePath, destPath) {
   const destDir = path.dirname(destPath);
@@ -116,7 +119,6 @@ function generateVideoPreview(sourcePath, destPath) {
 }
 
 // Exports
-// ----------------------------------
 const MediaUtils = {
   generateImageThumbnail,
   generateVideoThumbnail,

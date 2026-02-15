@@ -1,5 +1,6 @@
-import mongoose from "mongoose";
+// Third-party modules
 import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
 
 // Config
 import Env from "../config/env.js";
@@ -56,6 +57,9 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+/**
+ * Encrypt password using bcrypt
+ */
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) {
     return;
@@ -64,6 +68,11 @@ userSchema.pre("save", async function () {
   this.password = await bcrypt.hash(this.password, 10);
 });
 
+/**
+ * Match user entered password to hashed password in database
+ * @param {string} enteredPassword - Password entered by user
+ * @returns {Promise<boolean>} - True if passwords match, false otherwise
+ */
 userSchema.methods.matchPassword = function (enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
 };

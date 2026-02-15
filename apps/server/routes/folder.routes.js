@@ -2,14 +2,14 @@ import express from "express";
 
 // Controllers
 import {
-  getFolders,
-  createFolder,
-  getFolderContents,
-  renameFolder,
-  deleteFolder,
-  moveFolder,
   copyFolder,
+  createFolder,
+  deleteFolder,
+  getFolderContents,
   getFolderDetails,
+  getFolders,
+  moveFolder,
+  renameFolder,
 } from "../controllers/folder.controller.js";
 
 // Middleware
@@ -17,6 +17,7 @@ import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
+// All routes are protected
 router.use(protect);
 
 router.get("/", getFolders);

@@ -1,12 +1,16 @@
+// Third-party modules
 import { Expo } from "expo-server-sdk";
+
+// Utils
 import logger from "../utils/logger.js";
 
 const expo = new Expo();
 
 /**
  * Send push notifications to specific users
- * @param {Array<string>} pushTokens
- * @param {Object} payload { title, body, data }
+ * @param {Array<string>} pushTokens - Array of Expo push tokens
+ * @param {Object} payload - Notification payload { title, body, data }
+ * @returns {Promise<Array>} - Array of push tickets
  */
 async function sendPushNotifications(pushTokens, payload) {
   const messages = [];

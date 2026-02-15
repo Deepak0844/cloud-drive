@@ -3,8 +3,8 @@ import express from "express";
 // Controllers
 import {
   getNotifications,
-  markAsRead,
   markAllAsRead,
+  markAsRead,
   registerPushToken,
 } from "../controllers/notification.controller.js";
 
@@ -13,6 +13,7 @@ import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
 
+// All routes are protected
 router.use(protect);
 
 router.get("/", getNotifications);

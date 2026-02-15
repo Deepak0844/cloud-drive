@@ -1,6 +1,9 @@
-import cron from "node-cron";
+// Native modules
 import fs from "fs";
 import path from "path";
+
+// Third-party modules
+import cron from "node-cron";
 
 // Models
 import File from "../models/File.js";
@@ -8,11 +11,15 @@ import User from "../models/User.js";
 
 // Config
 import config from "../config/env.js";
+
+// Utils
 import logger from "./logger.js";
 
 /**
  * Initialize cron jobs
- * Currently: Daily at midnight cleanup of trash older than 30 days
+ * Currently:
+ * 1. Daily at midnight cleanup of trash older than 30 days
+ * 2. Hourly cleanup of orphaned temp uploads
  */
 function initCronJobs() {
   // Run every day at 00:00
@@ -89,7 +96,6 @@ function initCronJobs() {
 }
 
 // Exports
-// -----------------------------
 const CronUtils = {
   initCronJobs,
 };

@@ -1,16 +1,17 @@
+// Native modules
 import fs from "fs";
 import path from "path";
-
-// Config
-import config from "../config/env.js";
 
 // Models
 import File from "../models/File.js";
 import User from "../models/User.js";
 
+// Config
+import config from "../config/env.js";
+
 // Utils
-import MediaUtils from "../utils/mediaUtils.js";
 import logger from "../utils/logger.js";
+import MediaUtils from "../utils/mediaUtils.js";
 
 /**
  * Get core user storage directory
@@ -90,6 +91,7 @@ async function getUniqueFilename(userId, folderId, originalName) {
 
 /**
  * Process and save thumbnails/previews
+ * @param {Object} file - File model instance
  */
 async function processThumbnails(file) {
   const userId = file.user.toString();

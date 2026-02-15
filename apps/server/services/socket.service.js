@@ -1,20 +1,25 @@
+// Third-party modules
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
-
-// Config
-import config from "../config/env.js";
 
 // Models
 import User from "../models/User.js";
 
+// Config
+import config from "../config/env.js";
+
 // Constants
 import Roles from "../constants/roles.js";
+
+// Utils
 import logger from "../utils/logger.js";
 
 let io = null;
 
 /**
- * Initialize Socket.io with the provided HTTP server.
+ * Initialize Socket.io with the provided HTTP server
+ * @param {http.Server} server - The HTTP server instance
+ * @returns {Server} - The initialized socket.io server instance
  */
 function init(server) {
   io = new Server(server, {

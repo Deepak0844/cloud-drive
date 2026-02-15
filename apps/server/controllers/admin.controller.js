@@ -1,7 +1,7 @@
 // Models
-import User from "../models/User.js";
 import File from "../models/File.js";
 import QuotaRequest from "../models/QuotaRequest.js";
+import User from "../models/User.js";
 
 // Controllers
 import { createNotification } from "./notification.controller.js";
@@ -10,8 +10,8 @@ import { createNotification } from "./notification.controller.js";
 import SocketService from "../services/socket.service.js";
 
 // Constants
-import StatusCodes from "../constants/statusCodes.js";
 import ErrorMessages from "../constants/errorMessages.js";
+import StatusCodes from "../constants/statusCodes.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -25,6 +25,7 @@ import { updateUserQuotaSchema, handleQuotaRequestSchema, updateUserStatusSchema
 /**
  * @desc    Get all users
  * @route   GET /api/v1/admin/users
+ * @access  Private/Admin
  */
 export const getUsers = asyncHandler(async (req, res) => {
   const users = await User.find().select("-password");
@@ -34,6 +35,7 @@ export const getUsers = asyncHandler(async (req, res) => {
 /**
  * @desc    Update user quota
  * @route   PATCH /api/v1/admin/users/:id/quota
+ * @access  Private/Admin
  */
 export const updateUserQuota = asyncHandler(async (req, res) => {
   updateUserQuotaSchema.parse({ body: req.body });
@@ -69,6 +71,7 @@ export const updateUserQuota = asyncHandler(async (req, res) => {
 /**
  * @desc    Get system stats
  * @route   GET /api/v1/admin/stats
+ * @access  Private/Admin
  */
 export const getSystemStats = asyncHandler(async (req, res) => {
   const userCount = await User.countDocuments();
@@ -91,6 +94,7 @@ export const getSystemStats = asyncHandler(async (req, res) => {
 /**
  * @desc    Get all quota requests
  * @route   GET /api/v1/admin/quota-requests
+ * @access  Private/Admin
  */
 export const getAllQuotaRequests = asyncHandler(async (req, res) => {
   const requests = await QuotaRequest.find().populate("user", "name email").sort("-createdAt");
@@ -100,6 +104,7 @@ export const getAllQuotaRequests = asyncHandler(async (req, res) => {
 /**
  * @desc    Handle (Approve/Reject) quota request
  * @route   PATCH /api/v1/admin/quota-requests/:id
+ * @access  Private/Admin
  */
 export const handleQuotaRequest = asyncHandler(async (req, res) => {
   handleQuotaRequestSchema.parse({ body: req.body });
@@ -155,6 +160,7 @@ export const handleQuotaRequest = asyncHandler(async (req, res) => {
 /**
  * @desc    Update user status (activate/deactivate)
  * @route   PATCH /api/v1/admin/users/:id/status
+ * @access  Private/Admin
  */
 export const updateUserStatus = asyncHandler(async (req, res) => {
   updateUserStatusSchema.parse({ body: req.body });

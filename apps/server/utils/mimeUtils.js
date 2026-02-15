@@ -1,5 +1,7 @@
 /**
  * Simple MIME type detection utility
+ * @param {string} filename - Name of the file with extension
+ * @returns {string} - MIME type string
  */
 function getMimeType(filename) {
   if (!filename) {
@@ -61,7 +63,8 @@ function getMimeType(filename) {
 }
 
 // Exports
-// ----------------------------------
-const MimeUtils = { getMimeType };
+const MimeUtils = {
+  getMimeType,
+};
 
 export default MimeUtils;

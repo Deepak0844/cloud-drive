@@ -1,3 +1,4 @@
+// Native modules
 import fs from "fs";
 
 // Models
@@ -10,6 +11,10 @@ import logger from "./logger.js";
 
 /**
  * Recursively marks an item and its descendants as deleted or restored
+ * @param {string} type - Item type (file/folder)
+ * @param {string} id - Item ID
+ * @param {string} userId - User ID
+ * @param {boolean} isDirect - Whether this item was directly deleted
  */
 async function softDeleteRecursive(type, id, userId, isDirect = true) {
   const updateData = {
@@ -44,7 +49,9 @@ async function softDeleteRecursive(type, id, userId, isDirect = true) {
 
 /**
  * Recursively restores an item and its descendants
- * Only restores descendants that were NOT directly deleted themselves
+ * @param {string} type - Item type (file/folder)
+ * @param {string} id - Item ID
+ * @param {string} userId - User ID
  */
 async function restoreRecursive(type, id, userId) {
   if (type === "file") {
@@ -68,6 +75,9 @@ async function restoreRecursive(type, id, userId) {
 
 /**
  * Recursively deletes items and their physical files
+ * @param {string} type - Item type (file/folder)
+ * @param {string} id - Item ID
+ * @param {string} userId - User ID
  */
 async function permanentDeleteRecursive(type, id, userId) {
   if (type === "file") {

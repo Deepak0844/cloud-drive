@@ -7,6 +7,8 @@ import { getQuotaUsage, requestQuotaIncrease } from "../controllers/quota.contro
 import { protect } from "../middleware/auth.js";
 
 const router = express.Router();
+
+// All routes are protected
 router.use(protect);
 
 router.get("/usage", getQuotaUsage);

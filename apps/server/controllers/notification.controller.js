@@ -2,12 +2,12 @@
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 
+// Services
+import PushService from "../services/push.service.js";
+import SocketService from "../services/socket.service.js";
+
 // Constants
 import StatusCodes from "../constants/statusCodes.js";
-
-// Services
-import SocketService from "../services/socket.service.js";
-import PushService from "../services/push.service.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -22,6 +22,7 @@ import { registerPushTokenSchema } from "../schemas/common.schema.js";
 /**
  * @desc    Get user notifications
  * @route   GET /api/v1/notifications
+ * @access  Private
  */
 export const getNotifications = asyncHandler(async (req, res) => {
   const notifications = await Notification.find({ user: req.user.id }).sort("-createdAt");
@@ -31,6 +32,7 @@ export const getNotifications = asyncHandler(async (req, res) => {
 /**
  * @desc    Mark notification as read
  * @route   PATCH /api/v1/notifications/:id/read
+ * @access  Private
  */
 export const markAsRead = asyncHandler(async (req, res) => {
   const notification = await Notification.findOneAndUpdate(
@@ -49,6 +51,7 @@ export const markAsRead = asyncHandler(async (req, res) => {
 /**
  * @desc    Mark all notifications as read
  * @route   PATCH /api/v1/notifications/read-all
+ * @access  Private
  */
 export const markAllAsRead = asyncHandler(async (req, res) => {
   await Notification.updateMany({ user: req.user.id, is_read: false }, { is_read: true });
@@ -58,6 +61,7 @@ export const markAllAsRead = asyncHandler(async (req, res) => {
 /**
  * @desc    Register push token
  * @route   POST /api/v1/notifications/push-token
+ * @access  Private
  */
 export const registerPushToken = asyncHandler(async (req, res) => {
   registerPushTokenSchema.parse({ body: req.body });
@@ -75,6 +79,11 @@ export const registerPushToken = asyncHandler(async (req, res) => {
 
 /**
  * Internal helper to create notification and send push
+ * @param {string} userId - ID of the user to notify
+ * @param {string} type - Notification type
+ * @param {string} title - Notification title
+ * @param {string} message - Notification message
+ * @param {object} data - Extra data for push notification
  */
 export async function createNotification(userId, type, title, message, data = {}) {
   try {

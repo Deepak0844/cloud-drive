@@ -1,3 +1,4 @@
+// Third-party modules
 import nodemailer from "nodemailer";
 
 // Config

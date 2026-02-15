@@ -18,6 +18,7 @@ import Roles from "../constants/roles.js";
 
 const router = express.Router();
 
+// All routes are protected and require admin role
 router.use(protect);
 router.use(authorize(Roles.ADMIN));
 

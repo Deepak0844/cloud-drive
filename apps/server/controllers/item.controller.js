@@ -2,12 +2,12 @@
 import File from "../models/File.js";
 import Folder from "../models/Folder.js";
 
+// Services
+import SocketService from "../services/socket.service.js";
+
 // Utils
 import DbUtils from "../utils/dbUtils.js";
 import ResponseHelper from "../utils/responseHelper.js";
-
-// Services
-import SocketService from "../services/socket.service.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -16,8 +16,9 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import { bulkOperationSchema } from "../schemas/item.schema.js";
 
 /**
- * @desc    Bulk operation on mixed items
+ * @desc    Bulk operation on mixed items (delete/move)
  * @route   POST /api/v1/items/bulk-operation
+ * @access  Private
  */
 export const handleBulkOperation = asyncHandler(async (req, res) => {
   bulkOperationSchema.parse({ body: req.body });

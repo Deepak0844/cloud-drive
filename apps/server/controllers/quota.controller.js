@@ -1,13 +1,13 @@
-// Constants
-import StatusCodes from "../constants/statusCodes.js";
-import Roles from "../constants/roles.js";
-
 // Models
-import User from "../models/User.js";
 import QuotaRequest from "../models/QuotaRequest.js";
+import User from "../models/User.js";
 
 // Controllers
 import { createNotification } from "./notification.controller.js";
+
+// Constants
+import Roles from "../constants/roles.js";
+import StatusCodes from "../constants/statusCodes.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -21,6 +21,7 @@ import { requestQuotaIncreaseSchema } from "../schemas/common.schema.js";
 /**
  * @desc    Get current quota usage
  * @route   GET /api/v1/quota/usage
+ * @access  Private
  */
 export const getQuotaUsage = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
@@ -35,6 +36,7 @@ export const getQuotaUsage = asyncHandler(async (req, res) => {
 /**
  * @desc    Request quota increase
  * @route   POST /api/v1/quota/request
+ * @access  Private
  */
 export const requestQuotaIncrease = asyncHandler(async (req, res) => {
   requestQuotaIncreaseSchema.parse({ body: req.body });

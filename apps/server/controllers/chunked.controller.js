@@ -1,16 +1,6 @@
-import path from "path";
+// Native modules
 import fs from "fs";
-
-// Constants
-import ErrorMessages from "../constants/errorMessages.js";
-import StatusCodes from "../constants/statusCodes.js";
-
-// Utils
-import MimeUtils from "../utils/mimeUtils.js";
-import ResponseHelper from "../utils/responseHelper.js";
-
-// Config
-import Env from "../config/env.js";
+import path from "path";
 
 // Models
 import File from "../models/File.js";
@@ -19,8 +9,19 @@ import User from "../models/User.js";
 // Services
 import FileService from "../services/file.service.js";
 
+// Config
+import Env from "../config/env.js";
+
+// Constants
+import ErrorMessages from "../constants/errorMessages.js";
+import StatusCodes from "../constants/statusCodes.js";
+
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
+
+// Utils
+import MimeUtils from "../utils/mimeUtils.js";
+import ResponseHelper from "../utils/responseHelper.js";
 
 // Schemas
 import { initChunkedUploadSchema, uploadChunkSchema, finalizeChunkedUploadSchema } from "../schemas/chunked.schema.js";
@@ -28,6 +29,7 @@ import { initChunkedUploadSchema, uploadChunkSchema, finalizeChunkedUploadSchema
 /**
  * @desc    Initialize chunked upload
  * @route   POST /api/v1/files/upload/init
+ * @access  Private
  */
 export const initChunkedUpload = asyncHandler(async (req, res) => {
   initChunkedUploadSchema.parse({ body: req.body });
@@ -52,6 +54,7 @@ export const initChunkedUpload = asyncHandler(async (req, res) => {
 /**
  * @desc    Upload a chunk
  * @route   POST /api/v1/files/upload/chunk
+ * @access  Private
  */
 export const uploadChunk = asyncHandler(async (req, res) => {
   uploadChunkSchema.parse({ body: req.body });
@@ -78,6 +81,7 @@ export const uploadChunk = asyncHandler(async (req, res) => {
 /**
  * @desc    Finalize chunked upload
  * @route   POST /api/v1/files/upload/finalize
+ * @access  Private
  */
 export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
   finalizeChunkedUploadSchema.parse({ body: req.body });
