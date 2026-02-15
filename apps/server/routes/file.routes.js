@@ -1,7 +1,7 @@
 import express from "express";
 
 // Controllers
-import { initChunkedUpload, uploadChunk, finalizeChunkedUpload } from "../controllers/chunked.controller.js";
+import { finalizeChunkedUpload, initChunkedUpload, uploadChunk } from "../controllers/chunked.controller.js";
 import {
   bulkDelete,
   copyFile,
@@ -17,6 +17,17 @@ import {
 
 // Middleware
 import { protect } from "../middleware/auth.js";
+import validate from "../middleware/validate.js";
+
+// Schemas
+import { finalizeChunkedUploadSchema, initChunkedUploadSchema, uploadChunkSchema } from "../schemas/chunked.schema.js";
+import {
+  moveFileSchema,
+  renameFileSchema,
+  copyFileSchema,
+  bulkDeleteSchema,
+  uploadFileSchema,
+} from "../schemas/file.schema.js";
 
 const router = express.Router();
 
@@ -24,19 +35,19 @@ const router = express.Router();
 router.use(protect);
 
 // File upload routes
-router.post("/upload", uploadMiddleware, uploadFile);
-router.post("/upload/init", initChunkedUpload);
-router.post("/upload/chunk", uploadMiddleware, uploadChunk);
-router.post("/upload/finalize", finalizeChunkedUpload);
+router.post("/upload", uploadMiddleware, validate(uploadFileSchema), uploadFile);
+router.post("/upload/init", validate(initChunkedUploadSchema), initChunkedUpload);
+router.post("/upload/chunk", uploadMiddleware, validate(uploadChunkSchema), uploadChunk);
+router.post("/upload/finalize", validate(finalizeChunkedUploadSchema), finalizeChunkedUpload);
 
 // File operation routes
 router.get("/", getFiles);
 router.get("/:id/download", downloadFile);
 router.get("/:id/preview", getFilePreview);
-router.patch("/:id", renameFile);
-router.post("/:id/move", moveFile);
-router.post("/:id/copy", copyFile);
-router.post("/bulk-delete", bulkDelete);
+router.patch("/:id", validate(renameFileSchema), renameFile);
+router.post("/:id/move", validate(moveFileSchema), moveFile);
+router.post("/:id/copy", validate(copyFileSchema), copyFile);
+router.post("/bulk-delete", validate(bulkDeleteSchema), bulkDelete);
 router.delete("/:id", deleteFile);
 
 export default router;

@@ -6,17 +6,20 @@ import User from "../models/User.js";
 import { createNotification } from "./notification.controller.js";
 
 // Constants
-import Roles from "../constants/roles.js";
-import StatusCodes from "../constants/statusCodes.js";
+import {
+  ErrorMessages,
+  SuccessMessages,
+  Roles,
+  StatusCodes,
+  NotificationTypes,
+  QuotaStatus,
+} from "../constants/GeneralConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
 
 // Utils
 import ResponseHelper from "../utils/responseHelper.js";
-
-// Schemas
-import { requestQuotaIncreaseSchema } from "../schemas/common.schema.js";
 
 /**
  * @desc    Get current quota usage
@@ -39,13 +42,11 @@ export const getQuotaUsage = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const requestQuotaIncrease = asyncHandler(async (req, res) => {
-  requestQuotaIncreaseSchema.parse({ body: req.body });
-
   const { requested_bytes, reason } = req.body;
 
-  const existingRequest = await QuotaRequest.findOne({ user: req.user.id, status: "PENDING" });
+  const existingRequest = await QuotaRequest.findOne({ user: req.user.id, status: QuotaStatus.PENDING });
   if (existingRequest) {
-    return ResponseHelper.error(res, "You already have a pending quota request", StatusCodes.BAD_REQUEST);
+    return ResponseHelper.error(res, ErrorMessages.ALREADY_PENDING_REQUEST, StatusCodes.BAD_REQUEST);
   }
 
   const quotaRequest = await QuotaRequest.create({
@@ -59,7 +60,7 @@ export const requestQuotaIncrease = asyncHandler(async (req, res) => {
     admins.map((admin) =>
       createNotification(
         admin._id.toString(),
-        "QUOTA_REQUEST",
+        NotificationTypes.QUOTA_REQUEST,
         "New Quota Request",
         `${req.user.name || req.user.email} has requested ${(requested_bytes / (1024 * 1024 * 1024)).toFixed(0)} GB additional storage.`,
         { requestId: quotaRequest._id }
@@ -68,6 +69,6 @@ export const requestQuotaIncrease = asyncHandler(async (req, res) => {
   );
 
   return ResponseHelper.success(res, quotaRequest, StatusCodes.OK, {
-    message: "Quota request submitted successfully.",
+    message: SuccessMessages.QUOTA_REQUEST_SUBMITTED,
   });
 });

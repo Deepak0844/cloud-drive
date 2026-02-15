@@ -1,3 +1,4 @@
+// Third-party modules
 import jwt from "jsonwebtoken";
 
 // Models
@@ -7,81 +8,50 @@ import User from "../models/User.js";
 import Env from "../config/env.js";
 
 // Constants
-import ErrorMessages from "../constants/errorMessages.js";
-import StatusCodes from "../constants/statusCodes.js";
+import { ErrorMessages, Roles, StatusCodes } from "../constants/GeneralConstants.js";
 
-/**
- * Extract JWT token from request headers or query parameters
- * @param {Object} req - Express request object
- * @returns {string|null} JWT token or null if not found
- */
-function extractToken(req) {
-  if (req.headers.authorization?.startsWith("Bearer ")) {
-    return req.headers.authorization.slice(7);
+// Middleware
+import asyncHandler from "./asyncHandler.js";
+
+// Utils
+import ResponseHelper from "../utils/responseHelper.js";
+
+// Protect routes
+export const protect = asyncHandler(async (req, res, next) => {
+  let token;
+
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
   }
-  return req.query.token || null;
-}
 
-/**
- * Authentication middleware to verify JWT token and attach user to request
- * Extracts token from Authorization header (Bearer scheme) or query parameter
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
- * @returns {void}
- */
-export async function protect(req, res, next) {
+  // Check if token exists
+  if (!token) {
+    return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);
+  }
+
   try {
-    const token = extractToken(req);
-
-    if (!token) {
-      return res.status(StatusCodes.UNAUTHORIZED).json({
-        success: false,
-        error: ErrorMessages.NOT_AUTHORIZED,
-      });
-    }
-
+    // Verify token
     const decoded = jwt.verify(token, Env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
-
-    if (!user) {
-      return res.status(StatusCodes.UNAUTHORIZED).json({
-        success: false,
-        error: ErrorMessages.NOT_AUTHORIZED,
-      });
-    }
-
-    req.user = user;
+    req.user = await User.findById(decoded.id);
     next();
   } catch (_err) {
-    return res.status(StatusCodes.UNAUTHORIZED).json({
-      success: false,
-      error: ErrorMessages.NOT_AUTHORIZED,
-    });
+    return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);
   }
-}
+});
 
-/**
- * Authorization middleware to check if user has required roles
- * @param {...string} roles - Required user roles to access the route
- * @returns {Function} Express middleware function
- */
-export function authorize(...roles) {
+// Grant access to specific roles
+export const authorize = (...roles) => {
   return (req, res, next) => {
-    if (!req.user) {
-      return res.status(StatusCodes.UNAUTHORIZED).json({
-        success: false,
-        error: ErrorMessages.NOT_AUTHORIZED,
-      });
-    }
-
     if (!roles.includes(req.user.role)) {
-      return res.status(StatusCodes.FORBIDDEN).json({
-        success: false,
-        error: `User role ${req.user.role} is not authorized to access this route`,
-      });
+      return ResponseHelper.error(
+        res,
+        `User role ${req.user.role} is not authorized to access this route`,
+        StatusCodes.FORBIDDEN
+      );
     }
-
     next();
   };
-}
+};
+
+// Simplified alias for admin
+export const admin = authorize(Roles.ADMIN);

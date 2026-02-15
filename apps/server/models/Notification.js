@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+// Constants
+import { NotificationTypes } from "../constants/generalConstants.js";
+
 const notificationSchema = new mongoose.Schema(
   {
     user: {
@@ -9,7 +12,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["QUOTA_APPROVED", "QUOTA_REJECTED", "QUOTA_REQUEST", "QUOTA_CHANGE", "SYSTEM_ALERT", "UPLOAD_COMPLETE"],
+      enum: Object.values(NotificationTypes),
       required: true,
     },
     title: {

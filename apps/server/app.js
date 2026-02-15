@@ -1,6 +1,5 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
@@ -11,8 +10,7 @@ import createError from "http-errors";
 import connectToDatabase from "./config/db.js";
 
 // Constants
-import ErrorMessages from "./constants/errorMessages.js";
-import StatusCodes from "./constants/statusCodes.js";
+import { ErrorMessages, StatusCodes } from "./constants/generalConstants.js";
 
 // Utils
 import CronUtils from "./utils/cronUtils.js";
@@ -85,7 +83,6 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
 // Routes

@@ -29,31 +29,55 @@ function ensureDirectoryExists(dirPath) {
 
 /**
  * Generates a thumbnail for an image
+ * Supports all common image formats including HEIC/HEIF
  * @param {string} sourcePath - The path to the source image
  * @param {string} destPath - The path to save the generated thumbnail
  */
 async function generateImageThumbnail(sourcePath, destPath) {
-  const destDir = path.dirname(destPath);
-  ensureDirectoryExists(destDir);
+  try {
+    const destDir = path.dirname(destPath);
+    ensureDirectoryExists(destDir);
 
-  let input = sourcePath;
-  const ext = path.extname(sourcePath).toLowerCase();
+    let input = sourcePath;
+    const ext = path.extname(sourcePath).toLowerCase();
 
-  // Convert HEIC to JPEG buffer if necessary
-  if (ext === ".heic" || ext === ".heif") {
-    const inputBuffer = await fsPromises.readFile(sourcePath);
-    input = await heicConvert({
-      buffer: inputBuffer,
-      format: "JPEG",
-      quality: 0.8,
-    });
+    // Convert HEIC/HEIF to JPEG buffer if necessary
+    if (ext === ".heic" || ext === ".heif") {
+      try {
+        logger.debug(`[Thumbnail] Converting HEIC/HEIF image: ${sourcePath}`);
+        const inputBuffer = await fsPromises.readFile(sourcePath);
+        input = await heicConvert({
+          buffer: inputBuffer,
+          format: "JPEG",
+          quality: 0.8,
+        });
+        logger.debug(`[Thumbnail] HEIC conversion successful`);
+      } catch (heicError) {
+        logger.error(`[Thumbnail] HEIC conversion failed: ${heicError.message}`);
+        throw new Error(`HEIC conversion failed: ${heicError.message}`);
+      }
+    }
+
+    // Generate thumbnail with sharp
+    await sharp(input)
+      .resize(200, 200, {
+        fit: "cover",
+        withoutEnlargement: false,
+      })
+      .toFormat("jpeg", { quality: 85 })
+      .toFile(destPath);
+
+    logger.info(`[Thumbnail] Image thumbnail generated: ${destPath}`);
+    return destPath;
+  } catch (error) {
+    logger.error(`[Thumbnail] Image thumbnail generation failed for ${sourcePath}: ${error.message}`);
+    throw error;
   }
-
-  await sharp(input).resize(200, 200, { fit: "cover" }).toFormat("jpeg").toFile(destPath);
 }
 
 /**
  * Generates a thumbnail for a video
+ * Supports all common video formats with multiple fallback strategies
  * @param {string} sourcePath - The path to the source video
  * @param {string} destFolder - The folder to save the thumbnail
  * @param {string} filename - The name of the thumbnail file
@@ -64,18 +88,48 @@ function generateVideoThumbnail(sourcePath, destFolder, filename) {
   const destPath = path.join(destFolder, filename);
 
   return new Promise((resolve, reject) => {
+    logger.debug(`[Thumbnail] Generating video thumbnail for: ${sourcePath}`);
+
+    // Primary attempt: seek to 0.5 seconds
     ffmpeg(sourcePath)
       .inputOptions(["-ss 0.5"])
       .outputOptions(["-vframes 1", "-q:v 2", "-vf scale=200:200:force_original_aspect_ratio=increase,crop=200:200"])
-      .on("start", (command) => logger.debug("[FFMPEG] Thumb command:", command))
-      .on("end", () => resolve(destPath))
+      .on("start", (command) => logger.debug(`[FFMPEG] Thumb command: ${command}`))
+      .on("end", () => {
+        logger.info(`[Thumbnail] Video thumbnail generated: ${destPath}`);
+        resolve(destPath);
+      })
       .on("error", (err) => {
-        logger.error("[FFMPEG] Thumb error:", err.message);
-        // Fallback to 0 seconds if 0.5 failed
+        logger.warn(`[FFMPEG] Primary thumb attempt failed (0.5s): ${err.message}`);
+
+        // Fallback 1: Try at 0 seconds
         ffmpeg(sourcePath)
-          .outputOptions(["-vframes 1", "-vf scale=200:200:force_original_aspect_ratio=increase,crop=200:200"])
-          .on("end", () => resolve(destPath))
-          .on("error", (err2) => reject(err2))
+          .outputOptions([
+            "-vframes 1",
+            "-q:v 2",
+            "-vf scale=200:200:force_original_aspect_ratio=increase,crop=200:200",
+          ])
+          .on("start", (command) => logger.debug(`[FFMPEG] Fallback thumb command: ${command}`))
+          .on("end", () => {
+            logger.info(`[Thumbnail] Video thumbnail generated (fallback): ${destPath}`);
+            resolve(destPath);
+          })
+          .on("error", (err2) => {
+            logger.warn(`[FFMPEG] Fallback thumb attempt failed (0s): ${err2.message}`);
+
+            // Fallback 2: Try without scaling/cropping
+            ffmpeg(sourcePath)
+              .outputOptions(["-vframes 1", "-q:v 2"])
+              .on("end", () => {
+                logger.info(`[Thumbnail] Video thumbnail generated (simple fallback): ${destPath}`);
+                resolve(destPath);
+              })
+              .on("error", (err3) => {
+                logger.error(`[FFMPEG] All thumbnail attempts failed: ${err3.message}`);
+                reject(new Error(`Video thumbnail generation failed: ${err3.message}`));
+              })
+              .save(destPath);
+          })
           .save(destPath);
       })
       .save(destPath);

@@ -10,6 +10,10 @@ import {
 
 // Middleware
 import { protect } from "../middleware/auth.js";
+import validate from "../middleware/validate.js";
+
+// Schemas
+import { registerPushTokenSchema } from "../schemas/common.schema.js";
 
 const router = express.Router();
 
@@ -19,6 +23,6 @@ router.use(protect);
 router.get("/", getNotifications);
 router.patch("/read-all", markAllAsRead);
 router.patch("/:id/read", markAsRead);
-router.post("/push-token", registerPushToken);
+router.post("/push-token", validate(registerPushTokenSchema), registerPushToken);
 
 export default router;

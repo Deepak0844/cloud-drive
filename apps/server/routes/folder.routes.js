@@ -14,6 +14,15 @@ import {
 
 // Middleware
 import { protect } from "../middleware/auth.js";
+import validate from "../middleware/validate.js";
+
+// Schemas
+import {
+  createFolderSchema,
+  moveFolderSchema,
+  renameFolderSchema,
+  copyFolderSchema,
+} from "../schemas/folder.schema.js";
 
 const router = express.Router();
 
@@ -21,12 +30,12 @@ const router = express.Router();
 router.use(protect);
 
 router.get("/", getFolders);
-router.post("/", createFolder);
+router.post("/", validate(createFolderSchema), createFolder);
 router.get("/:id/contents", getFolderContents);
 router.get("/:id", getFolderDetails);
-router.patch("/:id", renameFolder);
-router.post("/:id/move", moveFolder);
-router.post("/:id/copy", copyFolder);
+router.patch("/:id", validate(renameFolderSchema), renameFolder);
+router.post("/:id/move", validate(moveFolderSchema), moveFolder);
+router.post("/:id/copy", validate(copyFolderSchema), copyFolder);
 router.delete("/:id", deleteFolder);
 
 export default router;

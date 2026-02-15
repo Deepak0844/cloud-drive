@@ -9,7 +9,7 @@ import User from "../models/User.js";
 import config from "../config/env.js";
 
 // Constants
-import Roles from "../constants/roles.js";
+import { Roles } from "../constants/generalConstants.js";
 
 // Utils
 import logger from "../utils/logger.js";

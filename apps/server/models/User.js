@@ -1,12 +1,13 @@
-// Third-party modules
-import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 // Config
 import Env from "../config/env.js";
 
 // Constants
-import Roles from "../constants/roles.js";
+import { Roles } from "../constants/GeneralConstants.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -16,22 +17,25 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: [true, "Please provide an email"],
+      required: true,
       unique: true,
       lowercase: true,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,10})+$/, "Please provide a valid email"],
-      index: true,
+      trim: true,
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
+      required: true,
       minlength: 6,
       select: false,
     },
     role: {
       type: String,
-      enum: [Roles.USER, Roles.ADMIN],
+      enum: Object.values(Roles),
       default: Roles.USER,
+    },
+    is_active: {
+      type: Boolean,
+      default: true,
     },
     quota_bytes: {
       type: Number,
@@ -46,35 +50,60 @@ const userSchema = new mongoose.Schema(
     push_tokens: [
       {
         type: String,
-        trim: true,
       },
     ],
-    is_active: {
-      type: Boolean,
-      default: true,
-    },
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   { timestamps: true }
 );
 
-/**
- * Encrypt password using bcrypt
- */
-userSchema.pre("save", async function () {
+// Encrypt password using bcrypt
+userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
-    return;
+    next();
   }
 
-  this.password = await bcrypt.hash(this.password, 10);
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
-/**
- * Match user entered password to hashed password in database
- * @param {string} enteredPassword - Password entered by user
- * @returns {Promise<boolean>} - True if passwords match, false otherwise
- */
+// Sign JWT and return
+userSchema.methods.getSignedJwtToken = function () {
+  return jwt.sign({ id: this._id }, Env.JWT_SECRET, {
+    expiresIn: Env.JWT_EXPIRE,
+  });
+};
+
+// Match user entered password to hashed password in database
 userSchema.methods.matchPassword = function (enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
+};
+
+// Generate and hash password token
+userSchema.methods.getResetPasswordToken = function () {
+  // Generate token
+  const resetToken = crypto.randomBytes(20).toString("hex");
+
+  // Hash token and set to resetPasswordToken field
+  this.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+
+  // Set expire
+  this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  return resetToken;
+};
+
+// Find user by plain reset password token
+userSchema.statics.findByResetToken = function (resetToken) {
+  // Hash token
+  const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+
+  // Find user and check expiry
+  return this.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
 };
 
 export default mongoose.model("User", userSchema);

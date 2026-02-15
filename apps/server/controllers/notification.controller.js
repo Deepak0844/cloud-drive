@@ -7,7 +7,7 @@ import PushService from "../services/push.service.js";
 import SocketService from "../services/socket.service.js";
 
 // Constants
-import StatusCodes from "../constants/statusCodes.js";
+import { ErrorMessages, SuccessMessages, SocketEvents, StatusCodes } from "../constants/GeneralConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -15,9 +15,6 @@ import asyncHandler from "../middleware/asyncHandler.js";
 // Utils
 import ResponseHelper from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
-
-// Schemas
-import { registerPushTokenSchema } from "../schemas/common.schema.js";
 
 /**
  * @desc    Get user notifications
@@ -42,7 +39,7 @@ export const markAsRead = asyncHandler(async (req, res) => {
   );
 
   if (!notification) {
-    return ResponseHelper.error(res, "Notification not found", StatusCodes.NOT_FOUND);
+    return ResponseHelper.error(res, ErrorMessages.NOTIFICATION_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
   return ResponseHelper.success(res, notification);
@@ -55,7 +52,7 @@ export const markAsRead = asyncHandler(async (req, res) => {
  */
 export const markAllAsRead = asyncHandler(async (req, res) => {
   await Notification.updateMany({ user: req.user.id, is_read: false }, { is_read: true });
-  return ResponseHelper.success(res, { message: "All notifications marked as read" });
+  return ResponseHelper.success(res, { message: SuccessMessages.NOTIFICATIONS_MARKED_READ });
 });
 
 /**
@@ -64,8 +61,6 @@ export const markAllAsRead = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const registerPushToken = asyncHandler(async (req, res) => {
-  registerPushTokenSchema.parse({ body: req.body });
-
   const { token } = req.body;
   const user = await User.findById(req.user.id);
 
@@ -74,7 +69,7 @@ export const registerPushToken = asyncHandler(async (req, res) => {
     await user.save();
   }
 
-  return ResponseHelper.success(res, { message: "Push token registered successfully" });
+  return ResponseHelper.success(res, { message: SuccessMessages.PUSH_TOKEN_REGISTERED });
 });
 
 /**
@@ -94,7 +89,7 @@ export async function createNotification(userId, type, title, message, data = {}
       message,
     });
 
-    SocketService.emitToUser(String(userId), "notification", notification.toJSON());
+    SocketService.emitToUser(String(userId), SocketEvents.NOTIFICATION, notification.toJSON());
 
     const user = await User.findById(userId);
     if (user && user.push_tokens?.length > 0) {
