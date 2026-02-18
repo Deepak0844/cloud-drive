@@ -25,6 +25,15 @@ const fileSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    extension: {
+      type: String,
+      default: "",
+    },
+    category: {
+      type: String,
+      enum: ["image", "video", "audio", "document", "archive", "other"],
+      default: "other",
+    },
     size_bytes: {
       type: Number,
       required: true,
@@ -40,6 +49,14 @@ const fileSchema = new mongoose.Schema(
     preview_path: {
       type: String,
       default: null,
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    is_favorite: {
+      type: Boolean,
+      default: false,
     },
     is_deleted: {
       type: Boolean,
@@ -59,6 +76,10 @@ const fileSchema = new mongoose.Schema(
 
 // Indexes
 fileSchema.index({ user: 1, folder: 1 });
+fileSchema.index({ user: 1, is_favorite: 1 });
 fileSchema.index({ is_deleted: 1 });
+fileSchema.index({ category: 1 });
+fileSchema.index({ extension: 1 });
+fileSchema.index({ createdAt: -1 });
 
 export default mongoose.model("File", fileSchema);

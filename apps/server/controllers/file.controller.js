@@ -12,6 +12,7 @@ import User from "../models/User.js";
 
 // Services
 import FileService from "../services/file.service.js";
+import MetadataService from "../services/metadata.service.js";
 import SocketService from "../services/socket.service.js";
 
 // Constants
@@ -32,20 +33,58 @@ import FileUtils from "../utils/fileUtils.js";
  * @access  Private
  */
 export const getFiles = asyncHandler(async (req, res) => {
-  const folderId = req.query.folderId || null;
-  const search = req.query.search || null;
+  const { folderId, search, category, extension, isFavorite, minSize, maxSize, startDate, endDate, recursive } =
+    req.query;
 
   const query = { user: req.user.id, is_deleted: false };
 
+  // Text search
   if (search) {
-    // Case-insensitive search on file name
     query.name = { $regex: search, $options: "i" };
-    // If folderId is provided, search within that folder, otherwise search globally
-    if (folderId) {
+  }
+
+  // Folder scoping: if search and recursive is true, or no folderId, search everywhere
+  // Otherwise, pin to the specific folder
+  if (folderId && folderId !== "null") {
+    if (!(search && recursive)) {
       query.folder = folderId;
     }
-  } else {
-    query.folder = folderId;
+  } else if (!search || !recursive) {
+    // Only show root files if not a recursive search
+    query.folder = null;
+  }
+
+  // Advanced Filters
+  if (category) {
+    query.category = category;
+  }
+  if (extension) {
+    query.extension = extension.toLowerCase();
+  }
+  if (isFavorite) {
+    query.is_favorite = true;
+  }
+
+  // Size filters
+  if (minSize || maxSize) {
+    query.size_bytes = {};
+    if (minSize) {
+      query.size_bytes.$gte = parseInt(minSize);
+    }
+    if (maxSize) {
+      query.size_bytes.$lte = parseInt(maxSize);
+    }
+  }
+
+  // Date filters
+  if (startDate || endDate) {
+    query.createdAt = {};
+    if (startDate) {
+      query.createdAt.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      query.createdAt.$lte = new Date(endDate);
+    }
   }
 
   const files = await File.find(query).sort("-createdAt");
@@ -88,6 +127,9 @@ export const uploadFile = asyncHandler(async (req, res) => {
 
   // Generate unique name
   const uniqueName = await FileService.getUniqueFilename(req.user.id, folderId, req.file.originalname);
+  const extension = FileUtils.getFileExtension(req.file.originalname);
+  const category = MetadataService.getCategory(req.file.mimetype, req.file.originalname);
+  const metadata = await MetadataService.extractMetadata(req.file.path, category);
 
   const file = await File.create({
     name: uniqueName,
@@ -95,8 +137,11 @@ export const uploadFile = asyncHandler(async (req, res) => {
     user: req.user.id,
     folder: folderId === "null" || !folderId ? null : folderId,
     mime_type: req.file.mimetype,
+    extension,
+    category,
     size_bytes: req.file.size,
     storage_path: req.file.path,
+    metadata,
   });
 
   // Update user quota
@@ -375,4 +420,39 @@ export const bulkDelete = asyncHandler(async (req, res) => {
   });
 
   return ResponseHelper.success(res, { message: "Items moved to trash" });
+});
+
+/**
+ * @desc    Get recent files
+ * @route   GET /api/v1/files/recent
+ * @access  Private
+ */
+export const getRecentFiles = asyncHandler(async (req, res) => {
+  const { limit } = req.query;
+  const files = await File.find({
+    user: req.user.id,
+    is_deleted: false,
+  })
+    .sort("-createdAt")
+    .limit(limit);
+
+  return ResponseHelper.success(res, files);
+});
+
+/**
+ * @desc    Toggle favorite status
+ * @route   PATCH /api/v1/files/:id/favorite
+ * @access  Private
+ */
+export const toggleFavorite = asyncHandler(async (req, res) => {
+  const file = await File.findOne({ _id: req.params.id, user: req.user.id });
+
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
+
+  file.is_favorite = !file.is_favorite;
+  await file.save();
+
+  return ResponseHelper.success(res, file);
 });

@@ -28,6 +28,48 @@ export const uploadFileSchema = z.object({
   }),
 });
 
+export const idParamSchema = z.object({
+  params: z.object({
+    id: z.string().min(1, "ID is required"),
+  }),
+});
+
+export const getFilesSchema = z.object({
+  query: z.object({
+    folderId: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => (val === "null" || val === "" ? null : val)),
+    search: z.string().optional(),
+    category: z.enum(["image", "video", "audio", "document", "archive", "other"]).optional(),
+    extension: z.string().optional(),
+    isFavorite: z
+      .string()
+      .optional()
+      .transform((val) => val === "true"),
+    minSize: z.string().optional(),
+    maxSize: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    recursive: z
+      .string()
+      .optional()
+      .transform((val) => val === "true"),
+  }),
+});
+
+export const getRecentFilesSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val) : 20)),
+  }),
+});
+
+export const favoriteFileSchema = idParamSchema;
+
 export const bulkDeleteSchema = z.object({
   body: z.object({
     items: z

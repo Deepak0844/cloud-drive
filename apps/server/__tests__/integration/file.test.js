@@ -86,6 +86,8 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/1",
           mime_type: "text/plain",
+          extension: "txt",
+          category: "document",
         },
         {
           name: "file2.jpg",
@@ -94,6 +96,8 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/2",
           mime_type: "image/jpeg",
+          extension: "jpg",
+          category: "image",
         },
         {
           name: "other.txt",
@@ -102,6 +106,8 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/3",
           mime_type: "text/plain",
+          extension: "txt",
+          category: "document",
         },
       ]);
     });
@@ -130,6 +136,8 @@ describe("File API", () => {
         folder: folder._id,
         storage_path: "/tmp/4",
         mime_type: "text/plain",
+        extension: "txt",
+        category: "document",
       });
 
       const response = await request(app).get(`/api/v1/files?folderId=${folder._id}`).set(authHeader).expect(200);
@@ -214,6 +222,8 @@ describe("File API", () => {
         user: user._id, // Owned by first user
         storage_path: "/tmp/p1",
         mime_type: "text/plain",
+        extension: "txt",
+        category: "document",
       });
 
       await request(app)
