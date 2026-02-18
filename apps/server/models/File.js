@@ -125,6 +125,11 @@ fileSchema.virtual("thumbnail_url").get(function () {
 });
 
 fileSchema.virtual("preview_url").get(function () {
+  // Only return a preview URL for media files
+  const mediaCategories = new Set(["image", "video", "audio"]);
+  if (!mediaCategories.has(this.category)) {
+    return null;
+  }
   return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/preview`;
 });
 

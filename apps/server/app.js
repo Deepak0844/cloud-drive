@@ -58,10 +58,31 @@ app.use(
   })
 );
 
+// CORS — restrict to allowed origins (must come before rate limiter so preflight doesn't consume slots)
+const allowedOrigins = Env.ALLOWED_ORIGINS
+  ? Env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : ["http://localhost:3000", "http://localhost:9001"];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: Origin '${origin}' not allowed`));
+      }
+    },
+    credentials: true,
+  })
+);
+
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   message: "Too many requests from this IP, please try again after 15 minutes",
 });
 
@@ -69,6 +90,8 @@ const limiter = rateLimit({
 const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 2000, // 2000 chunks per 15 min
+  standardHeaders: true,
+  legacyHeaders: false,
   message: "Upload limit reached, please pause and resume later",
 });
 
@@ -76,7 +99,6 @@ const uploadLimiter = rateLimit({
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
 
-app.use(cors());
 app.use(limiter); // Apply global limiter
 app.use(`${baseUrl}/files/upload`, uploadLimiter); // Apply upload-specific limiter
 
@@ -117,7 +139,9 @@ app.use((_req, _res, next) => {
 
 // error handler
 app.use((err, req, res, _next) => {
-  const statusCode = err.status || StatusCodes.INTERNAL_SERVER_ERROR;
+  const statusCode =
+    err.status ||
+    (err.message === ErrorMessages.FILE_TYPE_NOT_ALLOWED ? StatusCodes.BAD_REQUEST : StatusCodes.INTERNAL_SERVER_ERROR);
   const message = err.message || ErrorMessages.SERVER_ERROR;
 
   // Log error

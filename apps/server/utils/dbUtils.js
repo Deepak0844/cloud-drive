@@ -1,4 +1,3 @@
-// Native modules
 import fs from "fs";
 import path from "path";
 
@@ -16,12 +15,60 @@ import { ItemTypes, ErrorMessages } from "../constants/generalConstants.js";
 // Utils
 import logger from "./logger.js";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 /**
- * Recursively marks an item and its descendants as deleted or restored
- * @param {string} type - Item type (file/folder)
- * @param {string} id - Item ID
- * @param {string} userId - User ID
- * @param {boolean} isDirect - Whether this item was directly deleted
+ * Safely remove a file from disk if it exists
+ */
+function safeUnlink(filePath) {
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (e) {
+      logger.error(`Failed to unlink file: ${filePath}`, e.message);
+    }
+  }
+}
+
+/**
+ * Safely remove a directory and all its contents
+ */
+function safeRmDir(dirPath) {
+  if (dirPath && fs.existsSync(dirPath)) {
+    try {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+    } catch (e) {
+      logger.error(`Failed to remove directory: ${dirPath}`, e.message);
+    }
+  }
+}
+
+/**
+ * Check if targetFolderId is a descendant of folderId (to prevent circular moves)
+ */
+async function isDescendant(folderId, targetFolderId, userId) {
+  if (!targetFolderId) {
+    return false;
+  }
+  if (String(folderId) === String(targetFolderId)) {
+    return true;
+  }
+
+  let current = await Folder.findOne({ _id: targetFolderId, user: userId });
+  while (current && current.parent) {
+    if (String(current.parent) === String(folderId)) {
+      return true;
+    }
+    current = await Folder.findOne({ _id: current.parent, user: userId });
+  }
+  return false;
+}
+
+// ─── Soft Delete ──────────────────────────────────────────────────────────────
+
+/**
+ * Recursively marks an item and its descendants as deleted or restored.
+ * Uses updateMany for bulk performance at each folder level.
  */
 async function softDeleteRecursive(type, id, userId, isDirect = true) {
   const model = type === ItemTypes.FILE ? File : Folder;
@@ -35,36 +82,30 @@ async function softDeleteRecursive(type, id, userId, isDirect = true) {
     is_deleted: true,
     deleted_at: Date.now(),
     deleted_directly: isDirect,
-    // Store original parent/folder before setting to null or marking as deleted
     original_parent: type === ItemTypes.FILE ? item.folder : item.parent,
   };
 
   await model.updateOne({ _id: id, user: userId }, updateData);
 
   if (type === ItemTypes.FOLDER) {
-    // Find immediate children to recurse
-    const subFiles = await File.find({ folder: id, user: userId });
-    const subFolders = await Folder.find({ parent: id, user: userId });
+    // Bulk-mark all files in this folder as deleted (not directly)
+    await File.updateMany(
+      { folder: id, user: userId, is_deleted: false },
+      { is_deleted: true, deleted_at: Date.now(), deleted_directly: false }
+    );
 
-    // Mark sub-files as deleted (not directly)
-    if (subFiles.length > 0) {
-      for (const file of subFiles) {
-        await softDeleteRecursive(ItemTypes.FILE, file._id, userId, false);
-      }
-    }
-
-    // Recurse subfolders
+    // Recurse into subfolders
+    const subFolders = await Folder.find({ parent: id, user: userId, is_deleted: false });
     for (const folder of subFolders) {
       await softDeleteRecursive(ItemTypes.FOLDER, folder._id, userId, false);
     }
   }
 }
 
+// ─── Restore ─────────────────────────────────────────────────────────────────
+
 /**
  * Recursively restores an item and its descendants
- * @param {string} type - Item type (file/folder)
- * @param {string} id - Item ID
- * @param {string} userId - User ID
  */
 async function restoreRecursive(type, id, userId) {
   const model = type === ItemTypes.FILE ? File : Folder;
@@ -76,7 +117,6 @@ async function restoreRecursive(type, id, userId) {
 
   let newParent = null;
   if (item.original_parent) {
-    // Check if the original parent still exists and is not deleted
     const parentFolder = await Folder.findOne({ _id: item.original_parent, user: userId, is_deleted: false });
     if (parentFolder) {
       newParent = item.original_parent;
@@ -98,11 +138,11 @@ async function restoreRecursive(type, id, userId) {
   await model.updateOne({ _id: id, user: userId }, updateData);
 
   if (type === ItemTypes.FOLDER) {
-    // Restore files in this folder that were NOT deleted directly
-    const subFiles = await File.find({ folder: id, user: userId, deleted_directly: false });
-    for (const file of subFiles) {
-      await model.updateOne({ _id: file._id, user: userId }, { is_deleted: false, deleted_at: null });
-    }
+    // Bulk-restore files that were NOT deleted directly
+    await File.updateMany(
+      { folder: id, user: userId, deleted_directly: false },
+      { is_deleted: false, deleted_at: null }
+    );
 
     // Recurse subfolders that were NOT deleted directly
     const subFolders = await Folder.find({ parent: id, user: userId, deleted_directly: false });
@@ -112,31 +152,26 @@ async function restoreRecursive(type, id, userId) {
   }
 }
 
+// ─── Permanent Delete ─────────────────────────────────────────────────────────
+
 /**
- * Recursively deletes items and their physical files
- * @param {string} type - Item type (file/folder)
- * @param {string} id - Item ID
- * @param {string} userId - User ID
+ * Recursively deletes items and all associated physical files (storage, thumbnail, preview, HLS).
  */
 async function permanentDeleteRecursive(type, id, userId) {
   if (type === ItemTypes.FILE) {
     const file = await File.findOne({ _id: id, user: userId });
     if (file) {
-      if (fs.existsSync(file.storage_path)) {
-        try {
-          fs.unlinkSync(file.storage_path);
-        } catch (e) {
-          logger.error(`Failed to unlink storage path: ${file.storage_path}`, e);
-        }
-      }
-      if (file.thumbnail_path && fs.existsSync(file.thumbnail_path)) {
-        try {
-          fs.unlinkSync(file.thumbnail_path);
-        } catch (e) {
-          logger.error(`Failed to unlink thumbnail path: ${file.thumbnail_path}`, e);
-        }
+      // Remove all physical files associated with this record
+      safeUnlink(file.storage_path);
+      safeUnlink(file.thumbnail_path);
+      safeUnlink(file.preview_path);
+
+      // HLS streaming directory (contains .m3u8 + .ts segments)
+      if (file.streaming_path) {
+        safeRmDir(path.dirname(file.streaming_path));
       }
 
+      // Update user quota
       const user = await User.findById(userId);
       if (user) {
         user.used_bytes = Math.max(0, user.used_bytes - file.size_bytes);
@@ -158,17 +193,15 @@ async function permanentDeleteRecursive(type, id, userId) {
       await permanentDeleteRecursive(ItemTypes.FOLDER, folder._id, userId);
     }
 
-    // 3. Delete the folder itself
+    // 3. Delete the folder record itself
     await Folder.deleteOne({ _id: id, user: userId });
   }
 }
 
+// ─── Copy ─────────────────────────────────────────────────────────────────────
+
 /**
  * Recursively copies an item and its descendants
- * @param {string} type - Item type (file/folder)
- * @param {string} id - Item ID
- * @param {string} targetFolderId - Destination folder ID
- * @param {string} userId - User ID
  */
 async function copyRecursive(type, id, targetFolderId, userId) {
   if (type === ItemTypes.FILE) {
@@ -197,14 +230,18 @@ async function copyRecursive(type, id, targetFolderId, userId) {
       name: uniqueName,
       original_name: sourceFile.original_name,
       mime_type: sourceFile.mime_type,
+      extension: sourceFile.extension,
+      category: sourceFile.category,
       size_bytes: sourceFile.size_bytes,
       storage_path: newStoragePath,
+      tags: sourceFile.tags,
+      metadata: sourceFile.metadata,
     });
 
-    // Update user quota
+    // Update user quota atomically
     await User.findByIdAndUpdate(userId, { $inc: { used_bytes: sourceFile.size_bytes } });
 
-    // Copy thumbnail/preview if exists
+    // Copy thumbnail if exists
     if (sourceFile.thumbnail_path && fs.existsSync(sourceFile.thumbnail_path)) {
       const thumbDir = FileService.getThumbnailDir(userId);
       const newThumbPath = path.join(thumbDir, `${newFile._id}.jpg`);
@@ -220,9 +257,9 @@ async function copyRecursive(type, id, targetFolderId, userId) {
       return;
     }
 
-    // Prevent copying a folder into itself
-    if (targetFolderId === id) {
-      throw new Error("Cannot copy a folder into itself");
+    // Prevent copying a folder into itself or its own descendant
+    if (await isDescendant(id, targetFolderId, userId)) {
+      throw new Error(ErrorMessages.INVALID_MOVE);
     }
 
     // Create new folder
@@ -230,6 +267,7 @@ async function copyRecursive(type, id, targetFolderId, userId) {
       user: userId,
       name: `${sourceFolder.name} (Copy)`,
       parent: targetFolderId || null,
+      path: sourceFolder.path,
     });
 
     // Copy sub-files
@@ -248,12 +286,11 @@ async function copyRecursive(type, id, targetFolderId, userId) {
   }
 }
 
+// ─── Move ─────────────────────────────────────────────────────────────────────
+
 /**
- * Moves an item to a new folder
- * @param {string} type - Item type (file/folder)
- * @param {string} id - Item ID
- * @param {string} targetFolderId - Destination folder ID
- * @param {string} userId - User ID
+ * Moves an item to a new folder.
+ * Prevents circular folder moves by checking the full ancestor chain.
  */
 async function moveItem(type, id, targetFolderId, userId) {
   if (type === ItemTypes.FILE) {
@@ -264,9 +301,9 @@ async function moveItem(type, id, targetFolderId, userId) {
     );
     return file;
   } else if (type === ItemTypes.FOLDER) {
-    // Prevent moving into itself
-    if (targetFolderId === id) {
-      throw new Error("Cannot move a folder into itself");
+    // Prevent moving into itself or any of its own descendants
+    if (await isDescendant(id, targetFolderId, userId)) {
+      throw new Error(ErrorMessages.INVALID_MOVE);
     }
     const folder = await Folder.findOneAndUpdate(
       { _id: id, user: userId },
@@ -277,7 +314,8 @@ async function moveItem(type, id, targetFolderId, userId) {
   }
 }
 
-// Exports
+// ─── Exports ──────────────────────────────────────────────────────────────────
+
 const DbUtils = {
   softDeleteRecursive,
   restoreRecursive,

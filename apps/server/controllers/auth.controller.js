@@ -97,8 +97,12 @@ export const getMe = asyncHandler(async (req, res) => {
 export const forgotPassword = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email: req.body.email });
 
+  // Always return 200 to prevent email enumeration attacks
+  // If user doesn't exist, silently do nothing
   if (!user) {
-    return ResponseHelper.error(res, ErrorMessages.USER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseHelper.success(res, {
+      message: "If this email is registered, you will receive a password reset link.",
+    });
   }
 
   // Get reset token
@@ -118,7 +122,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
       message,
     });
 
-    return ResponseHelper.success(res, { message: "Email sent" });
+    return ResponseHelper.success(res, {
+      message: "If this email is registered, you will receive a password reset link.",
+    });
   } catch (_err) {
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;

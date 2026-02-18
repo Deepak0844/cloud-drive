@@ -26,6 +26,7 @@ import ResponseHelper from "../utils/responseHelper.js";
 import DbUtils from "../utils/dbUtils.js";
 import MediaUtils from "../utils/mediaUtils.js";
 import FileUtils from "../utils/fileUtils.js";
+import logger from "../utils/logger.js";
 
 /**
  * @desc    Get files in a folder
@@ -91,9 +92,78 @@ export const getFiles = asyncHandler(async (req, res) => {
     query.tags = tag;
   }
 
-  const files = await File.find(query).sort("-createdAt");
-  return ResponseHelper.success(res, files, StatusCodes.OK, { count: files.length });
+  const page = Math.max(1, parseInt(req.query.pn) || 1);
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.ps) || 50));
+  const skip = (page - 1) * limit;
+
+  const [files, total] = await Promise.all([
+    File.find(query).sort("-createdAt").skip(skip).limit(limit),
+    File.countDocuments(query),
+  ]);
+
+  return ResponseHelper.success(res, files, StatusCodes.OK, {
+    count: files.length,
+    total,
+    page,
+    pages: Math.ceil(total / limit),
+  });
 });
+
+// MIME type allowlist — blocks executables, scripts, and other dangerous file types
+const ALLOWED_MIME_TYPES = new Set([
+  // Images
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/avif",
+  "image/tiff",
+  "image/bmp",
+  "image/svg+xml",
+  "image/heic",
+  "image/heif",
+  // Videos
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "video/x-msvideo",
+  "video/x-matroska",
+  "video/x-flv",
+  "video/mpeg",
+  "video/3gpp",
+  "video/ogg",
+  "video/x-ms-wmv",
+  "video/mp2t",
+  // Audio
+  "audio/mpeg",
+  "audio/flac",
+  "audio/ogg",
+  "audio/wav",
+  "audio/aac",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/opus",
+  "audio/webm",
+  "audio/x-aiff",
+  "audio/x-ms-wma",
+  // Documents
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+  "text/markdown",
+  // Archives
+  "application/zip",
+  "application/x-rar-compressed",
+  "application/x-7z-compressed",
+  "application/x-tar",
+  "application/gzip",
+]);
 
 // Configure Multer Storage
 const storage = multer.diskStorage({
@@ -102,11 +172,23 @@ const storage = multer.diskStorage({
     cb(null, userDir);
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    // Sanitize filename to prevent path traversal and other issues
+    const sanitizedFilename = path.basename(file.originalname);
+    cb(null, `${Date.now()}-${sanitizedFilename}`);
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 * 1024 }, // 5 GB cap per file
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(ErrorMessages.FILE_TYPE_NOT_ALLOWED), false);
+    }
+  },
+});
 
 export const uploadMiddleware = upload.single("file");
 
@@ -130,7 +212,8 @@ export const uploadFile = asyncHandler(async (req, res) => {
   }
 
   // Generate unique name
-  const uniqueName = await FileService.getUniqueFilename(req.user.id, folderId, req.file.originalname);
+  const sanitizedOriginalName = path.basename(req.file.originalname);
+  const uniqueName = await FileService.getUniqueFilename(req.user.id, folderId, sanitizedOriginalName);
   const extension = FileUtils.getFileExtension(req.file.originalname);
   const category = MetadataService.getCategory(req.file.mimetype, req.file.originalname);
   const [{ metadata, extra }, hash] = await Promise.all([
@@ -140,7 +223,7 @@ export const uploadFile = asyncHandler(async (req, res) => {
 
   const fileData = {
     name: uniqueName,
-    original_name: req.file.originalname,
+    original_name: sanitizedOriginalName,
     user: req.user.id,
     folder: folderId === "null" || !folderId ? null : folderId,
     mime_type: req.file.mimetype,
@@ -155,14 +238,13 @@ export const uploadFile = asyncHandler(async (req, res) => {
 
   const file = await File.create(fileData);
 
-  // Update user quota
-  const user = await User.findById(req.user.id);
-  user.used_bytes += req.file.size;
-  await user.save();
+  // Update user quota atomically to prevent race conditions on concurrent uploads
+  await User.findByIdAndUpdate(req.user.id, { $inc: { used_bytes: req.file.size } });
+  const updatedUser = await User.findById(req.user.id);
 
   SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
-    quota_bytes: user.quota_bytes,
-    used_bytes: user.used_bytes,
+    quota_bytes: updatedUser.quota_bytes,
+    used_bytes: updatedUser.used_bytes,
   });
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
@@ -193,7 +275,8 @@ export const downloadFile = asyncHandler(async (req, res) => {
     return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
-  res.download(file.storage_path, file.name);
+  // Use path.basename to prevent path traversal attacks on the download filename
+  res.download(file.storage_path, path.basename(file.name));
 });
 
 /**
@@ -228,7 +311,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
         filePath = previewPath;
       } catch (e) {
         // Fall back to original storage_path (might not play in browser)
-        console.error("On-the-fly video preview failed:", e);
+        logger.error(`On-the-fly video preview failed for file ${file._id}:`, e);
       }
     }
   }
@@ -247,7 +330,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
           await file.save();
           filePath = thumbPath;
         } catch (e) {
-          console.error("On-the-fly image thumbnail failed:", e);
+          logger.error(`On-the-fly image thumbnail failed for file ${file._id}:`, e);
           // Fallback to original for images
           filePath = file.storage_path;
         }
@@ -261,7 +344,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
           await file.save();
           filePath = thumbPath;
         } catch (e) {
-          console.error("On-the-fly video thumbnail failed:", e);
+          logger.error(`On-the-fly video thumbnail failed for file ${file._id}:`, e.message);
           return ResponseHelper.error(res, ErrorMessages.THUMBNAIL_FAILED, StatusCodes.NOT_FOUND);
         }
       } else {
@@ -287,7 +370,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
       res.set("Cache-Control", "public, max-age=3600");
       return res.send(outputBuffer);
     } catch (error) {
-      console.error("HEIC Conversion Error:", error);
+      logger.error("HEIC Conversion Error:", error.message);
       // Fall through to standard file serving
     }
   }

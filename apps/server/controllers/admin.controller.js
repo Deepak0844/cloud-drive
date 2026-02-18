@@ -32,8 +32,21 @@ import FormatUtils from "../utils/formatUtils.js";
  * @access  Private/Admin
  */
 export const getUsers = asyncHandler(async (req, res) => {
-  const users = await User.find().select("-password");
-  return ResponseHelper.success(res, users, StatusCodes.OK, { count: users.length });
+  const page = Math.max(1, parseInt(req.query.pn) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.ps) || 20));
+  const skip = (page - 1) * limit;
+
+  const [users, total] = await Promise.all([
+    User.find().select("-password").skip(skip).limit(limit).sort("-createdAt"),
+    User.countDocuments(),
+  ]);
+
+  return ResponseHelper.success(res, users, StatusCodes.OK, {
+    count: users.length,
+    total,
+    page,
+    pages: Math.ceil(total / limit),
+  });
 });
 
 /**

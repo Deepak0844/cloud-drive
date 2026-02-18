@@ -1,6 +1,11 @@
 // Native modules
 import fs from "fs";
 
+// Utils
+import logger from "./logger.js";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 /**
  * Safely delete a file if it exists
  * @param {string} filePath - Path to the file to delete
@@ -14,7 +19,7 @@ export function cleanupFile(filePath) {
     }
     return false;
   } catch (error) {
-    console.error(`Error cleaning up file ${filePath}:`, error);
+    logger.error(`Error cleaning up file ${filePath}:`, error.message);
     return false;
   }
 }
@@ -26,13 +31,11 @@ export function cleanupFile(filePath) {
  */
 export function cleanupFiles(filePaths) {
   let deletedCount = 0;
-
   for (const filePath of filePaths) {
     if (cleanupFile(filePath)) {
       deletedCount++;
     }
   }
-
   return deletedCount;
 }
 
@@ -67,7 +70,6 @@ export function ensureFileExists(filePath, errorMessage = "File not found") {
  * @returns {string} Sanitized filename
  */
 export function sanitizeFilename(filename) {
-  // Remove path separators and other dangerous characters
   return filename
     .replace(/[/\\?%*:|"<>]/g, "_")
     .replace(/\s+/g, "_")

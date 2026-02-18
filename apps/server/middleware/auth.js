@@ -20,16 +20,16 @@ import ResponseHelper from "../utils/responseHelper.js";
 export const protect = asyncHandler(async (req, res, next) => {
   let token;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-    token = req.headers.authorization.split(" ")[1];
-  }
-
-  // Check if token exists
-  if (!token) {
-    return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);
-  }
-
   try {
+    if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+      token = req.headers.authorization.split(" ")[1];
+    }
+
+    // Check if token exists
+    if (!token) {
+      return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);
+    }
+
     // Verify token
     const decoded = jwt.verify(token, Env.JWT_SECRET);
     req.user = await User.findById(decoded.id);
@@ -43,7 +43,11 @@ export const protect = asyncHandler(async (req, res, next) => {
     }
 
     next();
-  } catch (_err) {
+  } catch (err) {
+    // Distinguish expired tokens so clients can trigger a token refresh
+    if (err.name === "TokenExpiredError") {
+      return ResponseHelper.error(res, ErrorMessages.TOKEN_EXPIRED, StatusCodes.UNAUTHORIZED);
+    }
     return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);
   }
 });

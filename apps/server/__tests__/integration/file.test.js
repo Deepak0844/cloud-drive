@@ -145,6 +145,40 @@ describe("File API", () => {
       expect(response.body.data.length).toBe(1);
       expect(response.body.data[0].name).toBe("subfile.txt");
     });
+
+    it("should paginate files with pn and ps", async () => {
+      await File.create([
+        {
+          name: "p1.txt",
+          original_name: "p1.txt",
+          size_bytes: 1,
+          user: user._id,
+          storage_path: "/tmp/p1",
+          mime_type: "text/plain",
+        },
+        {
+          name: "p2.txt",
+          original_name: "p2.txt",
+          size_bytes: 1,
+          user: user._id,
+          storage_path: "/tmp/p2",
+          mime_type: "text/plain",
+        },
+        {
+          name: "p3.txt",
+          original_name: "p3.txt",
+          size_bytes: 1,
+          user: user._id,
+          storage_path: "/tmp/p3",
+          mime_type: "text/plain",
+        },
+      ]);
+
+      const response = await request(app).get("/api/v1/files?pn=2&ps=2").set(authHeader).expect(200);
+
+      expect(response.body.data.length).toBe(2);
+      expect(response.body.page).toBe(2);
+    });
   });
 
   describe("POST /api/v1/files/bulk-delete", () => {
@@ -307,7 +341,7 @@ describe("File API", () => {
       const response = await request(app)
         .post("/api/v1/files/upload")
         .set(authHeader)
-        .attach("file", Buffer.from("malicious"), "../../../etc/passwd")
+        .attach("file", Buffer.from("malicious"), { filename: "../../../etc/passwd.txt", contentType: "text/plain" })
         .expect(201);
 
       // Should be sanitized (e.g. etc-passwd or similar)

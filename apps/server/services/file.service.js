@@ -107,7 +107,8 @@ async function getUniqueFilename(userId, folderId, originalName) {
 }
 
 /**
- * Process and save thumbnails/previews
+ * Process and save thumbnails/previews for a file.
+ * Handles all image, video, and audio formats robustly.
  * @param {Object} file - File model instance
  */
 async function processThumbnails(file) {
@@ -115,61 +116,75 @@ async function processThumbnails(file) {
   const fileId = file._id.toString();
   const isImage = file.mime_type.startsWith("image/");
   const isVideo = file.mime_type.startsWith("video/");
+  const isAudio = file.category === "audio" || file.mime_type.startsWith("audio/");
 
+  // ── Images ──────────────────────────────────────────────────────────────────
   if (isImage) {
     try {
       const thumbnailDir = getThumbnailDir(userId);
       const thumbPath = path.join(thumbnailDir, `${fileId}.jpg`);
       await MediaUtils.generateImageThumbnail(file.storage_path, thumbPath);
       file.thumbnail_path = thumbPath;
+      logger.info(`[Service] Image thumbnail saved for file ${fileId}`);
 
-      // Background face detection
+      // Background face detection (non-blocking)
       FaceService.detectFaces(file).catch((err) => logger.error("Face detection trigger failed:", err.message));
     } catch (err) {
-      logger.error("[Thumbnail] Image generation failed:", err.message);
+      logger.error(`[Service] Image thumbnail failed for ${fileId}:`, err.message);
     }
-  } else if (isVideo) {
+  }
+
+  // ── Videos ──────────────────────────────────────────────────────────────────
+  else if (isVideo) {
+    // 1. Thumbnail (duration-aware seeking, fallback chain)
     try {
       const thumbnailDir = getThumbnailDir(userId);
       const thumbPath = path.join(thumbnailDir, `${fileId}.jpg`);
       await MediaUtils.generateVideoThumbnail(file.storage_path, thumbnailDir, `${fileId}.jpg`);
       file.thumbnail_path = thumbPath;
+      logger.info(`[Service] Video thumbnail saved for file ${fileId}`);
     } catch (err) {
-      logger.error("[Thumbnail] Video thumbnail failed:", err.message);
+      logger.error(`[Service] Video thumbnail failed for ${fileId}:`, err.message);
     }
 
-    // Generate HLS segments
+    // 2. HLS segments (adaptive resolution)
     try {
       const streamingDir = getStreamingDir(userId);
       const videoStreamDir = path.join(streamingDir, fileId);
       await MediaUtils.generateHLS(file.storage_path, videoStreamDir);
       file.streaming_path = path.join(videoStreamDir, "index.m3u8");
+      logger.info(`[Service] HLS generated for file ${fileId}`);
     } catch (err) {
-      logger.error("[Streaming] HLS generation failed:", err.message);
+      logger.error(`[Service] HLS generation failed for ${fileId}:`, err.message);
     }
 
-    // Generate preview for MOV files
-    const isMovFile = file.mime_type === "video/quicktime" || file.name.toLowerCase().endsWith(".mov");
-    if (isMovFile) {
+    // 3. MP4 Preview — for ALL non-browser-native formats (MOV, AVI, MKV, WMV, FLV, TS, 3GP, etc.)
+    if (MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)) {
       try {
         const previewDir = getPreviewDir(userId);
         const previewPath = path.join(previewDir, `${fileId}.mp4`);
         await MediaUtils.generateVideoPreview(file.storage_path, previewPath);
         file.preview_path = previewPath;
+        logger.info(`[Service] MP4 preview generated for file ${fileId}`);
       } catch (err) {
-        logger.error("[Preview] Video preview failed:", err.message);
+        logger.error(`[Service] MP4 preview failed for ${fileId}:`, err.message);
       }
     }
-  } else if (file.category === "audio") {
+  }
+
+  // ── Audio ────────────────────────────────────────────────────────────────────
+  else if (isAudio) {
     try {
       const thumbnailDir = getThumbnailDir(userId);
       const thumbPath = path.join(thumbnailDir, `${fileId}.jpg`);
+      // extractAudioAlbumArt already falls back to waveform internally
       const extractedThumb = await MediaUtils.extractAudioAlbumArt(file.storage_path, thumbPath);
       if (extractedThumb) {
         file.thumbnail_path = extractedThumb;
+        logger.info(`[Service] Audio thumbnail saved for file ${fileId}`);
       }
     } catch (err) {
-      logger.error("[Thumbnail] Audio album art failed:", err.message);
+      logger.error(`[Service] Audio thumbnail failed for ${fileId}:`, err.message);
     }
   }
 

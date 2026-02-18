@@ -69,25 +69,32 @@ function initCronJobs() {
 
   // Run at defined interval: Cleanup orphaned temp uploads
   const cleanupIntervalHours = config.CLEANUP_INTERVAL_HOURS;
-  cron.schedule(`0 */${cleanupIntervalHours} * * *`, () => {
+  cron.schedule(`0 */${cleanupIntervalHours} * * *`, async () => {
     logger.info("🧹 Running temp upload cleanup...");
     try {
       const tempDir = path.join(config.NAS_STORAGE_PATH, "temp", "uploads");
-      if (!fs.existsSync(tempDir)) {
-        return;
+
+      // Check if temp dir exists asynchronously
+      try {
+        await fs.promises.access(tempDir);
+      } catch {
+        return; // Directory doesn't exist, nothing to clean
       }
 
-      const sessions = fs.readdirSync(tempDir);
+      const sessions = await fs.promises.readdir(tempDir);
       const now = Date.now();
-      const expiryHours = config.TEMP_UPLOAD_EXPIRY_HOURS;
-      const expiryMs = expiryHours * 60 * 60 * 1000;
+      const expiryMs = config.TEMP_UPLOAD_EXPIRY_HOURS * 60 * 60 * 1000;
 
       for (const session of sessions) {
         const sessionPath = path.join(tempDir, session);
-        const stats = fs.statSync(sessionPath);
-        if (now - stats.mtimeMs > expiryMs) {
-          logger.info(`Deleting orphaned session: ${session}`);
-          fs.rmSync(sessionPath, { recursive: true, force: true });
+        try {
+          const stats = await fs.promises.stat(sessionPath);
+          if (now - stats.mtimeMs > expiryMs) {
+            logger.info(`Deleting orphaned session: ${session}`);
+            await fs.promises.rm(sessionPath, { recursive: true, force: true });
+          }
+        } catch (statErr) {
+          logger.warn(`Could not stat session ${session}: ${statErr.message}`);
         }
       }
       logger.info("✅ Temp cleanup completed.");

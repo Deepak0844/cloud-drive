@@ -31,6 +31,7 @@ const envSchema = z.object({
   TRASH_EXPIRY_DAYS: z.string().transform(Number).default("30"),
   CLEANUP_INTERVAL_HOURS: z.string().transform(Number).default("1"),
   TEMP_UPLOAD_EXPIRY_HOURS: z.string().transform(Number).default("24"),
+  ALLOWED_ORIGINS: z.string().optional(), // Comma-separated list of allowed CORS origins
 });
 
 // Validate environment variables

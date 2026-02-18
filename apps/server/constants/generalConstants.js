@@ -92,6 +92,9 @@ export const ErrorMessages = {
   THUMBNAIL_FAILED: "Thumbnail generation failed",
   THUMBNAIL_NOT_AVAILABLE: "Thumbnail not available",
   FOLDER_ALREADY_EXISTS: "Folder with this name already exists",
+  TOKEN_EXPIRED: "Your session has expired, please log in again",
+  FILE_TYPE_NOT_ALLOWED: "This file type is not allowed",
+  INVALID_MOVE: "Cannot move a folder into itself or its own descendant",
 };
 
 /**

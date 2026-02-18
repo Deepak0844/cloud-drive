@@ -56,6 +56,8 @@ export const getFilesSchema = z.object({
       .string()
       .optional()
       .transform((val) => val === "true"),
+    pn: z.string().optional(),
+    ps: z.string().optional(),
   }),
 });
 
