@@ -33,7 +33,7 @@ import FileUtils from "../utils/fileUtils.js";
  * @access  Private
  */
 export const getFiles = asyncHandler(async (req, res) => {
-  const { folderId, search, category, extension, isFavorite, minSize, maxSize, startDate, endDate, recursive } =
+  const { folderId, search, category, extension, isFavorite, minSize, maxSize, startDate, endDate, recursive, tag } =
     req.query;
 
   const query = { user: req.user.id, is_deleted: false };
@@ -85,6 +85,10 @@ export const getFiles = asyncHandler(async (req, res) => {
     if (endDate) {
       query.createdAt.$lte = new Date(endDate);
     }
+  }
+
+  if (tag) {
+    query.tags = tag;
   }
 
   const files = await File.find(query).sort("-createdAt");
@@ -453,6 +457,22 @@ export const toggleFavorite = asyncHandler(async (req, res) => {
 
   file.is_favorite = !file.is_favorite;
   await file.save();
+
+  return ResponseHelper.success(res, file);
+});
+
+/**
+ * @desc    Update file tags
+ * @route   PATCH /api/v1/files/:id/tags
+ * @access  Private
+ */
+export const updateFileTags = asyncHandler(async (req, res) => {
+  const { tags } = req.body;
+  const file = await File.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, { tags }, { new: true });
+
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   return ResponseHelper.success(res, file);
 });

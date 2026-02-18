@@ -65,6 +65,16 @@ export const getRecentFilesSchema = z.object({
       .string()
       .optional()
       .transform((val) => (val ? parseInt(val) : 20)),
+    tag: z.string().optional(),
+  }),
+});
+
+export const updateTagsSchema = z.object({
+  params: z.object({
+    id: z.string().min(1, "ID is required"),
+  }),
+  body: z.object({
+    tags: z.array(z.string()).min(1, "At least one tag is required"),
   }),
 });
 

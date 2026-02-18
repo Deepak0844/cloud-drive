@@ -70,6 +70,17 @@ const fileSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    original_parent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Folder",
+      default: null,
+    },
+    tags: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
   },
   { timestamps: true }
 );
@@ -80,6 +91,7 @@ fileSchema.index({ user: 1, is_favorite: 1 });
 fileSchema.index({ is_deleted: 1 });
 fileSchema.index({ category: 1 });
 fileSchema.index({ extension: 1 });
+fileSchema.index({ tags: 1 });
 fileSchema.index({ createdAt: -1 });
 
 export default mongoose.model("File", fileSchema);

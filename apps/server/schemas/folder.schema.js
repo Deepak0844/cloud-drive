@@ -43,5 +43,6 @@ export const getFoldersSchema = z.object({
       .nullable()
       .optional()
       .transform((val) => (val === "null" || val === "" ? null : val)),
+    tag: z.string().optional(),
   }),
 });

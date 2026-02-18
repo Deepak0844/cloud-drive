@@ -24,27 +24,33 @@ import logger from "./logger.js";
  * @param {boolean} isDirect - Whether this item was directly deleted
  */
 async function softDeleteRecursive(type, id, userId, isDirect = true) {
+  const model = type === ItemTypes.FILE ? File : Folder;
+  const item = await model.findOne({ _id: id, user: userId });
+
+  if (!item) {
+    return;
+  }
+
   const updateData = {
     is_deleted: true,
     deleted_at: Date.now(),
     deleted_directly: isDirect,
+    // Store original parent/folder before setting to null or marking as deleted
+    original_parent: type === ItemTypes.FILE ? item.folder : item.parent,
   };
 
-  if (type === ItemTypes.FILE) {
-    await File.updateOne({ _id: id, user: userId }, updateData);
-  } else if (type === ItemTypes.FOLDER) {
-    await Folder.updateOne({ _id: id, user: userId }, updateData);
+  await model.updateOne({ _id: id, user: userId }, updateData);
 
+  if (type === ItemTypes.FOLDER) {
     // Find immediate children to recurse
     const subFiles = await File.find({ folder: id, user: userId });
     const subFolders = await Folder.find({ parent: id, user: userId });
 
-    // Mark direct files as deleted (not directly)
+    // Mark sub-files as deleted (not directly)
     if (subFiles.length > 0) {
-      await File.updateMany(
-        { folder: id, user: userId },
-        { is_deleted: true, deleted_at: Date.now(), deleted_directly: false }
-      );
+      for (const file of subFiles) {
+        await softDeleteRecursive(ItemTypes.FILE, file._id, userId, false);
+      }
     }
 
     // Recurse subfolders
@@ -61,16 +67,42 @@ async function softDeleteRecursive(type, id, userId, isDirect = true) {
  * @param {string} userId - User ID
  */
 async function restoreRecursive(type, id, userId) {
-  if (type === ItemTypes.FILE) {
-    await File.updateOne({ _id: id, user: userId }, { is_deleted: false, deleted_at: null, deleted_directly: false });
-  } else if (type === ItemTypes.FOLDER) {
-    await Folder.updateOne({ _id: id, user: userId }, { is_deleted: false, deleted_at: null, deleted_directly: false });
+  const model = type === ItemTypes.FILE ? File : Folder;
+  const item = await model.findOne({ _id: id, user: userId });
 
+  if (!item) {
+    return;
+  }
+
+  let newParent = null;
+  if (item.original_parent) {
+    // Check if the original parent still exists and is not deleted
+    const parentFolder = await Folder.findOne({ _id: item.original_parent, user: userId, is_deleted: false });
+    if (parentFolder) {
+      newParent = item.original_parent;
+    }
+  }
+
+  const updateData = {
+    is_deleted: false,
+    deleted_at: null,
+    deleted_directly: false,
+  };
+
+  if (type === ItemTypes.FILE) {
+    updateData.folder = newParent;
+  } else {
+    updateData.parent = newParent;
+  }
+
+  await model.updateOne({ _id: id, user: userId }, updateData);
+
+  if (type === ItemTypes.FOLDER) {
     // Restore files in this folder that were NOT deleted directly
-    await File.updateMany(
-      { folder: id, user: userId, deleted_directly: false },
-      { is_deleted: false, deleted_at: null }
-    );
+    const subFiles = await File.find({ folder: id, user: userId, deleted_directly: false });
+    for (const file of subFiles) {
+      await model.updateOne({ _id: file._id, user: userId }, { is_deleted: false, deleted_at: null });
+    }
 
     // Recurse subfolders that were NOT deleted directly
     const subFolders = await Folder.find({ parent: id, user: userId, deleted_directly: false });

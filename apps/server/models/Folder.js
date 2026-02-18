@@ -34,11 +34,23 @@ const folderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    original_parent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Folder",
+      default: null,
+    },
+    tags: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
   },
   { timestamps: true }
 );
 
 // Indexes
 folderSchema.index({ name: 1, user: 1, parent: 1 }, { unique: true });
+folderSchema.index({ tags: 1 });
 
 export default mongoose.model("Folder", folderSchema);
