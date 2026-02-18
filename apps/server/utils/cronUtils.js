@@ -19,6 +19,9 @@ import { ItemTypes } from "../constants/generalConstants.js";
 import logger from "./logger.js";
 import DbUtils from "./dbUtils.js";
 
+// Services
+import DuplicateService from "../services/duplicate.service.js";
+
 /**
  * Initialize cron jobs
  * Currently:
@@ -92,6 +95,24 @@ function initCronJobs() {
       logger.error("❌ Temp cleanup error:", err);
     }
   });
+
+  // Run every day at 02:00: Duplicate Finder
+  cron.schedule("0 2 * * *", async () => {
+    logger.info("🔍 Running daily duplicate finder...");
+    await DuplicateService.findAndNotifyDuplicates();
+    logger.info("✅ Duplicate finder completed.");
+  });
+
+  // Trigger Duplicate Finder on server start
+  // We use a small delay to ensure DB and other services are fully initialized
+  setTimeout(async () => {
+    logger.info("🚀 Triggering Duplicate Finder on server startup...");
+    try {
+      await DuplicateService.findAndNotifyDuplicates();
+    } catch (err) {
+      logger.error("❌ Startup Duplicate Finder failed:", err.message);
+    }
+  }, 5000);
 
   logger.info("⏰ Cron jobs initialized");
 }

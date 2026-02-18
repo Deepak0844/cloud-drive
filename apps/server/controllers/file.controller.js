@@ -133,7 +133,10 @@ export const uploadFile = asyncHandler(async (req, res) => {
   const uniqueName = await FileService.getUniqueFilename(req.user.id, folderId, req.file.originalname);
   const extension = FileUtils.getFileExtension(req.file.originalname);
   const category = MetadataService.getCategory(req.file.mimetype, req.file.originalname);
-  const { metadata, extra } = await MetadataService.extractMetadata(req.file.path, category);
+  const [{ metadata, extra }, hash] = await Promise.all([
+    MetadataService.extractMetadata(req.file.path, category),
+    MetadataService.calculateHash(req.file.path),
+  ]);
 
   const fileData = {
     name: uniqueName,
@@ -146,6 +149,7 @@ export const uploadFile = asyncHandler(async (req, res) => {
     size_bytes: req.file.size,
     storage_path: req.file.path,
     metadata,
+    hash,
     ...extra,
   };
 

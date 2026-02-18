@@ -5,6 +5,7 @@ import sharp from "sharp";
 import * as mm from "music-metadata";
 import ExifParser from "exif-parser";
 import fs from "fs";
+import crypto from "crypto";
 
 ffmpeg.setFfprobePath(ffprobePath);
 
@@ -140,10 +141,26 @@ async function extractMetadata(filePath, category) {
   return { metadata, extra };
 }
 
+/**
+ * Calculate MD5 hash of a file
+ * @param {String} filePath - Path to the file
+ * @returns {Promise<String>} - MD5 hash
+ */
+function calculateHash(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash("md5");
+    const stream = fs.createReadStream(filePath);
+    stream.on("error", (err) => reject(err));
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
+}
+
 const MetadataService = {
   getCategory,
   extractMetadata,
   probeFile,
+  calculateHash,
 };
 
 export default MetadataService;

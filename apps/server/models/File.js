@@ -104,6 +104,10 @@ const fileSchema = new mongoose.Schema(
       genre: String,
       year: Number,
     },
+    hash: {
+      type: String,
+      index: true,
+    },
   },
   {
     timestamps: true,

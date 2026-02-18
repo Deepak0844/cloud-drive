@@ -28,6 +28,9 @@ const envSchema = z.object({
   APP_BASE_URL: z.string().url().default("http://localhost:9001"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   LOG_LEVEL: z.string().default("info"),
+  TRASH_EXPIRY_DAYS: z.string().transform(Number).default("30"),
+  CLEANUP_INTERVAL_HOURS: z.string().transform(Number).default("1"),
+  TEMP_UPLOAD_EXPIRY_HOURS: z.string().transform(Number).default("24"),
 });
 
 // Validate environment variables
