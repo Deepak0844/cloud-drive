@@ -22,7 +22,19 @@ import SocketService from "../services/socket.service.js";
  * @access  Private
  */
 export const getFolders = asyncHandler(async (req, res) => {
-  const folders = await Folder.find({ user: req.user.id, is_deleted: false }).sort("name");
+  const { search, parentId } = req.query;
+
+  const query = { user: req.user.id, is_deleted: false };
+
+  if (search) {
+    query.name = { $regex: search, $options: "i" };
+  }
+
+  if (parentId !== undefined) {
+    query.parent = parentId;
+  }
+
+  const folders = await Folder.find(query).sort("name");
   return ResponseHelper.success(res, folders);
 });
 

@@ -1,6 +1,7 @@
 import request from "supertest";
 import app from "../../app.js";
 import File from "../../models/File.js";
+import Folder from "../../models/Folder.js";
 import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
 import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
 
@@ -15,7 +16,6 @@ describe("Search & Indexing API", () => {
   afterAll(async () => {
     await teardownTests();
   });
-
   beforeEach(async () => {
     await resetTests();
     user = await createTestUser();
@@ -65,6 +65,37 @@ describe("Search & Indexing API", () => {
         extension: "txt",
       },
     ]);
+
+    // Create a variety of folders for testing search
+    await Folder.create([
+      {
+        name: "Projects",
+        user: user._id,
+      },
+      {
+        name: "Vacation Photos",
+        user: user._id,
+      },
+      {
+        name: "Documents",
+        user: user._id,
+      },
+    ]);
+  });
+
+  describe("Folder Search", () => {
+    it("should search folders by name", async () => {
+      const response = await request(app).get("/api/v1/folders?search=project").set(authHeader).expect(200);
+
+      expect(response.body.data.length).toBe(1);
+      expect(response.body.data[0].name).toBe("Projects");
+    });
+
+    it("should return all folders if no search is provided", async () => {
+      const response = await request(app).get("/api/v1/folders").set(authHeader).expect(200);
+
+      expect(response.body.data.length).toBe(3);
+    });
   });
 
   describe("Advanced Filtering", () => {
