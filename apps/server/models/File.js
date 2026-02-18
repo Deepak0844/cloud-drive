@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+// Config
+import Env from "../config/env.js";
+
 const fileSchema = new mongoose.Schema(
   {
     name: {
@@ -81,9 +84,56 @@ const fileSchema = new mongoose.Schema(
         trim: true,
       },
     ],
+    // Advanced Media Fields
+    streaming_path: {
+      type: String,
+      default: null,
+    },
+    taken_at: {
+      type: Date,
+      default: null,
+    },
+    gps: {
+      lat: Number,
+      lng: Number,
+    },
+    audio_metadata: {
+      artist: String,
+      album: String,
+      title: String,
+      genre: String,
+      year: Number,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
+
+// Virtuals for URLs
+fileSchema.virtual("thumbnail_url").get(function () {
+  if (!this.thumbnail_path) {
+    return null;
+  }
+  return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/preview?thumbnail=true`;
+});
+
+fileSchema.virtual("preview_url").get(function () {
+  return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/preview`;
+});
+
+fileSchema.virtual("original_url").get(function () {
+  return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/download`;
+});
+
+fileSchema.virtual("stream_url").get(function () {
+  if (this.category !== "video" && this.category !== "audio") {
+    return null;
+  }
+  return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/stream`;
+});
 
 // Indexes
 fileSchema.index({ user: 1, folder: 1 });

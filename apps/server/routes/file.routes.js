@@ -12,6 +12,7 @@ import {
   getRecentFiles,
   moveFile,
   renameFile,
+  streamFile,
   toggleFavorite,
   updateFileTags,
   uploadFile,
@@ -56,6 +57,7 @@ router.get("/:id/preview", validate(idParamSchema), getFilePreview);
 router.patch("/:id", validate(renameFileSchema), renameFile);
 router.patch("/:id/favorite", validate(favoriteFileSchema), toggleFavorite);
 router.patch("/:id/tags", validate(updateTagsSchema), updateFileTags);
+router.get("/:id/stream", validate(idParamSchema), streamFile);
 router.post("/:id/move", validate(moveFileSchema), moveFile);
 router.post("/:id/copy", validate(copyFileSchema), copyFile);
 router.post("/bulk-delete", validate(bulkDeleteSchema), bulkDelete);

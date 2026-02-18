@@ -13,6 +13,9 @@ import config from "../config/env.js";
 import logger from "../utils/logger.js";
 import MediaUtils from "../utils/mediaUtils.js";
 
+// Services
+import FaceService from "./face.service.js";
+
 /**
  * Get core user storage directory
  * @param {String} userId - User ID
@@ -50,6 +53,19 @@ function getPreviewDir(userId) {
     fs.mkdirSync(previewDir, { recursive: true });
   }
   return previewDir;
+}
+
+/**
+ * Get user streaming directory
+ * @param {String} userId - User ID
+ * @returns {String} - Path to streaming directory
+ */
+function getStreamingDir(userId) {
+  const streamingDir = path.join(config.NAS_STORAGE_PATH, "users", userId, "streaming");
+  if (!fs.existsSync(streamingDir)) {
+    fs.mkdirSync(streamingDir, { recursive: true });
+  }
+  return streamingDir;
 }
 
 /**
@@ -105,6 +121,9 @@ async function processThumbnails(file) {
       const thumbPath = path.join(thumbnailDir, `${fileId}.jpg`);
       await MediaUtils.generateImageThumbnail(file.storage_path, thumbPath);
       file.thumbnail_path = thumbPath;
+
+      // Background face detection
+      FaceService.detectFaces(file).catch((err) => logger.error("Face detection trigger failed:", err.message));
     } catch (err) {
       logger.error("[Thumbnail] Image generation failed:", err.message);
     }
@@ -116,6 +135,16 @@ async function processThumbnails(file) {
       file.thumbnail_path = thumbPath;
     } catch (err) {
       logger.error("[Thumbnail] Video thumbnail failed:", err.message);
+    }
+
+    // Generate HLS segments
+    try {
+      const streamingDir = getStreamingDir(userId);
+      const videoStreamDir = path.join(streamingDir, fileId);
+      await MediaUtils.generateHLS(file.storage_path, videoStreamDir);
+      file.streaming_path = path.join(videoStreamDir, "index.m3u8");
+    } catch (err) {
+      logger.error("[Streaming] HLS generation failed:", err.message);
     }
 
     // Generate preview for MOV files
@@ -130,6 +159,17 @@ async function processThumbnails(file) {
         logger.error("[Preview] Video preview failed:", err.message);
       }
     }
+  } else if (file.category === "audio") {
+    try {
+      const thumbnailDir = getThumbnailDir(userId);
+      const thumbPath = path.join(thumbnailDir, `${fileId}.jpg`);
+      const extractedThumb = await MediaUtils.extractAudioAlbumArt(file.storage_path, thumbPath);
+      if (extractedThumb) {
+        file.thumbnail_path = extractedThumb;
+      }
+    } catch (err) {
+      logger.error("[Thumbnail] Audio album art failed:", err.message);
+    }
   }
 
   await file.save();
@@ -141,6 +181,7 @@ const FileService = {
   getUserDir,
   getThumbnailDir,
   getPreviewDir,
+  getStreamingDir,
   checkQuota,
   getUniqueFilename,
   processThumbnails,

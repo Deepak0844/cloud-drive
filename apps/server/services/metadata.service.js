@@ -2,6 +2,9 @@ import FileUtils from "../utils/fileUtils.js";
 import { path as ffprobePath } from "@ffprobe-installer/ffprobe";
 import ffmpeg from "fluent-ffmpeg";
 import sharp from "sharp";
+import * as mm from "music-metadata";
+import ExifParser from "exif-parser";
+import fs from "fs";
 
 ffmpeg.setFfprobePath(ffprobePath);
 
@@ -54,6 +57,7 @@ function probeFile(filePath) {
  */
 async function extractMetadata(filePath, category) {
   const metadata = {};
+  const extra = {};
 
   try {
     if (category === "image") {
@@ -61,12 +65,28 @@ async function extractMetadata(filePath, category) {
       metadata.width = imageInfo.width;
       metadata.height = imageInfo.height;
       metadata.format = imageInfo.format;
-      metadata.hasAlpha = imageInfo.hasAlpha;
-      if (imageInfo.exif) {
-        // EXIF parsing could be deeper if needed, but start with dimensions
-        metadata.hasExif = true;
+
+      // EXIF Parsing for GPS and DateTaken
+      try {
+        const buffer = fs.readFileSync(filePath);
+        const parser = ExifParser.create(buffer);
+        const result = parser.parse();
+
+        if (result.tags) {
+          if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
+            extra.gps = {
+              lat: result.tags.GPSLatitude,
+              lng: result.tags.GPSLongitude,
+            };
+          }
+          if (result.tags.DateTimeOriginal) {
+            extra.taken_at = new Date(result.tags.DateTimeOriginal * 1000);
+          }
+        }
+      } catch (exifErr) {
+        console.warn("EXIF extraction failed:", exifErr.message);
       }
-    } else if (category === "video" || category === "audio") {
+    } else if (category === "video") {
       const probeData = await probeFile(filePath);
       if (probeData.streams) {
         const videoStream = probeData.streams.find((s) => s.codec_type === "video");
@@ -80,7 +100,6 @@ async function extractMetadata(filePath, category) {
           metadata.height = videoStream.height;
           metadata.codec = videoStream.codec_name;
 
-          // Safely parse fps (e.g. "30/1" or "24000/1001")
           if (videoStream.r_frame_rate) {
             const [num, den] = videoStream.r_frame_rate.split("/");
             metadata.fps = den && den !== "0" ? parseFloat(num) / parseFloat(den) : parseFloat(num);
@@ -93,12 +112,32 @@ async function extractMetadata(filePath, category) {
           metadata.sampleRate = parseInt(audioStream.sample_rate);
         }
       }
+    } else if (category === "audio") {
+      const audioInfo = await mm.parseFile(filePath);
+      metadata.duration = audioInfo.format.duration;
+      metadata.bitrate = audioInfo.format.bitrate;
+      metadata.sampleRate = audioInfo.format.sampleRate;
+      metadata.channels = audioInfo.format.numberOfChannels;
+
+      extra.audio_metadata = {
+        artist: audioInfo.common.artist,
+        album: audioInfo.common.album,
+        title: audioInfo.common.title,
+        genre: audioInfo.common.genre ? audioInfo.common.genre[0] : null,
+        year: audioInfo.common.year,
+      };
+
+      // Extract album art if available and set as thumbnail later in service
+      if (audioInfo.common.picture && audioInfo.common.picture.length > 0) {
+        extra.hasAlbumArt = true;
+        // The service can handle writing this to a file
+      }
     }
   } catch (error) {
     console.error(`Metadata extraction failed for ${filePath}:`, error);
   }
 
-  return metadata;
+  return { metadata, extra };
 }
 
 const MetadataService = {

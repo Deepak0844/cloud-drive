@@ -1,5 +1,8 @@
 import pino from "pino";
 
+// Config
+import Env from "../config/env.js";
+
 // Logger
 const logger = pino({
   transport: {
@@ -10,7 +13,7 @@ const logger = pino({
       ignore: "pid,hostname",
     },
   },
-  level: process.env.LOG_LEVEL || "info",
+  level: Env.LOG_LEVEL,
 });
 
 export default logger;

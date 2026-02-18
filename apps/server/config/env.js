@@ -25,6 +25,9 @@ const envSchema = z.object({
   NAS_STORAGE_PATH: z.string({
     required_error: "NAS_STORAGE_PATH is required",
   }),
+  APP_BASE_URL: z.string().url().default("http://localhost:9001"),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  LOG_LEVEL: z.string().default("info"),
 });
 
 // Validate environment variables

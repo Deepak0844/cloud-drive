@@ -9,6 +9,9 @@ import createError from "http-errors";
 // Database connection
 import connectToDatabase from "./config/db.js";
 
+// Config
+import Env from "./config/env.js";
+
 // Constants
 import { ErrorMessages, StatusCodes } from "./constants/generalConstants.js";
 
@@ -37,7 +40,7 @@ const app = express();
 const baseUrl = "/api/v1";
 
 // Connect to MongoDB (skip during testing as tests handle their own connection)
-if (process.env.NODE_ENV !== "test") {
+if (Env.NODE_ENV !== "test") {
   connectToDatabase();
 }
 
@@ -98,7 +101,7 @@ app.use(`${baseUrl}/items`, itemRoutes);
 app.use(`${baseUrl}/notifications`, notificationRoutes);
 
 // Initialize Cron Jobs (skip during testing)
-if (process.env.NODE_ENV !== "test") {
+if (Env.NODE_ENV !== "test") {
   CronUtils.initCronJobs();
 }
 
@@ -119,12 +122,12 @@ app.use((err, req, res, _next) => {
 
   // Log error
   logger.error(`${statusCode} - ${message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
-  if (err.stack && process.env.NODE_ENV !== "production") {
+  if (err.stack && Env.NODE_ENV !== "production") {
     logger.error(err.stack);
   }
 
   ResponseHelper.error(res, message, statusCode, {
-    ...(process.env.NODE_ENV !== "production" && { stack: err.stack }),
+    ...(Env.NODE_ENV !== "production" && { stack: err.stack }),
   });
 });
 

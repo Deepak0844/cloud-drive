@@ -172,11 +172,74 @@ function generateVideoPreview(sourcePath, destPath) {
   });
 }
 
+/**
+ * Generates HLS segments for a video
+ * @param {string} sourcePath - The path to the source video
+ * @param {string} destFolder - The folder to save HLS segments
+ * @returns {Promise<string>} - The path to the .m3u8 manifest
+ */
+function generateHLS(sourcePath, destFolder) {
+  ensureDirectoryExists(destFolder);
+  const manifestPath = path.join(destFolder, "index.m3u8");
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(sourcePath)
+      .outputOptions([
+        "-profile:v baseline",
+        "-level 3.0",
+        "-s 640x360",
+        "-start_number 0",
+        "-hls_time 10",
+        "-hls_list_size 0",
+        "-f hls",
+      ])
+      .on("start", (command) => logger.debug("[FFMPEG] HLS command:", command))
+      .on("end", () => {
+        logger.info("[FFMPEG] HLS generated:", manifestPath);
+        resolve(manifestPath);
+      })
+      .on("error", (err) => {
+        logger.error("[FFMPEG] HLS generation error:", err.message);
+        reject(err);
+      })
+      .save(manifestPath);
+  });
+}
+
+/**
+ * Extracts album art from an audio file and saves it as a JPEG
+ * @param {string} sourcePath - The path to the audio file
+ * @param {string} destPath - The path to save the thumbnail
+ */
+async function extractAudioAlbumArt(sourcePath, destPath) {
+  try {
+    const destDir = path.dirname(destPath);
+    ensureDirectoryExists(destDir);
+
+    const { parseFile } = await import("music-metadata");
+    const metadata = await parseFile(sourcePath);
+
+    if (metadata.common.picture && metadata.common.picture.length > 0) {
+      const picture = metadata.common.picture[0];
+      await sharp(picture.data).resize(200, 200, { fit: "cover" }).toFormat("jpeg").toFile(destPath);
+
+      logger.info("[Thumbnail] Audio album art extracted:", destPath);
+      return destPath;
+    }
+    return null;
+  } catch (error) {
+    logger.error(`[Thumbnail] Audio album art extraction failed for ${sourcePath}: ${error.message}`);
+    return null;
+  }
+}
+
 // Exports
 const MediaUtils = {
   generateImageThumbnail,
   generateVideoThumbnail,
   generateVideoPreview,
+  generateHLS,
+  extractAudioAlbumArt,
 };
 
 export default MediaUtils;

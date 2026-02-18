@@ -133,9 +133,9 @@ export const uploadFile = asyncHandler(async (req, res) => {
   const uniqueName = await FileService.getUniqueFilename(req.user.id, folderId, req.file.originalname);
   const extension = FileUtils.getFileExtension(req.file.originalname);
   const category = MetadataService.getCategory(req.file.mimetype, req.file.originalname);
-  const metadata = await MetadataService.extractMetadata(req.file.path, category);
+  const { metadata, extra } = await MetadataService.extractMetadata(req.file.path, category);
 
-  const file = await File.create({
+  const fileData = {
     name: uniqueName,
     original_name: req.file.originalname,
     user: req.user.id,
@@ -146,7 +146,10 @@ export const uploadFile = asyncHandler(async (req, res) => {
     size_bytes: req.file.size,
     storage_path: req.file.path,
     metadata,
-  });
+    ...extra,
+  };
+
+  const file = await File.create(fileData);
 
   // Update user quota
   const user = await User.findById(req.user.id);
@@ -424,6 +427,77 @@ export const bulkDelete = asyncHandler(async (req, res) => {
   });
 
   return ResponseHelper.success(res, { message: "Items moved to trash" });
+});
+
+/**
+ * @desc    Stream file (HLS or Audio)
+ * @route   GET /api/v1/files/:id/stream
+ * @access  Private
+ */
+export const streamFile = asyncHandler(async (req, res) => {
+  const file = await File.findOne({ _id: req.params.id, user: req.user.id });
+
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
+
+  // Handle HLS for videos
+  if (file.category === "video") {
+    if (!file.streaming_path || !fs.existsSync(file.streaming_path)) {
+      return ResponseHelper.error(res, "Streaming not available for this video yet", StatusCodes.NOT_FOUND);
+    }
+
+    const requestedFile = req.query.file || "index.m3u8";
+    const streamDir = path.dirname(file.streaming_path);
+    const filePath = path.join(streamDir, requestedFile);
+
+    if (!fs.existsSync(filePath)) {
+      return ResponseHelper.error(res, "Stream segment not found", StatusCodes.NOT_FOUND);
+    }
+
+    const ext = path.extname(filePath);
+    const contentType = ext === ".m3u8" ? "application/x-mpegURL" : "video/MP2T";
+
+    res.set("Content-Type", contentType);
+    return res.sendFile(path.resolve(filePath));
+  }
+
+  // Handle standard streaming (Range requests) for Audio
+  if (file.category === "audio") {
+    if (!fs.existsSync(file.storage_path)) {
+      return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    }
+
+    const stat = fs.statSync(file.storage_path);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = end - start + 1;
+      const fileStream = fs.createReadStream(file.storage_path, { start, end });
+      const head = {
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Content-Length": chunksize,
+        "Content-Type": file.mime_type,
+      };
+      res.writeHead(StatusCodes.PARTIAL_CONTENT, head);
+      fileStream.pipe(res);
+    } else {
+      const head = {
+        "Content-Length": fileSize,
+        "Content-Type": file.mime_type,
+      };
+      res.writeHead(StatusCodes.OK, head);
+      fs.createReadStream(file.storage_path).pipe(res);
+    }
+    return;
+  }
+
+  return ResponseHelper.error(res, "Streaming not supported for this file type", StatusCodes.BAD_REQUEST);
 });
 
 /**
