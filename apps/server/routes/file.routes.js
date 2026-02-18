@@ -17,6 +17,9 @@ import {
   updateFileTags,
   uploadFile,
   uploadMiddleware,
+  downloadAsZip,
+  bulkMove,
+  bulkCopy,
 } from "../controllers/file.controller.js";
 
 // Middleware
@@ -36,6 +39,9 @@ import {
   idParamSchema,
   favoriteFileSchema,
   updateTagsSchema,
+  bulkMoveSchema,
+  bulkCopySchema,
+  bulkDownloadSchema,
 } from "../schemas/file.schema.js";
 
 const router = express.Router();
@@ -61,6 +67,9 @@ router.get("/:id/stream", validate(idParamSchema), streamFile);
 router.post("/:id/move", validate(moveFileSchema), moveFile);
 router.post("/:id/copy", validate(copyFileSchema), copyFile);
 router.post("/bulk-delete", validate(bulkDeleteSchema), bulkDelete);
+router.post("/bulk-move", validate(bulkMoveSchema), bulkMove);
+router.post("/bulk-copy", validate(bulkCopySchema), bulkCopy);
+router.post("/bulk-download", validate(bulkDownloadSchema), downloadAsZip);
 router.delete("/:id", validate(idParamSchema), deleteFile);
 
 export default router;

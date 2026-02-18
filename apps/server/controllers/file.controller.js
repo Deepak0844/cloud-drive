@@ -554,3 +554,120 @@ export const updateFileTags = asyncHandler(async (req, res) => {
 
   return ResponseHelper.success(res, file);
 });
+
+/**
+ * @desc    Download multiple files/folders as a ZIP
+ * @route   POST /api/v1/files/bulk-download
+ * @access  Private
+ */
+export const downloadAsZip = asyncHandler(async (req, res) => {
+  const { items } = req.body; // Array of { id, type }
+
+  if (!items || !items.length) {
+    return ResponseHelper.error(res, "No items selected for download", StatusCodes.BAD_REQUEST);
+  }
+
+  const zipItems = [];
+
+  for (const item of items) {
+    if (item.type === "file") {
+      const file = await File.findOne({ _id: item.id, user: req.user.id });
+      if (file && fs.existsSync(file.storage_path)) {
+        zipItems.push({ path: file.storage_path, name: file.name, type: "file" });
+      }
+    } else if (item.type === "folder") {
+      await collectFolderFiles(item.id, req.user.id, "", zipItems);
+    }
+  }
+
+  if (zipItems.length === 0) {
+    return ResponseHelper.error(res, "No valid files found for download", StatusCodes.NOT_FOUND);
+  }
+
+  res.attachment(`cloud-drive-download-${Date.now()}.zip`);
+  await MediaUtils.createZipStream(zipItems, res);
+});
+
+/**
+ * Recursive helper to collect all files in a folder structure
+ */
+async function collectFolderFiles(folderId, userId, parentPath, zipItems) {
+  const folder = await Folder.findOne({ _id: folderId, user: userId });
+  if (!folder) {
+    return;
+  }
+
+  const currentPath = parentPath ? `${parentPath}/${folder.name}` : folder.name;
+
+  // Collect files in this folder
+  const files = await File.find({ folder: folderId, user: userId, is_deleted: false });
+  for (const f of files) {
+    if (fs.existsSync(f.storage_path)) {
+      zipItems.push({ path: f.storage_path, name: `${currentPath}/${f.name}`, type: "file" });
+    }
+  }
+
+  // Recurse into subfolders
+  const subfolders = await Folder.find({ parent: folderId, user: userId, is_deleted: false });
+  for (const sf of subfolders) {
+    await collectFolderFiles(sf._id, userId, currentPath, zipItems);
+  }
+}
+
+/**
+ * @desc    Bulk move items
+ * @route   POST /api/v1/files/bulk-move
+ * @access  Private
+ */
+export const bulkMove = asyncHandler(async (req, res) => {
+  const { items, targetFolderId } = req.body;
+
+  if (targetFolderId) {
+    const folder = await Folder.findOne({ _id: targetFolderId, user: req.user.id });
+    if (!folder) {
+      return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    }
+  }
+
+  await FileService.bulkMove(req.user.id, items, targetFolderId);
+
+  SocketService.emitToUser(req.user.id, "ITEM_BULK_CHANGE", {
+    action: "MOVE",
+    items,
+    targetFolderId,
+  });
+
+  return ResponseHelper.success(res, { message: "Items moved successfully" });
+});
+
+/**
+ * @desc    Bulk copy items
+ * @route   POST /api/v1/files/bulk-copy
+ * @access  Private
+ */
+export const bulkCopy = asyncHandler(async (req, res) => {
+  const { items, targetFolderId } = req.body;
+
+  if (targetFolderId) {
+    const folder = await Folder.findOne({ _id: targetFolderId, user: req.user.id });
+    if (!folder) {
+      return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    }
+  }
+
+  await FileService.bulkCopy(req.user.id, items, targetFolderId);
+
+  const user = await User.findById(req.user.id);
+
+  SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
+    quota_bytes: user.quota_bytes,
+    used_bytes: user.used_bytes,
+  });
+
+  SocketService.emitToUser(req.user.id, "ITEM_BULK_CHANGE", {
+    action: "COPY",
+    targetFolderId,
+  });
+
+  return ResponseHelper.success(res, { message: "Items copied successfully" });
+});

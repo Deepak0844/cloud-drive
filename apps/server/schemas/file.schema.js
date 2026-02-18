@@ -92,3 +92,36 @@ export const bulkDeleteSchema = z.object({
       .min(1, "Items array is required"),
   }),
 });
+
+export const bulkMoveSchema = z.object({
+  body: z.object({
+    items: z
+      .array(
+        z.object({
+          type: z.enum(["file", "folder"]),
+          id: z.string(),
+        })
+      )
+      .min(1, "Items array is required"),
+    targetFolderId: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => (val === "null" || val === "" ? null : val)),
+  }),
+});
+
+export const bulkCopySchema = bulkMoveSchema;
+
+export const bulkDownloadSchema = z.object({
+  body: z.object({
+    items: z
+      .array(
+        z.object({
+          type: z.enum(["file", "folder"]),
+          id: z.string(),
+        })
+      )
+      .min(1, "At least one item is required"),
+  }),
+});

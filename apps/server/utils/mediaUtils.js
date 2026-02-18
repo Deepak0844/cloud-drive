@@ -4,6 +4,7 @@ import fsPromises from "fs/promises";
 import path from "path";
 
 // Third-party modules
+import archiver from "archiver";
 import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg";
 import { path as ffprobePath } from "@ffprobe-installer/ffprobe";
 import ffmpeg from "fluent-ffmpeg";
@@ -233,6 +234,58 @@ async function extractAudioAlbumArt(sourcePath, destPath) {
   }
 }
 
+/**
+ * Creates a ZIP archive from a list of files and folders
+ * @param {Array} items - List of items { path, name, type }
+ * @param {Stream} outputStream - The stream to write the ZIP to
+ * @returns {Promise} - Resolves when the ZIP is finalized
+ */
+function createZipStream(items, outputStream) {
+  return new Promise((resolve, reject) => {
+    const archive = archiver("zip", {
+      zlib: { level: 5 }, // Moderate compression
+    });
+
+    archive.on("error", (err) => {
+      logger.error("[ZIP] Archiver error:", err.message);
+      reject(err);
+    });
+
+    archive.on("warning", (err) => {
+      if (err.code === "ENOENT") {
+        logger.warn("[ZIP] Archiver warning:", err.message);
+      } else {
+        reject(err);
+      }
+    });
+
+    archive.pipe(outputStream);
+
+    for (const item of items) {
+      if (item.type === "file") {
+        if (fs.existsSync(item.path)) {
+          archive.file(item.path, { name: item.name });
+        } else {
+          logger.warn(`[ZIP] File not found, skipping: ${item.path}`);
+        }
+      } else if (item.type === "folder") {
+        if (fs.existsSync(item.path)) {
+          archive.directory(item.path, item.name);
+        } else {
+          logger.warn(`[ZIP] Folder not found, skipping: ${item.path}`);
+        }
+      }
+    }
+
+    archive.on("end", () => {
+      logger.info(`[ZIP] Finished bundling ${items.length} items`);
+      resolve();
+    });
+
+    archive.finalize();
+  });
+}
+
 // Exports
 const MediaUtils = {
   generateImageThumbnail,
@@ -240,6 +293,7 @@ const MediaUtils = {
   generateVideoPreview,
   generateHLS,
   extractAudioAlbumArt,
+  createZipStream,
 };
 
 export default MediaUtils;

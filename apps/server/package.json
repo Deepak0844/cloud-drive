@@ -18,6 +18,7 @@
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "@tensorflow/tfjs-node": "^4.22.0",
+    "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
     "canvas": "^3.2.1",
     "cors": "^2.8.6",
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@shared-eslint/config": "*",
     "@shared-js-config/config": "*",
+    "@types/archiver": "^7.0.0",
     "@types/jest": "^30.0.0",
     "jest": "^30.2.0",
     "mongodb-memory-server": "^11.0.1",

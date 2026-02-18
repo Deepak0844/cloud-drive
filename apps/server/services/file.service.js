@@ -4,6 +4,7 @@ import path from "path";
 
 // Models
 import File from "../models/File.js";
+import Folder from "../models/Folder.js";
 import User from "../models/User.js";
 
 // Config
@@ -176,6 +177,119 @@ async function processThumbnails(file) {
   return file;
 }
 
+/**
+ * Bulk move items (files and folders) to a new target folder
+ * @param {String} userId - User ID
+ * @param {Array} itemIds - Array of { id, type }
+ * @param {String} targetFolderId - Destination folder ID
+ */
+async function bulkMove(userId, items, targetFolderId) {
+  for (const item of items) {
+    if (item.type === "file") {
+      await File.findOneAndUpdate({ _id: item.id, user: userId }, { folder: targetFolderId || null });
+    } else if (item.type === "folder") {
+      // Prevent moving a folder into itself
+      if (item.id === targetFolderId) {
+        continue;
+      }
+      await Folder.findOneAndUpdate({ _id: item.id, user: userId }, { parent: targetFolderId || null });
+      // Note: Full path updates for children are usually handled by a post-save hook or dedicated service
+      // For now, updating the parent is sufficient as most queries use parent ID
+    }
+  }
+}
+
+/**
+ * Bulk copy items (files and folders) to a new target folder
+ * @param {String} userId - User ID
+ * @param {Array} items - Array of { id, type }
+ * @param {String} targetFolderId - Destination folder ID
+ */
+async function bulkCopy(userId, items, targetFolderId) {
+  for (const item of items) {
+    if (item.type === "file") {
+      await copyFileInternal(userId, item.id, targetFolderId);
+    } else if (item.type === "folder") {
+      await copyFolderInternal(userId, item.id, targetFolderId);
+    }
+  }
+}
+
+/**
+ * Internal helper to copy a single file
+ */
+async function copyFileInternal(userId, fileId, targetFolderId) {
+  const sourceFile = await File.findOne({ _id: fileId, user: userId });
+  if (!sourceFile) {
+    return;
+  }
+
+  const uniqueName = await getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
+  const userDir = getUserDir(userId);
+  const newFilename = `${Date.now()}-${uniqueName}`;
+  const newPath = path.join(userDir, newFilename);
+
+  // Copy physical file
+  if (fs.existsSync(sourceFile.storage_path)) {
+    fs.copyFileSync(sourceFile.storage_path, newPath);
+  }
+
+  // Create new DB entry
+  const newFileData = sourceFile.toObject();
+  delete newFileData._id;
+  delete newFileData.createdAt;
+  delete newFileData.updatedAt;
+
+  const newFile = await File.create({
+    ...newFileData,
+    name: uniqueName,
+    folder: targetFolderId || null,
+    storage_path: newPath,
+    // Reset thumbnail/preview paths as they'll be regenerated or we can copy them too
+    thumbnail_path: null,
+    preview_path: null,
+    streaming_path: null,
+  });
+
+  // Trigger thumbnail generation for the copy
+  processThumbnails(newFile).catch((err) => logger.error("[BulkCopy] Thumbnail generation failed:", err.message));
+
+  return newFile;
+}
+
+/**
+ * Internal helper to recursively copy a folder
+ */
+async function copyFolderInternal(userId, folderId, targetFolderId) {
+  const sourceFolder = await Folder.findOne({ _id: folderId, user: userId });
+  if (!sourceFolder) {
+    return;
+  }
+
+  // Create new folder entry
+  const newFolderName = sourceFolder.name; // We might want getUniqueFolderName here too
+  const newFolder = await Folder.create({
+    name: newFolderName,
+    user: userId,
+    parent: targetFolderId || null,
+    path: targetFolderId ? "child" : "/", // Simplified path logic
+  });
+
+  // Copy files inside this folder
+  const files = await File.find({ folder: folderId, user: userId, is_deleted: false });
+  for (const file of files) {
+    await copyFileInternal(userId, file._id, newFolder._id);
+  }
+
+  // Copy subfolders recursively
+  const subfolders = await Folder.find({ parent: folderId, user: userId, is_deleted: false });
+  for (const subfolder of subfolders) {
+    await copyFolderInternal(userId, subfolder._id, newFolder._id);
+  }
+
+  return newFolder;
+}
+
 // Exports
 const FileService = {
   getUserDir,
@@ -185,6 +299,8 @@ const FileService = {
   checkQuota,
   getUniqueFilename,
   processThumbnails,
+  bulkMove,
+  bulkCopy,
 };
 
 export default FileService;
