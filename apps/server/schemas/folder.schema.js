@@ -28,3 +28,21 @@ export const moveFolderSchema = z.object({
 });
 
 export const copyFolderSchema = moveFolderSchema;
+
+export const folderIdParamSchema = z.object({
+  params: z.object({
+    id: z.string().min(1, "Folder ID is required"),
+  }),
+});
+
+export const getFoldersSchema = z.object({
+  query: z.object({
+    search: z.string().optional(),
+    parentId: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => (val === "null" || val === "" ? null : val)),
+    tag: z.string().optional(),
+  }),
+});

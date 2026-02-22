@@ -86,6 +86,8 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/1",
           mime_type: "text/plain",
+          extension: "txt",
+          category: "document",
         },
         {
           name: "file2.jpg",
@@ -94,6 +96,8 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/2",
           mime_type: "image/jpeg",
+          extension: "jpg",
+          category: "image",
         },
         {
           name: "other.txt",
@@ -102,6 +106,8 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/3",
           mime_type: "text/plain",
+          extension: "txt",
+          category: "document",
         },
       ]);
     });
@@ -130,12 +136,48 @@ describe("File API", () => {
         folder: folder._id,
         storage_path: "/tmp/4",
         mime_type: "text/plain",
+        extension: "txt",
+        category: "document",
       });
 
       const response = await request(app).get(`/api/v1/files?folderId=${folder._id}`).set(authHeader).expect(200);
 
       expect(response.body.data.length).toBe(1);
       expect(response.body.data[0].name).toBe("subfile.txt");
+    });
+
+    it("should paginate files with pn and ps", async () => {
+      await File.create([
+        {
+          name: "p1.txt",
+          original_name: "p1.txt",
+          size_bytes: 1,
+          user: user._id,
+          storage_path: "/tmp/p1",
+          mime_type: "text/plain",
+        },
+        {
+          name: "p2.txt",
+          original_name: "p2.txt",
+          size_bytes: 1,
+          user: user._id,
+          storage_path: "/tmp/p2",
+          mime_type: "text/plain",
+        },
+        {
+          name: "p3.txt",
+          original_name: "p3.txt",
+          size_bytes: 1,
+          user: user._id,
+          storage_path: "/tmp/p3",
+          mime_type: "text/plain",
+        },
+      ]);
+
+      const response = await request(app).get("/api/v1/files?pn=2&ps=2").set(authHeader).expect(200);
+
+      expect(response.body.data.length).toBe(2);
+      expect(response.body.page).toBe(2);
     });
   });
 
@@ -214,6 +256,8 @@ describe("File API", () => {
         user: user._id, // Owned by first user
         storage_path: "/tmp/p1",
         mime_type: "text/plain",
+        extension: "txt",
+        category: "document",
       });
 
       await request(app)
@@ -297,7 +341,7 @@ describe("File API", () => {
       const response = await request(app)
         .post("/api/v1/files/upload")
         .set(authHeader)
-        .attach("file", Buffer.from("malicious"), "../../../etc/passwd")
+        .attach("file", Buffer.from("malicious"), { filename: "../../../etc/passwd.txt", contentType: "text/plain" })
         .expect(201);
 
       // Should be sanitized (e.g. etc-passwd or similar)

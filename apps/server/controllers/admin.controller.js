@@ -8,6 +8,7 @@ import { createNotification } from "./notification.controller.js";
 
 // Services
 import SocketService from "../services/socket.service.js";
+import SystemService from "../services/system.service.js";
 
 // Constants
 import {
@@ -31,8 +32,21 @@ import FormatUtils from "../utils/formatUtils.js";
  * @access  Private/Admin
  */
 export const getUsers = asyncHandler(async (req, res) => {
-  const users = await User.find().select("-password");
-  return ResponseHelper.success(res, users, StatusCodes.OK, { count: users.length });
+  const page = Math.max(1, parseInt(req.query.pn) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.ps) || 20));
+  const skip = (page - 1) * limit;
+
+  const [users, total] = await Promise.all([
+    User.find().select("-password").skip(skip).limit(limit).sort("-createdAt"),
+    User.countDocuments(),
+  ]);
+
+  return ResponseHelper.success(res, users, StatusCodes.OK, {
+    count: users.length,
+    total,
+    page,
+    pages: Math.ceil(total / limit),
+  });
 });
 
 /**
@@ -70,25 +84,26 @@ export const updateUserQuota = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Get system stats
+ * @desc    Get system stats (Real-time hardware + storage analytics)
  * @route   GET /api/v1/admin/stats
  * @access  Private/Admin
  */
 export const getSystemStats = asyncHandler(async (req, res) => {
+  const [hardware, analytics] = await Promise.all([
+    SystemService.getHardwareStats(),
+    SystemService.getStorageAnalytics(),
+  ]);
+
   const userCount = await User.countDocuments();
   const fileCount = await File.countDocuments({ is_deleted: false });
 
-  const stats = await File.aggregate([
-    { $match: { is_deleted: false } },
-    { $group: { _id: null, totalUsedBytes: { $sum: "$size_bytes" } } },
-  ]);
-
-  const totalUsedBytes = stats.length > 0 ? stats[0].totalUsedBytes : 0;
-
   return ResponseHelper.success(res, {
-    total_users: userCount,
-    total_files: fileCount,
-    total_used_bytes: totalUsedBytes,
+    system: hardware,
+    analytics: analytics,
+    counts: {
+      total_users: userCount,
+      total_files: fileCount,
+    },
   });
 });
 

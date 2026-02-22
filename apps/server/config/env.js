@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { z } from "zod";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 /**
  * Environment Variable Schema
@@ -25,6 +25,13 @@ const envSchema = z.object({
   NAS_STORAGE_PATH: z.string({
     required_error: "NAS_STORAGE_PATH is required",
   }),
+  APP_BASE_URL: z.string().url().default("http://localhost:9001"),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  LOG_LEVEL: z.string().default("info"),
+  TRASH_EXPIRY_DAYS: z.string().transform(Number).default("30"),
+  CLEANUP_INTERVAL_HOURS: z.string().transform(Number).default("1"),
+  TEMP_UPLOAD_EXPIRY_HOURS: z.string().transform(Number).default("24"),
+  ALLOWED_ORIGINS: z.string().optional(), // Comma-separated list of allowed CORS origins
 });
 
 // Validate environment variables

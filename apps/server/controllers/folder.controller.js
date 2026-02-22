@@ -22,8 +22,42 @@ import SocketService from "../services/socket.service.js";
  * @access  Private
  */
 export const getFolders = asyncHandler(async (req, res) => {
-  const folders = await Folder.find({ user: req.user.id, is_deleted: false }).sort("name");
+  const { search, parentId, tag } = req.query;
+
+  const query = { user: req.user.id, is_deleted: false };
+
+  if (search) {
+    query.name = { $regex: search, $options: "i" };
+  }
+
+  if (parentId !== undefined) {
+    query.parent = parentId;
+  }
+
+  if (tag) {
+    query.tags = tag;
+  }
+
+  const folders = await Folder.find(query).sort("name");
   return ResponseHelper.success(res, folders);
+});
+
+// ... existing controllers ...
+
+/**
+ * @desc    Update folder tags
+ * @route   PATCH /api/v1/folders/:id/tags
+ * @access  Private
+ */
+export const updateFolderTags = asyncHandler(async (req, res) => {
+  const { tags } = req.body;
+  const folder = await Folder.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, { tags }, { new: true });
+
+  if (!folder) {
+    return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
+
+  return ResponseHelper.success(res, folder);
 });
 
 /**

@@ -1,13 +1,19 @@
 import http from "http";
 import app from "../app.js";
 
+// Config
+import Env from "../config/env.js";
+
+// Services
 import SocketService from "../services/socket.service.js";
+
+// Utils
 import logger from "../utils/logger.js";
 
 /**
  * Get port from environment and store in Express.
  */
-const port = normalizePort(process.env.PORT || "3001");
+const port = normalizePort(Env.PORT);
 app.set("port", port);
 
 /**

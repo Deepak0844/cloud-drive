@@ -7,13 +7,20 @@ import cron from "node-cron";
 
 // Models
 import File from "../models/File.js";
-import User from "../models/User.js";
+import Folder from "../models/Folder.js";
 
 // Config
 import config from "../config/env.js";
 
+// Constants
+import { ItemTypes } from "../constants/generalConstants.js";
+
 // Utils
 import logger from "./logger.js";
+import DbUtils from "./dbUtils.js";
+
+// Services
+import DuplicateService from "../services/duplicate.service.js";
 
 /**
  * Initialize cron jobs
@@ -27,34 +34,31 @@ function initCronJobs() {
     logger.info("🧹 Running daily trash cleanup...");
     try {
       const expiryDays = config.TRASH_EXPIRY_DAYS;
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - expiryDays);
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() - expiryDays);
 
-      const itemsToDelete = await File.find({
+      // 1. Find directly deleted folders that have expired
+      const foldersToDelete = await Folder.find({
         is_deleted: true,
-        deleted_at: { $lte: thirtyDaysAgo },
+        deleted_directly: true,
+        deleted_at: { $lte: expiryDate },
       });
 
-      logger.info(`Found ${itemsToDelete.length} items to permanently delete.`);
+      for (const folder of foldersToDelete) {
+        logger.info(`Auto-purging expired folder: ${folder.name} (${folder._id})`);
+        await DbUtils.permanentDeleteRecursive(ItemTypes.FOLDER, folder._id, folder.user);
+      }
 
-      for (const file of itemsToDelete) {
-        const fileSize = file.size_bytes;
-        const userId = file.user;
+      // 2. Find directly deleted files that have expired
+      const filesToDelete = await File.find({
+        is_deleted: true,
+        deleted_directly: true,
+        deleted_at: { $lte: expiryDate },
+      });
 
-        // Physical delete
-        if (fs.existsSync(file.storage_path)) {
-          fs.unlinkSync(file.storage_path);
-        }
-        if (file.thumbnail_path && fs.existsSync(file.thumbnail_path)) {
-          fs.unlinkSync(file.thumbnail_path);
-        }
-        // DB delete
-        await File.deleteOne({ _id: file._id });
-
-        // Update User quota
-        await User.findByIdAndUpdate(userId, {
-          $inc: { used_bytes: -fileSize },
-        });
+      for (const file of filesToDelete) {
+        logger.info(`Auto-purging expired file: ${file.name} (${file._id})`);
+        await DbUtils.permanentDeleteRecursive(ItemTypes.FILE, file._id, file.user);
       }
 
       logger.info("✅ Trash cleanup completed.");
@@ -65,25 +69,32 @@ function initCronJobs() {
 
   // Run at defined interval: Cleanup orphaned temp uploads
   const cleanupIntervalHours = config.CLEANUP_INTERVAL_HOURS;
-  cron.schedule(`0 */${cleanupIntervalHours} * * *`, () => {
+  cron.schedule(`0 */${cleanupIntervalHours} * * *`, async () => {
     logger.info("🧹 Running temp upload cleanup...");
     try {
       const tempDir = path.join(config.NAS_STORAGE_PATH, "temp", "uploads");
-      if (!fs.existsSync(tempDir)) {
-        return;
+
+      // Check if temp dir exists asynchronously
+      try {
+        await fs.promises.access(tempDir);
+      } catch {
+        return; // Directory doesn't exist, nothing to clean
       }
 
-      const sessions = fs.readdirSync(tempDir);
+      const sessions = await fs.promises.readdir(tempDir);
       const now = Date.now();
-      const expiryHours = config.TEMP_UPLOAD_EXPIRY_HOURS;
-      const expiryMs = expiryHours * 60 * 60 * 1000;
+      const expiryMs = config.TEMP_UPLOAD_EXPIRY_HOURS * 60 * 60 * 1000;
 
       for (const session of sessions) {
         const sessionPath = path.join(tempDir, session);
-        const stats = fs.statSync(sessionPath);
-        if (now - stats.mtimeMs > expiryMs) {
-          logger.info(`Deleting orphaned session: ${session}`);
-          fs.rmSync(sessionPath, { recursive: true, force: true });
+        try {
+          const stats = await fs.promises.stat(sessionPath);
+          if (now - stats.mtimeMs > expiryMs) {
+            logger.info(`Deleting orphaned session: ${session}`);
+            await fs.promises.rm(sessionPath, { recursive: true, force: true });
+          }
+        } catch (statErr) {
+          logger.warn(`Could not stat session ${session}: ${statErr.message}`);
         }
       }
       logger.info("✅ Temp cleanup completed.");
@@ -91,6 +102,24 @@ function initCronJobs() {
       logger.error("❌ Temp cleanup error:", err);
     }
   });
+
+  // Run every day at 02:00: Duplicate Finder
+  cron.schedule("0 2 * * *", async () => {
+    logger.info("🔍 Running daily duplicate finder...");
+    await DuplicateService.findAndNotifyDuplicates();
+    logger.info("✅ Duplicate finder completed.");
+  });
+
+  // Trigger Duplicate Finder on server start
+  // We use a small delay to ensure DB and other services are fully initialized
+  setTimeout(async () => {
+    logger.info("🚀 Triggering Duplicate Finder on server startup...");
+    try {
+      await DuplicateService.findAndNotifyDuplicates();
+    } catch (err) {
+      logger.error("❌ Startup Duplicate Finder failed:", err.message);
+    }
+  }, 5000);
 
   logger.info("⏰ Cron jobs initialized");
 }

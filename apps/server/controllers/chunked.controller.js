@@ -8,6 +8,7 @@ import User from "../models/User.js";
 
 // Services
 import FileService from "../services/file.service.js";
+import MetadataService from "../services/metadata.service.js";
 import SocketService from "../services/socket.service.js";
 
 // Constants
@@ -102,14 +103,22 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
     fs.rmdirSync(chunkDir);
 
     const stats = fs.statSync(finalPath);
+    const extension = path.extname(name).toLowerCase().replace(".", "");
+    const mime_type = mimeType || MimeUtils.getMimeType(name);
+    const category = MetadataService.getCategory(mime_type, name);
+    const metadata = await MetadataService.extractMetadata(finalPath, category);
+
     const file = await File.create({
       user: req.user.id,
       folder: folderId || null,
       name: uniqueName,
       original_name: name,
-      mime_type: mimeType || MimeUtils.getMimeType(name),
+      mime_type,
+      extension: extension || "bin",
+      category,
       size_bytes: stats.size,
       storage_path: finalPath,
+      metadata,
     });
 
     const user = await User.findById(req.user.id);

@@ -100,7 +100,7 @@ describe("Admin API", () => {
       const response = await request(app).get("/api/v1/admin/stats").set(adminHeader).expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.total_users).toBeDefined();
+      expect(response.body.data.counts.total_users).toBeDefined();
     });
   });
 

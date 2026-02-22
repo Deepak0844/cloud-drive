@@ -9,10 +9,17 @@ import {
   downloadFile,
   getFilePreview,
   getFiles,
+  getRecentFiles,
   moveFile,
   renameFile,
+  streamFile,
+  toggleFavorite,
+  updateFileTags,
   uploadFile,
   uploadMiddleware,
+  downloadAsZip,
+  bulkMove,
+  bulkCopy,
 } from "../controllers/file.controller.js";
 
 // Middleware
@@ -27,6 +34,14 @@ import {
   copyFileSchema,
   bulkDeleteSchema,
   uploadFileSchema,
+  getFilesSchema,
+  getRecentFilesSchema,
+  idParamSchema,
+  favoriteFileSchema,
+  updateTagsSchema,
+  bulkMoveSchema,
+  bulkCopySchema,
+  bulkDownloadSchema,
 } from "../schemas/file.schema.js";
 
 const router = express.Router();
@@ -41,13 +56,20 @@ router.post("/upload/chunk", uploadMiddleware, validate(uploadChunkSchema), uplo
 router.post("/upload/finalize", validate(finalizeChunkedUploadSchema), finalizeChunkedUpload);
 
 // File operation routes
-router.get("/", getFiles);
-router.get("/:id/download", downloadFile);
-router.get("/:id/preview", getFilePreview);
+router.get("/", validate(getFilesSchema), getFiles);
+router.get("/recent", validate(getRecentFilesSchema), getRecentFiles);
+router.get("/:id/download", validate(idParamSchema), downloadFile);
+router.get("/:id/preview", validate(idParamSchema), getFilePreview);
 router.patch("/:id", validate(renameFileSchema), renameFile);
+router.patch("/:id/favorite", validate(favoriteFileSchema), toggleFavorite);
+router.patch("/:id/tags", validate(updateTagsSchema), updateFileTags);
+router.get("/:id/stream", validate(idParamSchema), streamFile);
 router.post("/:id/move", validate(moveFileSchema), moveFile);
 router.post("/:id/copy", validate(copyFileSchema), copyFile);
 router.post("/bulk-delete", validate(bulkDeleteSchema), bulkDelete);
-router.delete("/:id", deleteFile);
+router.post("/bulk-move", validate(bulkMoveSchema), bulkMove);
+router.post("/bulk-copy", validate(bulkCopySchema), bulkCopy);
+router.post("/bulk-download", validate(bulkDownloadSchema), downloadAsZip);
+router.delete("/:id", validate(idParamSchema), deleteFile);
 
 export default router;
