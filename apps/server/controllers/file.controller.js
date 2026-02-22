@@ -1,33 +1,56 @@
+// Native modules
 import fs from "fs";
-import multer from "multer";
 import path from "path";
 
-// Constants
-import ErrorMessages from "../constants/errorMessages.js";
-import StatusCodes from "../constants/statusCodes.js";
-
-// Utils
-import DbUtils from "../utils/dbUtils.js";
-import ResponseHelper from "../utils/responseHelper.js";
-import logger from "../utils/logger.js";
+// Packages
+import multer from "multer";
 
 // Models
 import File from "../models/File.js";
-import User from "../models/User.js";
 import Folder from "../models/Folder.js";
-
-// Controllers
-import { createNotification } from "./notification.controller.js";
+import User from "../models/User.js";
 
 // Services
 import FileService from "../services/file.service.js";
 import SocketService from "../services/socket.service.js";
 
+// Constants
+import { ErrorMessages, StatusCodes, ItemTypes } from "../constants/generalConstants.js";
+
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
 
-// Schemas
-import { renameFileSchema, moveFileSchema, bulkDeleteSchema } from "../schemas/file.schema.js";
+// Utils
+import ResponseHelper from "../utils/responseHelper.js";
+import DbUtils from "../utils/dbUtils.js";
+import MediaUtils from "../utils/mediaUtils.js";
+import FileUtils from "../utils/fileUtils.js";
+
+/**
+ * @desc    Get files in a folder
+ * @route   GET /api/v1/files
+ * @access  Private
+ */
+export const getFiles = asyncHandler(async (req, res) => {
+  const folderId = req.query.folderId || null;
+  const search = req.query.search || null;
+
+  const query = { user: req.user.id, is_deleted: false };
+
+  if (search) {
+    // Case-insensitive search on file name
+    query.name = { $regex: search, $options: "i" };
+    // If folderId is provided, search within that folder, otherwise search globally
+    if (folderId) {
+      query.folder = folderId;
+    }
+  } else {
+    query.folder = folderId;
+  }
+
+  const files = await File.find(query).sort("-createdAt");
+  return ResponseHelper.success(res, files, StatusCodes.OK, { count: files.length });
+});
 
 // Configure Multer Storage
 const storage = multer.diskStorage({
@@ -47,10 +70,11 @@ export const uploadMiddleware = upload.single("file");
 /**
  * @desc    Upload file
  * @route   POST /api/v1/files/upload
+ * @access  Private
  */
 export const uploadFile = asyncHandler(async (req, res) => {
   if (!req.file) {
-    return ResponseHelper.error(res, "Please upload a file", StatusCodes.BAD_REQUEST);
+    return ResponseHelper.error(res, ErrorMessages.FILE_REQUIRED, StatusCodes.BAD_REQUEST);
   }
 
   const { folderId } = req.body;
@@ -58,20 +82,13 @@ export const uploadFile = asyncHandler(async (req, res) => {
   // Check quota via service
   const hasQuota = await FileService.checkQuota(req.user.id, req.file.size);
   if (!hasQuota) {
-    if (fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
+    FileUtils.cleanupFile(req.file.path);
     return ResponseHelper.error(res, ErrorMessages.QUOTA_EXCEEDED, StatusCodes.FORBIDDEN);
   }
 
   // Generate unique name
-  const uniqueName = await FileService.getUniqueFilename(
-    req.user.id,
-    folderId === "null" || !folderId ? null : folderId,
-    req.file.originalname
-  );
+  const uniqueName = await FileService.getUniqueFilename(req.user.id, folderId, req.file.originalname);
 
-  // Create database entry
   const file = await File.create({
     name: uniqueName,
     original_name: req.file.originalname,
@@ -87,57 +104,27 @@ export const uploadFile = asyncHandler(async (req, res) => {
   user.used_bytes += req.file.size;
   await user.save();
 
-  // Process thumbnails via service
-  await FileService.processThumbnails(file);
-
-  // Notify user
-  await createNotification(
-    req.user.id,
-    "UPLOAD_COMPLETE",
-    "Upload Successful",
-    `File ${req.file.originalname} has been uploaded successfully.`
-  );
-
-  // Emit socket events
   SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
     quota_bytes: user.quota_bytes,
     used_bytes: user.used_bytes,
   });
+
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
     action: "UPLOAD",
-    folderId: file.folder,
+    fileId: file._id,
+    folderId,
   });
+
+  // Background processing for thumbnails
+  FileService.processThumbnails(file);
 
   return ResponseHelper.success(res, file, StatusCodes.CREATED);
 });
 
 /**
- * @desc    Get files for current user
- * @route   GET /api/v1/files
- */
-export const getFiles = asyncHandler(async (req, res) => {
-  const folderId = req.query.folder || null;
-  const search = req.query.search || null;
-
-  const query = { user: req.user.id, is_deleted: false };
-
-  if (search) {
-    query.name = { $regex: search, $options: "i" };
-    if (folderId) {
-      query.folder = folderId;
-    }
-  } else {
-    query.folder = folderId;
-  }
-
-  const files = await File.find(query);
-
-  return ResponseHelper.success(res, files, StatusCodes.OK, { count: files.length });
-});
-
-/**
  * @desc    Download file
  * @route   GET /api/v1/files/:id/download
+ * @access  Private
  */
 export const downloadFile = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
@@ -147,31 +134,16 @@ export const downloadFile = asyncHandler(async (req, res) => {
   }
 
   if (!fs.existsSync(file.storage_path)) {
-    return ResponseHelper.error(res, "Physical file not found on server", StatusCodes.NOT_FOUND);
+    return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
-  return res.download(file.storage_path, file.name);
+  res.download(file.storage_path, file.name);
 });
 
 /**
- * @desc    Delete file (Soft delete)
- * @route   DELETE /api/v1/files/:id
- */
-export const deleteFile = asyncHandler(async (req, res) => {
-  await DbUtils.softDeleteRecursive("file", req.params.id, req.user.id, true);
-
-  // Emit socket event
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
-    action: "DELETE",
-    fileId: req.params.id,
-  });
-
-  return ResponseHelper.success(res, {});
-});
-
-/**
- * @desc    Get file preview or thumbnail
+ * @desc    Get file preview
  * @route   GET /api/v1/files/:id/preview
+ * @access  Private
  */
 export const getFilePreview = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
@@ -183,7 +155,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
   const useThumb = req.query.thumbnail === "true";
   let filePath = useThumb && file.thumbnail_path ? file.thumbnail_path : file.storage_path;
 
-  // Processing logic
+  // For non-thumbnails, check if we need a transcoded preview (e.g. for MOV)
   const isMov = file.mime_type === "video/quicktime" || file.name.toLowerCase().endsWith(".mov");
   if (!useThumb && isMov) {
     if (file.preview_path && fs.existsSync(file.preview_path)) {
@@ -191,50 +163,62 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     } else {
       // Attempt on-the-fly preview generation
       try {
-        const { generateVideoPreview } = (await import("../utils/mediaUtils.js")).default;
         const previewDir = FileService.getPreviewDir(file.user.toString());
         const previewPath = path.join(previewDir, `${file._id}.mp4`);
-        await generateVideoPreview(file.storage_path, previewPath);
+        await MediaUtils.generateVideoPreview(file.storage_path, previewPath);
 
         file.preview_path = previewPath;
         await file.save();
         filePath = previewPath;
       } catch (e) {
-        logger.error("On-the-fly video preview failed:", e);
+        // Fall back to original storage_path (might not play in browser)
+        console.error("On-the-fly video preview failed:", e);
       }
     }
   }
 
+  // Check if file exists
   if (!fs.existsSync(filePath)) {
+    // If thumbnail requested but missing, try generating on-the-fly
     if (useThumb && fs.existsSync(file.storage_path)) {
       if (file.mime_type.startsWith("image/")) {
-        filePath = file.storage_path;
+        try {
+          const thumbnailDir = FileService.getThumbnailDir(file.user.toString());
+          const thumbPath = path.join(thumbnailDir, `${file._id}.jpg`);
+          await MediaUtils.generateImageThumbnail(file.storage_path, thumbPath);
+
+          file.thumbnail_path = thumbPath;
+          await file.save();
+          filePath = thumbPath;
+        } catch (e) {
+          console.error("On-the-fly image thumbnail failed:", e);
+          // Fallback to original for images
+          filePath = file.storage_path;
+        }
       } else if (file.mime_type.startsWith("video/")) {
         try {
-          const { generateVideoThumbnail } = (await import("../utils/mediaUtils.js")).default;
-          const thumbDir = FileService.getThumbnailDir(file.user.toString());
+          const thumbnailDir = FileService.getThumbnailDir(file.user.toString());
           const thumbName = `${file._id}.jpg`;
-          const generatedPath = await generateVideoThumbnail(file.storage_path, thumbDir, thumbName);
+          const thumbPath = await MediaUtils.generateVideoThumbnail(file.storage_path, thumbnailDir, thumbName);
 
-          file.thumbnail_path = generatedPath;
+          file.thumbnail_path = thumbPath;
           await file.save();
-          filePath = generatedPath;
+          filePath = thumbPath;
         } catch (e) {
-          logger.error("On-the-fly video thumbnail failed:", e);
-          return ResponseHelper.error(res, "Thumbnail generation failed", StatusCodes.NOT_FOUND);
+          console.error("On-the-fly video thumbnail failed:", e);
+          return ResponseHelper.error(res, ErrorMessages.THUMBNAIL_FAILED, StatusCodes.NOT_FOUND);
         }
       } else {
-        return ResponseHelper.error(res, "Thumbnail not available", StatusCodes.NOT_FOUND);
+        return ResponseHelper.error(res, ErrorMessages.THUMBNAIL_NOT_AVAILABLE, StatusCodes.NOT_FOUND);
       }
     } else {
-      return ResponseHelper.error(res, "File not found", StatusCodes.NOT_FOUND);
+      return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
     }
   }
 
-  // HEIC conversion
-  const isHeic = file.mime_type === "image/heic" || file.name.toLowerCase().endsWith(".heic");
-  const isMissingThumb = useThumb && !file.thumbnail_path;
-  if (isHeic && (!useThumb || isMissingThumb)) {
+  // Handle HEIC conversion on-the-fly
+  const isHeic = file.name.toLowerCase().endsWith(".heic") || file.name.toLowerCase().endsWith(".heif");
+  if (isHeic && !useThumb) {
     try {
       const heicConvert = (await import("heic-convert")).default;
       const inputBuffer = await fs.promises.readFile(file.storage_path);
@@ -247,66 +231,70 @@ export const getFilePreview = asyncHandler(async (req, res) => {
       res.set("Cache-Control", "public, max-age=3600");
       return res.send(outputBuffer);
     } catch (error) {
-      logger.error("HEIC Conversion Error:", error);
+      console.error("HEIC Conversion Error:", error);
+      // Fall through to standard file serving
     }
   }
 
+  // Standard file serving
   const absolutePath = path.resolve(filePath);
   let contentType = useThumb ? "image/jpeg" : file.mime_type;
 
+  // If serving a transcoded preview, it's always an mp4
   if (!useThumb && isMov && filePath.endsWith(".mp4")) {
     contentType = "video/mp4";
   }
 
   res.set("Content-Type", contentType);
   res.set("Accept-Ranges", "bytes");
-  return res.sendFile(absolutePath);
+  res.set("Cache-Control", "public, max-age=3600");
+  res.sendFile(absolutePath);
 });
 
 /**
  * @desc    Rename file
  * @route   PATCH /api/v1/files/:id
+ * @access  Private
  */
 export const renameFile = asyncHandler(async (req, res) => {
-  renameFileSchema.parse({ body: req.body });
-
   const { name } = req.body;
-  const file = await File.findOne({ _id: req.params.id, user: req.user.id });
+  const file = await File.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, { name }, { new: true });
 
   if (!file) {
     return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
-  file.name = name;
-  await file.save();
+  SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
+    action: "RENAME",
+    fileId: file._id,
+    name,
+  });
 
   return ResponseHelper.success(res, file);
 });
 
 /**
- * @desc    Move file
+ * @desc    Move file to folder
  * @route   POST /api/v1/files/:id/move
+ * @access  Private
  */
 export const moveFile = asyncHandler(async (req, res) => {
-  moveFileSchema.parse({ body: req.body });
-
   const { folderId } = req.body;
-  const destFolderId = folderId === "null" || !folderId ? null : folderId;
+  const destFolderId = folderId;
 
-  const file = await File.findOne({ _id: req.params.id, user: req.user.id });
-  if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
-  }
-
+  // Verify folder exists
   if (destFolderId) {
-    const destFolder = await Folder.findOne({ _id: destFolderId, user: req.user.id });
-    if (!destFolder) {
-      return ResponseHelper.error(res, "Destination folder not found", StatusCodes.NOT_FOUND);
+    const folder = await Folder.findOne({ _id: destFolderId, user: req.user.id });
+    if (!folder) {
+      return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
     }
   }
 
-  file.folder = destFolderId;
-  await file.save();
+  const file = await DbUtils.moveItem(ItemTypes.FILE, req.params.id, destFolderId, req.user.id);
+
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
     action: "MOVE",
@@ -320,40 +308,19 @@ export const moveFile = asyncHandler(async (req, res) => {
 /**
  * @desc    Copy file
  * @route   POST /api/v1/files/:id/copy
+ * @access  Private
  */
 export const copyFile = asyncHandler(async (req, res) => {
   const { folderId } = req.body;
-  const destFolderId = folderId === "null" || !folderId ? null : folderId;
+  const destFolderId = folderId;
 
-  const sourceFile = await File.findOne({ _id: req.params.id, user: req.user.id });
-  if (!sourceFile) {
+  const file = await DbUtils.copyRecursive(ItemTypes.FILE, req.params.id, destFolderId, req.user.id);
+
+  if (!file) {
     return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
-  const hasQuota = await FileService.checkQuota(req.user.id, sourceFile.size_bytes);
-  if (!hasQuota) {
-    return ResponseHelper.error(res, ErrorMessages.QUOTA_EXCEEDED, StatusCodes.FORBIDDEN);
-  }
-
-  const destDir = FileService.getUserDir(req.user.id);
-  const newFileName = `${Date.now()}-copy-${sourceFile.name}`;
-  const newStoragePath = path.join(destDir, newFileName);
-
-  fs.copyFileSync(sourceFile.storage_path, newStoragePath);
-
-  const newFile = await File.create({
-    name: `Copy of ${sourceFile.name}`,
-    original_name: sourceFile.original_name,
-    user: req.user.id,
-    folder: destFolderId,
-    mime_type: sourceFile.mime_type,
-    size_bytes: sourceFile.size_bytes,
-    storage_path: newStoragePath,
-  });
-
   const user = await User.findById(req.user.id);
-  user.used_bytes += sourceFile.size_bytes;
-  await user.save();
 
   SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
     quota_bytes: user.quota_bytes,
@@ -365,16 +332,37 @@ export const copyFile = asyncHandler(async (req, res) => {
     folderId: destFolderId,
   });
 
-  return ResponseHelper.success(res, newFile, StatusCodes.CREATED);
+  return ResponseHelper.success(res, file);
 });
 
 /**
- * @desc    Bulk delete items (Soft delete)
+ * @desc    Delete file
+ * @route   DELETE /api/v1/files/:id
+ * @access  Private
+ */
+export const deleteFile = asyncHandler(async (req, res) => {
+  const file = await File.findOne({ _id: req.params.id, user: req.user.id });
+
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
+
+  await DbUtils.softDeleteRecursive(ItemTypes.FILE, req.params.id, req.user.id, true);
+
+  SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
+    action: "DELETE",
+    fileId: req.params.id,
+  });
+
+  return ResponseHelper.success(res, { message: "File moved to trash" });
+});
+
+/**
+ * @desc    Bulk delete files
  * @route   POST /api/v1/files/bulk-delete
+ * @access  Private
  */
 export const bulkDelete = asyncHandler(async (req, res) => {
-  bulkDeleteSchema.parse({ body: req.body });
-
   const { items } = req.body;
 
   for (const item of items) {
@@ -386,5 +374,5 @@ export const bulkDelete = asyncHandler(async (req, res) => {
     items,
   });
 
-  return ResponseHelper.success(res, {});
+  return ResponseHelper.success(res, { message: "Items moved to trash" });
 });

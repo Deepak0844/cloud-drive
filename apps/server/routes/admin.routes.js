@@ -11,22 +11,23 @@ import {
 } from "../controllers/admin.controller.js";
 
 // Middleware
-import { authorize, protect } from "../middleware/auth.js";
+import { admin, protect } from "../middleware/auth.js";
+import validate from "../middleware/validate.js";
 
-// Constants
-import Roles from "../constants/roles.js";
+// Schemas
+import { handleQuotaRequestSchema, updateUserQuotaSchema, updateUserStatusSchema } from "../schemas/admin.schema.js";
 
 const router = express.Router();
 
-// All routes are protected and require admin role
+// Protect all routes and restrict to admin
 router.use(protect);
-router.use(authorize(Roles.ADMIN));
+router.use(admin);
 
 router.get("/users", getUsers);
-router.patch("/users/:id/quota", updateUserQuota);
-router.patch("/users/:id/status", updateUserStatus);
+router.patch("/users/:id/quota", validate(updateUserQuotaSchema), updateUserQuota);
+router.patch("/users/:id/status", validate(updateUserStatusSchema), updateUserStatus);
 router.get("/stats", getSystemStats);
 router.get("/quota-requests", getAllQuotaRequests);
-router.patch("/quota-requests/:id", handleQuotaRequest);
+router.patch("/quota-requests/:id", validate(handleQuotaRequestSchema), handleQuotaRequest);
 
 export default router;

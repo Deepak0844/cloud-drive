@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+// Constants
+import { QuotaStatus } from "../constants/generalConstants.js";
+
 const quotaRequestSchema = new mongoose.Schema(
   {
     user: {
@@ -17,8 +20,8 @@ const quotaRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["PENDING", "APPROVED", "REJECTED"],
-      default: "PENDING",
+      enum: Object.values(QuotaStatus),
+      default: QuotaStatus.PENDING,
     },
     admin_note: {
       type: String,

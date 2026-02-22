@@ -8,7 +8,23 @@ export const renameFileSchema = z.object({
 
 export const moveFileSchema = z.object({
   body: z.object({
-    folderId: z.string().nullable().optional(),
+    folderId: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => (val === "null" || val === "" ? null : val)),
+  }),
+});
+
+export const copyFileSchema = moveFileSchema;
+
+export const uploadFileSchema = z.object({
+  body: z.object({
+    folderId: z
+      .string()
+      .nullable()
+      .optional()
+      .transform((val) => (val === "null" || val === "" ? null : val)),
   }),
 });
 

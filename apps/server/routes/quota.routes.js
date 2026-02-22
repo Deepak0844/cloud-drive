@@ -5,6 +5,10 @@ import { getQuotaUsage, requestQuotaIncrease } from "../controllers/quota.contro
 
 // Middleware
 import { protect } from "../middleware/auth.js";
+import validate from "../middleware/validate.js";
+
+// Schemas
+import { requestQuotaIncreaseSchema } from "../schemas/common.schema.js";
 
 const router = express.Router();
 
@@ -12,6 +16,6 @@ const router = express.Router();
 router.use(protect);
 
 router.get("/usage", getQuotaUsage);
-router.post("/request", requestQuotaIncrease);
+router.post("/request", validate(requestQuotaIncreaseSchema), requestQuotaIncrease);
 
 export default router;

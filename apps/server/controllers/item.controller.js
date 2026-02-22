@@ -1,42 +1,43 @@
-// Models
-import File from "../models/File.js";
-import Folder from "../models/Folder.js";
+// Utils
+import ResponseHelper from "../utils/responseHelper.js";
+import DbUtils from "../utils/dbUtils.js";
 
 // Services
 import SocketService from "../services/socket.service.js";
 
-// Utils
-import DbUtils from "../utils/dbUtils.js";
-import ResponseHelper from "../utils/responseHelper.js";
+// Constants
+import { SocketEvents } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
 
-// Schemas
-import { bulkOperationSchema } from "../schemas/item.schema.js";
-
 /**
- * @desc    Bulk operation on mixed items (delete/move)
+ * @desc    Handle bulk operations (delete, restore, permanent delete, move, copy)
  * @route   POST /api/v1/items/bulk-operation
  * @access  Private
  */
 export const handleBulkOperation = asyncHandler(async (req, res) => {
-  bulkOperationSchema.parse({ body: req.body });
-
   const { action, items, destination_folder_id } = req.body;
-  const results = { success: [], errors: [] };
+
+  const results = {
+    success: [],
+    errors: [],
+  };
 
   for (const item of items) {
-    const { type, id } = item;
+    const { id, type } = item;
+
     try {
       if (action === "delete") {
         await DbUtils.softDeleteRecursive(type, id, req.user.id, true);
+      } else if (action === "restore") {
+        await DbUtils.restoreRecursive(type, id, req.user.id);
+      } else if (action === "permanent_delete") {
+        await DbUtils.permanentDeleteRecursive(type, id, req.user.id);
       } else if (action === "move") {
-        if (type === "file") {
-          await File.findOneAndUpdate({ _id: id, user: req.user.id }, { folder: destination_folder_id || null });
-        } else {
-          await Folder.findOneAndUpdate({ _id: id, user: req.user.id }, { parent: destination_folder_id || null });
-        }
+        await DbUtils.moveItem(type, id, destination_folder_id, req.user.id);
+      } else if (action === "copy") {
+        await DbUtils.copyRecursive(type, id, destination_folder_id, req.user.id);
       }
       results.success.push(id);
     } catch (err) {
@@ -44,8 +45,8 @@ export const handleBulkOperation = asyncHandler(async (req, res) => {
     }
   }
 
-  // Emit socket event
-  SocketService.emitToUser(String(req.user.id), "ITEM_BULK_CHANGE", {
+  // Emit socket event for real-time updates
+  SocketService.emitToUser(String(req.user.id), SocketEvents.ITEM_BULK_CHANGE || "ITEM_BULK_CHANGE", {
     action,
     items,
     destination_folder_id,

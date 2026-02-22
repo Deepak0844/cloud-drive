@@ -7,7 +7,7 @@ import DbUtils from "../utils/dbUtils.js";
 import ResponseHelper from "../utils/responseHelper.js";
 
 // Constants
-import StatusCodes from "../constants/statusCodes.js";
+import { ErrorMessages, SuccessMessages, ItemTypes, StatusCodes } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -28,8 +28,8 @@ export const getTrashedItems = asyncHandler(async (req, res) => {
   const folders = await Folder.find(query);
 
   const items = [
-    ...folders.map((f) => ({ ...f.toObject(), type: "folder", mime_type: null })),
-    ...files.map((f) => ({ ...f.toObject(), type: "file" })),
+    ...folders.map((f) => ({ ...f.toObject(), type: ItemTypes.FOLDER, mime_type: null })),
+    ...files.map((f) => ({ ...f.toObject(), type: ItemTypes.FILE })),
   ];
 
   items.sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
@@ -43,16 +43,16 @@ export const getTrashedItems = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const restoreItem = asyncHandler(async (req, res) => {
-  let type = "file";
+  let type = ItemTypes.FILE;
   let item = await File.findOne({ _id: req.params.id, user: req.user.id });
 
   if (!item) {
     item = await Folder.findOne({ _id: req.params.id, user: req.user.id });
-    type = "folder";
+    type = ItemTypes.FOLDER;
   }
 
   if (!item) {
-    return ResponseHelper.error(res, "Item not found", StatusCodes.NOT_FOUND);
+    return ResponseHelper.error(res, ErrorMessages.ITEM_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
   await DbUtils.restoreRecursive(type, req.params.id, req.user.id, true);
@@ -66,16 +66,16 @@ export const restoreItem = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const deletePermanently = asyncHandler(async (req, res) => {
-  let type = "file";
+  let type = ItemTypes.FILE;
   let item = await File.findOne({ _id: req.params.id, user: req.user.id });
 
   if (!item) {
     item = await Folder.findOne({ _id: req.params.id, user: req.user.id });
-    type = "folder";
+    type = ItemTypes.FOLDER;
   }
 
   if (!item) {
-    return ResponseHelper.error(res, "Item not found", StatusCodes.NOT_FOUND);
+    return ResponseHelper.error(res, ErrorMessages.ITEM_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
   await DbUtils.permanentDeleteRecursive(type, req.params.id, req.user.id);
@@ -93,12 +93,12 @@ export const emptyTrash = asyncHandler(async (req, res) => {
   const folders = await Folder.find({ user: req.user.id, is_deleted: true, deleted_directly: true });
 
   for (const file of files) {
-    await DbUtils.permanentDeleteRecursive("file", file._id, req.user.id);
+    await DbUtils.permanentDeleteRecursive(ItemTypes.FILE, file._id, req.user.id);
   }
 
   for (const folder of folders) {
-    await DbUtils.permanentDeleteRecursive("folder", folder._id, req.user.id);
+    await DbUtils.permanentDeleteRecursive(ItemTypes.FOLDER, folder._id, req.user.id);
   }
 
-  return ResponseHelper.success(res, { message: "Trash emptied successfully" });
+  return ResponseHelper.success(res, { message: SuccessMessages.TRASH_EMPTIED });
 });

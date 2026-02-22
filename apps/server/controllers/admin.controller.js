@@ -10,17 +10,20 @@ import { createNotification } from "./notification.controller.js";
 import SocketService from "../services/socket.service.js";
 
 // Constants
-import ErrorMessages from "../constants/errorMessages.js";
-import StatusCodes from "../constants/statusCodes.js";
+import {
+  ErrorMessages,
+  NotificationTypes,
+  QuotaStatus,
+  SocketEvents,
+  StatusCodes,
+} from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
 
 // Utils
 import ResponseHelper from "../utils/responseHelper.js";
-
-// Schemas
-import { updateUserQuotaSchema, handleQuotaRequestSchema, updateUserStatusSchema } from "../schemas/admin.schema.js";
+import FormatUtils from "../utils/formatUtils.js";
 
 /**
  * @desc    Get all users
@@ -38,8 +41,6 @@ export const getUsers = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 export const updateUserQuota = asyncHandler(async (req, res) => {
-  updateUserQuotaSchema.parse({ body: req.body });
-
   const { quota_bytes } = req.body;
   const user = await User.findById(req.params.id);
 
@@ -55,12 +56,12 @@ export const updateUserQuota = asyncHandler(async (req, res) => {
 
   await createNotification(
     user._id,
-    "QUOTA_CHANGE",
+    NotificationTypes.QUOTA_CHANGE,
     isIncrease ? "Quota Increased" : "Quota Decreased",
-    `Your storage quota has been ${isIncrease ? "increased" : "decreased"} to ${(quota_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+    `Your storage quota has been ${isIncrease ? "increased" : "decreased"} to ${FormatUtils.bytesToGB(quota_bytes)} GB`
   );
 
-  SocketService.emitToUser(String(user._id), "QUOTA_UPDATE", {
+  SocketService.emitToUser(String(user._id), SocketEvents.QUOTA_UPDATE, {
     quota_bytes: user.quota_bytes,
     used_bytes: user.used_bytes,
   });
@@ -107,17 +108,15 @@ export const getAllQuotaRequests = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 export const handleQuotaRequest = asyncHandler(async (req, res) => {
-  handleQuotaRequestSchema.parse({ body: req.body });
-
   const { status, admin_note } = req.body;
   const request = await QuotaRequest.findById(req.params.id);
 
   if (!request) {
-    return ResponseHelper.error(res, "Quota request not found", StatusCodes.NOT_FOUND);
+    return ResponseHelper.error(res, ErrorMessages.QUOTA_REQUEST_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
-  if (request.status !== "PENDING") {
-    return ResponseHelper.error(res, "Request already processed", StatusCodes.BAD_REQUEST);
+  if (request.status !== QuotaStatus.PENDING) {
+    return ResponseHelper.error(res, ErrorMessages.REQUEST_ALREADY_PROCESSED, StatusCodes.BAD_REQUEST);
   }
 
   request.status = status;
@@ -129,26 +128,26 @@ export const handleQuotaRequest = asyncHandler(async (req, res) => {
     return ResponseHelper.error(res, ErrorMessages.USER_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
-  if (status === "APPROVED") {
+  if (status === QuotaStatus.APPROVED) {
     user.quota_bytes += request.requested_bytes;
     await user.save();
 
     await createNotification(
       user._id,
-      "QUOTA_APPROVED",
+      NotificationTypes.QUOTA_APPROVED,
       "Quota Request Approved",
-      `Your request for ${(request.requested_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB storage increase has been approved.`
+      `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been approved.`
     );
   } else {
     await createNotification(
       user._id,
-      "QUOTA_REJECTED",
+      NotificationTypes.QUOTA_REJECTED,
       "Quota Request Rejected",
-      `Your request for ${(request.requested_bytes / (1024 * 1024 * 1024)).toFixed(2)} GB storage increase has been rejected.`
+      `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been rejected.`
     );
   }
 
-  SocketService.emitToUser(String(user._id), "QUOTA_UPDATE", {
+  SocketService.emitToUser(String(user._id), SocketEvents.QUOTA_UPDATE, {
     quota_bytes: user.quota_bytes,
     used_bytes: user.used_bytes,
   });
@@ -163,8 +162,6 @@ export const handleQuotaRequest = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 export const updateUserStatus = asyncHandler(async (req, res) => {
-  updateUserStatusSchema.parse({ body: req.body });
-
   const { is_active } = req.body;
   const user = await User.findByIdAndUpdate(req.params.id, { is_active }, { new: true });
 
