@@ -1,12 +1,8 @@
 {
-  "extends": "../../shared/js-config/jsconfig-react.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@shared-components/*": ["../../shared/components/src/*"]
+      "@/*": ["./src/*"]
     }
-  },
-  "include": ["src", "public", "../../shared/**/*"],
-  "exclude": ["node_modules", "dist"]
+  }
 }

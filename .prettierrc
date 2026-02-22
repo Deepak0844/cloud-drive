@@ -9,5 +9,14 @@
   "endOfLine": "lf",
   "bracketSpacing": true,
   "jsxSingleQuote": false,
-  "quoteProps": "as-needed"
+  "quoteProps": "as-needed",
+  "plugins": ["@trivago/prettier-plugin-sort-imports"],
+  "importOrder": [
+    "^(?:react|react-dom|(?!(?:@shared|@/|[./])).+)$",
+    "^(@shared|@/)(.*)$",
+    "^[./](?!.*\\.css$).*$",
+    "\\.css$"
+  ],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true
 }

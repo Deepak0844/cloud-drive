@@ -81,10 +81,9 @@ This project enforces strict code quality standards:
 
 ```javascript
 // Shared components
-import Button from "@shared-components/button/Button";
-
 // App-specific
 import Component from "@/components/Component";
+import Button from "@shared-components/button/Button";
 ```
 
 ### VS Code Setup

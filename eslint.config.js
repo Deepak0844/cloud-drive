@@ -1,4 +1,5 @@
 import globals from "globals";
+
 import { config as reactConfig } from "./shared/eslint-config/react-internal.js";
 
 /**

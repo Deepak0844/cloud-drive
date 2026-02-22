@@ -1,0 +1,21 @@
+{
+  "name": "@shared-hooks/hooks",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.js",
+    "./useMediaQuery": "./src/useMediaQuery.js"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0"
+  },
+  "devDependencies": {
+    "@shared-eslint/config": "*",
+    "eslint": "^9.39.1"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  }
+}
