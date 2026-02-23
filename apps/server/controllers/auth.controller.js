@@ -40,13 +40,13 @@ export const register = asyncHandler(async (req, res) => {
     return ResponseHelper.error(res, ErrorMessages.USER_ALREADY_EXISTS, StatusCodes.BAD_REQUEST);
   }
 
-  const user = await User.create({
+  await User.create({
     name,
     email,
     password,
   });
 
-  sendTokenResponse(user, StatusCodes.CREATED, res, SuccessMessages.REGISTRATION_SUCCESS);
+  return ResponseHelper.success(res, {}, StatusCodes.CREATED, { message: SuccessMessages.REGISTRATION_SUCCESS });
 });
 
 /**
