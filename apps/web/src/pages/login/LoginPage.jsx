@@ -1,26 +1,52 @@
 // external
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { Card, Checkbox, Form, Input, message } from "antd";
+import { App, Card, Checkbox, Form, Input } from "antd";
 import { motion } from "framer-motion";
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+
+// hooks
+import { useAuth } from "@/hooks/useAuth";
+
+// constants
+import PageUrls from "@/constants/pageUrls";
 
 // components
 import Button from "@shared-components/components/button";
 
 function LoginPage() {
+  const { message } = App.useApp();
+  const location = useLocation();
+  const { login, isLoginLoading } = useAuth();
+
+  // Redirect back to the page the user came from, or to the dashboard
+  const from = location.state?.from?.pathname ?? "/";
+
+  async function handleFinish(values) {
+    try {
+      await login(
+        { email: values.email, password: values.password },
+        from,
+        { suppressGlobalError: true } // Let this component handle the error feedback
+      );
+      message.success("Welcome back!");
+    } catch (err) {
+      message.error(err?.data?.message ?? "Login failed. Please try again.");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-surface-dim flex flex-col items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="mb-8 flex items-center gap-4"
+        className="mb-8 flex flex-col items-center gap-4"
       >
-        <div className="w-12 h-12 flex items-center justify-center">
+        <div className="w-20 h-20 flex items-center justify-center bg-white rounded-3xl shadow-lg border border-line-base p-4">
           <img src="/logo.png" alt="Cloud Drive Logo" className="w-full h-full object-contain" />
         </div>
-        <h1 className="text-3xl font-bold text-gradient-primary">Cloud Drive</h1>
+        <h1 className="text-4xl font-black text-gradient-primary tracking-tight">Cloud Drive</h1>
       </motion.div>
 
       <div className="w-full max-w-md">
@@ -30,7 +56,7 @@ function LoginPage() {
             <p className="text-label-secondary">Please enter your details to sign in.</p>
           </div>
 
-          <Form layout="vertical" initialValues={{ remember: true }} className="space-y-4">
+          <Form layout="vertical" initialValues={{ remember: true }} className="space-y-4" onFinish={handleFinish}>
             <Form.Item label="Email" name="email" rules={[{ required: true, message: "Please input your email!" }]}>
               <Input
                 prefix={<UserOutlined className="text-label-tertiary" />}
@@ -55,29 +81,19 @@ function LoginPage() {
               <Form.Item name="remember" valuePropName="checked" noStyle>
                 <Checkbox>Remember me</Checkbox>
               </Form.Item>
-              <span
-                className="text-sm font-medium text-primary hover:text-primary-dark cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  message.info("Forgot password feature coming soon!");
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    message.info("Forgot password feature coming soon!");
-                  }
-                }}
+              <Link
+                to={PageUrls.ForgotPasswordPage}
+                className="text-sm font-medium text-primary hover:text-primary-dark"
               >
                 Forgot password?
-              </span>
+              </Link>
             </div>
 
             <Form.Item>
               <Button
                 type="primary"
                 htmlType="submit"
+                loading={isLoginLoading}
                 className="w-full h-12 rounded-xl font-bold shadow-primary text-lg"
               >
                 Sign In
@@ -87,7 +103,7 @@ function LoginPage() {
 
           <div className="text-center mt-6">
             <span className="text-label-secondary">Don&apos;t have an account? </span>
-            <Link to="/register" className="font-bold text-primary hover:text-primary-dark">
+            <Link to={PageUrls.RegisterPage} className="font-bold text-primary hover:text-primary-dark">
               Sign up for free
             </Link>
           </div>

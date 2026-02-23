@@ -9,16 +9,19 @@ import {
 } from "@ant-design/icons";
 import { Breadcrumb, Card, Divider, Form, Input, Switch } from "antd";
 import { motion } from "framer-motion";
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
-// internal components
-import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
+// constants
+import PageNames from "@/constants/pageNames";
+import PageUrls from "@/constants/pageUrls";
+
 // components
+import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
 
 function SettingsPage() {
-  const [quotaModalVisible, setQuotaModalVisible] = React.useState(false);
+  const [quotaModalVisible, setQuotaModalVisible] = useState(false);
 
   function handleRequestQuota() {
     setQuotaModalVisible(true);
@@ -30,17 +33,17 @@ function SettingsPage() {
       className="flex flex-col gap-6"
     >
       <div>
-        <h1 className="text-2xl font-bold text-label mb-2">Settings</h1>
+        <h1 className="text-2xl font-bold text-label mb-2">{PageNames.SETTINGS}</h1>
         <Breadcrumb
           items={[
             {
               title: (
-                <Link to="/">
-                  <HomeOutlined /> Home
+                <Link to={PageUrls.DashboardPage}>
+                  <HomeOutlined /> {PageNames.MY_FILES}
                 </Link>
               ),
             },
-            { title: "Settings" },
+            { title: PageNames.SETTINGS },
           ]}
         />
       </div>

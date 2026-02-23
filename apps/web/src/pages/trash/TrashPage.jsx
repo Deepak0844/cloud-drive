@@ -1,9 +1,12 @@
-// external
 import { DeleteOutlined, HomeOutlined, RestOutlined } from "@ant-design/icons";
 import { Breadcrumb } from "antd";
 import { motion } from "framer-motion";
 import React from "react";
 import { Link } from "react-router-dom";
+
+// constants
+import PageNames from "@/constants/pageNames";
+import PageUrls from "@/constants/pageUrls";
 
 // components
 import Button from "@shared-components/components/button";
@@ -18,17 +21,17 @@ function TrashPage() {
     >
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-label mb-2">Trash</h1>
+          <h1 className="text-2xl font-bold text-label mb-2">{PageNames.TRASH}</h1>
           <Breadcrumb
             items={[
               {
                 title: (
-                  <Link to="/">
-                    <HomeOutlined /> Home
+                  <Link to={PageUrls.DashboardPage}>
+                    <HomeOutlined /> {PageNames.MY_FILES}
                   </Link>
                 ),
               },
-              { title: "Trash" },
+              { title: PageNames.TRASH },
             ]}
           />
         </div>

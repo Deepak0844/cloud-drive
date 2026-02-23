@@ -16,6 +16,15 @@ import { App, Avatar, Badge, Layout, Tooltip, Typography } from "antd";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
+// hooks
+import { useAuth } from "@/hooks/useAuth";
+
+// constants
+import { STORAGE_KEYS } from "@/constants/generalConstants";
+
+// utils
+import LocalStorage from "@/utils/localStorageUtils";
+
 // components
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
@@ -78,14 +87,22 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState(initialNotifications);
   const [notificationOpen, setNotificationOpen] = React.useState(false);
+  const { logout } = useAuth();
+
+  // Read user data from localStorage (set by authApi on login / register)
+  const user = LocalStorage.get(STORAGE_KEYS.USER);
+  const displayName = user?.name ?? "User";
+  const displayEmail = user?.email ?? "";
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  function handleLogout() {
-    message.loading({ content: "Logging out...", key: "logout" });
-    setTimeout(() => {
-      message.success({ content: "Logged out successfully!", key: "logout" });
-    }, 1000);
+  async function handleLogout() {
+    try {
+      await logout();
+      message.success("Logged out successfully!");
+    } catch {
+      // Errors handled by hook
+    }
   }
 
   function markAsRead(id) {
@@ -246,14 +263,14 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
         <Tooltip
           title={
             <div className="px-2 py-1">
-              <p className="font-bold text-sm mb-0">Deepak Ram</p>
-              <p className="text-[10px] opacity-80">deepak@example.com</p>
+              <p className="font-bold text-sm mb-0">{displayName}</p>
+              <p className="text-[10px] opacity-80">{displayEmail}</p>
             </div>
           }
           open={dropdownOpen ? false : undefined}
           placement="bottomRight"
           arrow={false}
-          color="#1e293b" // slate-800 for dark tooltip
+          color="#1e293b"
         >
           <Dropdown
             menu={{ items: menuItems }}

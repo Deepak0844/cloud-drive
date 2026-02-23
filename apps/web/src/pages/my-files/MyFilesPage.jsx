@@ -16,25 +16,27 @@ import {
   WarningOutlined,
 } from "@ant-design/icons";
 import { App, Breadcrumb, Input, Modal, Typography, Upload } from "antd";
+import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
-// internal components
+// constants
+import { MOCK_DATA, STORAGE } from "@shared-constants/constants";
+import PageNames from "@/constants/pageNames";
+
+// components
 import FileItem from "@/components/files/FileItem";
 import FolderItem from "@/components/files/FolderItem";
 import InfoDrawer from "@/components/files/InfoDrawer";
 import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
-// components
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
-// constants
-import { MOCK_DATA, STORAGE } from "@shared-constants/constants";
 
 const { Text } = Typography;
 
 const { Dragger } = Upload;
 
-function Dashboard() {
+function MyFilesView() {
   const { message } = App.useApp();
   const [selectedItems, setSelectedItems] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -182,7 +184,7 @@ function Dashboard() {
               {
                 title: (
                   <Link to="/" className="flex items-center gap-2 text-primary font-semibold text-xs">
-                    <HomeOutlined className="text-[10px]" /> <span>My Files</span>
+                    <HomeOutlined className="text-[10px]" /> <span>{PageNames.MY_FILES}</span>
                   </Link>
                 ),
               },
@@ -477,12 +479,15 @@ function Dashboard() {
   );
 }
 
-export default function Home() {
+export default function MyFilesPage() {
   return (
-    <App>
-      <main>
-        <Dashboard />
-      </main>
-    </App>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3 }}
+    >
+      <MyFilesView />
+    </motion.div>
   );
 }

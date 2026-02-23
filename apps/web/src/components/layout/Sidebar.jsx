@@ -1,4 +1,3 @@
-// external
 import { ControlOutlined, DeleteOutlined, FolderOpenOutlined, SettingOutlined } from "@ant-design/icons";
 import { Layout, Menu } from "antd";
 import { AnimatePresence, motion } from "framer-motion";
@@ -6,6 +5,8 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 // constants
+import PageUrls from "@/constants/pageUrls";
+import PageNames from "@/constants/pageNames";
 import { STORAGE } from "@shared-constants/constants";
 
 const { Sider } = Layout;
@@ -16,24 +17,24 @@ function Sidebar({ collapsed, isMobile }) {
 
   const menuItems = [
     {
-      key: "/",
+      key: PageUrls.DashboardPage,
       icon: <FolderOpenOutlined className="text-lg" />,
-      label: <span className="font-semibold">My Files</span>,
+      label: <span className="font-semibold">{PageNames.MY_FILES}</span>,
     },
     {
-      key: "/trash",
+      key: PageUrls.TrashPage,
       icon: <DeleteOutlined className="text-lg" />,
-      label: <span className="font-semibold">Trash</span>,
+      label: <span className="font-semibold">{PageNames.TRASH}</span>,
     },
     {
-      key: "/settings",
+      key: PageUrls.SettingsPage,
       icon: <SettingOutlined className="text-lg" />,
-      label: <span className="font-semibold">Settings</span>,
+      label: <span className="font-semibold">{PageNames.SETTINGS}</span>,
     },
     {
-      key: "/admin",
+      key: PageUrls.AdminPage,
       icon: <ControlOutlined className="text-lg" />,
-      label: <span className="font-semibold">Admin</span>,
+      label: <span className="font-semibold">{PageNames.ADMIN}</span>,
     },
   ];
 

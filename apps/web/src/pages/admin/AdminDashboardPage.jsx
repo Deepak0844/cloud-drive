@@ -1,4 +1,3 @@
-// external
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -6,16 +5,20 @@ import {
   HourglassOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Form, InputNumber, Modal, Space, Tabs, Tag, Typography, message } from "antd";
+import { Tabs, Tag, Typography, message, Modal, Form, InputNumber, Space } from "antd";
+import { motion } from "framer-motion";
 import React, { useState } from "react";
+
+// constants
+import { MOCK_DATA, UI_COLORS } from "@shared-constants/constants";
+import PageNames from "@/constants/pageNames";
+
+// utils
+import { formatBytes } from "@shared-utils/utils/format";
 
 // components
 import Table from "@shared-components/components/table";
 import TableActionButton from "@shared-components/components/table-action-button";
-// constants
-import { MOCK_DATA, UI_COLORS } from "@shared-constants/constants";
-// utils
-import { formatBytes } from "@shared-utils/utils/format";
 
 const { Text, Title } = Typography;
 
@@ -29,7 +32,7 @@ function calculatePercentage(used, total) {
   return Math.min(100, Math.round((used / total) * 100));
 }
 
-export default function AdminPage() {
+export default function AdminDashboardPage() {
   const [users, setUsers] = useState(MOCK_DATA.USERS);
   const [requests, setRequests] = useState(MOCK_DATA.REQUESTS);
 
@@ -245,9 +248,15 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="p-6 h-full flex flex-col">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3 }}
+      className="p-6 h-full flex flex-col"
+    >
       <div className="mb-6 shrink-0">
-        <Title level={2}>Admin Dashboard</Title>
+        <Title level={2}>{PageNames.ADMIN}</Title>
         <Text type="secondary">Manage users and storage requests</Text>
       </div>
 
@@ -272,6 +281,6 @@ export default function AdminPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </motion.div>
   );
 }

@@ -49,7 +49,7 @@ function MainLayout({ children }) {
               setDrawerVisible={setDrawerVisible}
             />
             <Content className="px-4 py-5 h-[calc(100vh-64px)] overflow-y-auto focus:outline-none">
-              <div className="w-full mx-auto">{children}</div>
+              <div className="w-full max-w-7xl mx-auto">{children}</div>
             </Content>
           </Layout>
         </Layout>

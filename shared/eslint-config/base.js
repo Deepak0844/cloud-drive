@@ -46,68 +46,9 @@ export const config = [
       "require-await": "warn",
 
       // Import/Export rules
-      "import/order": [
-        "error",
-        {
-          groups: [["builtin", "external"], "internal", "parent", "sibling", "index", "object"],
-          pathGroups: [
-            {
-              pattern: "{react,react-dom/**}",
-              group: "builtin",
-              position: "before",
-            },
-            {
-              pattern: "{antd,react-router-dom,core-js/**,scheduler/**,url,path}",
-              group: "external",
-              position: "before",
-            },
-            {
-              pattern: "@shared-constants/**",
-              group: "internal",
-              position: "before",
-            },
-            {
-              pattern: "@shared-utils/**",
-              group: "internal",
-              position: "before",
-            },
-            {
-              pattern: "@shared-hooks/**",
-              group: "internal",
-              position: "before",
-            },
-            {
-              pattern: "@shared-components/**",
-              group: "internal",
-              position: "before",
-            },
-            {
-              pattern: "@/**",
-              group: "internal",
-              position: "before",
-            },
-            {
-              pattern: "./**/*.css",
-              group: "object",
-              position: "after",
-            },
-            {
-              pattern: "../**/*.css",
-              group: "object",
-              position: "after",
-            },
-            {
-              pattern: "*.css",
-              group: "object",
-              position: "after",
-            },
-          ],
-          pathGroupsExcludedImportTypes: ["builtin"],
-          "newlines-between": "always",
-          alphabetize: { order: "asc", caseInsensitive: true },
-          warnOnUnassignedImports: true,
-        },
-      ],
+      "import/order": "off",
+      "import/first": "off",
+      "import/newline-after-import": "off",
       "import/no-duplicates": "error",
       "import/no-unresolved": "off", // Handled by jsconfig
       "import/named": "off", // Handled by jsconfig

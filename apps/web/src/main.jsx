@@ -1,19 +1,17 @@
-import { App as AntApp, ConfigProvider } from "antd";
 import React from "react";
+import { App as AntApp, ConfigProvider } from "antd";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Provider } from "react-redux";
+import { RouterProvider } from "react-router-dom";
 
-// pages
-import LoginPage from "./app/(auth)/login/page";
-import RegisterPage from "./app/(auth)/register/page";
-import AdminPage from "./app/(dashboard)/admin/page";
-import DashboardLayout from "./app/(dashboard)/layout";
-import DashboardPage from "./app/(dashboard)/page";
-import SettingsPage from "./app/(dashboard)/settings/page";
-import TrashPage from "./app/(dashboard)/trash/page";
+// store
+import { store } from "./store";
+
+// router
+import Router from "./routes/Routes";
 
 // styles
-import "./app/globals.css";
+import "./styles/globals.css";
 
 const themeConfig = {
   token: {
@@ -41,25 +39,13 @@ const themeConfig = {
 
 export function App() {
   return (
-    <ConfigProvider theme={themeConfig}>
-      <AntApp>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-
-            <Route path="/" element={<DashboardLayout />}>
-              <Route index element={<DashboardPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="trash" element={<TrashPage />} />
-              <Route path="admin" element={<AdminPage />} />
-            </Route>
-
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </AntApp>
-    </ConfigProvider>
+    <Provider store={store}>
+      <ConfigProvider theme={themeConfig}>
+        <AntApp>
+          <RouterProvider router={Router} />
+        </AntApp>
+      </ConfigProvider>
+    </Provider>
   );
 }
 
