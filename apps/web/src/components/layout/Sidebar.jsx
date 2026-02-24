@@ -8,35 +8,55 @@ import { useLocation, useNavigate } from "react-router-dom";
 import PageUrls from "@/constants/pageUrls";
 import PageNames from "@/constants/pageNames";
 import { STORAGE } from "@shared-constants/constants";
+import { Roles } from "@/constants/generalConstants";
+
+// utils
+import AuthUtils from "@/utils/authUtils";
+
+// hooks
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 const { Sider } = Layout;
 
 function Sidebar({ collapsed, isMobile }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { role: serverRole } = useCurrentUser();
 
-  const menuItems = [
+  // Prefer server data; fallback to local storage during initial load
+  const userRole = serverRole ?? AuthUtils.getUserRole();
+
+  const allMenuItems = [
     {
-      key: PageUrls.DashboardPage,
+      key: PageUrls.MyFilesPage,
       icon: <FolderOpenOutlined className="text-lg" />,
       label: <span className="font-semibold">{PageNames.MY_FILES}</span>,
+      roles: [Roles.USER],
     },
     {
       key: PageUrls.TrashPage,
       icon: <DeleteOutlined className="text-lg" />,
       label: <span className="font-semibold">{PageNames.TRASH}</span>,
+      roles: [Roles.USER],
     },
     {
       key: PageUrls.SettingsPage,
       icon: <SettingOutlined className="text-lg" />,
       label: <span className="font-semibold">{PageNames.SETTINGS}</span>,
+      roles: [Roles.USER],
     },
     {
       key: PageUrls.AdminPage,
       icon: <ControlOutlined className="text-lg" />,
       label: <span className="font-semibold">{PageNames.ADMIN}</span>,
+      roles: [Roles.ADMIN],
     },
   ];
+
+  // Filter based on current user's role
+  const menuItems = allMenuItems
+    .filter((item) => item.roles.includes(userRole))
+    .map(({ roles: _roles, ...rest }) => rest);
 
   return (
     <Sider

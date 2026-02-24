@@ -1,7 +1,7 @@
 import { Result } from "antd";
 import { motion } from "framer-motion";
 import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useRouteError } from "react-router-dom";
 
 // constants
 import PageUrls from "@/constants/pageUrls";
@@ -12,18 +12,27 @@ import Button from "@shared-components/components/button";
 /**
  * Universal Error Page.
  *
- * Displays error details passed via router state or query parameters.
+ * Displays error details passed via router state, forced props, or useRouteError.
  * Provides a way to return to the home page or login page.
  */
-function ErrorPage() {
+function ErrorPage({ forcedStatus, forcedMessage }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const routeError = useRouteError();
 
-  // Extract error data from state (passed by middleware) or fallback
-  const { status, message } = location.state || {
-    status: 500,
-    message: "An unexpected error occurred. Please try again later.",
-  };
+  // Resolution priority:
+  // 1. Forced props (from wildcard routes)
+  // 2. location.state (from manual redirects/middleware)
+  // 3. routeError (from errorElement catches)
+  // 4. Fallback defaults
+  const status = forcedStatus || location.state?.status || routeError?.status || 500;
+
+  const message =
+    forcedMessage ||
+    location.state?.message ||
+    routeError?.statusText ||
+    routeError?.message ||
+    "An unexpected error occurred. Please try again later.";
 
   const handleBack = () => {
     navigate(PageUrls.DashboardPage, { replace: true });
@@ -49,7 +58,9 @@ function ErrorPage() {
           title={status}
           subTitle={
             <div className="mt-4">
-              <p className="text-foreground-secondary text-lg leading-relaxed">{message}</p>
+              <p className="text-foreground-secondary text-lg leading-relaxed">
+                {typeof message === "string" ? message : JSON.stringify(message)}
+              </p>
             </div>
           }
           extra={[

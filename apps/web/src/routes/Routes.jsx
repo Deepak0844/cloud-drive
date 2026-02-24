@@ -33,6 +33,7 @@ const Router = createBrowserRouter([
   {
     path: "/",
     element: <Root />,
+    errorElement: <ErrorPage />,
     children: [
       MainRoutes,
 
@@ -57,6 +58,12 @@ const Router = createBrowserRouter([
       {
         path: PageUrls.ErrorPage,
         element: <ErrorPage />,
+      },
+
+      // Catch-all route for 404s
+      {
+        path: "*",
+        element: <ErrorPage forcedStatus={404} forcedMessage="Oops! The page you're looking for doesn't exist." />,
       },
     ],
   },

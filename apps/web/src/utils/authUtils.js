@@ -51,11 +51,28 @@ function clearSession() {
   LocalStorage.clear(STORAGE_KEYS.USER);
 }
 
+/**
+ * Returns the current user's role from localStorage, or null if not found.
+ */
+function getUserRole() {
+  const user = LocalStorage.get(STORAGE_KEYS.USER);
+  return user?.role ?? null;
+}
+
+/**
+ * Checks if the current user has the given role.
+ */
+function isRole(role) {
+  return getUserRole() === role;
+}
+
 const AuthUtils = {
   getToken,
   isUserAuthenticated,
   storeUserInfoInLocalStorage,
   clearSession,
+  getUserRole,
+  isRole,
 };
 
 export default AuthUtils;

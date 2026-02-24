@@ -3,6 +3,13 @@ import { useNavigate } from "react-router-dom";
 // api
 import { useLoginMutation, useLogoutMutation, useRegisterMutation } from "../store/api/authApi";
 
+// utils
+import AuthUtils from "../utils/authUtils";
+
+// constants
+import PageUrls from "../constants/pageUrls";
+import { Roles } from "../constants/generalConstants";
+
 /**
  * Custom hook for Authentication related actions.
  * Centralizes login, logout, and registration with redirection logic.
@@ -17,15 +24,27 @@ export function useAuth() {
     useRegisterMutation();
 
   /**
-   * Login Function
+   * Login Function.
+   * After a successful login, reads the stored role and navigates to the
+   * correct default page for that role. Admins → /admin, users → /my-files.
+   * If the user was redirected here from a protected route, they go back there
+   * (only for regular users; admins always land on their dashboard).
    */
-  async function login(credentials, redirectTo = "/", options = {}) {
+  async function login(credentials, redirectTo = PageUrls.MyFilesPage, options = {}) {
     try {
       await loginMutation({ ...credentials, ...options }).unwrap();
-      navigate(redirectTo, { replace: true });
+
+      // Role is now stored in localStorage by authApi's onQueryStarted
+      const role = AuthUtils.getUserRole();
+      if (role === Roles.ADMIN) {
+        navigate(PageUrls.AdminPage, { replace: true });
+      } else {
+        navigate(redirectTo, { replace: true });
+      }
     } catch (err) {
-      // Errors are handled by the component using the mutation state
+      // Errors are surfaced via the hook's isLoginError / loginError state
       console.error("Login hook error:", err);
+      throw err; // Re-throw so the page component can catch it
     }
   }
 

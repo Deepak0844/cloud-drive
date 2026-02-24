@@ -10,6 +10,7 @@ const PageUrls = {
 
   // Main
   DashboardPage: "/",
+  MyFilesPage: "/my-files",
   TrashPage: "/trash",
   SettingsPage: "/settings",
   AdminPage: "/admin",

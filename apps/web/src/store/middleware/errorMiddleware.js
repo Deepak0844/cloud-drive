@@ -41,7 +41,13 @@ export default function rtkQueryErrorMiddleware(api) {
 
       // 2. Universal Redirection for all other errors (status >= 400)
       if (status >= 400 && showPageError && !suppressGlobalError) {
-        const errorMessage = data?.message || data || "An unexpected error occurred.";
+        // Look for common error keys in the response data, prioritizing specific message strings
+        const errorMessage =
+          data?.error?.message ||
+          data?.error ||
+          data?.message ||
+          (typeof data === "string" ? data : null) ||
+          "An unexpected error occurred.";
 
         Navigation.globalNavigate(PageUrls.ErrorPage, {
           state: { status, message: errorMessage },
@@ -52,7 +58,12 @@ export default function rtkQueryErrorMiddleware(api) {
 
       // 3. Show Toaster (Notification) if explicitly requested OR fallback
       if (showToast && !suppressGlobalError) {
-        const errorMessage = data?.message || data || "An unexpected error occurred.";
+        const errorMessage =
+          data?.error?.message ||
+          data?.error ||
+          data?.message ||
+          (typeof data === "string" ? data : null) ||
+          "An unexpected error occurred.";
 
         notification.error({
           message: `Error ${status || ""}`,

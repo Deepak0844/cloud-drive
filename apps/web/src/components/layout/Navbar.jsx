@@ -1,4 +1,3 @@
-// external
 import {
   BellOutlined,
   CheckCircleOutlined,
@@ -13,11 +12,12 @@ import {
   WarningOutlined,
 } from "@ant-design/icons";
 import { App, Avatar, Badge, Layout, Tooltip, Typography } from "antd";
-import React from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 // hooks
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 // constants
 import { STORAGE_KEYS } from "@/constants/generalConstants";
@@ -84,15 +84,16 @@ const initialNotifications = [
 function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
-  const [dropdownOpen, setDropdownOpen] = React.useState(false);
-  const [notifications, setNotifications] = React.useState(initialNotifications);
-  const [notificationOpen, setNotificationOpen] = React.useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const { logout } = useAuth();
+  const { user: serverUser } = useCurrentUser();
 
-  // Read user data from localStorage (set by authApi on login / register)
-  const user = LocalStorage.get(STORAGE_KEYS.USER);
-  const displayName = user?.name ?? "User";
-  const displayEmail = user?.email ?? "";
+  // Prefer server-authoritative data; fall back to localStorage during initial load
+  const localUser = LocalStorage.get(STORAGE_KEYS.USER);
+  const displayName = serverUser?.name ?? localUser?.name ?? "User";
+  const displayEmail = serverUser?.email ?? localUser?.email ?? "";
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

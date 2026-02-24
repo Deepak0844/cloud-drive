@@ -9,7 +9,9 @@ import HttpClientFactory from "../utils/httpClientFactory";
  */
 const customBaseQuery =
   ({ baseUrl = "" } = {}) =>
-  async (args, api) => {
+  async (rawArgs, api) => {
+    // Normalize args: RTK Query allows a string for simple GET requests
+    const args = typeof rawArgs === "string" ? { url: rawArgs } : rawArgs;
     const { url = "", method = "get", params: rawParams, data: rawData, body: rawBody, contentType } = args;
 
     // Extract UI-only configuration flags
