@@ -1,6 +1,5 @@
-// external
 import { LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
-import { Card, Form, Input } from "antd";
+import { App, Card, Form, Input } from "antd";
 import { motion } from "framer-motion";
 import React from "react";
 import { Link } from "react-router-dom";
@@ -8,18 +7,37 @@ import { Link } from "react-router-dom";
 // components
 import Button from "@shared-components/components/button";
 
+// hooks
+import { useAuth } from "@/hooks/useAuth";
+
+// constants
+import PageUrls from "@/constants/pageUrls";
+
 function RegisterPage() {
+  const { message } = App.useApp();
+  const { register, isRegisterLoading } = useAuth();
+
+  async function handleFinish(values) {
+    try {
+      await register({ name: values.name, email: values.email, password: values.password });
+      message.success("Account created! Please sign in with your credentials.");
+    } catch (err) {
+      message.error(err?.data?.message ?? "Registration failed. Please try again.");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-surface-dim flex flex-col items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8 flex items-center gap-4"
+        transition={{ duration: 0.5 }}
+        className="mb-8 flex flex-col items-center gap-4"
       >
-        <div className="w-12 h-12 flex items-center justify-center">
+        <div className="w-20 h-20 flex items-center justify-center bg-white rounded-3xl shadow-lg border border-line-base p-4">
           <img src="/logo.png" alt="Cloud Drive Logo" className="w-full h-full object-contain" />
         </div>
-        <h1 className="text-3xl font-bold text-gradient-primary">Cloud Drive</h1>
+        <h1 className="text-4xl font-black text-gradient-primary tracking-tight">Cloud Drive</h1>
       </motion.div>
 
       <div className="w-full max-w-md">
@@ -29,11 +47,11 @@ function RegisterPage() {
             <p className="text-label-secondary">Join us and start managing your files securely.</p>
           </div>
 
-          <Form layout="vertical" className="space-y-4">
+          <Form layout="vertical" className="space-y-4" onFinish={handleFinish}>
             <Form.Item label="Full Name" name="name" rules={[{ required: true, message: "Please input your name!" }]}>
               <Input
                 prefix={<UserOutlined className="text-label-tertiary" />}
-                placeholder="Deepak Ram"
+                placeholder="Full Name"
                 className="h-12 rounded-xl"
               />
             </Form.Item>
@@ -53,7 +71,7 @@ function RegisterPage() {
             <Form.Item
               label="Password"
               name="password"
-              rules={[{ required: true, message: "Please input your password!" }]}
+              rules={[{ required: true, min: 6, message: "Password must be at least 6 characters!" }]}
             >
               <Input.Password
                 prefix={<LockOutlined className="text-label-tertiary" />}
@@ -66,6 +84,7 @@ function RegisterPage() {
               <Button
                 type="primary"
                 htmlType="submit"
+                loading={isRegisterLoading}
                 className="w-full h-12 rounded-xl font-bold shadow-primary text-lg"
               >
                 Create Account
@@ -75,7 +94,7 @@ function RegisterPage() {
 
           <div className="text-center mt-6">
             <span className="text-label-secondary">Already have an account? </span>
-            <Link to="/login" className="font-bold text-primary hover:text-primary-dark">
+            <Link to={PageUrls.LoginPage} className="font-bold text-primary hover:text-primary-dark">
               Sign in
             </Link>
           </div>
