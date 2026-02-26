@@ -10,6 +10,7 @@ const PageNames = {
 
   // Main
   MY_FILES: "My Files",
+  FAVORITES: "Favorites",
   TRASH: "Trash",
   SETTINGS: "Settings",
   ADMIN: "Admin",

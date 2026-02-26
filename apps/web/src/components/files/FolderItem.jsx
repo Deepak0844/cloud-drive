@@ -4,10 +4,15 @@ import {
   FolderFilled,
   InfoCircleOutlined,
   MoreOutlined,
+  StarFilled,
+  StarOutlined,
 } from "@ant-design/icons";
 import { Card, Typography } from "antd";
 import { motion } from "framer-motion";
 import React from "react";
+
+// api
+import { useToggleFavoriteMutation } from "@/store/api/folderApi";
 
 // components
 import Dropdown from "@shared-components/components/dropdown";
@@ -16,6 +21,9 @@ const { Text } = Typography;
 
 function FolderItem({ folder, isSelected, onToggleSelect, onOpen, onShowInfo, onRename, onDelete, viewMode = "grid" }) {
   const clickTimeoutRef = React.useRef(null);
+  const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFavoriteMutation();
+
+  const isFavorite = folder.is_favorite;
 
   function handleClick(e) {
     e.stopPropagation();
@@ -43,6 +51,13 @@ function FolderItem({ folder, isSelected, onToggleSelect, onOpen, onShowInfo, on
 
   const menuItems = [
     { key: "open", label: "Open", icon: <DoubleRightOutlined /> },
+    {
+      key: "favorite",
+      label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
+      icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
+      onClick: () => toggleFavorite({ id: folder.id }),
+      disabled: isFavoriting,
+    },
     { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) },
     { key: "rename", label: "Rename", onClick: () => onRename?.(folder) },
     { key: "delete", label: "Delete", danger: true, onClick: () => onDelete?.(folder) },
@@ -127,6 +142,12 @@ function FolderItem({ folder, isSelected, onToggleSelect, onOpen, onShowInfo, on
         {isSelected && (
           <div className="absolute top-2 right-2 z-20">
             <CheckCircleFilled className="text-primary text-lg bg-surface rounded-full" />
+          </div>
+        )}
+
+        {isFavorite && !isSelected && (
+          <div className="absolute top-2 right-2 z-20">
+            <StarFilled className="text-warning text-lg" />
           </div>
         )}
 

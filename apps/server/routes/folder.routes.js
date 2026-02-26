@@ -10,6 +10,7 @@ import {
   getFolders,
   moveFolder,
   renameFolder,
+  toggleFavorite,
   updateFolderTags,
 } from "../controllers/folder.controller.js";
 
@@ -25,6 +26,7 @@ import {
   copyFolderSchema,
   getFoldersSchema,
   folderIdParamSchema,
+  favoriteFolderSchema,
 } from "../schemas/folder.schema.js";
 import { updateTagsSchema } from "../schemas/file.schema.js"; // Reuse file tagging schema
 
@@ -38,6 +40,7 @@ router.post("/", validate(createFolderSchema), createFolder);
 router.get("/:id/contents", validate(folderIdParamSchema), getFolderContents);
 router.get("/:id", validate(folderIdParamSchema), getFolderDetails);
 router.patch("/:id", validate(renameFolderSchema), renameFolder);
+router.patch("/:id/favorite", validate(favoriteFolderSchema), toggleFavorite);
 router.patch("/:id/tags", validate(updateTagsSchema), updateFolderTags);
 router.post("/:id/move", validate(moveFolderSchema), moveFolder);
 router.post("/:id/copy", validate(copyFolderSchema), copyFolder);

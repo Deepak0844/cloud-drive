@@ -8,6 +8,7 @@ import {
   CopyOutlined,
   DeleteOutlined,
   DragOutlined,
+  FolderFilled,
   HomeOutlined,
   PlusOutlined,
   SearchOutlined,
@@ -15,22 +16,34 @@ import {
   UploadOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { App, Breadcrumb, Input, Modal, Typography, Upload } from "antd";
+import { App, Breadcrumb, Input, Modal, Spin, Typography, Upload } from "antd";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+
+// api
+import {
+  useCreateFolderMutation,
+  useDeleteFolderMutation,
+  useGetFolderContentsQuery,
+  useGetFolderDetailsQuery,
+  useRenameFolderMutation,
+} from "../../store/api/folderApi";
+import { useDeleteFileMutation, useRenameFileMutation } from "../../store/api/fileApi";
 
 // constants
-import { MOCK_DATA, STORAGE } from "@shared-constants/constants";
+import { STORAGE } from "@shared-constants/constants";
 import PageNames from "@/constants/pageNames";
 
 // components
 import FileItem from "@/components/files/FileItem";
 import FolderItem from "@/components/files/FolderItem";
 import InfoDrawer from "@/components/files/InfoDrawer";
+import FilePreviewModal from "@/components/files/FilePreviewModal";
 import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
+import { useUploadDetails } from "@/contexts/UploadContext";
 
 const { Text } = Typography;
 
@@ -38,6 +51,18 @@ const { Dragger } = Upload;
 
 function MyFilesView() {
   const { message } = App.useApp();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentFolderId = searchParams.get("folder") || "root";
+
+  const setCurrentFolderId = (id) => {
+    if (id === "root" || !id) {
+      searchParams.delete("folder");
+      setSearchParams(searchParams);
+    } else {
+      setSearchParams({ folder: id });
+    }
+  };
+
   const [selectedItems, setSelectedItems] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
@@ -46,11 +71,30 @@ function MyFilesView() {
   const [infoItem, setInfoItem] = useState(null);
   const [renameItem, setRenameItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
   const [newName, setNewName] = useState("");
 
-  // Mock data
-  const folders = MOCK_DATA.FOLDERS;
-  const files = MOCK_DATA.FILES;
+  // API Queries
+  const { data: contentsData, isLoading: isContentsLoading } = useGetFolderContentsQuery(currentFolderId);
+
+  const { data: detailsData } = useGetFolderDetailsQuery(
+    { id: currentFolderId },
+    {
+      skip: currentFolderId === "root" || !currentFolderId,
+    }
+  );
+
+  // API Mutations
+  const { addUpload } = useUploadDetails();
+  const [createFolder] = useCreateFolderMutation();
+  const [renameFile] = useRenameFileMutation();
+  const [renameFolder] = useRenameFolderMutation();
+  const [deleteFile] = useDeleteFileMutation();
+  const [deleteFolder] = useDeleteFolderMutation();
+
+  const folders = contentsData?.data?.folders || [];
+  const files = contentsData?.data?.files || [];
+  const breadcrumbs = detailsData?.data?.breadcrumbs || [];
 
   function toggleSelect(id) {
     setSelectedItems((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
@@ -92,7 +136,13 @@ function MyFilesView() {
   }
 
   function handleOpen(item) {
-    message.info(`Opening ${item.name}`);
+    // If it's a folder, navigate into it
+    if (item.type === "folder" || !item.extension) {
+      setCurrentFolderId(item._id || item.id);
+      clearSelection();
+    } else {
+      setPreviewFile(item);
+    }
   }
 
   function handleRenameTrigger(item) {
@@ -100,20 +150,48 @@ function MyFilesView() {
     setNewName(item.name);
   }
 
-  function handleRenameConfirm() {
+  async function handleRenameConfirm() {
     if (!renameItem || !newName.trim()) return;
-    message.success(`Renamed "${renameItem.name}" to "${newName}"`);
-    setRenameItem(null);
+
+    try {
+      const id = renameItem._id || renameItem.id;
+      const isFolder = !renameItem.extension;
+
+      if (isFolder) {
+        await renameFolder({ id, name: newName }).unwrap();
+      } else {
+        await renameFile({ id, name: newName }).unwrap();
+      }
+
+      message.success(`Renamed successfully`);
+      setRenameItem(null);
+    } catch (err) {
+      message.error(err.data?.message || "Failed to rename");
+    }
   }
 
   function handleDeleteTrigger(item) {
     setDeleteItem(item);
   }
 
-  function handleDeleteConfirm() {
+  async function handleDeleteConfirm() {
     if (!deleteItem) return;
-    message.success(`Deleted ${deleteItem.name}`);
-    setDeleteItem(null);
+
+    try {
+      const id = deleteItem._id || deleteItem.id;
+      const isFolder = !deleteItem.extension;
+
+      if (isFolder) {
+        await deleteFolder({ id }).unwrap();
+      } else {
+        await deleteFile({ id }).unwrap();
+      }
+
+      message.success(`Deleted ${deleteItem.name}`);
+      setDeleteItem(null);
+    } catch (err) {
+      message.error(err.data?.message || "Failed to delete");
+    }
   }
 
   const uploadRef = useRef(null);
@@ -124,7 +202,6 @@ function MyFilesView() {
     e.stopPropagation();
     dragCounter.current += 1;
 
-    // Check if the dragged item is actually a file
     const isFile = e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files");
     if (isFile) {
       setIsDragging(true);
@@ -140,11 +217,14 @@ function MyFilesView() {
     }
   }
 
-  function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
+  function handleDrop() {
+    // Reset our dragging UI
     setIsDragging(false);
     dragCounter.current = 0;
+    // We explicitly DO NOT call handleFileUpload(e.dataTransfer.files) here
+    // because Ant Design Dragger natively intercepts drops and converts
+    // them into beforeUpload invocations for each file automatically. calling
+    // our upload iteration here would double-trigger the entire sequence.
   }
 
   function handleUploadClick() {
@@ -154,18 +234,47 @@ function MyFilesView() {
     }
   }
 
+  function handleCreateFolder() {
+    Modal.confirm({
+      title: "New Folder",
+      content: (
+        <Input
+          id="new-folder-name"
+          placeholder="Folder name"
+          className="rounded-xl h-10 mt-2"
+          onPressEnter={() => {}}
+        />
+      ),
+      onOk: async () => {
+        const input = document.getElementById("new-folder-name");
+        const name = input?.value?.trim();
+        if (!name) return;
+
+        try {
+          await createFolder({
+            name,
+            parent: currentFolderId === "root" ? null : currentFolderId,
+          }).unwrap();
+          message.success("Folder created");
+        } catch (err) {
+          message.error(err.data?.message || "Failed to create folder");
+        }
+      },
+      className: "premium-modal",
+      centered: true,
+      okText: "Create",
+    });
+  }
+
   const uploadProps = {
     name: "file",
     multiple: true,
-    action: "https://www.mocky.io/v2/5cc8019d300000980a055e76",
     showUploadList: false,
-    onChange(info) {
-      const { status } = info.file;
-      if (status === "done") {
-        message.success(`${info.file.name} file uploaded successfully.`);
-      } else if (status === "error") {
-        message.error(`${info.file.name} file upload failed.`);
-      }
+    beforeUpload: (file) => {
+      // By returning false, we completely disable Antd's default XHR POST
+      // and natively pipe the individual file directly into our Custom Upload Context
+      addUpload(file, currentFolderId === "root" ? null : currentFolderId);
+      return false;
     },
     openFileDialogOnClick: false,
     onDragEnter: handleDragEnter,
@@ -173,23 +282,41 @@ function MyFilesView() {
     onDrop: handleDrop,
   };
 
+  const breadcrumbsList = [
+    {
+      title: (
+        <span
+          onClick={() => setCurrentFolderId("root")}
+          onKeyDown={(e) => e.key === "Enter" && setCurrentFolderId("root")}
+          role="button"
+          tabIndex={0}
+          className="flex items-center gap-2 text-primary font-semibold text-xs cursor-pointer"
+        >
+          <HomeOutlined className="text-[10px]" /> <span>{PageNames.MY_FILES}</span>
+        </span>
+      ),
+    },
+    ...breadcrumbs.map((bc) => ({
+      title: (
+        <span
+          onClick={() => setCurrentFolderId(bc.id)}
+          onKeyDown={(e) => e.key === "Enter" && setCurrentFolderId(bc.id)}
+          role="button"
+          tabIndex={0}
+          className="flex items-center gap-2 text-label font-medium text-xs cursor-pointer hover:text-primary transition-colors"
+        >
+          <span>{bc.name}</span>
+        </span>
+      ),
+    })),
+  ];
+
   return (
     <div className="flex flex-col gap-4 pb-10">
       {/* Header Section */}
       <div className="flex flex-row justify-between items-center gap-4 px-1">
         <div className="shrink-0">
-          <Breadcrumb
-            separator={<span className="text-label-tertiary">/</span>}
-            items={[
-              {
-                title: (
-                  <Link to="/" className="flex items-center gap-2 text-primary font-semibold text-xs">
-                    <HomeOutlined className="text-[10px]" /> <span>{PageNames.MY_FILES}</span>
-                  </Link>
-                ),
-              },
-            ]}
-          />
+          <Breadcrumb separator={<span className="text-label-tertiary">/</span>} items={breadcrumbsList} />
         </div>
 
         <div className="flex gap-2 grow justify-end items-center">
@@ -228,7 +355,7 @@ function MyFilesView() {
               ],
               onClick: ({ key }) => {
                 if (key === "upload") handleUploadClick();
-                else message.info("Creating new folder...");
+                else if (key === "folder") handleCreateFolder();
               },
             }}
             placement="bottomRight"
@@ -292,62 +419,97 @@ function MyFilesView() {
         <Dragger {...uploadProps} className="bg-transparent! border-none! cursor-default group relative">
           <div className="space-y-6 text-left">
             {/* Folders Section */}
-            <div>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary mb-3 px-1 opacity-80">
-                Folders
-              </h2>
-              <div
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                    : "flex flex-col gap-2"
-                }
-              >
-                {folders.map((folder) => (
-                  <div key={folder.id}>
-                    <FolderItem
-                      folder={folder}
-                      viewMode={viewMode}
-                      isSelected={selectedItems.includes(folder.id)}
-                      onToggleSelect={toggleSelect}
-                      onOpen={handleOpen}
-                      onShowInfo={setInfoItem}
-                      onRename={handleRenameTrigger}
-                      onDelete={handleDeleteTrigger}
-                    />
+            {(folders.length > 0 || isContentsLoading) && (
+              <div>
+                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary mb-3 px-1 opacity-80">
+                  Folders
+                </h2>
+                {isContentsLoading ? (
+                  <div className="py-10 flex justify-center w-full">
+                    <Spin size="large" />
                   </div>
-                ))}
+                ) : (
+                  <div
+                    className={
+                      viewMode === "grid"
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                        : "flex flex-col gap-2"
+                    }
+                  >
+                    {folders.map((folder) => {
+                      const id = folder._id || folder.id;
+                      return (
+                        <div key={id}>
+                          <FolderItem
+                            folder={{ ...folder, id }} // normalize id for the component
+                            viewMode={viewMode}
+                            isSelected={selectedItems.includes(id)}
+                            onToggleSelect={toggleSelect}
+                            onOpen={handleOpen}
+                            onShowInfo={setInfoItem}
+                            onRename={handleRenameTrigger}
+                            onDelete={handleDeleteTrigger}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             {/* Files Section */}
-            <div>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary mb-3 px-1 opacity-80">
-                Recent Files
-              </h2>
-              <div
-                className={
-                  viewMode === "grid"
-                    ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-                    : "flex flex-col gap-2"
-                }
-              >
-                {files.map((file) => (
-                  <div key={file.id}>
-                    <FileItem
-                      file={file}
-                      viewMode={viewMode}
-                      isSelected={selectedItems.includes(file.id)}
-                      onToggleSelect={toggleSelect}
-                      onOpen={handleOpen}
-                      onShowInfo={setInfoItem}
-                      onRename={handleRenameTrigger}
-                      onDelete={handleDeleteTrigger}
-                    />
+            {(files.length > 0 || isContentsLoading) && (
+              <div>
+                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary mb-3 px-1 opacity-80">
+                  Files
+                </h2>
+                {isContentsLoading ? (
+                  <div className="py-10 flex justify-center w-full">
+                    <Spin size="large" />
                   </div>
-                ))}
+                ) : (
+                  <div
+                    className={
+                      viewMode === "grid"
+                        ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+                        : "flex flex-col gap-2"
+                    }
+                  >
+                    {files.map((file) => {
+                      const id = file._id || file.id;
+                      return (
+                        <div key={id}>
+                          <FileItem
+                            file={{ ...file, id }} // normalize id for the component
+                            viewMode={viewMode}
+                            isSelected={selectedItems.includes(id)}
+                            onToggleSelect={toggleSelect}
+                            onOpen={handleOpen}
+                            onShowInfo={setInfoItem}
+                            onRename={handleRenameTrigger}
+                            onDelete={handleDeleteTrigger}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
+            {/* Empty State */}
+            {!isContentsLoading && folders.length === 0 && files.length === 0 && (
+              <div className="py-20 flex flex-col items-center justify-center text-center w-full opacity-60">
+                <div className="w-24 h-24 mb-6 rounded-full bg-surface-dim flex items-center justify-center border-4 border-dashed border-line">
+                  <FolderFilled className="text-4xl text-label-tertiary" />
+                </div>
+                <Text className="text-xl font-bold text-label mb-2">This folder is empty</Text>
+                <Text className="text-label-secondary block max-w-sm">
+                  Drag and drop files here to upload, or use the &quot;New&quot; button to create folders and add files.
+                </Text>
+              </div>
+            )}
           </div>
 
           {/* Premium Drop Hint Overlay */}
@@ -429,6 +591,7 @@ function MyFilesView() {
       </div>
 
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
+      <FilePreviewModal file={previewFile} open={!!previewFile} onClose={() => setPreviewFile(null)} />
       <QuotaRequestModal open={quotaRequestModalVisible} onClose={() => setQuotaRequestModalVisible(false)} />
 
       {/* Rename Modal */}

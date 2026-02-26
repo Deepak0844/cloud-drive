@@ -33,3 +33,6 @@ yarn-error.log*
 *.pem
 
 package-lock.json
+
+# Gemini
+.gemini

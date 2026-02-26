@@ -127,8 +127,10 @@ async function processThumbnails(file) {
       file.thumbnail_path = thumbPath;
       logger.info(`[Service] Image thumbnail saved for file ${fileId}`);
 
-      // Background face detection (non-blocking)
-      FaceService.detectFaces(file).catch((err) => logger.error("Face detection trigger failed:", err.message));
+      // Background face detection - intentionally NOT awaited to prevent blocking the DB save
+      FaceService.detectFaces(file).catch((err) => {
+        logger.error(`[Service] Non-fatal Face detection trigger failed: ${err.message}`);
+      });
     } catch (err) {
       logger.error(`[Service] Image thumbnail failed for ${fileId}:`, err.message);
     }

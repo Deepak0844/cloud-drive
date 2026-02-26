@@ -10,6 +10,9 @@ import { store } from "./store";
 // router
 import Router from "./routes/Routes";
 
+// error boundary
+import GlobalErrorBoundary from "@/components/common/GlobalErrorBoundary";
+
 // styles
 import "./styles/globals.css";
 
@@ -40,11 +43,13 @@ const themeConfig = {
 export function App() {
   return (
     <Provider store={store}>
-      <ConfigProvider theme={themeConfig}>
-        <AntApp>
-          <RouterProvider router={Router} />
-        </AntApp>
-      </ConfigProvider>
+      <GlobalErrorBoundary>
+        <ConfigProvider theme={themeConfig}>
+          <AntApp>
+            <RouterProvider router={Router} />
+          </AntApp>
+        </ConfigProvider>
+      </GlobalErrorBoundary>
     </Provider>
   );
 }

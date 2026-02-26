@@ -3,6 +3,8 @@ import React, { useState } from "react";
 
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import { UploadProvider } from "@/contexts/UploadContext";
+import UploadManager from "../files/UploadManager";
 
 const { Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -49,7 +51,10 @@ function MainLayout({ children }) {
               setDrawerVisible={setDrawerVisible}
             />
             <Content className="px-4 py-5 h-[calc(100vh-64px)] overflow-y-auto focus:outline-none">
-              <div className="w-full max-w-7xl mx-auto">{children}</div>
+              <UploadProvider>
+                <div className="w-full max-w-7xl mx-auto">{children}</div>
+                <UploadManager />
+              </UploadProvider>
             </Content>
           </Layout>
         </Layout>

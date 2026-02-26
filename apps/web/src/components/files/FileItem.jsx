@@ -10,10 +10,16 @@ import {
   FileTextOutlined,
   InfoCircleOutlined,
   MoreOutlined,
+  StarFilled,
+  StarOutlined,
 } from "@ant-design/icons";
 import { Card, Tooltip, Typography } from "antd";
 import { motion } from "framer-motion";
-import React from "react";
+import React, { useEffect, useState } from "react";
+
+// api
+import HttpClientFactory from "@/utils/httpClientFactory";
+import { useToggleFavoriteMutation } from "@/store/api/fileApi";
 
 // components
 import Button from "@shared-components/components/button";
@@ -36,6 +42,29 @@ function getFileInfo(type) {
 
 function FileItem({ file, isSelected, onToggleSelect, onOpen, onShowInfo, onRename, onDelete, viewMode = "grid" }) {
   const clickTimeoutRef = React.useRef(null);
+  const [thumbnailSrc, setThumbnailSrc] = useState(null);
+  const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFavoriteMutation();
+
+  const isFavorite = file.is_favorite;
+
+  const hasThumbnail =
+    file.type === "image" ||
+    file.category === "image" ||
+    file?.mime_type?.startsWith("image/") ||
+    file.type === "video" ||
+    file.category === "video" ||
+    file?.mime_type?.startsWith("video/");
+
+  useEffect(() => {
+    if (hasThumbnail) {
+      const httpClient = HttpClientFactory.getInstance();
+      const token = httpClient.authToken;
+      const fileId = file.id || file._id;
+      setThumbnailSrc(`/api/v1/files/${fileId}/preview?thumbnail=true&token=${token}`);
+    } else {
+      setThumbnailSrc(null);
+    }
+  }, [file, hasThumbnail]);
 
   function handleClick(e) {
     e.stopPropagation();
@@ -63,6 +92,13 @@ function FileItem({ file, isSelected, onToggleSelect, onOpen, onShowInfo, onRena
 
   const menuItems = [
     { key: "download", label: "Download", icon: <DownloadOutlined /> },
+    {
+      key: "favorite",
+      label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
+      icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
+      onClick: () => toggleFavorite({ id: file.id }),
+      disabled: isFavoriting,
+    },
     { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) },
     { key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename?.(file) },
     { type: "divider" },
@@ -111,9 +147,13 @@ function FileItem({ file, isSelected, onToggleSelect, onOpen, onShowInfo, onRena
         </div>
 
         <div
-          className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-xl ${getFileInfo(file.type).bg} ${getFileInfo(file.type).color}`}
+          className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden text-xl ${getFileInfo(file.type).bg} ${getFileInfo(file.type).color}`}
         >
-          {getFileInfo(file.type).icon}
+          {thumbnailSrc ? (
+            <img src={thumbnailSrc} alt={file.name} className="w-full h-full object-cover" />
+          ) : (
+            getFileInfo(file.type).icon
+          )}
         </div>
 
         <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
@@ -155,14 +195,24 @@ function FileItem({ file, isSelected, onToggleSelect, onOpen, onShowInfo, onRena
           </div>
         )}
 
+        {isFavorite && !isSelected && (
+          <div className="absolute top-2 right-2 z-20">
+            <StarFilled className="text-warning text-lg" />
+          </div>
+        )}
+
         <div className="absolute top-2 left-2 z-10"></div>
 
         <div
-          className={`aspect-square rounded-xl flex items-center justify-center mb-2 transition-colors duration-300 text-5xl ${
+          className={`aspect-square rounded-xl flex items-center justify-center overflow-hidden mb-2 transition-colors duration-300 text-5xl ${
             isSelected ? "bg-surface" : getFileInfo(file.type).bg
           } ${getFileInfo(file.type).color}`}
         >
-          {getFileInfo(file.type).icon}
+          {thumbnailSrc ? (
+            <img src={thumbnailSrc} alt={file.name} className="w-full h-full object-cover pointer-events-none" />
+          ) : (
+            getFileInfo(file.type).icon
+          )}
         </div>
 
         <div className="flex items-start justify-between gap-1 px-1 pb-1">

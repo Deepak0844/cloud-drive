@@ -32,6 +32,8 @@ export const getFolders = asyncHandler(async (req, res) => {
 
   if (parentId !== undefined) {
     query.parent = parentId;
+  } else if (req.query.isFavorite === "true") {
+    query.is_favorite = true;
   }
 
   if (tag) {
@@ -71,7 +73,19 @@ export const getFolderContents = asyncHandler(async (req, res) => {
   const folders = await Folder.find({ user: req.user.id, parent: folderId, is_deleted: false }).sort("name");
   const files = await File.find({ user: req.user.id, folder: folderId, is_deleted: false }).sort("-createdAt");
 
-  return ResponseHelper.success(res, { folders, files });
+  // Dynamically resolve itemCount for each folder in the directory
+  const foldersWithCount = await Promise.all(
+    folders.map(async (folder) => {
+      const fileCount = await File.countDocuments({ folder: folder._id, is_deleted: false });
+      const subfolderCount = await Folder.countDocuments({ parent: folder._id, is_deleted: false });
+      return {
+        ...folder.toObject(),
+        itemCount: fileCount + subfolderCount,
+      };
+    })
+  );
+
+  return ResponseHelper.success(res, { folders: foldersWithCount, files });
 });
 
 /**
@@ -214,4 +228,21 @@ export const deleteFolder = asyncHandler(async (req, res) => {
   });
 
   return ResponseHelper.success(res, { message: "Folder and its contents moved to trash" });
+});
+/**
+ * @desc    Toggle favorite status for folder
+ * @route   PATCH /api/v1/folders/:id/favorite
+ * @access  Private
+ */
+export const toggleFavorite = asyncHandler(async (req, res) => {
+  const folder = await Folder.findOne({ _id: req.params.id, user: req.user.id });
+
+  if (!folder) {
+    return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
+
+  folder.is_favorite = !folder.is_favorite;
+  await folder.save();
+
+  return ResponseHelper.success(res, folder);
 });

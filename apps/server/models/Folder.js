@@ -22,6 +22,10 @@ const folderSchema = new mongoose.Schema(
       required: true,
       default: "/",
     },
+    is_favorite: {
+      type: Boolean,
+      default: false,
+    },
     is_deleted: {
       type: Boolean,
       default: false,

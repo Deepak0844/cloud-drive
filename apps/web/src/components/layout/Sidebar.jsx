@@ -1,4 +1,4 @@
-import { ControlOutlined, DeleteOutlined, FolderOpenOutlined, SettingOutlined } from "@ant-design/icons";
+import { ControlOutlined, DeleteOutlined, FolderOpenOutlined, SettingOutlined, StarOutlined } from "@ant-design/icons";
 import { Layout, Menu } from "antd";
 import { AnimatePresence, motion } from "framer-motion";
 import React from "react";
@@ -31,6 +31,12 @@ function Sidebar({ collapsed, isMobile }) {
       key: PageUrls.MyFilesPage,
       icon: <FolderOpenOutlined className="text-lg" />,
       label: <span className="font-semibold">{PageNames.MY_FILES}</span>,
+      roles: [Roles.USER],
+    },
+    {
+      key: PageUrls.FavoritesPage,
+      icon: <StarOutlined className="text-lg" />,
+      label: <span className="font-semibold">{PageNames.FAVORITES}</span>,
       roles: [Roles.USER],
     },
     {

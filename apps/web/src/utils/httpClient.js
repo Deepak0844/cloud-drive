@@ -3,6 +3,9 @@ import axios from "axios";
 // Constants
 import { HttpContentTypes, HttpHeaders, HttpMethods } from "../constants/httpConstants";
 
+// Utils
+import ApiUtils from "@/store/api/apiUtils";
+
 /**
  * HttpClient wrapper around Axios.
  */
@@ -20,16 +23,24 @@ class HttpClient {
     const headers = {
       [HttpHeaders.Authorization]: this.authToken ? `Bearer ${this.authToken}` : "",
       [HttpHeaders.Accept]: HttpContentTypes.APP_JSON,
-      [HttpHeaders.ContentType]: contentType,
+      ...(contentType && { [HttpHeaders.ContentType]: contentType }),
     };
 
     const response = await axios({
       method: HttpMethods.GET,
       url,
       params,
+      paramsSerializer: { serialize: ApiUtils.serializeParams },
       headers,
       ...options,
     });
+
+    if (options.responseType === "blob") {
+      return response.data; // For blobs, returning data directly is standard Axios practice, BUT...
+      // wait, earlier I changed FileItem to read `response.size > 0`.
+      // The `response.data` IS the Blob object itself.
+      // So returning `response.data` is actually correct. The mistake is in FileItem.jsx.
+    }
 
     return response.data;
   };
@@ -41,7 +52,7 @@ class HttpClient {
     const headers = {
       [HttpHeaders.Authorization]: this.authToken ? `Bearer ${this.authToken}` : "",
       [HttpHeaders.Accept]: HttpContentTypes.APP_JSON,
-      [HttpHeaders.ContentType]: contentType,
+      ...(contentType && { [HttpHeaders.ContentType]: contentType }),
     };
 
     const response = await axios({
@@ -49,6 +60,7 @@ class HttpClient {
       url,
       params,
       data,
+      paramsSerializer: { serialize: ApiUtils.serializeParams },
       headers,
       ...options,
     });
@@ -63,7 +75,7 @@ class HttpClient {
     const headers = {
       [HttpHeaders.Authorization]: this.authToken ? `Bearer ${this.authToken}` : "",
       [HttpHeaders.Accept]: HttpContentTypes.APP_JSON,
-      [HttpHeaders.ContentType]: contentType,
+      ...(contentType && { [HttpHeaders.ContentType]: contentType }),
     };
 
     const response = await axios({
@@ -71,6 +83,7 @@ class HttpClient {
       url,
       params,
       data,
+      paramsSerializer: { serialize: ApiUtils.serializeParams },
       headers,
       ...options,
     });
@@ -85,7 +98,7 @@ class HttpClient {
     const headers = {
       [HttpHeaders.Authorization]: this.authToken ? `Bearer ${this.authToken}` : "",
       [HttpHeaders.Accept]: HttpContentTypes.APP_JSON,
-      [HttpHeaders.ContentType]: contentType,
+      ...(contentType && { [HttpHeaders.ContentType]: contentType }),
     };
 
     const response = await axios({
@@ -93,6 +106,7 @@ class HttpClient {
       url,
       params,
       data,
+      paramsSerializer: { serialize: ApiUtils.serializeParams },
       headers,
       ...options,
     });

@@ -8,10 +8,13 @@ import {
   FileTextOutlined,
   FolderFilled,
   FolderOpenOutlined,
-  InfoCircleOutlined,
 } from "@ant-design/icons";
-import { Divider, Drawer, Tabs, Tag, Typography } from "antd";
+import { Divider, Drawer, Tag, Typography } from "antd";
 import React from "react";
+import dayjs from "dayjs";
+
+// shared utils
+import { formatBytes } from "../../../../../shared/utils/src/format";
 
 // components
 import Button from "@shared-components/components/button";
@@ -59,6 +62,13 @@ function InfoDrawer({ item, open, onClose }) {
   }
 
   function PropertiesTab() {
+    // Format the path safely
+    const displayPath = Array.isArray(item.path)
+      ? `My Files / ${item.path.map((p) => p.name).join(" / ")}`
+      : item.path
+        ? `My Files / ${item.path.replace(/^\/+/, "")}`
+        : "My Files";
+
     return (
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-y-4 gap-x-2">
@@ -67,7 +77,7 @@ function InfoDrawer({ item, open, onClose }) {
               Size
             </Text>
             <Text strong className="text-sm">
-              {isFolder ? `${item.itemCount} items` : item.size}
+              {isFolder ? `${item.itemCount} items` : formatBytes(item.size)}
             </Text>
           </div>
 
@@ -75,8 +85,8 @@ function InfoDrawer({ item, open, onClose }) {
             <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-1">
               Type
             </Text>
-            <Tag className="m-0 rounded border-line-base bg-surface-dim">
-              {isFolder ? "Folder" : item.type.toUpperCase()}
+            <Tag className="m-0 rounded border-line-base bg-surface-dim font-bold text-xs px-2">
+              {isFolder ? "FOLDER" : item.type ? item.type.toUpperCase() : "FILE"}
             </Tag>
           </div>
         </div>
@@ -87,10 +97,10 @@ function InfoDrawer({ item, open, onClose }) {
           <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-1">
             Path
           </Text>
-          <div className="flex items-center gap-2 bg-surface-alt p-2 rounded-lg border border-line-base">
+          <div className="flex items-center gap-2 bg-surface-alt p-2.5 rounded-lg border border-line-base">
             <FolderOpenOutlined className="text-primary" />
-            <Text className="text-sm truncate" title={item.path || "My Files"}>
-              {item.path || "My Files"}
+            <Text className="text-sm truncate font-medium" title={displayPath}>
+              {displayPath}
             </Text>
           </div>
         </div>
@@ -104,7 +114,9 @@ function InfoDrawer({ item, open, onClose }) {
             </Text>
             <div className="flex items-center gap-2">
               <CalendarOutlined className="text-label-tertiary" />
-              <Text className="text-sm">{item.modifiedAt || "Just now"}</Text>
+              <Text className="text-sm font-medium">
+                {item.updatedAt ? dayjs(item.updatedAt).format("MMM D, YYYY h:mm A") : "Just now"}
+              </Text>
             </div>
           </div>
           <div>
@@ -113,25 +125,15 @@ function InfoDrawer({ item, open, onClose }) {
             </Text>
             <div className="flex items-center gap-2">
               <CalendarOutlined className="text-label-tertiary" />
-              <Text className="text-sm">{item.createdAt || "Jan 1, 2024"}</Text>
+              <Text className="text-sm font-medium">
+                {item.createdAt ? dayjs(item.createdAt).format("MMM D, YYYY h:mm A") : "Unknown"}
+              </Text>
             </div>
           </div>
         </div>
       </div>
     );
   }
-
-  const items = [
-    {
-      key: "details",
-      label: (
-        <span className="flex items-center gap-2 font-semibold">
-          <InfoCircleOutlined /> Details
-        </span>
-      ),
-      children: <PropertiesTab />,
-    },
-  ];
 
   return (
     <Drawer
@@ -162,7 +164,7 @@ function InfoDrawer({ item, open, onClose }) {
 
       <TitleSection />
 
-      <Tabs defaultActiveKey="details" items={items} className="premium-tabs" tabBarStyle={{ marginBottom: 24 }} />
+      <PropertiesTab />
     </Drawer>
   );
 }

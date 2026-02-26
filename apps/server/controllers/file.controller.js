@@ -163,6 +163,8 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/x-7z-compressed",
   "application/x-tar",
   "application/gzip",
+  // Chunked Uploads
+  "application/octet-stream",
 ]);
 
 // Configure Multer Storage
@@ -292,7 +294,16 @@ export const getFilePreview = asyncHandler(async (req, res) => {
   }
 
   const useThumb = req.query.thumbnail === "true";
-  let filePath = useThumb && file.thumbnail_path ? file.thumbnail_path : file.storage_path;
+  let filePath = file.storage_path;
+  let missingThumb = false;
+
+  if (useThumb) {
+    if (file.thumbnail_path && fs.existsSync(file.thumbnail_path)) {
+      filePath = file.thumbnail_path;
+    } else {
+      missingThumb = true;
+    }
+  }
 
   // For non-thumbnails, check if we need a transcoded preview (e.g. for MOV)
   const isMov = file.mime_type === "video/quicktime" || file.name.toLowerCase().endsWith(".mov");
@@ -316,8 +327,8 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     }
   }
 
-  // Check if file exists
-  if (!fs.existsSync(filePath)) {
+  // Check if file exists or thumbnail is missing
+  if (!fs.existsSync(filePath) || missingThumb) {
     // If thumbnail requested but missing, try generating on-the-fly
     if (useThumb && fs.existsSync(file.storage_path)) {
       if (file.mime_type.startsWith("image/")) {
@@ -331,8 +342,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
           filePath = thumbPath;
         } catch (e) {
           logger.error(`On-the-fly image thumbnail failed for file ${file._id}:`, e);
-          // Fallback to original for images
-          filePath = file.storage_path;
+          return res.status(StatusCodes.ACCEPTED).send("");
         }
       } else if (file.mime_type.startsWith("video/")) {
         try {
@@ -345,12 +355,13 @@ export const getFilePreview = asyncHandler(async (req, res) => {
           filePath = thumbPath;
         } catch (e) {
           logger.error(`On-the-fly video thumbnail failed for file ${file._id}:`, e.message);
-          return ResponseHelper.error(res, ErrorMessages.THUMBNAIL_FAILED, StatusCodes.NOT_FOUND);
+          return res.status(StatusCodes.ACCEPTED).send("");
         }
       } else {
-        return ResponseHelper.error(res, ErrorMessages.THUMBNAIL_NOT_AVAILABLE, StatusCodes.NOT_FOUND);
+        return res.status(StatusCodes.ACCEPTED).send("");
       }
     } else {
+      // If original file is missing entirely, then indeed 404
       return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
     }
   }
