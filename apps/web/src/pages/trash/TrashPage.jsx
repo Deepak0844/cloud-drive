@@ -99,7 +99,7 @@ function TrashView() {
   const handleBulkRestore = async () => {
     if (selectedItems.length === 0) return;
     try {
-      await restoreItems(selectedItems).unwrap();
+      await restoreItems({ items: selectedItems }).unwrap();
       message.success(`Restored ${selectedItems.length} items`);
       clearSelection();
     } catch (_error) {
@@ -118,7 +118,7 @@ function TrashView() {
       cancelText: "Cancel",
       onOk: async () => {
         try {
-          await permanentlyDeleteItems(selectedItems).unwrap();
+          await permanentlyDeleteItems({ items: selectedItems }).unwrap();
           message.success(`Permanently deleted ${selectedItems.length} items`);
           clearSelection();
         } catch (_error) {

@@ -252,6 +252,81 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
       ],
     }),
+
+    // POST /api/v1/files/:id/move
+    moveFile: builder.mutation({
+      query: ({ id, folderId }) => ({
+        url: `/files/${id}/move`,
+        method: "POST",
+        body: { folderId },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        ...ApiUtils.entityTags(TagTypes.FILES)(result, error, arg),
+        ...ApiUtils.listTags(TagTypes.FILES),
+        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
+        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+      ],
+    }),
+
+    // POST /api/v1/files/:id/copy
+    copyFile: builder.mutation({
+      query: ({ id, folderId }) => ({
+        url: `/files/${id}/copy`,
+        method: "POST",
+        body: { folderId },
+      }),
+      invalidatesTags: [
+        ...ApiUtils.listTags(TagTypes.FILES),
+        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
+        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+      ],
+    }),
+
+    // POST /api/v1/files/bulk-delete
+    bulkDelete: builder.mutation({
+      query: ({ items }) => ({
+        url: "/files/bulk-delete",
+        method: "POST",
+        body: { items },
+      }),
+      invalidatesTags: [
+        ...ApiUtils.listTags(TagTypes.FILES),
+        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
+        ...ApiUtils.listTags(TagTypes.FOLDERS),
+        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+        ...ApiUtils.listTags(TagTypes.TRASH),
+      ],
+    }),
+
+    // POST /api/v1/files/bulk-move
+    bulkMove: builder.mutation({
+      query: ({ items, targetFolderId }) => ({
+        url: "/files/bulk-move",
+        method: "POST",
+        body: { items, targetFolderId },
+      }),
+      invalidatesTags: [
+        ...ApiUtils.listTags(TagTypes.FILES),
+        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
+        ...ApiUtils.listTags(TagTypes.FOLDERS),
+        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+      ],
+    }),
+
+    // POST /api/v1/files/bulk-copy
+    bulkCopy: builder.mutation({
+      query: ({ items, targetFolderId }) => ({
+        url: "/files/bulk-copy",
+        method: "POST",
+        body: { items, targetFolderId },
+      }),
+      invalidatesTags: [
+        ...ApiUtils.listTags(TagTypes.FILES),
+        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
+        ...ApiUtils.listTags(TagTypes.FOLDERS),
+        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -266,6 +341,11 @@ export const {
   useDeleteFileMutation,
   useRenameFileMutation,
   useToggleFavoriteMutation,
+  useMoveFileMutation,
+  useCopyFileMutation,
+  useBulkDeleteMutation,
+  useBulkMoveMutation,
+  useBulkCopyMutation,
 } = fileApi;
 
 export default fileApi;

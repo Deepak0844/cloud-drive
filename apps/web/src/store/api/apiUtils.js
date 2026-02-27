@@ -21,9 +21,13 @@ function serializeParams(params) {
   let options = "";
   for (const key in params) {
     convertFalseToString(params, key);
-    if (typeof params[key] !== "object" && params[key] !== undefined && params[key] !== null) {
-      convertStringToFalse(params, key);
-      options += `${key}=${params[key]}&`;
+    if ((typeof params[key] !== "object" || params[key] === null) && params[key] !== undefined) {
+      if (params[key] === null) {
+        options += `${key}=null&`;
+      } else {
+        convertStringToFalse(params, key);
+        options += `${key}=${params[key]}&`;
+      }
     } else if (typeof params[key] === "object" && params[key] && params[key].length) {
       params[key].forEach((el) => (options += `${key}=${el}&`));
     }

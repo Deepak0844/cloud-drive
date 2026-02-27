@@ -1,8 +1,10 @@
 // external
 import {
   CheckCircleFilled,
+  CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  DragOutlined,
   EditOutlined,
   FileImageOutlined,
   FileOutlined,
@@ -48,6 +50,8 @@ function FileItem({
   onShowInfo,
   onRename,
   onDelete,
+  onMove,
+  onCopy,
   viewMode = "grid",
   isTrashItem = false,
 }) {
@@ -113,6 +117,8 @@ function FileItem({
         },
         { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) },
         { key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename?.(file) },
+        { key: "move", label: "Move to...", icon: <DragOutlined />, onClick: () => onMove?.(file) },
+        { key: "copy", label: "Copy to...", icon: <CopyOutlined />, onClick: () => onCopy?.(file) },
         { type: "divider" },
         { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => onDelete?.(file) },
       ];

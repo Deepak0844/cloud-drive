@@ -69,9 +69,54 @@ export const updateFolderTags = asyncHandler(async (req, res) => {
  */
 export const getFolderContents = asyncHandler(async (req, res) => {
   const folderId = req.params.id === "root" ? null : req.params.id;
+  const { search, category, sortBy, sortOrder = "asc" } = req.query;
 
-  const folders = await Folder.find({ user: req.user.id, parent: folderId, is_deleted: false }).sort("name");
-  const files = await File.find({ user: req.user.id, folder: folderId, is_deleted: false }).sort("-createdAt");
+  // Build folder query
+  const folderQuery = { user: req.user.id, is_deleted: false };
+  if (search) {
+    folderQuery.name = { $regex: search, $options: "i" };
+  } else {
+    folderQuery.parent = folderId;
+  }
+
+  // Build file query
+  const fileQuery = { user: req.user.id, is_deleted: false };
+  if (search) {
+    fileQuery.name = { $regex: search, $options: "i" };
+  } else {
+    fileQuery.folder = folderId;
+  }
+
+  if (category && category !== "all") {
+    fileQuery.category = category;
+  }
+
+  // Determine sort parameters
+  const sortDirection = sortOrder === "desc" ? -1 : 1;
+  let fileSort = "-createdAt"; // default
+  let folderSort = "name"; // default
+
+  if (sortBy) {
+    if (sortBy === "name") {
+      fileSort = { name: sortDirection };
+      folderSort = { name: sortDirection };
+    } else if (sortBy === "size") {
+      fileSort = { size_bytes: sortDirection };
+      // Folders dont have a simple 'size' field, keep name sort or createdAt
+      folderSort = { name: sortDirection };
+    } else if (sortBy === "updatedAt") {
+      fileSort = { updatedAt: sortDirection };
+      folderSort = { updatedAt: sortDirection };
+    } else if (sortBy === "createdAt") {
+      fileSort = { createdAt: sortDirection };
+      folderSort = { createdAt: sortDirection };
+    }
+  }
+
+  const [folders, files] = await Promise.all([
+    Folder.find(folderQuery).sort(folderSort),
+    File.find(fileQuery).sort(fileSort),
+  ]);
 
   // Dynamically resolve itemCount for each folder in the directory
   const foldersWithCount = await Promise.all(
@@ -80,6 +125,7 @@ export const getFolderContents = asyncHandler(async (req, res) => {
       const subfolderCount = await Folder.countDocuments({ parent: folder._id, is_deleted: false });
       return {
         ...folder.toObject(),
+        id: folder._id, // Ensure id is available
         itemCount: fileCount + subfolderCount,
       };
     })

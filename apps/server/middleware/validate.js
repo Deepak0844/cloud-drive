@@ -1,3 +1,4 @@
+import fs from "fs";
 import { StatusCodes } from "../constants/generalConstants.js";
 import ResponseHelper from "../utils/responseHelper.js";
 
@@ -26,6 +27,22 @@ const validate = (schema) => (req, res, next) => {
 
     next();
   } catch (error) {
+    if (error.errors) {
+      const logContent = `
+Time: ${new Date().toISOString()}
+Url: ${req.url}
+Method: ${req.method}
+Errors: ${JSON.stringify(error.errors, null, 2)}
+Body: ${JSON.stringify(req.body, null, 2)}
+Query: ${JSON.stringify(req.query, null, 2)}
+Params: ${JSON.stringify(req.params, null, 2)}
+----------------------------------------\n`;
+      try {
+        fs.appendFileSync("/tmp/validation_error.log", logContent);
+      } catch (e) {
+        console.error("Failed to write log file:", e.message);
+      }
+    }
     const message = error.errors ? error.errors[0].message : "Validation error";
     return ResponseHelper.error(res, message, StatusCodes.BAD_REQUEST);
   }

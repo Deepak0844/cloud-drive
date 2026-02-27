@@ -1,7 +1,9 @@
 import {
   CheckCircleFilled,
+  CopyOutlined,
   DeleteOutlined,
   DoubleRightOutlined,
+  DragOutlined,
   EditOutlined,
   FolderFilled,
   InfoCircleOutlined,
@@ -29,6 +31,8 @@ function FolderItem({
   onShowInfo,
   onRename,
   onDelete,
+  onMove,
+  onCopy,
   viewMode = "grid",
   isTrashItem = false,
 }) {
@@ -74,6 +78,8 @@ function FolderItem({
         },
         { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) },
         { key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename?.(folder) },
+        { key: "move", label: "Move to...", icon: <DragOutlined />, onClick: () => onMove?.(folder) },
+        { key: "copy", label: "Copy to...", icon: <CopyOutlined />, onClick: () => onCopy?.(folder) },
         { type: "divider" },
         { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => onDelete?.(folder) },
       ];

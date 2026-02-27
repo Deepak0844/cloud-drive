@@ -10,7 +10,7 @@ export const trashApi = baseApi.injectEndpoints({
     }),
 
     restoreItems: builder.mutation({
-      query: (items) => ({
+      query: ({ items }) => ({
         url: "/trash/restore",
         method: "POST",
         body: { items },
@@ -31,7 +31,7 @@ export const trashApi = baseApi.injectEndpoints({
     }),
 
     permanentlyDeleteItems: builder.mutation({
-      query: (items) => ({
+      query: ({ items }) => ({
         url: "/trash/permanent",
         method: "DELETE",
         body: { items },

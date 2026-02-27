@@ -18,13 +18,23 @@ const folderApi = baseApi.injectEndpoints({
 
     // GET /api/v1/folders/:id/contents
     getFolderContents: builder.query({
-      query: (id) => ({
-        url: id === "root" || !id ? "/folders/root/contents" : `/folders/${id}/contents`,
-      }),
-      providesTags: (result, error, id) => [
-        ...ApiUtils.listTags(TagTypes.FOLDERS, id || "ROOT"),
-        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
-      ],
+      query: (arg) => {
+        const id = typeof arg === "string" ? arg : arg?.folderId || "root";
+        const params = typeof arg === "object" ? { ...arg } : {};
+        delete params.folderId; // already in URL
+
+        return {
+          url: id === "root" || !id ? "/folders/root/contents" : `/folders/${id}/contents`,
+          params,
+        };
+      },
+      providesTags: (result, error, arg) => {
+        const id = typeof arg === "string" ? arg : arg?.folderId || "root";
+        return [
+          ...ApiUtils.listTags(TagTypes.FOLDERS, id || "ROOT"),
+          ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+        ];
+      },
     }),
 
     // GET /api/v1/folders/:id
@@ -89,6 +99,33 @@ const folderApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
       ],
     }),
+
+    // POST /api/v1/folders/:id/move
+    moveFolder: builder.mutation({
+      query: ({ id, parentId }) => ({
+        url: `/folders/${id}/move`,
+        method: "POST",
+        body: { parentId },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        ...ApiUtils.entityTags(TagTypes.FOLDERS)(result, error, arg),
+        ...ApiUtils.listTags(TagTypes.FOLDERS),
+        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+      ],
+    }),
+
+    // POST /api/v1/folders/:id/copy
+    copyFolder: builder.mutation({
+      query: ({ id, parentId }) => ({
+        url: `/folders/${id}/copy`,
+        method: "POST",
+        body: { parentId },
+      }),
+      invalidatesTags: [
+        ...ApiUtils.listTags(TagTypes.FOLDERS),
+        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -101,6 +138,8 @@ export const {
   useRenameFolderMutation,
   useDeleteFolderMutation,
   useToggleFavoriteMutation,
+  useMoveFolderMutation,
+  useCopyFolderMutation,
 } = folderApi;
 
 export default folderApi;

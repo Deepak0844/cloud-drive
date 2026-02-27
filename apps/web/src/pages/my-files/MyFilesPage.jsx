@@ -8,15 +8,20 @@ import {
   CopyOutlined,
   DeleteOutlined,
   DragOutlined,
+  FileImageOutlined,
+  FileOutlined,
+  FileTextOutlined,
+  FilterOutlined,
   FolderFilled,
   HomeOutlined,
+  PlayCircleOutlined,
   PlusOutlined,
   SearchOutlined,
   SendOutlined,
   UploadOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { App, Breadcrumb, Input, Modal, Spin, Typography, Upload } from "antd";
+import { App, Breadcrumb, Input, Modal, Spin, Tooltip, Typography, Upload } from "antd";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -27,9 +32,19 @@ import {
   useDeleteFolderMutation,
   useGetFolderContentsQuery,
   useGetFolderDetailsQuery,
+  useMoveFolderMutation,
+  useCopyFolderMutation,
   useRenameFolderMutation,
 } from "../../store/api/folderApi";
-import { useDeleteFileMutation, useRenameFileMutation } from "../../store/api/fileApi";
+import {
+  useBulkCopyMutation,
+  useBulkDeleteMutation,
+  useBulkMoveMutation,
+  useCopyFileMutation,
+  useDeleteFileMutation,
+  useMoveFileMutation,
+  useRenameFileMutation,
+} from "../../store/api/fileApi";
 
 // constants
 import { STORAGE } from "@shared-constants/constants";
@@ -40,10 +55,12 @@ import FileItem from "@/components/files/FileItem";
 import FolderItem from "@/components/files/FolderItem";
 import InfoDrawer from "@/components/files/InfoDrawer";
 import FilePreviewModal from "@/components/files/FilePreviewModal";
+import FolderPickerModal from "@/components/files/FolderPickerModal";
 import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
 import { useUploadDetails } from "@/contexts/UploadContext";
+import useDebounce from "@/hooks/useDebounce";
 
 const { Text } = Typography;
 
@@ -74,13 +91,34 @@ function MyFilesView() {
   const [previewFile, setPreviewFile] = useState(null);
   const [newName, setNewName] = useState("");
 
+  // Search, Sort, Filter State
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 500);
+  const [filterType, setFilterType] = useState("all");
+  const [sortBy, setSortBy] = useState("updatedAt");
+  const [sortOrder, setSortOrder] = useState("desc");
+
+  // Folder Picker State
+  const [folderPicker, setFolderPicker] = useState({
+    visible: false,
+    action: "move", // 'move' | 'copy' | 'bulk-move' | 'bulk-copy'
+    item: null, // individual item for move/copy
+    items: [], // selection for bulk move/copy
+  });
+
   // API Queries
-  const { data: contentsData, isLoading: isContentsLoading } = useGetFolderContentsQuery(currentFolderId);
+  const { data: contentsData, isLoading: isContentsLoading } = useGetFolderContentsQuery({
+    folderId: currentFolderId,
+    search: debouncedSearch,
+    category: filterType === "all" ? undefined : filterType,
+    sortBy: sortBy,
+    sortOrder: sortOrder,
+  });
 
   const { data: detailsData } = useGetFolderDetailsQuery(
     { id: currentFolderId },
     {
-      skip: currentFolderId === "root" || !currentFolderId,
+      skip: currentFolderId === "root" || !!debouncedSearch, // Skip details if searching (global search)
     }
   );
 
@@ -91,20 +129,39 @@ function MyFilesView() {
   const [renameFolder] = useRenameFolderMutation();
   const [deleteFile] = useDeleteFileMutation();
   const [deleteFolder] = useDeleteFolderMutation();
+  const [moveFile, { isLoading: moveFileLoading }] = useMoveFileMutation();
+  const [copyFile, { isLoading: copyFileLoading }] = useCopyFileMutation();
+  const [moveFolder, { isLoading: moveFolderLoading }] = useMoveFolderMutation();
+  const [copyFolder, { isLoading: copyFolderLoading }] = useCopyFolderMutation();
+  const [bulkDelete] = useBulkDeleteMutation();
+  const [bulkMove, { isLoading: bulkMoveLoading }] = useBulkMoveMutation();
+  const [bulkCopy, { isLoading: bulkCopyLoading }] = useBulkCopyMutation();
 
   const folders = contentsData?.data?.folders || [];
   const files = contentsData?.data?.files || [];
   const breadcrumbs = currentFolderId === "root" ? [] : detailsData?.data?.breadcrumbs || [];
 
-  function toggleSelect(id) {
-    setSelectedItems((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+  function toggleSelect(id, type) {
+    setSelectedItems((prev) => {
+      const exists = prev.find((item) => item.id === id);
+      if (exists) return prev.filter((item) => item.id !== id);
+      return [...prev, { id, type }];
+    });
   }
 
   const clearSelection = useCallback(() => setSelectedItems([]), []);
 
   const handleClickOutside = useCallback(
     (e) => {
-      if (e.target.closest(".animate-item") || e.target.closest(".glass-bar") || e.target.closest(".ant-modal-root"))
+      // Don't clear if clicking an item, the search bar, a modal, or the bulk actions bar
+      if (
+        e.target.closest(".animate-item") ||
+        e.target.closest(".glass-bar") ||
+        e.target.closest(".ant-modal-root") ||
+        e.target.closest(".ant-modal-wrap") ||
+        e.target.closest(".ant-modal-mask") ||
+        e.target.closest(".bulk-actions-bar")
+      )
         return;
       clearSelection();
     },
@@ -130,9 +187,77 @@ function MyFilesView() {
     setQuotaRequestModalVisible(true);
   }
 
-  function handleBulkDelete() {
-    message.success(`Moving ${selectedItems.length} items to Trash`);
-    clearSelection();
+  function handleBulkDelete(itemsToDelete) {
+    if (!itemsToDelete || itemsToDelete.length === 0) return;
+    Modal.confirm({
+      title: "Confirm Delete",
+      content: `Are you sure you want to move ${itemsToDelete.length} items to the trash?`,
+      okText: "Move to Trash",
+      okType: "danger",
+      onOk: async () => {
+        try {
+          await bulkDelete({ items: itemsToDelete }).unwrap();
+          message.success("Items moved to trash");
+          clearSelection();
+        } catch {
+          message.error("Failed to delete items");
+        }
+      },
+      className: "premium-modal",
+      centered: true,
+    });
+  }
+
+  function handleBulkMoveTrigger(items) {
+    if (!items || items.length === 0) return;
+    setFolderPicker({ visible: true, action: "bulk-move", item: null, items });
+  }
+
+  function handleBulkCopyTrigger(items) {
+    if (!items || items.length === 0) return;
+    setFolderPicker({ visible: true, action: "bulk-copy", item: null, items });
+  }
+
+  function handleMoveTrigger(item) {
+    setFolderPicker({ visible: true, action: "move", item });
+  }
+
+  function handleCopyTrigger(item) {
+    setFolderPicker({ visible: true, action: "copy", item });
+  }
+
+  async function handleFolderPickerConfirm(targetFolderId) {
+    const { action, item, items } = folderPicker;
+    const normalizedTargetId = targetFolderId === "root" ? null : targetFolderId;
+
+    try {
+      if (action === "move" || action === "copy") {
+        const id = item._id || item.id;
+        const isFolder = "itemCount" in item || folders.some((f) => (f._id || f.id) === id);
+
+        if (action === "move") {
+          if (isFolder) await moveFolder({ id, parentId: normalizedTargetId }).unwrap();
+          else await moveFile({ id, folderId: normalizedTargetId }).unwrap();
+          message.success(`${item.name} moved successfully`);
+        } else {
+          if (isFolder) await copyFolder({ id, parentId: normalizedTargetId }).unwrap();
+          else await copyFile({ id, folderId: normalizedTargetId }).unwrap();
+          message.success(`${item.name} copied successfully`);
+        }
+      } else if (action === "bulk-move" || action === "bulk-copy") {
+        if (action === "bulk-move") {
+          await bulkMove({ items, targetFolderId: normalizedTargetId }).unwrap();
+          message.success(`${items.length} items moved successfully`);
+        } else {
+          await bulkCopy({ items, targetFolderId: normalizedTargetId }).unwrap();
+          message.success(`${items.length} items copied successfully`);
+        }
+        clearSelection();
+      }
+      setFolderPicker({ ...folderPicker, visible: false });
+    } catch (err) {
+      message.error(err.data?.message || `Failed to ${action}`);
+    }
   }
 
   function handleOpen(item) {
@@ -331,14 +456,69 @@ function MyFilesView() {
         </div>
 
         <div className="flex gap-2 grow justify-end items-center">
-          <div className="w-48 flex-none">
+          <div className="w-56 flex-none">
             <Input
               id="search-input"
               name="search"
-              placeholder="Search..."
+              placeholder="Search in My Files..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               prefix={<SearchOutlined className="text-primary text-sm" />}
-              className="h-9 rounded-xl border-line bg-surface shadow-sm focus:shadow-md transition-all text-sm w-full"
+              className="h-10 rounded-xl border-line bg-surface shadow-sm focus:shadow-md transition-all text-sm w-full"
+              allowClear
             />
+          </div>
+
+          <div className="bg-surface-alt p-1 rounded-xl flex items-center gap-1">
+            <Dropdown
+              menu={{
+                items: [
+                  { key: "all", label: "All Types" },
+                  { key: "divider1", type: "divider" },
+                  { key: "image", label: "Images", icon: <FileImageOutlined className="text-pink-500" /> },
+                  { key: "video", label: "Videos", icon: <PlayCircleOutlined className="text-blue-500" /> },
+                  { key: "document", label: "Documents", icon: <FileTextOutlined className="text-indigo-500" /> },
+                  { key: "other", label: "Others", icon: <FileOutlined className="text-gray-500" /> },
+                ],
+                onClick: ({ key }) => setFilterType(key),
+                selectable: true,
+                defaultSelectedKeys: [filterType],
+              }}
+              trigger={["click"]}
+            >
+              <Button
+                type="text"
+                className={`rounded-lg text-xs font-bold ${filterType !== "all" ? "text-primary bg-primary/5" : "text-label-secondary"}`}
+                icon={<FilterOutlined className="text-[10px]" />}
+              >
+                {filterType === "all" ? "Filter" : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+              </Button>
+            </Dropdown>
+
+            <Dropdown
+              menu={{
+                items: [
+                  { key: "updatedAt-desc", label: "Newest First" },
+                  { key: "updatedAt-asc", label: "Oldest First" },
+                  { key: "name-asc", label: "Name (A-Z)" },
+                  { key: "name-desc", label: "Name (Z-A)" },
+                  { key: "size-desc", label: "Largest First" },
+                  { key: "size-asc", label: "Smallest First" },
+                ],
+                onClick: ({ key }) => {
+                  const [f, o] = key.split("-");
+                  setSortBy(f);
+                  setSortOrder(o);
+                },
+                selectable: true,
+                defaultSelectedKeys: [`${sortBy}-${sortOrder}`],
+              }}
+              trigger={["click"]}
+            >
+              <Button type="text" className="rounded-lg text-xs font-bold text-label-secondary">
+                Sort
+              </Button>
+            </Dropdown>
           </div>
 
           <div className="bg-surface-alt p-1 rounded-xl flex items-center gap-1">
@@ -374,7 +554,7 @@ function MyFilesView() {
           >
             <Button
               type="primary"
-              className="rounded-xl h-9 px-4 font-bold shadow-primary text-sm flex items-center gap-2"
+              className="rounded-xl h-10 px-4 font-bold shadow-primary text-sm flex items-center gap-2"
             >
               <PlusOutlined />
               <span>New</span>
@@ -383,47 +563,62 @@ function MyFilesView() {
         </div>
       </div>
 
-      {selectedItems.length > 0 && (
-        <div className="glass-bar rounded-xl p-3 flex items-center justify-between shadow-2xl fixed top-20 left-1/2 -translate-x-1/2 z-50 text-white w-full max-w-xl">
-          <div className="flex items-center gap-3 ml-1">
-            <Button
-              ghost
-              size="small"
-              shape="circle"
-              icon={<CloseOutlined className="text-[10px]" />}
-              onClick={clearSelection}
-              className="hover:rotate-90 transition-transform flex items-center justify-center w-6 h-6"
-            />
-            <span className="text-base font-bold tracking-tight">{selectedItems.length} items</span>
-          </div>
+      <div className="h-4" />
 
-          <div className="flex gap-1.5">
-            <Button
-              size="small"
-              icon={<DragOutlined />}
-              className="rounded-lg font-bold border-none h-8 hover:scale-105 transition-all text-primary bg-white text-xs px-3"
-            >
-              Move
-            </Button>
-            <Button
-              size="small"
-              icon={<CopyOutlined />}
-              className="rounded-lg font-bold border-none h-8 hover:scale-105 transition-all text-primary bg-white text-xs px-3"
-            >
-              Copy
-            </Button>
-            <Button
-              size="small"
-              danger
-              type="primary"
-              icon={<DeleteOutlined />}
-              onClick={handleBulkDelete}
-              className="rounded-lg font-bold h-8 border-none shadow-lg hover:scale-105 transition-all text-xs px-3 ml-1"
-            >
-              Delete
-            </Button>
+      {selectedItems.length > 0 && (
+        <motion.div
+          initial={{ y: 100, x: "-50%", opacity: 0 }}
+          animate={{ y: 0, x: "-50%", opacity: 1 }}
+          exit={{ y: 100, x: "-50%", opacity: 0 }}
+          className="fixed bottom-10 left-1/2 z-50 pointer-events-auto"
+        >
+          <div className="bg-surface/90 backdrop-blur-xl rounded-full p-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-primary/20 ring-1 ring-white/20 px-6 h-16 min-w-[400px] bulk-actions-bar">
+            <div className="flex items-center gap-3 pr-4 border-r border-line">
+              <Button
+                type="text"
+                shape="circle"
+                icon={<CloseOutlined className="text-xs" />}
+                onClick={clearSelection}
+                className="hover:rotate-90 transition-transform flex items-center justify-center w-8 h-8 bg-surface-alt"
+              />
+              <span className="text-sm font-black text-primary tracking-tight">{selectedItems.length} selected</span>
+            </div>
+
+            <div className="flex gap-2 items-center pl-2">
+              <Tooltip title="Move selection">
+                <Button
+                  type="text"
+                  icon={<DragOutlined />}
+                  onClick={() => handleBulkMoveTrigger(selectedItems)}
+                  className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
+                >
+                  <span className="text-[10px] uppercase tracking-tighter">Move</span>
+                </Button>
+              </Tooltip>
+              <Tooltip title="Copy selection">
+                <Button
+                  type="text"
+                  icon={<CopyOutlined />}
+                  onClick={() => handleBulkCopyTrigger(selectedItems)}
+                  className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
+                >
+                  <span className="text-[10px] uppercase tracking-tighter">Copy</span>
+                </Button>
+              </Tooltip>
+              <Tooltip title="Delete selection">
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleBulkDelete(selectedItems)}
+                  className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-danger hover:bg-danger-light border-none justify-center"
+                >
+                  <span className="text-[10px] uppercase tracking-tighter">Delete</span>
+                </Button>
+              </Tooltip>
+            </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       <div ref={uploadRef}>
@@ -448,18 +643,20 @@ function MyFilesView() {
                     }
                   >
                     {folders.map((folder) => {
-                      const id = folder._id || folder.id;
+                      const id = String(folder._id || folder.id);
                       return (
                         <div key={id}>
                           <FolderItem
                             folder={{ ...folder, id }} // normalize id for the component
                             viewMode={viewMode}
-                            isSelected={selectedItems.includes(id)}
-                            onToggleSelect={toggleSelect}
+                            isSelected={selectedItems.some((i) => String(i.id) === id)}
+                            onToggleSelect={(id) => toggleSelect(String(id), "folder")}
                             onOpen={handleOpen}
                             onShowInfo={handleShowInfo}
                             onRename={handleRenameTrigger}
                             onDelete={handleDeleteTrigger}
+                            onMove={handleMoveTrigger}
+                            onCopy={handleCopyTrigger}
                           />
                         </div>
                       );
@@ -488,18 +685,20 @@ function MyFilesView() {
                     }
                   >
                     {files.map((file) => {
-                      const id = file._id || file.id;
+                      const id = String(file._id || file.id);
                       return (
                         <div key={id}>
                           <FileItem
                             file={{ ...file, id }} // normalize id for the component
                             viewMode={viewMode}
-                            isSelected={selectedItems.includes(id)}
-                            onToggleSelect={toggleSelect}
+                            isSelected={selectedItems.some((i) => String(i.id) === id)}
+                            onToggleSelect={(id) => toggleSelect(String(id), "file")}
                             onOpen={handleOpen}
                             onShowInfo={handleShowInfo}
                             onRename={handleRenameTrigger}
                             onDelete={handleDeleteTrigger}
+                            onMove={handleMoveTrigger}
+                            onCopy={handleCopyTrigger}
                           />
                         </div>
                       );
@@ -604,6 +803,28 @@ function MyFilesView() {
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
       <FilePreviewModal file={previewFile} open={!!previewFile} onClose={() => setPreviewFile(null)} />
       <QuotaRequestModal open={quotaRequestModalVisible} onClose={() => setQuotaRequestModalVisible(false)} />
+
+      <FolderPickerModal
+        open={folderPicker.visible}
+        onClose={() => setFolderPicker({ ...folderPicker, visible: false })}
+        onConfirm={handleFolderPickerConfirm}
+        title={folderPicker.action.includes("move") ? "Move to Folder" : "Copy to Folder"}
+        confirmText={folderPicker.action.includes("move") ? "Move Here" : "Copy Here"}
+        excludeIds={
+          folderPicker.item
+            ? [String(folderPicker.item._id || folderPicker.item.id)]
+            : selectedItems.map((i) => String(i.id))
+        }
+        currentParentId={folderPicker.item ? folderPicker.item.parent || folderPicker.item.folder : currentFolderId}
+        loading={
+          bulkMoveLoading ||
+          bulkCopyLoading ||
+          moveFolderLoading ||
+          moveFileLoading ||
+          copyFolderLoading ||
+          copyFileLoading
+        }
+      />
 
       {/* Rename Modal */}
       <Modal
