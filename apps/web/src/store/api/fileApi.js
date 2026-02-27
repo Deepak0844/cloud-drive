@@ -220,6 +220,7 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FILES),
         ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+        ...ApiUtils.listTags(TagTypes.TRASH),
       ],
     }),
 

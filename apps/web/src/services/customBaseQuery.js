@@ -58,6 +58,7 @@ const customBaseQuery =
         get: () => httpClient.get(finalUrl, params, contentType, { signal: api.signal }),
         post: () => httpClient.post(finalUrl, params, data, contentType, { signal: api.signal }),
         put: () => httpClient.put(finalUrl, params, data, contentType, { signal: api.signal }),
+        patch: () => httpClient.patch(finalUrl, params, data, contentType, { signal: api.signal }),
         delete: () => httpClient.delete(finalUrl, params, data, contentType, { signal: api.signal }),
       };
 

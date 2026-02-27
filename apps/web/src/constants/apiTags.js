@@ -5,6 +5,7 @@ export const TagTypes = {
   FILES: "Files",
   FOLDERS: "Folders",
   AUTH: "Auth",
+  TRASH: "Trash",
 };
 
 /**

@@ -94,7 +94,7 @@ function MyFilesView() {
 
   const folders = contentsData?.data?.folders || [];
   const files = contentsData?.data?.files || [];
-  const breadcrumbs = detailsData?.data?.breadcrumbs || [];
+  const breadcrumbs = currentFolderId === "root" ? [] : detailsData?.data?.breadcrumbs || [];
 
   function toggleSelect(id) {
     setSelectedItems((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
@@ -137,11 +137,22 @@ function MyFilesView() {
 
   function handleOpen(item) {
     // If it's a folder, navigate into it
-    if (item.type === "folder" || !item.extension) {
+    if ("itemCount" in item) {
       setCurrentFolderId(item._id || item.id);
       clearSelection();
     } else {
       setPreviewFile(item);
+    }
+  }
+
+  function handleShowInfo(item) {
+    if ("itemCount" in item) {
+      setInfoItem(item);
+    } else {
+      // It's a file, inject the virtual path based on current breadcrumbs
+      const virtualPath =
+        breadcrumbs && breadcrumbs.length > 0 ? `My Files / ${breadcrumbs.map((b) => b.name).join(" / ")}` : "My Files";
+      setInfoItem({ ...item, virtualPath });
     }
   }
 
@@ -155,7 +166,7 @@ function MyFilesView() {
 
     try {
       const id = renameItem._id || renameItem.id;
-      const isFolder = !renameItem.extension;
+      const isFolder = "itemCount" in renameItem;
 
       if (isFolder) {
         await renameFolder({ id, name: newName }).unwrap();
@@ -179,7 +190,7 @@ function MyFilesView() {
 
     try {
       const id = deleteItem._id || deleteItem.id;
-      const isFolder = !deleteItem.extension;
+      const isFolder = "itemCount" in deleteItem;
 
       if (isFolder) {
         await deleteFolder({ id }).unwrap();
@@ -446,7 +457,7 @@ function MyFilesView() {
                             isSelected={selectedItems.includes(id)}
                             onToggleSelect={toggleSelect}
                             onOpen={handleOpen}
-                            onShowInfo={setInfoItem}
+                            onShowInfo={handleShowInfo}
                             onRename={handleRenameTrigger}
                             onDelete={handleDeleteTrigger}
                           />
@@ -486,7 +497,7 @@ function MyFilesView() {
                             isSelected={selectedItems.includes(id)}
                             onToggleSelect={toggleSelect}
                             onOpen={handleOpen}
-                            onShowInfo={setInfoItem}
+                            onShowInfo={handleShowInfo}
                             onRename={handleRenameTrigger}
                             onDelete={handleDeleteTrigger}
                           />

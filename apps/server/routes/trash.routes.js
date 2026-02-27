@@ -1,19 +1,17 @@
 import express from "express";
+import { protect } from "../middleware/auth.js";
 
 // Controllers
-import { deletePermanently, emptyTrash, getTrashedItems, restoreItem } from "../controllers/trash.controller.js";
-
-// Middleware
-import { protect } from "../middleware/auth.js";
+import { getTrashItems, restoreItems, deleteItemsPermanently, emptyTrash } from "../controllers/trash.controller.js";
 
 const router = express.Router();
 
-// All routes are protected
+// All trash routes are protected
 router.use(protect);
 
-router.get("/", getTrashedItems);
+router.get("/", getTrashItems);
+router.post("/restore", restoreItems);
+router.delete("/permanent", deleteItemsPermanently);
 router.delete("/empty", emptyTrash);
-router.post("/:id/restore", restoreItem);
-router.delete("/:id", deletePermanently);
 
 export default router;

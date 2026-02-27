@@ -78,7 +78,9 @@ function serveWithRange(res, filePath, mimeType, rangeHeader) {
   // Guard against stream errors after headers are sent (e.g. file deleted mid-stream)
   stream.on("error", (err) => {
     logger.error(`[Stream] Read stream error for ${filePath}: ${err.message}`);
-    if (!res.writableEnded) res.end();
+    if (!res.writableEnded) {
+      res.end();
+    }
   });
 
   stream.pipe(res);
@@ -180,31 +182,51 @@ export const getFiles = asyncHandler(async (req, res) => {
 
   const query = { user: req.user.id, is_deleted: false };
 
-  if (search) query.name = { $regex: search, $options: "i" };
+  if (search) {
+    query.name = { $regex: search, $options: "i" };
+  }
 
   if (folderId && folderId !== "null") {
-    if (!(search && recursive)) query.folder = folderId;
+    if (!(search && recursive)) {
+      query.folder = folderId;
+    }
   } else if (!search || !recursive) {
     query.folder = null;
   }
 
-  if (category) query.category = category;
-  if (extension) query.extension = extension.toLowerCase();
-  if (isFavorite) query.is_favorite = true;
+  if (category) {
+    query.category = category;
+  }
+  if (extension) {
+    query.extension = extension.toLowerCase();
+  }
+  if (isFavorite) {
+    query.is_favorite = true;
+  }
 
   if (minSize || maxSize) {
     query.size_bytes = {};
-    if (minSize) query.size_bytes.$gte = parseInt(minSize);
-    if (maxSize) query.size_bytes.$lte = parseInt(maxSize);
+    if (minSize) {
+      query.size_bytes.$gte = parseInt(minSize);
+    }
+    if (maxSize) {
+      query.size_bytes.$lte = parseInt(maxSize);
+    }
   }
 
   if (startDate || endDate) {
     query.createdAt = {};
-    if (startDate) query.createdAt.$gte = new Date(startDate);
-    if (endDate) query.createdAt.$lte = new Date(endDate);
+    if (startDate) {
+      query.createdAt.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      query.createdAt.$lte = new Date(endDate);
+    }
   }
 
-  if (tag) query.tags = tag;
+  if (tag) {
+    query.tags = tag;
+  }
 
   const page = Math.max(1, parseInt(req.query.pn) || 1);
   const limit = Math.min(200, Math.max(1, parseInt(req.query.ps) || 50));
@@ -300,9 +322,12 @@ export const uploadFile = asyncHandler(async (req, res) => {
 export const downloadFile = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
 
-  if (!file) return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
-  if (!fs.existsSync(file.storage_path))
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
+  if (!fs.existsSync(file.storage_path)) {
     return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   // Force download with the original display name
   res.download(file.storage_path, file.original_name || file.name);
@@ -322,7 +347,9 @@ export const downloadFile = asyncHandler(async (req, res) => {
  */
 export const getFilePreview = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
-  if (!file) return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   const useThumb = req.query.thumbnail === "true";
   const userId = file.user.toString();
@@ -424,7 +451,9 @@ export const getFilePreview = asyncHandler(async (req, res) => {
  */
 export const streamFile = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
-  if (!file) return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   if (file.category !== "video" && file.category !== "audio") {
     return ResponseHelper.error(res, "Streaming not supported for this file type", StatusCodes.BAD_REQUEST);
@@ -458,7 +487,9 @@ export const renameFile = asyncHandler(async (req, res) => {
   const { name } = req.body;
   const file = await File.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, { name }, { new: true });
 
-  if (!file) return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "RENAME", fileId: file._id, name });
 
@@ -475,11 +506,15 @@ export const moveFile = asyncHandler(async (req, res) => {
 
   if (folderId) {
     const folder = await Folder.findOne({ _id: folderId, user: req.user.id });
-    if (!folder) return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    if (!folder) {
+      return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    }
   }
 
   const file = await DbUtils.moveItem(ItemTypes.FILE, req.params.id, folderId, req.user.id);
-  if (!file) return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "MOVE", fileId: file._id, destFolderId: folderId });
 
@@ -494,7 +529,9 @@ export const moveFile = asyncHandler(async (req, res) => {
 export const copyFile = asyncHandler(async (req, res) => {
   const { folderId } = req.body;
   const file = await DbUtils.copyRecursive(ItemTypes.FILE, req.params.id, folderId, req.user.id);
-  if (!file) return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   const user = await User.findById(req.user.id);
   SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", { quota_bytes: user.quota_bytes, used_bytes: user.used_bytes });
@@ -510,7 +547,9 @@ export const copyFile = asyncHandler(async (req, res) => {
  */
 export const deleteFile = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
-  if (!file) return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   await DbUtils.softDeleteRecursive(ItemTypes.FILE, req.params.id, req.user.id, true);
 
@@ -551,7 +590,9 @@ export const getRecentFiles = asyncHandler(async (req, res) => {
  */
 export const toggleFavorite = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
-  if (!file) return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
 
   file.is_favorite = !file.is_favorite;
   await file.save();
@@ -567,7 +608,9 @@ export const toggleFavorite = asyncHandler(async (req, res) => {
 export const updateFileTags = asyncHandler(async (req, res) => {
   const { tags } = req.body;
   const file = await File.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, { tags }, { new: true });
-  if (!file) return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
   return ResponseHelper.success(res, file);
 });
 
@@ -604,7 +647,9 @@ export const downloadAsZip = asyncHandler(async (req, res) => {
 
 async function collectFolderFiles(folderId, userId, parentPath, zipItems) {
   const folder = await Folder.findOne({ _id: folderId, user: userId });
-  if (!folder) return;
+  if (!folder) {
+    return;
+  }
 
   const currentPath = parentPath ? `${parentPath}/${folder.name}` : folder.name;
 
@@ -630,7 +675,9 @@ export const bulkMove = asyncHandler(async (req, res) => {
   const { items, targetFolderId } = req.body;
   if (targetFolderId) {
     const folder = await Folder.findOne({ _id: targetFolderId, user: req.user.id });
-    if (!folder) return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    if (!folder) {
+      return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    }
   }
 
   await FileService.bulkMove(req.user.id, items, targetFolderId);
@@ -647,7 +694,9 @@ export const bulkCopy = asyncHandler(async (req, res) => {
   const { items, targetFolderId } = req.body;
   if (targetFolderId) {
     const folder = await Folder.findOne({ _id: targetFolderId, user: req.user.id });
-    if (!folder) return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    if (!folder) {
+      return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    }
   }
 
   await FileService.bulkCopy(req.user.id, items, targetFolderId);

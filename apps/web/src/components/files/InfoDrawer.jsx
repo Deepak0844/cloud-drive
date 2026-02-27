@@ -40,8 +40,9 @@ function getFileInfo(type, isFolder) {
 function InfoDrawer({ item, open, onClose }) {
   if (!item) return null;
 
-  const isFolder = "itemCount" in item;
-  const fileInfo = getFileInfo(item.type, isFolder);
+  const isFolder = "itemCount" in item || item.type === "Folder" || item.type === "FOLDER" || !item.extension;
+  const fileType = isFolder ? "folder" : item.category || item.type || "file";
+  const fileInfo = getFileInfo(fileType, isFolder);
 
   function TitleSection() {
     return (
@@ -55,7 +56,7 @@ function InfoDrawer({ item, open, onClose }) {
           {item.name}
         </Title>
         <Text type="secondary" className="uppercase tracking-wider text-[10px] font-bold">
-          {isFolder ? "Folder" : item.type}
+          {isFolder ? "Folder" : item.extension ? item.extension.replace(".", "") : fileType}
         </Text>
       </div>
     );
@@ -63,11 +64,18 @@ function InfoDrawer({ item, open, onClose }) {
 
   function PropertiesTab() {
     // Format the path safely
-    const displayPath = Array.isArray(item.path)
-      ? `My Files / ${item.path.map((p) => p.name).join(" / ")}`
-      : item.path
-        ? `My Files / ${item.path.replace(/^\/+/, "")}`
-        : "My Files";
+    let displayPath = "My Files";
+
+    if (item.virtualPath) {
+      displayPath = item.virtualPath;
+    } else if (isFolder) {
+      if (Array.isArray(item.path)) {
+        displayPath = `My Files / ${item.path.map((p) => p.name).join(" / ")}`;
+      } else if (typeof item.path === "string") {
+        const cleanPath = item.path.replace(/^\/+/, "").replace(/\/+$/, "");
+        displayPath = cleanPath ? `My Files / ${cleanPath}` : "My Files";
+      }
+    }
 
     return (
       <div className="space-y-5">
@@ -77,7 +85,7 @@ function InfoDrawer({ item, open, onClose }) {
               Size
             </Text>
             <Text strong className="text-sm">
-              {isFolder ? `${item.itemCount} items` : formatBytes(item.size)}
+              {isFolder ? `${item.itemCount || 0} items` : formatBytes(item.size_bytes || item.size || 0)}
             </Text>
           </div>
 
@@ -86,7 +94,11 @@ function InfoDrawer({ item, open, onClose }) {
               Type
             </Text>
             <Tag className="m-0 rounded border-line-base bg-surface-dim font-bold text-xs px-2">
-              {isFolder ? "FOLDER" : item.type ? item.type.toUpperCase() : "FILE"}
+              {isFolder
+                ? "FOLDER"
+                : item.extension
+                  ? item.extension.replace(".", "").toUpperCase()
+                  : fileType.toUpperCase()}
             </Tag>
           </div>
         </div>
@@ -98,8 +110,8 @@ function InfoDrawer({ item, open, onClose }) {
             Path
           </Text>
           <div className="flex items-center gap-2 bg-surface-alt p-2.5 rounded-lg border border-line-base">
-            <FolderOpenOutlined className="text-primary" />
-            <Text className="text-sm truncate font-medium" title={displayPath}>
+            <FolderOpenOutlined className="text-primary shrink-0" />
+            <Text className="text-xs break-all font-medium" title={displayPath}>
               {displayPath}
             </Text>
           </div>

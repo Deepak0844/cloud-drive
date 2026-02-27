@@ -92,6 +92,29 @@ class HttpClient {
   };
 
   /**
+   * PATCH request
+   */
+  patch = async (url, params = {}, data = {}, contentType = HttpContentTypes.APP_JSON, options = {}) => {
+    const headers = {
+      [HttpHeaders.Authorization]: this.authToken ? `Bearer ${this.authToken}` : "",
+      [HttpHeaders.Accept]: HttpContentTypes.APP_JSON,
+      ...(contentType && { [HttpHeaders.ContentType]: contentType }),
+    };
+
+    const response = await axios({
+      method: HttpMethods.PATCH,
+      url,
+      params,
+      data,
+      paramsSerializer: { serialize: ApiUtils.serializeParams },
+      headers,
+      ...options,
+    });
+
+    return response.data;
+  };
+
+  /**
    * DELETE request
    */
   delete = async (url, params = {}, data = {}, contentType = HttpContentTypes.APP_JSON, options = {}) => {

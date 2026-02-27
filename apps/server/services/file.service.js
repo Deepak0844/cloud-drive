@@ -82,7 +82,9 @@ function getThumbnailDir(userId) {
  */
 async function checkQuota(userId, incomingBytes) {
   const user = await User.findById(userId);
-  if (!user) throw new Error("User not found");
+  if (!user) {
+    throw new Error("User not found");
+  }
   return user.used_bytes + incomingBytes <= user.quota_bytes;
 }
 
@@ -121,7 +123,9 @@ async function getUniqueFilename(userId, folderId, originalName) {
  */
 async function copyFileInternal(userId, fileId, targetFolderId) {
   const sourceFile = await File.findOne({ _id: fileId, user: userId });
-  if (!sourceFile) return;
+  if (!sourceFile) {
+    return;
+  }
 
   const uniqueName = await getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
   const ext = path.extname(sourceFile.original_name);
@@ -159,7 +163,9 @@ async function copyFileInternal(userId, fileId, targetFolderId) {
  */
 async function copyFolderInternal(userId, folderId, targetFolderId) {
   const sourceFolder = await Folder.findOne({ _id: folderId, user: userId });
-  if (!sourceFolder) return;
+  if (!sourceFolder) {
+    return;
+  }
 
   const newFolder = await Folder.create({
     name: sourceFolder.name,
@@ -188,7 +194,9 @@ async function bulkMove(userId, items, targetFolderId) {
     if (item.type === "file") {
       await File.findOneAndUpdate({ _id: item.id, user: userId }, { folder: targetFolderId || null });
     } else if (item.type === "folder") {
-      if (item.id === targetFolderId) continue;
+      if (item.id === targetFolderId) {
+        continue;
+      }
       await Folder.findOneAndUpdate({ _id: item.id, user: userId }, { parent: targetFolderId || null });
     }
   }

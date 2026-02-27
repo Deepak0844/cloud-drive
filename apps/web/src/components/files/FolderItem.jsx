@@ -1,6 +1,8 @@
 import {
   CheckCircleFilled,
+  DeleteOutlined,
   DoubleRightOutlined,
+  EditOutlined,
   FolderFilled,
   InfoCircleOutlined,
   MoreOutlined,
@@ -19,7 +21,17 @@ import Dropdown from "@shared-components/components/dropdown";
 
 const { Text } = Typography;
 
-function FolderItem({ folder, isSelected, onToggleSelect, onOpen, onShowInfo, onRename, onDelete, viewMode = "grid" }) {
+function FolderItem({
+  folder,
+  isSelected,
+  onToggleSelect,
+  onOpen,
+  onShowInfo,
+  onRename,
+  onDelete,
+  viewMode = "grid",
+  isTrashItem = false,
+}) {
   const clickTimeoutRef = React.useRef(null);
   const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFavoriteMutation();
 
@@ -49,19 +61,22 @@ function FolderItem({ folder, isSelected, onToggleSelect, onOpen, onShowInfo, on
     onOpen?.(folder);
   }
 
-  const menuItems = [
-    { key: "open", label: "Open", icon: <DoubleRightOutlined /> },
-    {
-      key: "favorite",
-      label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
-      icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
-      onClick: () => toggleFavorite({ id: folder.id }),
-      disabled: isFavoriting,
-    },
-    { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) },
-    { key: "rename", label: "Rename", onClick: () => onRename?.(folder) },
-    { key: "delete", label: "Delete", danger: true, onClick: () => onDelete?.(folder) },
-  ];
+  const menuItems = isTrashItem
+    ? [{ key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) }]
+    : [
+        { key: "open", label: "Open", icon: <DoubleRightOutlined /> },
+        {
+          key: "favorite",
+          label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
+          icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
+          onClick: () => toggleFavorite({ id: folder.id }),
+          disabled: isFavoriting,
+        },
+        { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) },
+        { key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename?.(folder) },
+        { type: "divider" },
+        { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => onDelete?.(folder) },
+      ];
 
   if (viewMode === "list") {
     return (

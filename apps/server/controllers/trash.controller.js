@@ -1,104 +1,109 @@
+import asyncHandler from "../middleware/asyncHandler.js";
+
 // Models
 import File from "../models/File.js";
 import Folder from "../models/Folder.js";
 
-// Utils
-import DbUtils from "../utils/dbUtils.js";
-import ResponseHelper from "../utils/responseHelper.js";
-
 // Constants
-import { ErrorMessages, SuccessMessages, ItemTypes, StatusCodes } from "../constants/generalConstants.js";
+import { StatusCodes, ItemTypes } from "../constants/generalConstants.js";
 
-// Middleware
-import asyncHandler from "../middleware/asyncHandler.js";
+// Utils
+import ResponseHelper from "../utils/responseHelper.js";
+import DbUtils from "../utils/dbUtils.js";
+
+// Services
+import SocketService from "../services/socket.service.js";
 
 /**
- * @desc    Get all trashed items
+ * @desc    Get all files and folders currently in the trash (only items deleted directly)
  * @route   GET /api/v1/trash
  * @access  Private
  */
-export const getTrashedItems = asyncHandler(async (req, res) => {
-  const query = {
-    user: req.user.id,
-    is_deleted: true,
-    $or: [{ deleted_directly: true }, { deleted_directly: { $exists: false } }],
-  };
+export const getTrashItems = asyncHandler(async (req, res) => {
+  // We only fetch items that were `deleted_directly` by the user.
+  // Items deleted because their parent folder was deleted will NOT be shown at the root of the trash.
+  const folders = await Folder.find({ user: req.user.id, is_deleted: true, deleted_directly: true }).sort(
+    "-deleted_at"
+  );
+  const files = await File.find({ user: req.user.id, is_deleted: true, deleted_directly: true }).sort("-deleted_at");
 
-  const files = await File.find(query);
-  const folders = await Folder.find(query);
-
-  const items = [
-    ...folders.map((f) => ({ ...f.toObject(), type: ItemTypes.FOLDER, mime_type: null })),
-    ...files.map((f) => ({ ...f.toObject(), type: ItemTypes.FILE })),
-  ];
-
-  items.sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
-
-  return ResponseHelper.success(res, items, StatusCodes.OK, { count: items.length });
+  return ResponseHelper.success(res, { folders, files });
 });
 
 /**
- * @desc    Restore item from trash
- * @route   POST /api/v1/trash/:id/restore
+ * @desc    Restore specific files/folders from the trash
+ * @route   POST /api/v1/trash/restore
  * @access  Private
  */
-export const restoreItem = asyncHandler(async (req, res) => {
-  let type = ItemTypes.FILE;
-  let item = await File.findOne({ _id: req.params.id, user: req.user.id });
+export const restoreItems = asyncHandler(async (req, res) => {
+  const { items } = req.body; // Expects array of { id, type }
 
-  if (!item) {
-    item = await Folder.findOne({ _id: req.params.id, user: req.user.id });
-    type = ItemTypes.FOLDER;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return ResponseHelper.error(res, "No items provided for restoration", StatusCodes.BAD_REQUEST);
   }
 
-  if (!item) {
-    return ResponseHelper.error(res, ErrorMessages.ITEM_NOT_FOUND, StatusCodes.NOT_FOUND);
+  for (const item of items) {
+    if (!item.id || !item.type) {
+      continue;
+    }
+
+    // DbUtils.restoreRecursive handles moving items back to original_parent (if it exists and is not deleted),
+    // otherwise restores to root. It also restores all children.
+    await DbUtils.restoreRecursive(item.type, item.id, req.user.id);
   }
 
-  await DbUtils.restoreRecursive(type, req.params.id, req.user.id, true);
-
-  return ResponseHelper.success(res, item);
+  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "RESTORE", items });
+  return ResponseHelper.success(res, { message: "Items restored successfully" });
 });
 
 /**
- * @desc    Permanently delete item
- * @route   DELETE /api/v1/trash/:id
+ * @desc    Permanently delete specific files/folders
+ * @route   DELETE /api/v1/trash/permanent
  * @access  Private
  */
-export const deletePermanently = asyncHandler(async (req, res) => {
-  let type = ItemTypes.FILE;
-  let item = await File.findOne({ _id: req.params.id, user: req.user.id });
+export const deleteItemsPermanently = asyncHandler(async (req, res) => {
+  const { items } = req.body; // Expects array of { id, type }
 
-  if (!item) {
-    item = await Folder.findOne({ _id: req.params.id, user: req.user.id });
-    type = ItemTypes.FOLDER;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return ResponseHelper.error(res, "No items provided for deletion", StatusCodes.BAD_REQUEST);
   }
 
-  if (!item) {
-    return ResponseHelper.error(res, ErrorMessages.ITEM_NOT_FOUND, StatusCodes.NOT_FOUND);
+  for (const item of items) {
+    if (!item.id || !item.type) {
+      continue;
+    }
+
+    // DbUtils.permanentDeleteRecursive deletes records from MongoDB and unlinks physical storage files
+    await DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id);
   }
 
-  await DbUtils.permanentDeleteRecursive(type, req.params.id, req.user.id);
-
-  return ResponseHelper.success(res, {});
+  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "PERMANENT_DELETE", items });
+  return ResponseHelper.success(res, { message: "Items permanently deleted" });
 });
 
 /**
- * @desc    Empty trash
+ * @desc    Empty the entire trash (permanently delete all trashed items)
  * @route   DELETE /api/v1/trash/empty
  * @access  Private
  */
 export const emptyTrash = asyncHandler(async (req, res) => {
-  const files = await File.find({ user: req.user.id, is_deleted: true });
+  // Find all directly deleted folders and files
   const folders = await Folder.find({ user: req.user.id, is_deleted: true, deleted_directly: true });
+  const files = await File.find({ user: req.user.id, is_deleted: true, deleted_directly: true });
 
-  for (const file of files) {
-    await DbUtils.permanentDeleteRecursive(ItemTypes.FILE, file._id, req.user.id);
+  const itemsToDelete = [
+    ...folders.map((f) => ({ id: f._id, type: ItemTypes.FOLDER })),
+    ...files.map((f) => ({ id: f._id, type: ItemTypes.FILE })),
+  ];
+
+  if (itemsToDelete.length === 0) {
+    return ResponseHelper.success(res, { message: "Trash is already empty" });
   }
 
-  for (const folder of folders) {
-    await DbUtils.permanentDeleteRecursive(ItemTypes.FOLDER, folder._id, req.user.id);
+  for (const item of itemsToDelete) {
+    await DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id);
   }
 
-  return ResponseHelper.success(res, { message: SuccessMessages.TRASH_EMPTIED });
+  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "EMPTY_TRASH" });
+  return ResponseHelper.success(res, { message: "Trash emptied successfully" });
 });

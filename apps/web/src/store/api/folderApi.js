@@ -72,6 +72,8 @@ const folderApi = baseApi.injectEndpoints({
         ...ApiUtils.entityTags(TagTypes.FOLDERS)(result, error, arg),
         ...ApiUtils.listTags(TagTypes.FOLDERS),
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+        ...ApiUtils.listTags(TagTypes.FILES),
+        ...ApiUtils.listTags(TagTypes.TRASH),
       ],
     }),
 

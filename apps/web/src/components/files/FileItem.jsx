@@ -40,7 +40,17 @@ function getFileInfo(type) {
   }
 }
 
-function FileItem({ file, isSelected, onToggleSelect, onOpen, onShowInfo, onRename, onDelete, viewMode = "grid" }) {
+function FileItem({
+  file,
+  isSelected,
+  onToggleSelect,
+  onOpen,
+  onShowInfo,
+  onRename,
+  onDelete,
+  viewMode = "grid",
+  isTrashItem = false,
+}) {
   const clickTimeoutRef = React.useRef(null);
   const [thumbnailSrc, setThumbnailSrc] = useState(null);
   const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFavoriteMutation();
@@ -90,20 +100,22 @@ function FileItem({ file, isSelected, onToggleSelect, onOpen, onShowInfo, onRena
     onOpen?.(file);
   }
 
-  const menuItems = [
-    { key: "download", label: "Download", icon: <DownloadOutlined /> },
-    {
-      key: "favorite",
-      label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
-      icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
-      onClick: () => toggleFavorite({ id: file.id }),
-      disabled: isFavoriting,
-    },
-    { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) },
-    { key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename?.(file) },
-    { type: "divider" },
-    { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => onDelete?.(file) },
-  ];
+  const menuItems = isTrashItem
+    ? [{ key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) }]
+    : [
+        { key: "download", label: "Download", icon: <DownloadOutlined /> },
+        {
+          key: "favorite",
+          label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
+          icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
+          onClick: () => toggleFavorite({ id: file.id }),
+          disabled: isFavoriting,
+        },
+        { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) },
+        { key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename?.(file) },
+        { type: "divider" },
+        { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => onDelete?.(file) },
+      ];
 
   if (viewMode === "list") {
     return (
