@@ -89,7 +89,7 @@ const limiter = rateLimit({
 // Upload specific limiter (much higher limit for chunked uploads)
 const uploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10000, // 10000 chunks per 15 min (allows ~100GB per 15 min at 10MB chunk size)
+  max: 40000, // 10000 chunks per 15 min (allows ~100GB per 15 min at 10MB chunk size)
   standardHeaders: true,
   legacyHeaders: false,
   message: "Upload limit reached, please pause and resume later",

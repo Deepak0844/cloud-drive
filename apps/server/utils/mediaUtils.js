@@ -303,158 +303,97 @@ async function generateVideoThumbnail(sourcePath, destFolder, filename) {
   throw new Error(`Video thumbnail generation failed for: ${sourcePath}`);
 }
 
-// ─── Video Preview (MP4 Transcode) ───────────────────────────────────────────
+// ─── On-the-fly Pipe Transcode ────────────────────────────────────────────────
 
 /**
- * Generates a web-friendly MP4 preview for any non-browser-native video format.
- * Applies to: MOV, AVI, MKV, WMV, FLV, TS, 3GP, OGV, etc.
+ * On-the-fly transcode: pipes ffmpeg output directly to an HTTP response.
+ * Zero disk usage — converted bytes flow from ffmpeg → memory → client.
  *
- * @param {string} sourcePath - Path to the source video
- * @param {string} destPath - Path to save the MP4 preview
- * @returns {Promise<string>} - Path to the generated preview
+ * Uses fragmented MP4 (frag_keyframe + empty_moov) so the browser can start
+ * playback immediately without needing the full file written first.
+ *
+ * @param {string} sourcePath - Path to the source video file
+ * @param {import('express').Response} res - Express response to pipe into
+ * @returns {Promise<void>}
  */
-function generateVideoPreview(sourcePath, destPath) {
-  const destDir = path.dirname(destPath);
-  ensureDirectoryExists(destDir);
-
+function pipeTranscode(sourcePath, res) {
   return new Promise((resolve, reject) => {
-    ffmpeg(sourcePath)
+    const command = ffmpeg(sourcePath)
       .outputOptions([
         "-c:v libx264",
         "-crf 23",
         "-preset fast",
         "-c:a aac",
         "-b:a 128k",
-        "-movflags +faststart",
         "-pix_fmt yuv420p",
-        // Preserve aspect ratio, ensure even dimensions
         "-vf scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        // Fragmented MP4 — enables streaming without seek/faststart
+        "-movflags frag_keyframe+empty_moov+default_base_moof",
       ])
       .toFormat("mp4")
-      .on("start", (cmd) => logger.debug("[FFMPEG] Transcoding preview:", cmd))
+      .on("start", (cmd) => logger.debug("[FFMPEG] Pipe transcode:", cmd))
       .on("end", () => {
-        logger.info("[FFMPEG] Preview generated:", destPath);
-        resolve(destPath);
+        logger.info("[FFMPEG] Pipe transcode complete for:", sourcePath);
+        resolve();
       })
       .on("error", (err) => {
-        logger.error("[FFMPEG] Preview generation error:", err.message);
-        reject(err);
-      })
-      .save(destPath);
+        // "Output stream closed" is expected when the client disconnects mid-stream
+        if (err.message && err.message.includes("Output stream closed")) {
+          logger.debug("[FFMPEG] Client disconnected during pipe transcode");
+          resolve();
+        } else {
+          logger.error("[FFMPEG] Pipe transcode error:", err.message);
+          reject(err);
+        }
+      });
+
+    // Pipe ffmpeg output directly to the HTTP response
+    command.pipe(res, { end: true });
   });
 }
 
 /**
- * Determines if a video file needs an MP4 preview (i.e., not browser-native)
+ * Determines if a video file needs transcoding (i.e., not browser-native)
  */
 function needsVideoPreview(filePath, mimeType) {
   const ext = path.extname(filePath).toLowerCase();
-  // Non-browser-native formats need a preview
   if (!BROWSER_NATIVE_VIDEO_FORMATS.has(ext)) {
     return true;
   }
-  // Some MP4s with exotic codecs (e.g., HEVC) also need transcoding
   if (mimeType === "video/quicktime") {
     return true;
   }
   return false;
 }
 
-// ─── HLS Streaming ───────────────────────────────────────────────────────────
-
 /**
- * Generates HLS segments for a video with source-adaptive resolution.
- * Caps at 1080p height, preserves aspect ratio.
- *
- * @param {string} sourcePath - Path to the source video
- * @param {string} destFolder - Folder to save HLS segments
- * @returns {Promise<string>} - Path to the .m3u8 manifest
+ * Generates a waveform image from an audio file.
  */
-async function generateHLS(sourcePath, destFolder) {
-  ensureDirectoryExists(destFolder);
-  const manifestPath = path.join(destFolder, "index.m3u8");
-
-  // Probe source resolution to set adaptive output size
-  let targetHeight = 360; // default
-  try {
-    const data = await probeVideo(sourcePath);
-    const videoStream = data.streams.find((s) => s.codec_type === "video");
-    if (videoStream && videoStream.height) {
-      targetHeight = Math.min(videoStream.height, 1080);
-    }
-  } catch {
-    logger.warn("[HLS] Could not probe video resolution, defaulting to 360p");
-  }
-
-  // Ensure even dimensions
-  const scaleFilter = `scale=trunc(iw*${targetHeight}/ih/2)*2:${targetHeight}`;
+async function generateAudioWaveform(sourcePath, destPath) {
+  ensureDirectoryExists(path.dirname(destPath));
 
   return new Promise((resolve, reject) => {
     ffmpeg(sourcePath)
-      .outputOptions([
-        "-c:v libx264",
-        "-crf 23",
-        "-preset fast",
-        "-c:a aac",
-        "-b:a 128k",
-        `-vf ${scaleFilter}`,
-        "-profile:v baseline",
-        "-level 3.0",
-        "-start_number 0",
-        "-hls_time 10",
-        "-hls_list_size 0",
-        "-f hls",
-      ])
-      .on("start", (cmd) => logger.debug("[FFMPEG] HLS command:", cmd))
+      .complexFilter(["showwavespic=s=800x200:colors=0088FF"])
+      .outputOptions(["-frames:v 1"])
+      .on("start", (cmd) => logger.debug("[FFMPEG] Waveform command:", cmd))
       .on("end", () => {
-        logger.info("[FFMPEG] HLS generated:", manifestPath);
-        resolve(manifestPath);
-      })
-      .on("error", (err) => {
-        logger.error("[FFMPEG] HLS generation error:", err.message);
-        reject(err);
-      })
-      .save(manifestPath);
-  });
-}
-
-// ─── Audio Thumbnails ─────────────────────────────────────────────────────────
-
-/**
- * Generates a waveform image from an audio file using ffmpeg's showwavespic filter.
- * Used as a fallback when no album art is available.
- *
- * @param {string} sourcePath - Path to the audio file
- * @param {string} destPath - Path to save the waveform image
- * @returns {Promise<string>} - Path to the generated waveform image
- */
-function generateAudioWaveform(sourcePath, destPath) {
-  const destDir = path.dirname(destPath);
-  ensureDirectoryExists(destDir);
-
-  return new Promise((resolve, reject) => {
-    ffmpeg(sourcePath)
-      .outputOptions(["-filter_complex showwavespic=s=300x300:colors=#4A90D9", "-frames:v 1"])
-      .on("end", () => {
-        logger.info("[Thumbnail] Audio waveform generated:", destPath);
+        logger.info("[FFMPEG] Waveform generated:", destPath);
         resolve(destPath);
       })
       .on("error", (err) => {
-        logger.warn("[Thumbnail] Waveform generation failed:", err.message);
+        logger.error("[FFMPEG] Waveform error:", err.message);
         reject(err);
       })
       .save(destPath);
   });
 }
 
+// ─── Audio Album Art ──────────────────────────────────────────────────────────
+
 /**
  * Extracts album art from an audio file and saves it as a JPEG.
  * Falls back to generating a waveform image if no album art is found.
- * Supports: MP3, FLAC, OGG, OPUS, AAC, WAV, AIFF, M4A, WMA, APE, and more.
- *
- * @param {string} sourcePath - Path to the audio file
- * @param {string} destPath - Path to save the thumbnail
- * @returns {Promise<string|null>} - Path to the thumbnail, or null on failure
  */
 async function extractAudioAlbumArt(sourcePath, destPath) {
   const destDir = path.dirname(destPath);
@@ -490,16 +429,10 @@ async function extractAudioAlbumArt(sourcePath, destPath) {
 
 /**
  * Creates a ZIP archive from a list of files and folders and streams it to an output stream.
- *
- * @param {Array} items - List of items { path, name, type }
- * @param {Stream} outputStream - The stream to write the ZIP to
- * @returns {Promise} - Resolves when the ZIP is finalized
  */
 function createZipStream(items, outputStream) {
   return new Promise((resolve, reject) => {
-    const archive = archiver("zip", {
-      zlib: { level: 5 },
-    });
+    const archive = archiver("zip", { zlib: { level: 5 } });
 
     archive.on("error", (err) => {
       logger.error("[ZIP] Archiver error:", err.message);
@@ -546,13 +479,11 @@ function createZipStream(items, outputStream) {
 const MediaUtils = {
   generateImageThumbnail,
   generateVideoThumbnail,
-  generateVideoPreview,
-  generateHLS,
+  pipeTranscode,
   extractAudioAlbumArt,
   generateAudioWaveform,
   createZipStream,
   needsVideoPreview,
-  // Format registries (exported for use in service layer)
   BROWSER_NATIVE_VIDEO_FORMATS,
   AUDIO_FORMATS_WITH_ART,
   SHARP_NATIVE_FORMATS,

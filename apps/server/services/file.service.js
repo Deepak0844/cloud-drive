@@ -10,17 +10,12 @@ import User from "../models/User.js";
 // Config
 import config from "../config/env.js";
 
-// Utils
-import logger from "../utils/logger.js";
-import MediaUtils from "../utils/mediaUtils.js";
-
-// Services
-import FaceService from "./face.service.js";
+// ─── Path Helpers ─────────────────────────────────────────────────────────────
 
 /**
- * Get core user storage directory
- * @param {String} userId - User ID
- * @returns {String} - Path to user storage directory
+ * Root storage dir for a user's files.
+ * @param {string} userId
+ * @returns {string}
  */
 function getUserDir(userId) {
   const userDir = path.join(config.NAS_STORAGE_PATH, "users", userId, "files");
@@ -31,9 +26,43 @@ function getUserDir(userId) {
 }
 
 /**
- * Get user thumbnail directory
- * @param {String} userId - User ID
- * @returns {String} - Path to thumbnail directory
+ * Stable physical path for a file.
+ * Filename is <fileId><ext> stored inside a 2-char hex bucket subdir.
+ * This path never changes — renaming a file only updates the DB `name` field.
+ *
+ * @param {string} userId
+ * @param {string} fileId  — MongoDB ObjectId string
+ * @param {string} extension — with leading dot, e.g. ".mp4"  (pass "" for no ext)
+ * @returns {string}
+ */
+function getPhysicalFilePath(userId, fileId, extension) {
+  const bucket = fileId.toString().slice(0, 2);
+  const bucketDir = path.join(config.NAS_STORAGE_PATH, "users", userId, "files", bucket);
+  if (!fs.existsSync(bucketDir)) {
+    fs.mkdirSync(bucketDir, { recursive: true });
+  }
+  const ext = extension && !extension.startsWith(".") ? `.${extension}` : extension;
+  return path.join(bucketDir, `${fileId}${ext}`);
+}
+
+/**
+ * Temp directory for in-progress chunked uploads.
+ * Lives at users/<id>/.chunks — NOT inside files/.
+ * @param {string} userId
+ * @returns {string}
+ */
+function getChunksDir(userId) {
+  const chunksDir = path.join(config.NAS_STORAGE_PATH, "users", userId, ".chunks");
+  if (!fs.existsSync(chunksDir)) {
+    fs.mkdirSync(chunksDir, { recursive: true });
+  }
+  return chunksDir;
+}
+
+/**
+ * Directory for cached thumbnail images.
+ * @param {string} userId
+ * @returns {string}
  */
 function getThumbnailDir(userId) {
   const thumbDir = path.join(config.NAS_STORAGE_PATH, "users", userId, "thumbnails");
@@ -43,52 +72,30 @@ function getThumbnailDir(userId) {
   return thumbDir;
 }
 
-/**
- * Get user preview directory
- * @param {String} userId - User ID
- * @returns {String} - Path to preview directory
- */
-function getPreviewDir(userId) {
-  const previewDir = path.join(config.NAS_STORAGE_PATH, "users", userId, "previews");
-  if (!fs.existsSync(previewDir)) {
-    fs.mkdirSync(previewDir, { recursive: true });
-  }
-  return previewDir;
-}
+// ─── Quota ────────────────────────────────────────────────────────────────────
 
 /**
- * Get user streaming directory
- * @param {String} userId - User ID
- * @returns {String} - Path to streaming directory
- */
-function getStreamingDir(userId) {
-  const streamingDir = path.join(config.NAS_STORAGE_PATH, "users", userId, "streaming");
-  if (!fs.existsSync(streamingDir)) {
-    fs.mkdirSync(streamingDir, { recursive: true });
-  }
-  return streamingDir;
-}
-
-/**
- * Check if user has enough quota for incoming file size
- * @param {String} userId - User ID
- * @param {Number} incomingBytes - Size of incoming file in bytes
- * @returns {Boolean} - True if within quota, false otherwise
+ * Check if user has enough quota for incoming file size.
+ * @param {string} userId
+ * @param {number} incomingBytes
+ * @returns {Promise<boolean>}
  */
 async function checkQuota(userId, incomingBytes) {
   const user = await User.findById(userId);
-  if (!user) {
-    throw new Error("User not found");
-  }
+  if (!user) throw new Error("User not found");
   return user.used_bytes + incomingBytes <= user.quota_bytes;
 }
 
+// ─── Filename Uniqueness ──────────────────────────────────────────────────────
+
 /**
- * Check for duplicate filenames and auto-increment if exists
- * @param {String} userId - User ID
- * @param {String} folderId - Folder ID (can be null for root)
- * @param {String} originalName - Original filename
- * @returns {String} - Unique filename to use
+ * Ensure the display name (stored in DB) is unique within a folder.
+ * The physical path is always <fileId>.<ext> — this only affects DB `name`.
+ *
+ * @param {string} userId
+ * @param {string|null} folderId
+ * @param {string} originalName
+ * @returns {Promise<string>}
  */
 async function getUniqueFilename(userId, folderId, originalName) {
   const extIndex = originalName.lastIndexOf(".");
@@ -106,122 +113,87 @@ async function getUniqueFilename(userId, folderId, originalName) {
   return name;
 }
 
+// ─── Copy ─────────────────────────────────────────────────────────────────────
+
 /**
- * Process and save thumbnails/previews for a file.
- * Handles all image, video, and audio formats robustly.
- * @param {Object} file - File model instance
+ * Internal helper to copy a single file.
+ * The copy gets its own stable physical path based on its new DB ObjectId.
  */
-async function processThumbnails(file) {
-  const userId = file.user.toString();
-  const fileId = file._id.toString();
-  const isImage = file.mime_type.startsWith("image/");
-  const isVideo = file.mime_type.startsWith("video/");
-  const isAudio = file.category === "audio" || file.mime_type.startsWith("audio/");
+async function copyFileInternal(userId, fileId, targetFolderId) {
+  const sourceFile = await File.findOne({ _id: fileId, user: userId });
+  if (!sourceFile) return;
 
-  // ── Images ──────────────────────────────────────────────────────────────────
-  if (isImage) {
-    try {
-      const thumbnailDir = getThumbnailDir(userId);
-      const thumbPath = path.join(thumbnailDir, `${fileId}.jpg`);
-      await MediaUtils.generateImageThumbnail(file.storage_path, thumbPath);
-      file.thumbnail_path = thumbPath;
-      logger.info(`[Service] Image thumbnail saved for file ${fileId}`);
+  const uniqueName = await getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
+  const ext = path.extname(sourceFile.original_name);
 
-      // Background face detection - intentionally NOT awaited to prevent blocking the DB save
-      FaceService.detectFaces(file).catch((err) => {
-        logger.error(`[Service] Non-fatal Face detection trigger failed: ${err.message}`);
-      });
-    } catch (err) {
-      logger.error(`[Service] Image thumbnail failed for ${fileId}:`, err.message);
-    }
+  // Create the DB record first to get a stable _id
+  const newFileData = sourceFile.toObject();
+  delete newFileData._id;
+  delete newFileData.createdAt;
+  delete newFileData.updatedAt;
+
+  // Temp placeholder — we update storage_path right after
+  const newFile = await File.create({
+    ...newFileData,
+    name: uniqueName,
+    folder: targetFolderId || null,
+    storage_path: "pending",
+    thumbnail_path: null,
+  });
+
+  const newPath = getPhysicalFilePath(userId, newFile._id.toString(), ext);
+
+  // Copy physical file
+  if (fs.existsSync(sourceFile.storage_path)) {
+    fs.copyFileSync(sourceFile.storage_path, newPath);
   }
 
-  // ── Videos ──────────────────────────────────────────────────────────────────
-  else if (isVideo) {
-    // 1. Thumbnail (duration-aware seeking, fallback chain)
-    try {
-      const thumbnailDir = getThumbnailDir(userId);
-      const thumbPath = path.join(thumbnailDir, `${fileId}.jpg`);
-      await MediaUtils.generateVideoThumbnail(file.storage_path, thumbnailDir, `${fileId}.jpg`);
-      file.thumbnail_path = thumbPath;
-      logger.info(`[Service] Video thumbnail saved for file ${fileId}`);
-    } catch (err) {
-      logger.error(`[Service] Video thumbnail failed for ${fileId}:`, err.message);
-    }
+  newFile.storage_path = newPath;
+  await newFile.save();
 
-    // 2. HLS segments (adaptive resolution)
-    try {
-      const streamingDir = getStreamingDir(userId);
-      const videoStreamDir = path.join(streamingDir, fileId);
-      await MediaUtils.generateHLS(file.storage_path, videoStreamDir);
-      file.streaming_path = path.join(videoStreamDir, "index.m3u8");
-      logger.info(`[Service] HLS generated for file ${fileId}`);
-    } catch (err) {
-      logger.error(`[Service] HLS generation failed for ${fileId}:`, err.message);
-    }
-
-    // 3. MP4 Preview — for ALL non-browser-native formats (MOV, AVI, MKV, WMV, FLV, TS, 3GP, etc.)
-    if (MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)) {
-      try {
-        const previewDir = getPreviewDir(userId);
-        const previewPath = path.join(previewDir, `${fileId}.mp4`);
-        await MediaUtils.generateVideoPreview(file.storage_path, previewPath);
-        file.preview_path = previewPath;
-        logger.info(`[Service] MP4 preview generated for file ${fileId}`);
-      } catch (err) {
-        logger.error(`[Service] MP4 preview failed for ${fileId}:`, err.message);
-      }
-    }
-  }
-
-  // ── Audio ────────────────────────────────────────────────────────────────────
-  else if (isAudio) {
-    try {
-      const thumbnailDir = getThumbnailDir(userId);
-      const thumbPath = path.join(thumbnailDir, `${fileId}.jpg`);
-      // extractAudioAlbumArt already falls back to waveform internally
-      const extractedThumb = await MediaUtils.extractAudioAlbumArt(file.storage_path, thumbPath);
-      if (extractedThumb) {
-        file.thumbnail_path = extractedThumb;
-        logger.info(`[Service] Audio thumbnail saved for file ${fileId}`);
-      }
-    } catch (err) {
-      logger.error(`[Service] Audio thumbnail failed for ${fileId}:`, err.message);
-    }
-  }
-
-  await file.save();
-  return file;
+  return newFile;
 }
 
 /**
- * Bulk move items (files and folders) to a new target folder
- * @param {String} userId - User ID
- * @param {Array} itemIds - Array of { id, type }
- * @param {String} targetFolderId - Destination folder ID
+ * Internal helper to recursively copy a folder.
  */
+async function copyFolderInternal(userId, folderId, targetFolderId) {
+  const sourceFolder = await Folder.findOne({ _id: folderId, user: userId });
+  if (!sourceFolder) return;
+
+  const newFolder = await Folder.create({
+    name: sourceFolder.name,
+    user: userId,
+    parent: targetFolderId || null,
+    path: targetFolderId ? "child" : "/",
+  });
+
+  const files = await File.find({ folder: folderId, user: userId, is_deleted: false });
+  for (const file of files) {
+    await copyFileInternal(userId, file._id, newFolder._id);
+  }
+
+  const subfolders = await Folder.find({ parent: folderId, user: userId, is_deleted: false });
+  for (const subfolder of subfolders) {
+    await copyFolderInternal(userId, subfolder._id, newFolder._id);
+  }
+
+  return newFolder;
+}
+
+// ─── Bulk Operations ──────────────────────────────────────────────────────────
+
 async function bulkMove(userId, items, targetFolderId) {
   for (const item of items) {
     if (item.type === "file") {
       await File.findOneAndUpdate({ _id: item.id, user: userId }, { folder: targetFolderId || null });
     } else if (item.type === "folder") {
-      // Prevent moving a folder into itself
-      if (item.id === targetFolderId) {
-        continue;
-      }
+      if (item.id === targetFolderId) continue;
       await Folder.findOneAndUpdate({ _id: item.id, user: userId }, { parent: targetFolderId || null });
-      // Note: Full path updates for children are usually handled by a post-save hook or dedicated service
-      // For now, updating the parent is sufficient as most queries use parent ID
     }
   }
 }
 
-/**
- * Bulk copy items (files and folders) to a new target folder
- * @param {String} userId - User ID
- * @param {Array} items - Array of { id, type }
- * @param {String} targetFolderId - Destination folder ID
- */
 async function bulkCopy(userId, items, targetFolderId) {
   for (const item of items) {
     if (item.type === "file") {
@@ -232,90 +204,16 @@ async function bulkCopy(userId, items, targetFolderId) {
   }
 }
 
-/**
- * Internal helper to copy a single file
- */
-async function copyFileInternal(userId, fileId, targetFolderId) {
-  const sourceFile = await File.findOne({ _id: fileId, user: userId });
-  if (!sourceFile) {
-    return;
-  }
+// ─── Exports ──────────────────────────────────────────────────────────────────
 
-  const uniqueName = await getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
-  const userDir = getUserDir(userId);
-  const newFilename = `${Date.now()}-${uniqueName}`;
-  const newPath = path.join(userDir, newFilename);
-
-  // Copy physical file
-  if (fs.existsSync(sourceFile.storage_path)) {
-    fs.copyFileSync(sourceFile.storage_path, newPath);
-  }
-
-  // Create new DB entry
-  const newFileData = sourceFile.toObject();
-  delete newFileData._id;
-  delete newFileData.createdAt;
-  delete newFileData.updatedAt;
-
-  const newFile = await File.create({
-    ...newFileData,
-    name: uniqueName,
-    folder: targetFolderId || null,
-    storage_path: newPath,
-    // Reset thumbnail/preview paths as they'll be regenerated or we can copy them too
-    thumbnail_path: null,
-    preview_path: null,
-    streaming_path: null,
-  });
-
-  // Trigger thumbnail generation for the copy
-  processThumbnails(newFile).catch((err) => logger.error("[BulkCopy] Thumbnail generation failed:", err.message));
-
-  return newFile;
-}
-
-/**
- * Internal helper to recursively copy a folder
- */
-async function copyFolderInternal(userId, folderId, targetFolderId) {
-  const sourceFolder = await Folder.findOne({ _id: folderId, user: userId });
-  if (!sourceFolder) {
-    return;
-  }
-
-  // Create new folder entry
-  const newFolderName = sourceFolder.name; // We might want getUniqueFolderName here too
-  const newFolder = await Folder.create({
-    name: newFolderName,
-    user: userId,
-    parent: targetFolderId || null,
-    path: targetFolderId ? "child" : "/", // Simplified path logic
-  });
-
-  // Copy files inside this folder
-  const files = await File.find({ folder: folderId, user: userId, is_deleted: false });
-  for (const file of files) {
-    await copyFileInternal(userId, file._id, newFolder._id);
-  }
-
-  // Copy subfolders recursively
-  const subfolders = await Folder.find({ parent: folderId, user: userId, is_deleted: false });
-  for (const subfolder of subfolders) {
-    await copyFolderInternal(userId, subfolder._id, newFolder._id);
-  }
-
-  return newFolder;
-}
-
-// Exports
 const FileService = {
   getUserDir,
+  getPhysicalFilePath,
+  getChunksDir,
   getThumbnailDir,
-  getPreviewDir,
-  getStreamingDir,
+
   checkQuota,
   getUniqueFilename,
-  processThumbnails,
   bulkMove,
   bulkCopy,
 };

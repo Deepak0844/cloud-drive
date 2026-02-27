@@ -30,12 +30,13 @@ export default function FilePreviewModal({ file, open, onClose }) {
       const type = file.category || file.type;
 
       let url = "";
+      const cacheBust = `&_t=${Date.now()}`;
 
       if (type === "audio") {
-        url = `/api/v1/files/${fileId}/stream?token=${token}`;
+        url = `/api/v1/files/${fileId}/stream?token=${token}${cacheBust}`;
       } else {
         // Video and Images natively stream through the Express preview handler
-        url = `/api/v1/files/${fileId}/preview?token=${token}`;
+        url = `/api/v1/files/${fileId}/preview?token=${token}${cacheBust}`;
       }
 
       setPreviewSrc(url);
@@ -119,7 +120,17 @@ export default function FilePreviewModal({ file, open, onClose }) {
             autoPlay
             src={previewSrc}
             className="w-full h-auto max-h-[70vh] object-contain"
-            onError={() => setHasError(true)}
+            onError={() => {
+              // If direct /preview fails (non-native format), retry via /stream (on-the-fly transcode)
+              if (previewSrc && !previewSrc.includes("/stream")) {
+                const httpClient = HttpClientFactory.getInstance();
+                const token = httpClient.authToken;
+                const fileId = file.id || file._id;
+                setPreviewSrc(`/api/v1/files/${fileId}/stream?token=${token}&_t=${Date.now()}`);
+              } else {
+                setHasError(true);
+              }
+            }}
           >
             <track kind="captions" srcLang="en" label="English" />
           </video>

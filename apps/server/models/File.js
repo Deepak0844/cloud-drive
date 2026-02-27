@@ -49,10 +49,6 @@ const fileSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    preview_path: {
-      type: String,
-      default: null,
-    },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
@@ -85,10 +81,6 @@ const fileSchema = new mongoose.Schema(
       },
     ],
     // Advanced Media Fields
-    streaming_path: {
-      type: String,
-      default: null,
-    },
     taken_at: {
       type: Date,
       default: null,
@@ -135,13 +127,6 @@ fileSchema.virtual("preview_url").get(function () {
 
 fileSchema.virtual("original_url").get(function () {
   return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/download`;
-});
-
-fileSchema.virtual("stream_url").get(function () {
-  if (this.category !== "video" && this.category !== "audio") {
-    return null;
-  }
-  return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/stream`;
 });
 
 // Indexes

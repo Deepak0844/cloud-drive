@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import AuthUtils from "@/utils/authUtils";
-import { CHUNK_SIZE } from "@/hooks/useChunkedUpload";
-
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB
 const UploadContext = createContext(null);
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -13,33 +11,32 @@ export const useUploadDetails = () => {
   return context;
 };
 
+import HttpClientFactory from "@/utils/httpClientFactory";
+
 /**
  * Fire the init API immediately — before React even renders UploadItem.
  * Returns a promise that resolves to { uploadId, totalChunks }.
  */
 async function preInitUpload(file, folderId, chunkSize) {
-  const token = AuthUtils.getToken();
+  const httpClient = HttpClientFactory.getInstance();
   const totalChunks = Math.ceil(file.size / chunkSize);
 
-  const res = await fetch("/api/v1/files/upload/init", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
+  const res = await httpClient.post(
+    "/api/v1/files/upload/init",
+    {},
+    {
       fileName: file.name,
       fileSize: file.size,
       totalChunks,
       folderId: folderId || null,
-    }),
-  });
+    }
+  );
 
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(json?.message || "Failed to initialize upload");
+  if (!res?.success) {
+    throw new Error(res?.message || "Failed to initialize upload");
   }
-  return json.data; // { uploadId, totalChunks }
+
+  return res.data; // { uploadId, totalChunks }
 }
 
 export const UploadProvider = ({ children }) => {

@@ -31,19 +31,6 @@ function safeUnlink(filePath) {
 }
 
 /**
- * Safely remove a directory and all its contents
- */
-function safeRmDir(dirPath) {
-  if (dirPath && fs.existsSync(dirPath)) {
-    try {
-      fs.rmSync(dirPath, { recursive: true, force: true });
-    } catch (e) {
-      logger.error(`Failed to remove directory: ${dirPath}`, e.message);
-    }
-  }
-}
-
-/**
  * Check if targetFolderId is a descendant of folderId (to prevent circular moves)
  */
 async function isDescendant(folderId, targetFolderId, userId) {
@@ -164,12 +151,6 @@ async function permanentDeleteRecursive(type, id, userId) {
       // Remove all physical files associated with this record
       safeUnlink(file.storage_path);
       safeUnlink(file.thumbnail_path);
-      safeUnlink(file.preview_path);
-
-      // HLS streaming directory (contains .m3u8 + .ts segments)
-      if (file.streaming_path) {
-        safeRmDir(path.dirname(file.streaming_path));
-      }
 
       // Update user quota
       const user = await User.findById(userId);
@@ -217,13 +198,9 @@ async function copyRecursive(type, id, targetFolderId, userId) {
     }
 
     const uniqueName = await FileService.getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
-    const userDir = FileService.getUserDir(userId);
-    const newStoragePath = path.join(userDir, uniqueName);
+    const ext = sourceFile.extension ? `.${sourceFile.extension}` : "";
 
-    // Physical copy
-    fs.copyFileSync(sourceFile.storage_path, newStoragePath);
-
-    // Create record
+    // Create DB record first to get a stable _id for the bucketed path
     const newFile = await File.create({
       user: userId,
       folder: targetFolderId || null,
@@ -233,10 +210,19 @@ async function copyRecursive(type, id, targetFolderId, userId) {
       extension: sourceFile.extension,
       category: sourceFile.category,
       size_bytes: sourceFile.size_bytes,
-      storage_path: newStoragePath,
+      storage_path: "pending",
       tags: sourceFile.tags,
       metadata: sourceFile.metadata,
     });
+
+    const newStoragePath = FileService.getPhysicalFilePath(userId, newFile._id.toString(), ext);
+
+    // Physical copy
+    if (fs.existsSync(sourceFile.storage_path)) {
+      fs.copyFileSync(sourceFile.storage_path, newStoragePath);
+    }
+
+    newFile.storage_path = newStoragePath;
 
     // Update user quota atomically
     await User.findByIdAndUpdate(userId, { $inc: { used_bytes: sourceFile.size_bytes } });
@@ -247,8 +233,10 @@ async function copyRecursive(type, id, targetFolderId, userId) {
       const newThumbPath = path.join(thumbDir, `${newFile._id}.jpg`);
       fs.copyFileSync(sourceFile.thumbnail_path, newThumbPath);
       newFile.thumbnail_path = newThumbPath;
-      await newFile.save();
     }
+
+    // Always save — storage_path changed from "pending" and thumbnail may have been set
+    await newFile.save();
 
     return newFile;
   } else if (type === ItemTypes.FOLDER) {

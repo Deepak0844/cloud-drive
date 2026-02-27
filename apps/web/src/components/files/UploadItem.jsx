@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { useChunkedUpload, UploadStatus } from "@/hooks/useChunkedUpload";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useUploadFileChunkedMutation } from "@/store/api/fileApi";
 import { useUploadDetails } from "@/contexts/UploadContext";
 import { Progress, Tooltip } from "antd";
 import {
@@ -57,18 +57,139 @@ const formatEta = (seconds) => {
 
 /* ─── component ───────────────────────────────────────────────────────── */
 
+const UploadStatus = {
+  IDLE: "idle",
+  UPLOADING: "uploading",
+  PAUSED: "paused",
+  SUCCESS: "success",
+  ERROR: "error",
+  CANCELLED: "cancelled",
+};
+
 const UploadItem = ({ upload }) => {
   const { id, file, folderId, initPromise } = upload;
   const { removeUpload } = useUploadDetails();
 
-  const { status, progress, error, speed, eta, start, pause, resume, cancel } = useChunkedUpload(
-    file,
-    folderId,
-    () => {
-      setTimeout(() => removeUpload(id), 3000);
+  const [uploadFileChunked] = useUploadFileChunkedMutation();
+
+  const [status, setStatus] = useState(UploadStatus.IDLE);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState(null);
+  const [speed, setSpeed] = useState(0);
+  const [eta, setEta] = useState(null);
+
+  const uploadPromiseRef = useRef(null);
+  const speedWindowRef = useRef([]);
+
+  const stateRef = useRef({
+    uploadId: null,
+    totalChunks: 0,
+    currentChunkIndex: 0,
+    uploadedBytes: 0,
+  });
+
+  const updateSpeed = useCallback(
+    (totalBytesUploadedSoFar) => {
+      const now = Date.now();
+      const window = speedWindowRef.current;
+      window.push({ t: now, b: totalBytesUploadedSoFar });
+
+      const cutoff = now - 5000;
+      while (window.length > 1 && window[0].t < cutoff) window.shift();
+
+      if (window.length >= 2) {
+        const oldest = window[0];
+        const newest = window[window.length - 1];
+        const elapsed = (newest.t - oldest.t) / 1000;
+        if (elapsed > 0) {
+          const bps = (newest.b - oldest.b) / elapsed;
+          setSpeed(bps);
+          const remaining = file.size - totalBytesUploadedSoFar;
+          setEta(bps > 0 ? Math.ceil(remaining / bps) : null);
+        }
+      }
     },
-    initPromise
+    [file.size]
   );
+
+  const executeUpload = useCallback(async () => {
+    try {
+      let initData = null;
+      if (!stateRef.current.uploadId && file.size > 10 * 1024 * 1024) {
+        initData = await initPromise;
+      }
+
+      const promise = uploadFileChunked({
+        file,
+        folderId,
+        initData,
+        state: stateRef.current,
+        onProgressFn: (pct, loaded) => {
+          setProgress(pct);
+          updateSpeed(loaded);
+        },
+        onSpeedEtaUpdate: (s, e) => {
+          setSpeed(s);
+          setEta(e);
+        },
+      });
+
+      uploadPromiseRef.current = promise;
+      const res = await promise.unwrap();
+
+      if (res?.success) {
+        setStatus(UploadStatus.SUCCESS);
+        setProgress(100);
+        setSpeed(0);
+        setEta(null);
+        setTimeout(() => removeUpload(id), 3000);
+      }
+    } catch (err) {
+      if (err.name === "AbortError" || err.message === "canceled" || err.message === "Aborted") {
+        // Paused or cancelled, do nothing
+      } else {
+        setError(err?.data?.message || err.message || "Upload failed");
+        setStatus(UploadStatus.ERROR);
+        setSpeed(0);
+        setEta(null);
+      }
+    }
+  }, [file, folderId, id, initPromise, removeUpload, updateSpeed, uploadFileChunked]);
+
+  const start = useCallback(() => {
+    if (status === UploadStatus.IDLE || status === UploadStatus.ERROR) {
+      speedWindowRef.current = [];
+      setStatus(UploadStatus.UPLOADING);
+      setError(null);
+      executeUpload();
+    }
+  }, [status, executeUpload]);
+
+  const pause = useCallback(() => {
+    if (status === UploadStatus.UPLOADING) {
+      if (uploadPromiseRef.current) uploadPromiseRef.current.abort();
+      setStatus(UploadStatus.PAUSED);
+      setSpeed(0);
+      setEta(null);
+    }
+  }, [status]);
+
+  const resume = useCallback(() => {
+    if (status === UploadStatus.PAUSED || status === UploadStatus.ERROR) {
+      speedWindowRef.current = [];
+      setStatus(UploadStatus.UPLOADING);
+      setError(null);
+      executeUpload();
+    }
+  }, [status, executeUpload]);
+
+  const cancel = useCallback(() => {
+    if (uploadPromiseRef.current) uploadPromiseRef.current.abort();
+    stateRef.current = { uploadId: null, totalChunks: 0, currentChunkIndex: 0, uploadedBytes: 0 };
+    setStatus(UploadStatus.CANCELLED);
+    setSpeed(0);
+    setEta(null);
+  }, []);
 
   const hasStartedRef = useRef(false);
 
