@@ -27,7 +27,20 @@ export const getTrashItems = asyncHandler(async (req, res) => {
   );
   const files = await File.find({ user: req.user.id, is_deleted: true, deleted_directly: true }).sort("-deleted_at");
 
-  return ResponseHelper.success(res, { folders, files });
+  // Dynamically resolve itemCount for each folder in the trash
+  const foldersWithCount = await Promise.all(
+    folders.map(async (folder) => {
+      const fileCount = await File.countDocuments({ folder: folder._id, is_deleted: true });
+      const subfolderCount = await Folder.countDocuments({ parent: folder._id, is_deleted: true });
+      return {
+        ...folder.toObject(),
+        id: folder._id,
+        itemCount: fileCount + subfolderCount,
+      };
+    })
+  );
+
+  return ResponseHelper.success(res, { folders: foldersWithCount, files });
 });
 
 /**
