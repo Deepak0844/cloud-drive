@@ -16,7 +16,7 @@ import { motion } from "framer-motion";
 import React from "react";
 
 // api
-import { useToggleFavoriteMutation } from "@/store/api/folderApi";
+import { useToggleFolderFavoriteMutation } from "@/store/api/folderApi";
 
 // components
 import Dropdown from "@shared-components/components/dropdown";
@@ -37,7 +37,7 @@ function FolderItem({
   isTrashItem = false,
 }) {
   const clickTimeoutRef = React.useRef(null);
-  const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFavoriteMutation();
+  const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFolderFavoriteMutation();
 
   const isFavorite = folder.is_favorite;
 

@@ -8,6 +8,7 @@ import {
   FileTextOutlined,
   FolderFilled,
   FolderOpenOutlined,
+  StarFilled,
 } from "@ant-design/icons";
 import { Divider, Drawer, Tag, Typography } from "antd";
 import React from "react";
@@ -142,6 +143,17 @@ function InfoDrawer({ item, open, onClose }) {
               </Text>
             </div>
           </div>
+          {item.favorited_at && (
+            <div>
+              <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-1">
+                Favorited At
+              </Text>
+              <div className="flex items-center gap-2">
+                <StarFilled className="text-warning" />
+                <Text className="text-sm font-medium">{dayjs(item.favorited_at).format("MMM D, YYYY h:mm A")}</Text>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -21,7 +21,7 @@ import React, { useEffect, useState } from "react";
 
 // api
 import HttpClientFactory from "@/utils/httpClientFactory";
-import { useToggleFavoriteMutation } from "@/store/api/fileApi";
+import { useToggleFileFavoriteMutation } from "@/store/api/fileApi";
 
 // components
 import Button from "@shared-components/components/button";
@@ -57,7 +57,7 @@ function FileItem({
 }) {
   const clickTimeoutRef = React.useRef(null);
   const [thumbnailSrc, setThumbnailSrc] = useState(null);
-  const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFavoriteMutation();
+  const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFileFavoriteMutation();
 
   const isFavorite = file.is_favorite;
 

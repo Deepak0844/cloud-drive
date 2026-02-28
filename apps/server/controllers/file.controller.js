@@ -186,11 +186,13 @@ export const getFiles = asyncHandler(async (req, res) => {
     query.name = { $regex: search, $options: "i" };
   }
 
+  const isFav = isFavorite === "true" || isFavorite === true;
+
   if (folderId && folderId !== "null") {
     if (!(search && recursive)) {
       query.folder = folderId;
     }
-  } else if (!search || !recursive) {
+  } else if ((!search || !recursive) && !isFav) {
     query.folder = null;
   }
 
@@ -200,7 +202,7 @@ export const getFiles = asyncHandler(async (req, res) => {
   if (extension) {
     query.extension = extension.toLowerCase();
   }
-  if (isFavorite) {
+  if (isFav) {
     query.is_favorite = true;
   }
 
@@ -233,7 +235,10 @@ export const getFiles = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const [files, total] = await Promise.all([
-    File.find(query).sort("-createdAt").skip(skip).limit(limit),
+    File.find(query)
+      .sort(isFav ? "-favorited_at" : "-createdAt")
+      .skip(skip)
+      .limit(limit),
     File.countDocuments(query),
   ]);
 
@@ -595,6 +600,7 @@ export const toggleFavorite = asyncHandler(async (req, res) => {
   }
 
   file.is_favorite = !file.is_favorite;
+  file.favorited_at = file.is_favorite ? new Date() : null;
   await file.save();
 
   return ResponseHelper.success(res, file);

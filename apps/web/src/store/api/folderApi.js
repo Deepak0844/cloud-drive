@@ -88,7 +88,7 @@ const folderApi = baseApi.injectEndpoints({
     }),
 
     // PATCH /api/v1/folders/:id/favorite
-    toggleFavorite: builder.mutation({
+    toggleFolderFavorite: builder.mutation({
       query: ({ id }) => ({
         url: `/folders/${id}/favorite`,
         method: "PATCH",
@@ -137,7 +137,7 @@ export const {
   useCreateFolderMutation,
   useRenameFolderMutation,
   useDeleteFolderMutation,
-  useToggleFavoriteMutation,
+  useToggleFolderFavoriteMutation,
   useMoveFolderMutation,
   useCopyFolderMutation,
 } = folderApi;

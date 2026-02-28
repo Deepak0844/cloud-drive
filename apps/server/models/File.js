@@ -57,6 +57,10 @@ const fileSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    favorited_at: {
+      type: Date,
+      default: null,
+    },
     is_deleted: {
       type: Boolean,
       default: false,

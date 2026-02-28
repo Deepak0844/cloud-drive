@@ -22,7 +22,7 @@ import SocketService from "../services/socket.service.js";
  * @access  Private
  */
 export const getFolders = asyncHandler(async (req, res) => {
-  const { search, parentId, tag } = req.query;
+  const { search, parentId, tag, isFavorite } = req.query;
 
   const query = { user: req.user.id, is_deleted: false };
 
@@ -30,17 +30,29 @@ export const getFolders = asyncHandler(async (req, res) => {
     query.name = { $regex: search, $options: "i" };
   }
 
+  const isFav = isFavorite === "true" || isFavorite === true;
+
+  if (isFav) {
+    query.is_favorite = true;
+  }
+
   if (parentId !== undefined) {
     query.parent = parentId;
-  } else if (req.query.isFavorite === "true") {
-    query.is_favorite = true;
+  } else if (!isFav && !search) {
+    // Default to root only if not looking for favorites or searching globally
+    query.parent = null;
   }
 
   if (tag) {
     query.tags = tag;
   }
 
-  const folders = await Folder.find(query).sort("name");
+  let sort = "name";
+  if (isFav) {
+    sort = "-favorited_at";
+  }
+
+  const folders = await Folder.find(query).sort(sort);
   return ResponseHelper.success(res, folders);
 });
 
@@ -288,6 +300,7 @@ export const toggleFavorite = asyncHandler(async (req, res) => {
   }
 
   folder.is_favorite = !folder.is_favorite;
+  folder.favorited_at = folder.is_favorite ? new Date() : null;
   await folder.save();
 
   return ResponseHelper.success(res, folder);

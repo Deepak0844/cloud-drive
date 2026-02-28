@@ -240,7 +240,7 @@ const fileApi = baseApi.injectEndpoints({
     }),
 
     // PATCH /api/v1/files/:id/favorite
-    toggleFavorite: builder.mutation({
+    toggleFileFavorite: builder.mutation({
       query: ({ id }) => ({
         url: `/files/${id}/favorite`,
         method: "PATCH",
@@ -340,7 +340,7 @@ export const {
   useFinalizeChunkedUploadMutation,
   useDeleteFileMutation,
   useRenameFileMutation,
-  useToggleFavoriteMutation,
+  useToggleFileFavoriteMutation,
   useMoveFileMutation,
   useCopyFileMutation,
   useBulkDeleteMutation,

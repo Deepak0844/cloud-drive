@@ -25,9 +25,12 @@ function FolderPickerModal({
   const currentFolderId = currentFolder.id;
 
   // Fetch only folders in the current directory (optimized)
-  const { data: foldersData, isLoading: isFoldersLoading } = useGetFoldersQuery({
-    parentId: currentFolderId === "root" ? null : currentFolderId,
-  });
+  const { data: foldersData, isLoading: isFoldersLoading } = useGetFoldersQuery(
+    {
+      parentId: currentFolderId === "root" ? null : currentFolderId,
+    },
+    { skip: !open }
+  );
 
   const folders = foldersData?.data || [];
 

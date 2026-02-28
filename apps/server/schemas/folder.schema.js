@@ -44,6 +44,10 @@ export const getFoldersSchema = z.object({
       .optional()
       .transform((val) => (val === "null" || val === "" ? null : val)),
     tag: z.string().optional(),
+    isFavorite: z
+      .string()
+      .optional()
+      .transform((val) => val === "true"),
   }),
 });
 export const favoriteFolderSchema = folderIdParamSchema;
