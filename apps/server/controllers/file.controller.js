@@ -26,6 +26,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import ResponseHelper from "../utils/responseHelper.js";
 import DbUtils from "../utils/dbUtils.js";
 import MediaUtils from "../utils/mediaUtils.js";
+import { applyAdvancedFilters } from "../utils/filterUtils.js";
 import FileUtils from "../utils/fileUtils.js";
 import logger from "../utils/logger.js";
 
@@ -177,58 +178,33 @@ export const uploadMiddleware = upload.single("file");
  * @access  Private
  */
 export const getFiles = asyncHandler(async (req, res) => {
-  const { folderId, search, category, extension, isFavorite, minSize, maxSize, startDate, endDate, recursive, tag } =
-    req.query;
+  const { folderId, search, extension, isFavorite, recursive } = req.query;
 
-  const query = { user: req.user.id, is_deleted: false };
+  let query = { user: req.user.id, is_deleted: false };
 
-  if (search) {
+  if (search && search !== "null" && search !== "undefined") {
     query.name = { $regex: search, $options: "i" };
   }
 
   const isFav = isFavorite === "true" || isFavorite === true;
 
-  if (folderId && folderId !== "null") {
+  if (folderId && folderId !== "null" && folderId !== "undefined") {
     if (!(search && recursive)) {
       query.folder = folderId;
     }
-  } else if ((!search || !recursive) && !isFav) {
+  } else if ((!search || search === "null" || search === "undefined" || !recursive) && !isFav) {
     query.folder = null;
   }
 
-  if (category) {
-    query.category = category;
-  }
   if (extension) {
     query.extension = extension.toLowerCase();
   }
+
   if (isFav) {
     query.is_favorite = true;
   }
 
-  if (minSize || maxSize) {
-    query.size_bytes = {};
-    if (minSize) {
-      query.size_bytes.$gte = parseInt(minSize);
-    }
-    if (maxSize) {
-      query.size_bytes.$lte = parseInt(maxSize);
-    }
-  }
-
-  if (startDate || endDate) {
-    query.createdAt = {};
-    if (startDate) {
-      query.createdAt.$gte = new Date(startDate);
-    }
-    if (endDate) {
-      query.createdAt.$lte = new Date(endDate);
-    }
-  }
-
-  if (tag) {
-    query.tags = tag;
-  }
+  query = applyAdvancedFilters(query, req.query, false);
 
   const page = Math.max(1, parseInt(req.query.pn) || 1);
   const limit = Math.min(200, Math.max(1, parseInt(req.query.ps) || 50));
@@ -582,10 +558,34 @@ export const bulkDelete = asyncHandler(async (req, res) => {
  * @route   GET /api/v1/files/recent
  * @access  Private
  */
+/**
+ * @desc    Get recent files and folders
+ * @route   GET /api/v1/files/recent
+ * @access  Private
+ */
 export const getRecentFiles = asyncHandler(async (req, res) => {
   const { limit } = req.query;
-  const files = await File.find({ user: req.user.id, is_deleted: false }).sort("-createdAt").limit(limit);
-  return ResponseHelper.success(res, files);
+
+  let fileQuery = { user: req.user.id, is_deleted: false };
+  fileQuery = applyAdvancedFilters(fileQuery, req.query, false);
+
+  let folderQuery = { user: req.user.id, is_deleted: false };
+  folderQuery = applyAdvancedFilters(folderQuery, req.query, true);
+
+  const [files, folders] = await Promise.all([
+    File.find(fileQuery).sort("-updatedAt").limit(limit),
+    Folder.find(folderQuery).sort("-updatedAt").limit(limit),
+  ]);
+
+  // Combine and sort by updatedAt
+  const recentItems = [
+    ...files.map((f) => ({ ...f.toObject(), type: ItemTypes.FILE })),
+    ...folders.map((f) => ({ ...f.toObject(), type: ItemTypes.FOLDER })),
+  ]
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+    .slice(0, limit);
+
+  return ResponseHelper.success(res, recentItems);
 });
 
 /**

@@ -2,15 +2,23 @@
 import {
   BellOutlined,
   CloudServerOutlined,
-  HomeOutlined,
   LockOutlined,
   SendOutlined,
   UserOutlined,
+  FileImageOutlined,
+  PlayCircleOutlined,
+  AudioOutlined,
+  FileTextOutlined,
+  FileZipOutlined,
+  FileOutlined,
 } from "@ant-design/icons";
-import { Breadcrumb, Card, Divider, Form, Input, Switch } from "antd";
+import { Breadcrumb, Card, Divider, Form, Input, Switch, Progress, Skeleton, Typography } from "antd";
 import { motion } from "framer-motion";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+
+// api
+import { useGetQuotaUsageQuery, useGetQuotaBreakdownQuery } from "../../store/api/quotaApi";
 
 // constants
 import PageNames from "@/constants/pageNames";
@@ -20,123 +28,274 @@ import PageUrls from "@/constants/pageUrls";
 import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
 
+const { Text } = Typography;
+
+const CATEGORY_CONFIG = {
+  image: { color: "#3b82f6", icon: <FileImageOutlined />, label: "Images" },
+  video: { color: "#ec4899", icon: <PlayCircleOutlined />, label: "Videos" },
+  audio: { color: "#8b5cf6", icon: <AudioOutlined />, label: "Audio" },
+  document: { color: "#10b981", icon: <FileTextOutlined />, label: "Documents" },
+  archive: { color: "#f59e0b", icon: <FileZipOutlined />, label: "Archives" },
+  other: { color: "#64748b", icon: <FileOutlined />, label: "Other" },
+};
+
+function formatBytes(bytes, decimals = 2) {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+}
+
 function SettingsPage() {
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
+  const { data: usage, isLoading: usageLoading } = useGetQuotaUsageQuery();
+  const { data: breakdown, isLoading: breakdownLoading } = useGetQuotaBreakdownQuery();
 
   function handleRequestQuota() {
     setQuotaModalVisible(true);
   }
+
+  const sortedBreakdown = [...(breakdown?.data || [])].sort((a, b) => b.total_size_bytes - a.total_size_bytes);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col gap-6"
-    >
-      <div>
-        <h1 className="text-2xl font-bold text-label mb-2">{PageNames.SETTINGS}</h1>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8 pb-32">
+      <div className="px-1">
+        <h1 className="text-3xl font-black text-label-primary tracking-tight mb-2">{PageNames.SETTINGS}</h1>
         <Breadcrumb
           items={[
             {
               title: (
-                <Link to={PageUrls.DashboardPage}>
-                  <HomeOutlined /> {PageNames.MY_FILES}
+                <Link to={PageUrls.DashboardPage} className="text-label-tertiary hover:text-primary transition-colors">
+                  {PageNames.MY_FILES}
                 </Link>
               ),
             },
-            { title: PageNames.SETTINGS },
+            { title: <span className="text-label-primary font-bold">{PageNames.SETTINGS}</span> },
           ]}
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2 rounded-3xl border-line shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-primary-light text-primary rounded-xl flex items-center justify-center">
-              <UserOutlined className="text-xl" />
-            </div>
-            <h2 className="text-lg font-bold">Profile Information</h2>
-          </div>
-
-          <Form layout="vertical">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Form.Item label="Full Name">
-                <Input defaultValue="Deepak Ram" className="rounded-xl h-12" />
-              </Form.Item>
-              <Form.Item label="Email Address">
-                <Input defaultValue="deepak@example.com" className="rounded-xl h-12" />
-              </Form.Item>
-            </div>
-            <Button type="primary" className="rounded-xl h-11 px-8 font-medium shadow-primary mt-2">
-              Save Changes
-            </Button>
-          </Form>
-
-          <Divider />
-
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-warning-light text-warning rounded-xl flex items-center justify-center">
-              <BellOutlined className="text-xl" />
-            </div>
-            <h2 className="text-lg font-bold">Notifications</h2>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Side: Profile & Security */}
+        <div className="lg:col-span-8 flex flex-col gap-8">
+          <Card className="rounded-[32px] border-line shadow-sm overflow-hidden" styles={{ body: { padding: "32px" } }}>
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
+                <UserOutlined className="text-2xl" />
+              </div>
               <div>
-                <p className="font-semibold">Email Notifications</p>
-                <p className="text-xs text-label-tertiary">Receive emails about your file activities</p>
+                <h2 className="text-xl font-black text-label-primary">Profile Information</h2>
+                <p className="text-sm text-label-tertiary">Update your personal details and public profile</p>
               </div>
-              <Switch defaultChecked />
             </div>
-            <div className="flex justify-between items-center">
+
+            <Form layout="vertical">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Form.Item label={<span className="font-bold text-label-secondary">Full Name</span>}>
+                  <Input defaultValue="Deepak Ram" className="premium-input h-14" />
+                </Form.Item>
+                <Form.Item label={<span className="font-bold text-label-secondary">Email Address</span>}>
+                  <Input defaultValue="deepak@gmail.com" className="premium-input h-14" />
+                </Form.Item>
+              </div>
+              <Button styleType="primary" className="h-12 px-10 font-bold rounded-2xl shadow-lg shadow-primary/20 mt-2">
+                Save Profile
+              </Button>
+            </Form>
+
+            <Divider className="my-10" />
+
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-warning/10 text-warning rounded-2xl flex items-center justify-center">
+                <BellOutlined className="text-2xl" />
+              </div>
               <div>
-                <p className="font-semibold">Storage Alerts</p>
-                <p className="text-xs text-label-tertiary">Get notified when storage is almost full</p>
+                <h2 className="text-xl font-black text-label-primary">Notifications</h2>
+                <p className="text-sm text-label-tertiary">Manage how you receive alerts and updates</p>
               </div>
-              <Switch defaultChecked />
-            </div>
-          </div>
-        </Card>
-
-        <div className="space-y-6">
-          <Card className="rounded-3xl border-line shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-8 h-8 bg-primary-light text-primary rounded-lg flex items-center justify-center">
-                <CloudServerOutlined />
-              </div>
-              <h3 className="font-bold">Storage & Quota</h3>
             </div>
 
-            <div className="mb-6">
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-label-secondary font-medium">Current Usage</span>
-                <span className="text-primary font-bold">1.5 GB / 2 GB</span>
-              </div>
-              <div className="w-full bg-border-base rounded-full h-2">
-                <div className="bg-primary h-full rounded-full shadow-sm" style={{ width: "75%" }}></div>
-              </div>
-              <p className="text-[10px] text-label-tertiary mt-2">Personal Storage • NAS Mode</p>
+            <div className="space-y-6">
+              {[
+                {
+                  label: "Email Notifications",
+                  desc: "Receive updates about file sharing and system alerts",
+                  checked: true,
+                },
+                { label: "Storage Alerts", desc: "Get notified when your drive usage exceeds 80%", checked: true },
+                {
+                  label: "Security Alerts",
+                  desc: "Receive alerts about new sign-ins and password changes",
+                  checked: true,
+                },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="flex justify-between items-center p-4 rounded-2xl bg-surface-dim border border-line/50"
+                >
+                  <div className="pr-4">
+                    <p className="font-black text-label-primary">{item.label}</p>
+                    <p className="text-xs text-label-tertiary">{item.desc}</p>
+                  </div>
+                  <Switch defaultChecked={item.checked} className="premium-switch" />
+                </div>
+              ))}
             </div>
-
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleRequestQuota}
-              className="w-full rounded-xl h-11 font-bold shadow-primary"
-            >
-              Request Quota Increase
-            </Button>
           </Card>
 
-          <Card className="rounded-3xl border-line shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <LockOutlined className="text-lg text-primary" />
-              <h3 className="font-bold">Security</h3>
+          <Card className="rounded-[32px] border-line shadow-sm" styles={{ body: { padding: "32px" } }}>
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-secondary/10 text-secondary rounded-2xl flex items-center justify-center">
+                <LockOutlined className="text-2xl" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-label-primary">Security & Privacy</h2>
+                <p className="text-sm text-label-tertiary">Control your account&apos;s security settings</p>
+              </div>
             </div>
-            <p className="text-xs text-label-secondary mb-4">Manage your account password and security settings.</p>
-            <Button block className="rounded-xl h-10 border-line-strong">
-              Change Password
-            </Button>
+
+            <div className="flex flex-col md:flex-row gap-4">
+              <Button styleType="secondary" className="h-12 flex-1 font-bold rounded-2xl">
+                Change Password
+              </Button>
+              <Button styleType="ghost" className="h-12 flex-1 font-bold rounded-2xl border-line-strong">
+                Two-Factor Auth
+              </Button>
+              <Button
+                styleType="ghost"
+                className="h-12 flex-1 font-bold rounded-2xl border-line-strong text-error hover:bg-error/5"
+              >
+                Delete Account
+              </Button>
+            </div>
+          </Card>
+        </div>
+
+        {/* Right Side: Storage Dashboard */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          <Card
+            className="rounded-[32px] border-line shadow-xl bg-surface-alt relative overflow-hidden"
+            styles={{ body: { padding: "32px" } }}
+          >
+            {/* Glossy background Effect */}
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
+            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-secondary/10 rounded-full blur-[80px]" />
+
+            <div className="flex items-center justify-between mb-8 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg shadow-primary/30">
+                  <CloudServerOutlined className="text-lg" />
+                </div>
+                <h3 className="font-black text-label-primary">Storage Overview</h3>
+              </div>
+              <div className="px-2 py-1 bg-primary/10 rounded-lg">
+                <span className="text-[10px] font-black uppercase tracking-tighter text-primary">Active</span>
+              </div>
+            </div>
+
+            {usageLoading ? (
+              <Skeleton active paragraph={{ rows: 4 }} />
+            ) : (
+              <div className="relative z-10">
+                <div className="flex items-end justify-between mb-2">
+                  <div className="flex flex-col">
+                    <span className="text-3xl font-black text-label-primary tabular-nums">
+                      {usage?.data?.percentage.toFixed(1)}
+                      <span className="text-lg font-bold opacity-50">%</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-label-tertiary uppercase tracking-widest">
+                      Storage Used
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-black text-primary block">
+                      {formatBytes(usage?.data?.used_bytes)}
+                    </span>
+                    <span className="text-[10px] font-bold text-label-tertiary">
+                      of {formatBytes(usage?.data?.quota_bytes)}
+                    </span>
+                  </div>
+                </div>
+
+                <Progress
+                  percent={usage?.data?.percentage}
+                  showInfo={false}
+                  strokeLinecap="round"
+                  strokeWidth={14}
+                  className="premium-progress"
+                  strokeColor={{
+                    "0%": "var(--primary)",
+                    "100%": "var(--secondary)",
+                  }}
+                />
+
+                <div className="mt-8 space-y-4">
+                  {breakdownLoading ? (
+                    <Skeleton active paragraph={{ rows: 4 }} />
+                  ) : (
+                    sortedBreakdown.map((item) => {
+                      const config = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.other;
+                      const percentage = (item.total_size_bytes / usage?.data?.used_bytes) * 100 || 0;
+
+                      return (
+                        <div key={item.category} className="group cursor-default">
+                          <div className="flex items-center justify-between text-xs mb-1.5 px-0.5">
+                            <div className="flex items-center gap-2">
+                              <span style={{ color: config.color }} className="text-sm">
+                                {config.icon}
+                              </span>
+                              <span className="font-bold text-label-secondary">{config.label}</span>
+                            </div>
+                            <span className="font-black text-label-primary tabular-nums">{percentage.toFixed(1)}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-line/20 rounded-full overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${percentage}%` }}
+                              transition={{ duration: 1, ease: "easeOut" }}
+                              className="h-full rounded-full"
+                              style={{ backgroundColor: config.color }}
+                            />
+                          </div>
+                          <div className="flex justify-between mt-1 px-0.5">
+                            <span className="text-[9px] font-bold text-label-tertiary uppercase">
+                              {item.count} items
+                            </span>
+                            <span className="text-[9px] font-black text-label-tertiary">
+                              {formatBytes(item.total_size_bytes)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <Button
+                  styleType="primary"
+                  fullWidth
+                  icon={<SendOutlined />}
+                  onClick={handleRequestQuota}
+                  className="mt-10 h-12 font-black shadow-xl shadow-primary/20 rounded-2xl border-none text-xs tracking-widest uppercase"
+                >
+                  Request Quota Increase
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          <Card className="rounded-[32px] border-line shadow-sm border-dashed" styles={{ body: { padding: "24px" } }}>
+            <h4 className="font-black text-sm text-label-primary mb-2">NAS Engine Status</h4>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+              <span className="text-xs font-bold text-label-secondary italic">Core services operating normally</span>
+            </div>
+            <Text className="text-[10px] text-label-tertiary leading-relaxed block">
+              Your storage is physically managed by the Cloud Drive NAS core. Encryption and versioning are active on
+              all blocks.
+            </Text>
           </Card>
         </div>
       </div>

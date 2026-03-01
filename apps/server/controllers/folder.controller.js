@@ -10,6 +10,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 
 // Utils
 import ResponseHelper from "../utils/responseHelper.js";
+import { applyAdvancedFilters } from "../utils/filterUtils.js";
 import DbUtils from "../utils/dbUtils.js";
 import FolderUtils from "../utils/folderUtils.js";
 
@@ -22,11 +23,11 @@ import SocketService from "../services/socket.service.js";
  * @access  Private
  */
 export const getFolders = asyncHandler(async (req, res) => {
-  const { search, parentId, tag, isFavorite } = req.query;
+  const { search, parentId, isFavorite } = req.query;
 
-  const query = { user: req.user.id, is_deleted: false };
+  let query = { user: req.user.id, is_deleted: false };
 
-  if (search) {
+  if (search && search !== "null" && search !== "undefined") {
     query.name = { $regex: search, $options: "i" };
   }
 
@@ -38,14 +39,12 @@ export const getFolders = asyncHandler(async (req, res) => {
 
   if (parentId !== undefined) {
     query.parent = parentId;
-  } else if (!isFav && !search) {
+  } else if (!isFav && (!search || search === "null" || search === "undefined")) {
     // Default to root only if not looking for favorites or searching globally
     query.parent = null;
   }
 
-  if (tag) {
-    query.tags = tag;
-  }
+  query = applyAdvancedFilters(query, req.query, true);
 
   let sort = "name";
   if (isFav) {
@@ -81,27 +80,25 @@ export const updateFolderTags = asyncHandler(async (req, res) => {
  */
 export const getFolderContents = asyncHandler(async (req, res) => {
   const folderId = req.params.id === "root" ? null : req.params.id;
-  const { search, category, sortBy, sortOrder = "asc" } = req.query;
+  const { search, sortBy, sortOrder = "asc" } = req.query;
 
   // Build folder query
-  const folderQuery = { user: req.user.id, is_deleted: false };
-  if (search) {
+  let folderQuery = { user: req.user.id, is_deleted: false };
+  if (search && search !== "null" && search !== "undefined") {
     folderQuery.name = { $regex: search, $options: "i" };
   } else {
     folderQuery.parent = folderId;
   }
+  folderQuery = applyAdvancedFilters(folderQuery, req.query, true);
 
   // Build file query
-  const fileQuery = { user: req.user.id, is_deleted: false };
-  if (search) {
+  let fileQuery = { user: req.user.id, is_deleted: false };
+  if (search && search !== "null" && search !== "undefined") {
     fileQuery.name = { $regex: search, $options: "i" };
   } else {
     fileQuery.folder = folderId;
   }
-
-  if (category && category !== "all") {
-    fileQuery.category = category;
-  }
+  fileQuery = applyAdvancedFilters(fileQuery, req.query, false);
 
   // Determine sort parameters
   const sortDirection = sortOrder === "desc" ? -1 : 1;

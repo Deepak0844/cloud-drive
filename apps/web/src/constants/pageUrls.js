@@ -11,6 +11,7 @@ const PageUrls = {
   // Main
   DashboardPage: "/",
   MyFilesPage: "/my-files",
+  RecentPage: "/recent",
   FavoritesPage: "/favorites",
   TrashPage: "/trash",
   SettingsPage: "/settings",

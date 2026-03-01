@@ -369,7 +369,7 @@ function needsVideoPreview(filePath, mimeType) {
 /**
  * Generates a waveform image from an audio file.
  */
-async function generateAudioWaveform(sourcePath, destPath) {
+function generateAudioWaveform(sourcePath, destPath) {
   ensureDirectoryExists(path.dirname(destPath));
 
   return new Promise((resolve, reject) => {

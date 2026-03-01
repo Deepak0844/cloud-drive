@@ -10,6 +10,7 @@ import { StatusCodes, ItemTypes } from "../constants/generalConstants.js";
 // Utils
 import ResponseHelper from "../utils/responseHelper.js";
 import DbUtils from "../utils/dbUtils.js";
+import { applyAdvancedFilters } from "../utils/filterUtils.js";
 
 // Services
 import SocketService from "../services/socket.service.js";
@@ -20,12 +21,23 @@ import SocketService from "../services/socket.service.js";
  * @access  Private
  */
 export const getTrashItems = asyncHandler(async (req, res) => {
+  const { search } = req.query;
+
+  let folderQuery = { user: req.user.id, is_deleted: true, deleted_directly: true };
+  if (search && search !== "null" && search !== "undefined") {
+    folderQuery.name = { $regex: search, $options: "i" };
+  }
+  folderQuery = applyAdvancedFilters(folderQuery, req.query, true);
+
+  let fileQuery = { user: req.user.id, is_deleted: true, deleted_directly: true };
+  if (search && search !== "null" && search !== "undefined") {
+    fileQuery.name = { $regex: search, $options: "i" };
+  }
+  fileQuery = applyAdvancedFilters(fileQuery, req.query, false);
   // We only fetch items that were `deleted_directly` by the user.
   // Items deleted because their parent folder was deleted will NOT be shown at the root of the trash.
-  const folders = await Folder.find({ user: req.user.id, is_deleted: true, deleted_directly: true }).sort(
-    "-deleted_at"
-  );
-  const files = await File.find({ user: req.user.id, is_deleted: true, deleted_directly: true }).sort("-deleted_at");
+  const folders = await Folder.find(folderQuery).sort("-deleted_at");
+  const files = await File.find(fileQuery).sort("-deleted_at");
 
   // Dynamically resolve itemCount for each folder in the trash
   const foldersWithCount = await Promise.all(

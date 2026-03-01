@@ -5,8 +5,11 @@ import ApiUtils from "./apiUtils";
 export const trashApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getTrashItems: builder.query({
-      query: () => "/trash",
-      providesTags: (result, error, arg) => ApiUtils.paginatedTags(TagTypes.TRASH)(result, error, arg),
+      query: (params) => ({
+        url: "/trash",
+        params,
+      }),
+      providesTags: ApiUtils.listTags(TagTypes.TRASH),
     }),
 
     restoreItems: builder.mutation({

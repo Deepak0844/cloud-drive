@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
+
 // Models
+import File from "../models/File.js";
 import QuotaRequest from "../models/QuotaRequest.js";
 import User from "../models/User.js";
 
@@ -34,6 +37,41 @@ export const getQuotaUsage = asyncHandler(async (req, res) => {
     used_bytes: user.used_bytes,
     percentage: (user.used_bytes / user.quota_bytes) * 100,
   });
+});
+
+/**
+ * @desc    Get detailed storage breakdown by category
+ * @route   GET /api/v1/quota/breakdown
+ * @access  Private
+ */
+export const getQuotaBreakdown = asyncHandler(async (req, res) => {
+  const breakdown = await File.aggregate([
+    { $match: { user: new mongoose.Types.ObjectId(req.user.id), is_deleted: false } },
+    {
+      $group: {
+        _id: "$category",
+        total_size_bytes: { $sum: "$size_bytes" },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $project: {
+        category: "$_id",
+        total_size_bytes: 1,
+        count: 1,
+        _id: 0,
+      },
+    },
+  ]);
+
+  // Ensure all categories are present, even if empty
+  const categories = ["image", "video", "audio", "document", "archive", "other"];
+  const result = categories.map((cat) => {
+    const found = breakdown.find((b) => b.category === cat);
+    return found || { category: cat, total_size_bytes: 0, count: 0 };
+  });
+
+  return ResponseHelper.success(res, result);
 });
 
 /**

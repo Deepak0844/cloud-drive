@@ -67,7 +67,7 @@ export const getRecentFilesSchema = z.object({
       .string()
       .optional()
       .transform((val) => (val ? parseInt(val) : 20)),
-    tag: z.string().optional(),
+    category: z.enum(["image", "video", "audio", "document", "archive", "other"]).optional(),
   }),
 });
 

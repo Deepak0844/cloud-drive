@@ -8,13 +8,9 @@ import {
   CopyOutlined,
   DeleteOutlined,
   DragOutlined,
-  FileImageOutlined,
-  FileOutlined,
-  FileTextOutlined,
   FilterOutlined,
   FolderFilled,
   HomeOutlined,
-  PlayCircleOutlined,
   PlusOutlined,
   SearchOutlined,
   SendOutlined,
@@ -59,6 +55,7 @@ import FolderPickerModal from "@/components/files/FolderPickerModal";
 import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
+import AdvancedFilterDropdown from "@/components/search/AdvancedFilterDropdown";
 import { useUploadDetails } from "@/contexts/UploadContext";
 import useDebounce from "@/hooks/useDebounce";
 
@@ -91,10 +88,9 @@ function MyFilesView() {
   const [previewFile, setPreviewFile] = useState(null);
   const [newName, setNewName] = useState("");
 
-  // Search, Sort, Filter State
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
-  const [filterType, setFilterType] = useState("all");
+  const [advancedFilters, setAdvancedFilters] = useState({});
   const [sortBy, setSortBy] = useState("updatedAt");
   const [sortOrder, setSortOrder] = useState("desc");
 
@@ -110,9 +106,9 @@ function MyFilesView() {
   const { data: contentsData, isLoading: isContentsLoading } = useGetFolderContentsQuery({
     folderId: currentFolderId,
     search: debouncedSearch,
-    category: filterType === "all" ? undefined : filterType,
     sortBy: sortBy,
     sortOrder: sortOrder,
+    ...advancedFilters,
   });
 
   const { data: detailsData } = useGetFolderDetailsQuery(
@@ -464,37 +460,28 @@ function MyFilesView() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               prefix={<SearchOutlined className="text-primary text-sm" />}
-              className="h-10 rounded-xl border-line bg-surface shadow-sm focus:shadow-md transition-all text-sm w-full"
+              suffix={
+                <AdvancedFilterDropdown
+                  initialFilters={advancedFilters}
+                  onFilter={(filters) => setAdvancedFilters(filters)}
+                  onClear={() => setAdvancedFilters({})}
+                  trigger={
+                    <Tooltip title="Advanced Filters">
+                      <div className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-alt cursor-pointer transition-all group/filter -mr-1">
+                        <FilterOutlined
+                          className={`text-xs ${Object.keys(advancedFilters).length > 0 ? "text-primary" : "text-label-tertiary"} group-hover/filter:text-primary`}
+                        />
+                      </div>
+                    </Tooltip>
+                  }
+                />
+              }
+              className="h-10 rounded-xl border-line bg-surface shadow-sm focus:shadow-md transition-all text-sm w-full premium-nav-search"
               allowClear
             />
           </div>
 
           <div className="bg-surface-alt p-1 rounded-xl flex items-center gap-1">
-            <Dropdown
-              menu={{
-                items: [
-                  { key: "all", label: "All Types" },
-                  { key: "divider1", type: "divider" },
-                  { key: "image", label: "Images", icon: <FileImageOutlined className="text-pink-500" /> },
-                  { key: "video", label: "Videos", icon: <PlayCircleOutlined className="text-blue-500" /> },
-                  { key: "document", label: "Documents", icon: <FileTextOutlined className="text-indigo-500" /> },
-                  { key: "other", label: "Others", icon: <FileOutlined className="text-gray-500" /> },
-                ],
-                onClick: ({ key }) => setFilterType(key),
-                selectable: true,
-                defaultSelectedKeys: [filterType],
-              }}
-              trigger={["click"]}
-            >
-              <Button
-                type="text"
-                className={`rounded-lg text-xs font-bold ${filterType !== "all" ? "text-primary bg-primary/5" : "text-label-secondary"}`}
-                icon={<FilterOutlined className="text-[10px]" />}
-              >
-                {filterType === "all" ? "Filter" : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
-              </Button>
-            </Dropdown>
-
             <Dropdown
               menu={{
                 items: [
