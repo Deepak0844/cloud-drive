@@ -3,18 +3,41 @@ import {
   CloseCircleOutlined,
   EditOutlined,
   HourglassOutlined,
+  ReloadOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Tabs, Tag, Typography, message, Modal, Form, InputNumber, Space } from "antd";
+import {
+  Tabs,
+  Tag,
+  Typography,
+  message as antdMessage,
+  Modal,
+  Form,
+  InputNumber,
+  Space,
+  Skeleton,
+  Button as AntdButton,
+} from "antd";
 import { motion } from "framer-motion";
 import React, { useState } from "react";
 
+// api
+import {
+  useGetUsersQuery,
+  useUpdateUserQuotaMutation,
+  useUpdateUserStatusMutation,
+  useGetAllQuotaRequestsQuery,
+  useHandleQuotaRequestMutation,
+  useRunStorageReanalysisMutation,
+} from "@/store/api/adminApi";
+import { useGetMeQuery } from "@/store/api/authApi";
+
 // constants
-import { MOCK_DATA, UI_COLORS } from "@shared-constants/constants";
+import { UI_COLORS } from "@shared-constants/constants";
 import PageNames from "@/constants/pageNames";
 
 // utils
-import { formatBytes } from "@shared-utils/utils/format";
+import { formatBytes } from "@shared-utils/utils";
 
 // components
 import Table from "@shared-components/components/table";
@@ -24,7 +47,8 @@ const { Text, Title } = Typography;
 
 function bytesToGB(bytes) {
   if (!bytes) return 0;
-  return Number((bytes / (1024 * 1024 * 1024)).toFixed(0));
+  // Use decimal (1000) for consistency with Google Drive standards
+  return Number((bytes / (1000 * 1000 * 1000)).toFixed(0));
 }
 
 function calculatePercentage(used, total) {
@@ -33,13 +57,25 @@ function calculatePercentage(used, total) {
 }
 
 export default function AdminDashboardPage() {
-  const [users, setUsers] = useState(MOCK_DATA.USERS);
-  const [requests, setRequests] = useState(MOCK_DATA.REQUESTS);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [activeTab, setActiveTab] = useState("1");
   const [form] = Form.useForm();
+
+  // API Queries
+  const { data: usersData, isLoading: usersLoading } = useGetUsersQuery();
+  const { data: requestsData, isLoading: requestsLoading } = useGetAllQuotaRequestsQuery();
+  const { data: meData } = useGetMeQuery();
+
+  // API Mutations
+  const [updateUserQuota] = useUpdateUserQuotaMutation();
+  const [updateUserStatus] = useUpdateUserStatusMutation();
+  const [handleQuotaRequest] = useHandleQuotaRequestMutation();
+  const [runReanalysis, { isLoading: reanalyzing }] = useRunStorageReanalysisMutation();
+
+  const currentUser = meData?.data;
+  const users = (usersData?.data || []).filter((u) => u._id !== currentUser?._id);
+  const requests = requestsData?.data || [];
 
   function handleEdit(user) {
     setEditingUser(user);
@@ -52,23 +88,46 @@ export default function AdminDashboardPage() {
     try {
       const values = await form.validateFields();
       const quotaBytes = values.quota * 1024 * 1024 * 1024;
-
-      setUsers(users.map((u) => (u._id === editingUser._id ? { ...u, quota_bytes: quotaBytes } : u)));
-      message.success("Quota updated successfully");
+      await updateUserQuota({ id: editingUser._id, quota_bytes: quotaBytes }).unwrap();
+      antdMessage.success("Quota updated successfully");
       setIsModalOpen(false);
     } catch (_error) {
-      message.error("Validation failed");
+      antdMessage.error("Failed to update quota");
     }
   }
 
-  function handleUserStatusToggle(userId, isActive) {
-    setUsers(users.map((u) => (u._id === userId ? { ...u, is_active: isActive } : u)));
-    message.success(`User has been ${isActive ? "enabled" : "disabled"}`);
+  async function handleUserStatusToggle(userId, isActive) {
+    try {
+      await updateUserStatus({ id: userId, is_active: isActive }).unwrap();
+      antdMessage.success(`User has been ${isActive ? "enabled" : "disabled"}`);
+    } catch (_err) {
+      antdMessage.error("Failed to update user status");
+    }
   }
 
-  function handleRequestStatus(id, status) {
-    setRequests(requests.map((r) => (r._id === id ? { ...r, status } : r)));
-    message.success(`Request ${status.toLowerCase()} successfully`);
+  async function handleRequestStatus(id, status) {
+    try {
+      await handleQuotaRequest({ id, status }).unwrap();
+      antdMessage.success(`Request ${status.toLowerCase()} successfully`);
+    } catch (_err) {
+      antdMessage.error("Failed to update quota request");
+    }
+  }
+
+  async function handleSyncStorage(userId = null) {
+    try {
+      antdMessage.loading({
+        content: userId ? "Re-analyzing user storage..." : "Re-analyzing all users storage...",
+        key: "reanalyze",
+      });
+      await runReanalysis({ userId }).unwrap();
+      antdMessage.success({
+        content: userId ? "User storage re-analyzed successfully" : "All storage re-analyzed successfully",
+        key: "reanalyze",
+      });
+    } catch (_err) {
+      antdMessage.error({ content: "Storage re-analysis failed", key: "reanalyze" });
+    }
   }
 
   const userColumns = [
@@ -106,7 +165,7 @@ export default function AdminDashboardPage() {
       key: "usage",
       render: (_, record) => {
         if (record.role === "ADMIN") {
-          return <Text type="secondary">--</Text>;
+          return null;
         }
 
         const usedText = formatBytes(record.used_bytes);
@@ -130,6 +189,12 @@ export default function AdminDashboardPage() {
         record.role !== "ADMIN" && (
           <div className="flex gap-2">
             <TableActionButton icon={<EditOutlined />} onClick={() => handleEdit(record)} buttonText="Edit Quota" />
+            <TableActionButton
+              icon={<ReloadOutlined />}
+              popconfirmTitle="Re-analyze storage for this user?"
+              onConfirm={() => handleSyncStorage(record._id)}
+              buttonText="Re-sync"
+            />
             <TableActionButton
               danger={record.is_active}
               type={record.is_active ? "default" : "primary"}
@@ -220,7 +285,9 @@ export default function AdminDashboardPage() {
     {
       key: "1",
       label: "User Management",
-      children: (
+      children: usersLoading ? (
+        <Skeleton active paragraph={{ rows: 6 }} />
+      ) : (
         <Table
           columns={userColumns}
           dataSource={users}
@@ -234,7 +301,9 @@ export default function AdminDashboardPage() {
     {
       key: "2",
       label: "Quota Requests",
-      children: (
+      children: requestsLoading ? (
+        <Skeleton active paragraph={{ rows: 6 }} />
+      ) : (
         <Table
           columns={quotaColumns}
           dataSource={requests}
@@ -255,9 +324,21 @@ export default function AdminDashboardPage() {
       transition={{ duration: 0.3 }}
       className="p-6 h-full flex flex-col"
     >
-      <div className="mb-6 shrink-0">
-        <Title level={2}>{PageNames.ADMIN}</Title>
-        <Text type="secondary">Manage users and storage requests</Text>
+      <div className="mb-6 shrink-0 flex items-center justify-between">
+        <div>
+          <Title level={2} className="mb-0!">
+            {PageNames.ADMIN}
+          </Title>
+          <Text type="secondary">Manage users and storage requests</Text>
+        </div>
+        <AntdButton
+          icon={<ReloadOutlined />}
+          loading={reanalyzing}
+          onClick={() => handleSyncStorage()}
+          className="rounded-xl font-bold h-10 border-primary text-primary hover:bg-primary-light"
+        >
+          Re-analyze All Storage
+        </AntdButton>
       </div>
 
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} className="admin-tabs flex-1" />

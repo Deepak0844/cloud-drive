@@ -14,6 +14,7 @@ import {
   renameFile,
   streamFile,
   toggleFavorite,
+  touchFile,
   updateFileTags,
   uploadFile,
   uploadMiddleware,
@@ -65,6 +66,7 @@ router.get("/:id/download", validate(idParamSchema), downloadFile);
 router.get("/:id/preview", validate(idParamSchema), getFilePreview);
 router.patch("/:id", validate(renameFileSchema), renameFile);
 router.patch("/:id/favorite", validate(favoriteFileSchema), toggleFavorite);
+router.post("/:id/touch", validate(idParamSchema), touchFile);
 router.patch("/:id/tags", validate(updateTagsSchema), updateFileTags);
 router.get("/:id/stream", validate(idParamSchema), streamFile);
 router.post("/:id/move", validate(moveFileSchema), moveFile);

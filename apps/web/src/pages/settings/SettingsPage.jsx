@@ -41,26 +41,21 @@ const CATEGORY_CONFIG = {
   other: { color: "#64748b", icon: <FileOutlined />, label: "Other" },
 };
 
-function formatBytes(bytes, decimals = 2) {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
-}
+import { formatBytes } from "@shared-utils/utils";
 
 function SettingsPage() {
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  const { data: usage, isLoading: usageLoading } = useGetQuotaUsageQuery();
-  const { data: breakdown, isLoading: breakdownLoading } = useGetQuotaBreakdownQuery();
   const { data: userResponse } = useGetMeQuery();
+  const user = userResponse?.data;
+  const isAdmin = user?.role === "ADMIN";
+
+  const { data: usage, isLoading: usageLoading } = useGetQuotaUsageQuery(undefined, { skip: isAdmin });
+  const { data: breakdown, isLoading: breakdownLoading } = useGetQuotaBreakdownQuery(undefined, { skip: isAdmin });
   const [updateProfile] = useUpdateProfileMutation();
 
-  const user = userResponse?.data;
   const [form] = Form.useForm();
 
   React.useEffect(() => {
@@ -140,7 +135,7 @@ function SettingsPage() {
                   <Input className="premium-input h-14" />
                 </Form.Item>
                 <Form.Item name="email" label={<span className="font-bold text-label-secondary">Email Address</span>}>
-                  <Input className="premium-input h-14" />
+                  <Input className="premium-input h-14" disabled={true} />
                 </Form.Item>
               </div>
               <Button

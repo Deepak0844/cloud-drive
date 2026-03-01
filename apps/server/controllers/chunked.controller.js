@@ -1,6 +1,7 @@
 // Native modules
 import fs from "fs";
 import path from "path";
+import mongoose from "mongoose";
 
 // Models
 import File from "../models/File.js";
@@ -20,7 +21,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import ResponseHelper from "../utils/responseHelper.js";
 import MimeUtils from "../utils/mimeUtils.js";
 import MetadataService from "../services/metadata.service.js";
-import mongoose from "mongoose";
+import logger from "@/utils/logger.js";
 
 /**
  * @desc    Initiate chunked upload
@@ -85,7 +86,7 @@ export const uploadChunk = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
-  const { uploadId, fileName: name, folderId, mimeType } = req.body;
+  const { uploadId, fileName: name, folderId, mimeType, totalSize } = req.body;
   const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
 
   if (!fs.existsSync(chunkDir)) {
@@ -111,58 +112,76 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
   const finalPath = FileService.getPhysicalFilePath(req.user.id, fileId.toString(), extension);
 
   // Assemble chunks directly into the final stable path
-  if (chunks.length === 1) {
-    // Copy+unlink instead of rename for cross-device safety
-    await fs.promises.copyFile(path.join(chunkDir, chunks[0]), finalPath);
-    await fs.promises.unlink(path.join(chunkDir, chunks[0]));
-  } else {
-    const fileHandle = await fs.promises.open(finalPath, "a");
-    for (const chunk of chunks) {
-      const chunkPath = path.join(chunkDir, chunk);
-      const data = await fs.promises.readFile(chunkPath);
-      await fileHandle.appendFile(data);
-      await fs.promises.unlink(chunkPath);
+  try {
+    if (chunks.length === 1) {
+      // Copy+unlink instead of rename for cross-device safety
+      await fs.promises.copyFile(path.join(chunkDir, chunks[0]), finalPath);
+      await fs.promises.unlink(path.join(chunkDir, chunks[0]));
+    } else {
+      const fileHandle = await fs.promises.open(finalPath, "a");
+      for (const chunk of chunks) {
+        const chunkPath = path.join(chunkDir, chunk);
+        const data = await fs.promises.readFile(chunkPath);
+        await fileHandle.appendFile(data);
+        await fs.promises.unlink(chunkPath);
+      }
+      await fileHandle.close();
     }
-    await fileHandle.close();
+
+    const stats = fs.statSync(finalPath);
+
+    // Robustness: Verification against client-reported totalSize if provided
+    if (totalSize && stats.size !== parseInt(totalSize, 10)) {
+      logger.error(`[Upload] Size mismatch for ${name}: Expected ${totalSize}, got ${stats.size}`);
+      // Cleanup the failed assembly
+      if (fs.existsSync(finalPath)) {
+        await fs.promises.unlink(finalPath);
+      }
+      return ResponseHelper.error(res, "File assembly failed: Size mismatch", StatusCodes.INTERNAL_SERVER_ERROR);
+    }
+
+    const mime_type = mimeType || MimeUtils.getMimeType(name);
+    const category = MetadataService.getCategory(mime_type, name);
+    const ext = extension.replace(".", "") || "bin";
+    const uniqueName = await FileService.getUniqueFilename(req.user.id, folderId, name);
+
+    const file = await File.create({
+      _id: fileId,
+      user: req.user.id,
+      folder: folderId || null,
+      name: uniqueName,
+      original_name: name,
+      mime_type,
+      extension: ext,
+      category,
+      size_bytes: stats.size,
+      storage_path: finalPath,
+      metadata: {},
+    });
+
+    await User.findByIdAndUpdate(req.user.id, { $inc: { used_bytes: stats.size } });
+    const user = await User.findById(req.user.id);
+
+    SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
+      quota_bytes: user.quota_bytes,
+      used_bytes: user.used_bytes,
+    });
+
+    SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
+      action: "UPLOAD",
+      fileId: file._id,
+      folderId: folderId || null,
+    });
+
+    // Clean up the chunk directory
+    await fs.promises.rmdir(chunkDir);
+
+    return ResponseHelper.success(res, file, StatusCodes.CREATED);
+  } catch (err) {
+    logger.error(`[Upload] Finalization error for ${name}: ${err.message}`);
+    if (fs.existsSync(finalPath)) {
+      await fs.promises.unlink(finalPath);
+    }
+    return ResponseHelper.error(res, "Failed to finalize upload", StatusCodes.INTERNAL_SERVER_ERROR);
   }
-
-  // Clean up the chunk directory
-  await fs.promises.rmdir(chunkDir);
-
-  const stats = fs.statSync(finalPath);
-  const mime_type = mimeType || MimeUtils.getMimeType(name);
-  const category = MetadataService.getCategory(mime_type, name);
-  const ext = extension.replace(".", "") || "bin";
-  const uniqueName = await FileService.getUniqueFilename(req.user.id, folderId, name);
-
-  const file = await File.create({
-    _id: fileId,
-    user: req.user.id,
-    folder: folderId || null,
-    name: uniqueName,
-    original_name: name,
-    mime_type,
-    extension: ext,
-    category,
-    size_bytes: stats.size,
-    storage_path: finalPath,
-    metadata: {},
-  });
-
-  await User.findByIdAndUpdate(req.user.id, { $inc: { used_bytes: stats.size } });
-  const user = await User.findById(req.user.id);
-
-  SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
-    quota_bytes: user.quota_bytes,
-    used_bytes: user.used_bytes,
-  });
-
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
-    action: "UPLOAD",
-    fileId: file._id,
-    folderId: folderId || null,
-  });
-
-  // Return immediately — no background processing, all derivatives are lazy
-  return ResponseHelper.success(res, file, StatusCodes.CREATED);
 });

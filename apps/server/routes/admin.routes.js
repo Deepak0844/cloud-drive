@@ -6,6 +6,7 @@ import {
   getSystemStats,
   getUsers,
   handleQuotaRequest,
+  runStorageReanalysis,
   updateUserQuota,
   updateUserStatus,
 } from "../controllers/admin.controller.js";
@@ -29,5 +30,6 @@ router.patch("/users/:id/status", validate(updateUserStatusSchema), updateUserSt
 router.get("/stats", getSystemStats);
 router.get("/quota-requests", getAllQuotaRequests);
 router.patch("/quota-requests/:id", validate(handleQuotaRequestSchema), handleQuotaRequest);
+router.post("/storage/re-analyze", runStorageReanalysis);
 
 export default router;

@@ -9,6 +9,7 @@ import { createNotification } from "./notification.controller.js";
 // Services
 import SocketService from "../services/socket.service.js";
 import SystemService from "../services/system.service.js";
+import FileService from "../services/file.service.js";
 
 // Constants
 import {
@@ -35,10 +36,11 @@ export const getUsers = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.pn) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.ps) || 20));
   const skip = (page - 1) * limit;
+  const queryFilter = { _id: { $ne: req.user.id } };
 
   const [users, total] = await Promise.all([
-    User.find().select("-password").skip(skip).limit(limit).sort("-createdAt"),
-    User.countDocuments(),
+    User.find(queryFilter).select("-password").skip(skip).limit(limit).sort("-createdAt"),
+    User.countDocuments(queryFilter),
   ]);
 
   return ResponseHelper.success(res, users, StatusCodes.OK, {
@@ -185,4 +187,23 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
   }
 
   return ResponseHelper.success(res, user);
+});
+
+/**
+ * @desc    Run deep storage re-analysis and sync
+ * @route   POST /api/v1/admin/storage/re-analyze
+ * @access  Private/Admin
+ */
+export const runStorageReanalysis = asyncHandler(async (req, res) => {
+  const { userId } = req.body;
+  const summary = await FileService.deepSyncStorage(userId);
+
+  // Notify all admins via socket that sync is done (optional)
+  SocketService.emitToAdmins("STORAGE_SYNC_COMPLETE", { ...summary, targetUserId: userId });
+
+  return ResponseHelper.success(res, summary, StatusCodes.OK, {
+    message: userId
+      ? `Deep storage re-analysis for user ${userId} completed successfully`
+      : "Full deep storage re-analysis completed successfully",
+  });
 });

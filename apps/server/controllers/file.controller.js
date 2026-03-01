@@ -310,6 +310,10 @@ export const downloadFile = asyncHandler(async (req, res) => {
     return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
+  // Update last opened timestamp
+  file.last_opened_at = new Date();
+  await file.save();
+
   // Force download with the original display name
   res.download(file.storage_path, file.original_name || file.name);
 });
@@ -332,12 +336,16 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
-  const useThumb = req.query.thumbnail === "true";
+  // Update last opened timestamp
+  file.last_opened_at = new Date();
+  await file.save();
+
+  const isThumbnail = req.query.thumbnail === "true";
   const userId = file.user.toString();
   const fileId = file._id.toString();
 
   // ── Thumbnail request ────────────────────────────────────────────────────────
-  if (useThumb) {
+  if (isThumbnail) {
     const thumbDir = FileService.getThumbnailDir(userId);
     const thumbPath = path.join(thumbDir, `${fileId}.jpg`);
 
@@ -566,26 +574,31 @@ export const bulkDelete = asyncHandler(async (req, res) => {
 export const getRecentFiles = asyncHandler(async (req, res) => {
   const { limit } = req.query;
 
-  let fileQuery = { user: req.user.id, is_deleted: false };
-  fileQuery = applyAdvancedFilters(fileQuery, req.query, false);
+  let query = { user: req.user.id, is_deleted: false };
+  query = applyAdvancedFilters(query, req.query, false);
 
-  let folderQuery = { user: req.user.id, is_deleted: false };
-  folderQuery = applyAdvancedFilters(folderQuery, req.query, true);
+  const files = await File.find(query).populate("folder", "name").sort("-last_opened_at").limit(limit);
 
-  const [files, folders] = await Promise.all([
-    File.find(fileQuery).sort("-updatedAt").limit(limit),
-    Folder.find(folderQuery).sort("-updatedAt").limit(limit),
-  ]);
+  const mappedFiles = files.map((f) => ({ ...f.toObject(), type: ItemTypes.FILE }));
 
-  // Combine and sort by updatedAt
-  const recentItems = [
-    ...files.map((f) => ({ ...f.toObject(), type: ItemTypes.FILE })),
-    ...folders.map((f) => ({ ...f.toObject(), type: ItemTypes.FOLDER })),
-  ]
-    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-    .slice(0, limit);
+  return ResponseHelper.success(res, mappedFiles);
+});
 
-  return ResponseHelper.success(res, recentItems);
+/**
+ * @desc    Touch a file (update last_opened_at)
+ * @route   POST /api/v1/files/:id/touch
+ * @access  Private
+ */
+export const touchFile = asyncHandler(async (req, res) => {
+  const file = await File.findOne({ _id: req.params.id, user: req.user.id });
+  if (!file) {
+    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+  }
+
+  file.last_opened_at = new Date();
+  await file.save();
+
+  return ResponseHelper.success(res, { message: "File touched" });
 });
 
 /**

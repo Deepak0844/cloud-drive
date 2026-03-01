@@ -14,6 +14,8 @@ import {
 import { App, Avatar, Badge, Layout, Tooltip, Typography } from "antd";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
 
 // hooks
 import { useAuth } from "@/hooks/useAuth";
@@ -25,67 +27,35 @@ import { STORAGE_KEYS } from "@/constants/generalConstants";
 // utils
 import LocalStorage from "@/utils/localStorageUtils";
 
+// api
+import { useGetNotificationsQuery, useMarkAsReadMutation, useMarkAllAsReadMutation } from "@/store/api/notificationApi";
+
 // components
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
 
+dayjs.extend(relativeTime);
+
 const { Header } = Layout;
 const { Text } = Typography;
 
-// Mock Notifications
-const initialNotifications = [
-  {
-    id: 1,
-    title: "Storage Alert",
-    description: "You have used 85% of your storage quota.",
-    time: "10 min ago",
-    read: false,
-    type: "warning",
-    icon: <WarningOutlined className="text-warning" />,
-  },
-  {
-    id: 2,
-    title: "File Uploaded",
-    description: "Project_Specs.pdf uploaded successfully.",
-    time: "1 hour ago",
-    read: false,
-    type: "success",
-    icon: <CheckCircleOutlined className="text-success" />,
-  },
-  {
-    id: 3,
-    title: "New Login",
-    description: "New login detected from Mac OS Chrome.",
-    time: "2 hours ago",
-    read: true,
-    type: "info",
-    icon: <InfoCircleOutlined className="text-primary" />,
-  },
-  {
-    id: 4,
-    title: "Quota Requested",
-    description: "Your request for 5GB increase is pending approval.",
-    time: "3 hours ago",
-    read: false,
-    type: "info",
-    icon: <CloudServerOutlined className="text-info" />,
-  },
-  {
-    id: 5,
-    title: "System Update",
-    description: "NAS system successfully updated to v2.4.0.",
-    time: "5 hours ago",
-    read: true,
-    type: "success",
-    icon: <CheckCircleOutlined className="text-success" />,
-  },
-];
+function getNotificationIcon(type) {
+  switch (type) {
+    case "warning":
+      return <WarningOutlined className="text-warning" />;
+    case "success":
+      return <CheckCircleOutlined className="text-success" />;
+    case "storage":
+      return <CloudServerOutlined className="text-info" />;
+    default:
+      return <InfoCircleOutlined className="text-primary" />;
+  }
+}
 
 function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [notifications, setNotifications] = useState(initialNotifications);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const { logout } = useAuth();
   const { user: serverUser } = useCurrentUser();
@@ -95,7 +65,17 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
   const displayName = serverUser?.name ?? localUser?.name ?? "User";
   const displayEmail = serverUser?.email ?? localUser?.email ?? "";
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  // Real notification data from API
+  const { data: notificationsData, isLoading: notificationsLoading } = useGetNotificationsQuery(undefined, {
+    // Poll every 60 seconds to keep notifications fresh
+    pollingInterval: 60000,
+    skip: !notificationOpen && false, // always fetch so badge count is accurate
+  });
+  const [markAsRead] = useMarkAsReadMutation();
+  const [markAllAsRead] = useMarkAllAsReadMutation();
+
+  const notifications = notificationsData?.data || [];
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   async function handleLogout() {
     try {
@@ -106,19 +86,24 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
     }
   }
 
-  function markAsRead(id) {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  }
-
-  function handleNotificationClick(item) {
-    markAsRead(item.id);
-    message.info(`Opening: ${item.title}`);
+  async function handleNotificationClick(item) {
+    if (!item.is_read) {
+      try {
+        await markAsRead({ id: item._id }).unwrap();
+      } catch {
+        // Silently fail — the UI will refetch
+      }
+    }
     setNotificationOpen(false);
   }
 
-  function markAllRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    message.success("All notifications marked as read");
+  async function handleMarkAllRead() {
+    try {
+      await markAllAsRead().unwrap();
+      message.success("All notifications marked as read");
+    } catch {
+      message.error("Failed to mark all as read");
+    }
   }
 
   const notificationMenu = (
@@ -132,51 +117,62 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
             type="text"
             size="small"
             className="text-xs font-bold text-primary hover:bg-primary-light rounded-lg px-2"
-            onClick={markAllRead}
+            onClick={handleMarkAllRead}
           >
             Mark all read
           </Button>
         )}
       </div>
       <div className="max-h-80 overflow-y-auto">
-        {notifications.map((item) => (
-          <div
-            key={item.id}
-            className={`px-3 py-3 hover:bg-surface-dim cursor-pointer transition-all border-b border-line last:border-0 flex gap-3 items-start ${!item.read ? "bg-primary-light/20" : ""}`}
-            onClick={() => handleNotificationClick(item)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") handleNotificationClick(item);
-            }}
-            role="button"
-            tabIndex={0}
-          >
-            <div
-              className={`flex-none w-10 h-10 rounded-xl flex items-center justify-center ${!item.read ? "bg-surface shadow-sm border border-primary-light" : "bg-surface-alt border border-transparent"}`}
-            >
-              {item.icon}
-            </div>
-            <div className="grow min-w-0">
-              <div className="flex justify-between items-start w-full">
-                <Text
-                  strong={!item.read}
-                  className={`text-sm truncate mr-2 ${!item.read ? "text-label" : "text-label-secondary"}`}
-                >
-                  {item.title}
-                </Text>
-                <Text className="flex-none text-[10px] text-label-tertiary font-medium">{item.time}</Text>
-              </div>
-              <div className="flex flex-col">
-                <Text className="text-xs text-label-secondary line-clamp-2 mt-0.5">{item.description}</Text>
-                {!item.read && <Badge status="processing" className="mt-1" />}
-              </div>
+        {notificationsLoading ? (
+          <div className="p-6 text-center text-label-tertiary">
+            <div className="animate-pulse space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-12 bg-surface-dim rounded-xl" />
+              ))}
             </div>
           </div>
-        ))}
-        {notifications.length === 0 && (
+        ) : notifications.length === 0 ? (
           <div className="p-12 text-center text-label-tertiary">
             <BellOutlined className="text-3xl mb-3 opacity-30" />
             <p className="text-sm font-medium">No new notifications</p>
           </div>
+        ) : (
+          notifications.map((item) => (
+            <div
+              key={item._id}
+              className={`px-3 py-3 hover:bg-surface-dim cursor-pointer transition-all border-b border-line last:border-0 flex gap-3 items-start ${!item.is_read ? "bg-primary-light/20" : ""}`}
+              onClick={() => handleNotificationClick(item)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") handleNotificationClick(item);
+              }}
+              role="button"
+              tabIndex={0}
+            >
+              <div
+                className={`flex-none w-10 h-10 rounded-xl flex items-center justify-center ${!item.is_read ? "bg-surface shadow-sm border border-primary-light" : "bg-surface-alt border border-transparent"}`}
+              >
+                {getNotificationIcon(item.type)}
+              </div>
+              <div className="grow min-w-0">
+                <div className="flex justify-between items-start w-full">
+                  <Text
+                    strong={!item.is_read}
+                    className={`text-sm truncate mr-2 ${!item.is_read ? "text-label" : "text-label-secondary"}`}
+                  >
+                    {item.title}
+                  </Text>
+                  <Text className="flex-none text-[10px] text-label-tertiary font-medium">
+                    {dayjs(item.createdAt).fromNow()}
+                  </Text>
+                </div>
+                <div className="flex flex-col">
+                  <Text className="text-xs text-label-secondary line-clamp-2 mt-0.5">{item.message}</Text>
+                  {!item.is_read && <Badge status="processing" className="mt-1" />}
+                </div>
+              </div>
+            </div>
+          ))
         )}
       </div>
     </div>

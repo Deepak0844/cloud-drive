@@ -23,6 +23,19 @@ import React, { useEffect, useState } from "react";
 import HttpClientFactory from "@/utils/httpClientFactory";
 import { useToggleFileFavoriteMutation } from "@/store/api/fileApi";
 
+// utils
+function triggerFileDownload(fileId, fileName) {
+  const httpClient = HttpClientFactory.getInstance();
+  const token = httpClient.authToken;
+  const url = `/api/v1/files/${fileId}/download?token=${encodeURIComponent(token)}`;
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+}
+
 // components
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
@@ -54,6 +67,7 @@ function FileItem({
   onCopy,
   viewMode = "grid",
   isTrashItem = false,
+  showParentContext = false,
 }) {
   const clickTimeoutRef = React.useRef(null);
   const [thumbnailSrc, setThumbnailSrc] = useState(null);
@@ -90,7 +104,7 @@ function FileItem({
     }
 
     clickTimeoutRef.current = setTimeout(() => {
-      onToggleSelect(file.id, e.metaKey || e.ctrlKey);
+      onToggleSelect(file.id || file._id, e.metaKey || e.ctrlKey);
       clickTimeoutRef.current = null;
     }, 250);
   }
@@ -107,7 +121,12 @@ function FileItem({
   const menuItems = isTrashItem
     ? [{ key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) }]
     : [
-        { key: "download", label: "Download", icon: <DownloadOutlined /> },
+        {
+          key: "download",
+          label: "Download",
+          icon: <DownloadOutlined />,
+          onClick: () => triggerFileDownload(file.id || file._id, file.name),
+        },
         {
           key: "favorite",
           label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
@@ -142,12 +161,12 @@ function FileItem({
         <div
           onClick={(e) => {
             e.stopPropagation();
-            onToggleSelect(file.id);
+            onToggleSelect(file.id || file._id);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.stopPropagation();
-              onToggleSelect(file.id);
+              onToggleSelect(file.id || file._id);
             }
           }}
           role="button"
@@ -175,7 +194,14 @@ function FileItem({
         </div>
 
         <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
-          <div className="col-span-6 font-medium text-sm text-label truncate">{file.name}</div>
+          <div className="col-span-6 flex flex-col min-w-0">
+            <div className="font-medium text-sm text-label truncate">{file.name}</div>
+            {showParentContext && file.folder?.name && (
+              <div className="text-[10px] text-label-tertiary truncate leading-none mt-0.5">
+                in <span className="font-bold">{file.folder.name}</span>
+              </div>
+            )}
+          </div>
           <div className="col-span-3 text-xs text-label-tertiary capitalize">{file.type}</div>
           <div className="col-span-3 text-xs text-label-tertiary">{file.size}</div>
         </div>
@@ -240,6 +266,11 @@ function FileItem({
                 {file.name}
               </Text>
             </Tooltip>
+            {showParentContext && file.folder?.name && (
+              <Text className="block truncate text-[9px] text-label-tertiary leading-none mb-1">
+                in <span className="font-black text-primary/70">{file.folder.name}</span>
+              </Text>
+            )}
             <Text type="secondary" className="text-[10px] font-medium opacity-60">
               {file.size}
             </Text>

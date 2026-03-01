@@ -56,11 +56,31 @@ const customBaseQuery =
       const lowerMethod = method.toLowerCase();
 
       const methodMap = {
-        get: () => httpClient.get(finalUrl, params, contentType, { signal: api.signal }),
-        post: () => httpClient.post(finalUrl, params, data, contentType, { signal: api.signal }),
-        put: () => httpClient.put(finalUrl, params, data, contentType, { signal: api.signal }),
-        patch: () => httpClient.patch(finalUrl, params, data, contentType, { signal: api.signal }),
-        delete: () => httpClient.delete(finalUrl, params, data, contentType, { signal: api.signal }),
+        get: () =>
+          httpClient.get(finalUrl, params, contentType, {
+            signal: api.signal,
+            ...(args.responseHandler && { responseType: args.responseHandler }),
+          }),
+        post: () =>
+          httpClient.post(finalUrl, params, data, contentType, {
+            signal: api.signal,
+            ...(args.responseHandler && { responseType: args.responseHandler }),
+          }),
+        put: () =>
+          httpClient.put(finalUrl, params, data, contentType, {
+            signal: api.signal,
+            ...(args.responseHandler && { responseType: args.responseHandler }),
+          }),
+        patch: () =>
+          httpClient.patch(finalUrl, params, data, contentType, {
+            signal: api.signal,
+            ...(args.responseHandler && { responseType: args.responseHandler }),
+          }),
+        delete: () =>
+          httpClient.delete(finalUrl, params, data, contentType, {
+            signal: api.signal,
+            ...(args.responseHandler && { responseType: args.responseHandler }),
+          }),
       };
 
       if (!methodMap[lowerMethod]) {

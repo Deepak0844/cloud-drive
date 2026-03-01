@@ -9,13 +9,18 @@ import {
   FolderFilled,
   FolderOpenOutlined,
   StarFilled,
+  TagsOutlined,
 } from "@ant-design/icons";
-import { Divider, Drawer, Tag, Typography } from "antd";
-import React from "react";
+import { Divider, Drawer, Select, Tag, Typography } from "antd";
+import React, { useState } from "react";
 import dayjs from "dayjs";
 
+// api
+import { useUpdateFileTagsMutation } from "@/store/api/fileApi";
+import { useUpdateFolderTagsMutation } from "@/store/api/folderApi";
+
 // shared utils
-import { formatBytes } from "../../../../../shared/utils/src/format";
+import { formatBytes } from "@shared-utils/utils";
 
 // components
 import Button from "@shared-components/components/button";
@@ -39,11 +44,35 @@ function getFileInfo(type, isFolder) {
 }
 
 function InfoDrawer({ item, open, onClose }) {
+  // ── Hooks must always run — before any conditional return ──────────────────
+  const [updateFileTags, { isLoading: savingFileTags }] = useUpdateFileTagsMutation();
+  const [updateFolderTags, { isLoading: savingFolderTags }] = useUpdateFolderTagsMutation();
+  // initialise tags from item; default to empty array when item is null
+  const [tags, setTags] = useState(item?.tags || []);
+  // ──────────────────────────────────────────────────────────────────────────
+
   if (!item) return null;
 
   const isFolder = "itemCount" in item || item.type === "Folder" || item.type === "FOLDER" || !item.extension;
   const fileType = isFolder ? "folder" : item.category || item.type || "file";
   const fileInfo = getFileInfo(fileType, isFolder);
+  const id = item._id || item.id;
+  const isSavingTags = savingFileTags || savingFolderTags;
+
+  async function handleTagsChange(newTags) {
+    const previousTags = tags;
+    setTags(newTags);
+    try {
+      if (isFolder) {
+        await updateFolderTags({ id, tags: newTags }).unwrap();
+      } else {
+        await updateFileTags({ id, tags: newTags }).unwrap();
+      }
+    } catch {
+      // Restore on error
+      setTags(previousTags);
+    }
+  }
 
   function TitleSection() {
     return (
@@ -116,6 +145,28 @@ function InfoDrawer({ item, open, onClose }) {
               {displayPath}
             </Text>
           </div>
+        </div>
+
+        <Divider className="my-2 border-line-base" />
+
+        {/* Tags Editor */}
+        <div>
+          <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-2">
+            <TagsOutlined className="mr-1" />
+            Tags
+          </Text>
+          <Select
+            mode="tags"
+            value={tags}
+            onChange={handleTagsChange}
+            placeholder="Add tags..."
+            className="w-full"
+            loading={isSavingTags}
+            tokenSeparators={[","]}
+            size="small"
+            variant="outlined"
+            style={{ width: "100%" }}
+          />
         </div>
 
         <Divider className="my-2 border-line-base" />

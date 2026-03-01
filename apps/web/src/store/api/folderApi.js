@@ -126,6 +126,20 @@ const folderApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
       ],
     }),
+
+    // PATCH /api/v1/folders/:id/tags
+    updateFolderTags: builder.mutation({
+      query: ({ id, tags }) => ({
+        url: `/folders/${id}/tags`,
+        method: "PATCH",
+        body: { tags },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        ...ApiUtils.entityTags(TagTypes.FOLDERS)(result, error, arg),
+        ...ApiUtils.listTags(TagTypes.FOLDERS),
+        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -140,6 +154,7 @@ export const {
   useToggleFolderFavoriteMutation,
   useMoveFolderMutation,
   useCopyFolderMutation,
+  useUpdateFolderTagsMutation,
 } = folderApi;
 
 export default folderApi;

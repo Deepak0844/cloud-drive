@@ -188,6 +188,7 @@ const fileApi = baseApi.injectEndpoints({
               fileName: file.name,
               folderId,
               mimeType: file.type,
+              totalSize: file.size,
             },
           });
 
@@ -327,6 +328,41 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
       ],
     }),
+
+    // POST /api/v1/files/bulk-download
+    bulkDownload: builder.mutation({
+      query: ({ items }) => ({
+        url: "/files/bulk-download",
+        method: "POST",
+        body: { items },
+        responseHandler: "blob",
+        cache: "no-cache",
+      }),
+    }),
+
+    // PATCH /api/v1/files/:id/tags
+    updateFileTags: builder.mutation({
+      query: ({ id, tags }) => ({
+        url: `/files/${id}/tags`,
+        method: "PATCH",
+        body: { tags },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        ...ApiUtils.entityTags(TagTypes.FILES)(result, error, arg),
+        ...ApiUtils.listTags(TagTypes.FILES),
+        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
+        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+      ],
+    }),
+
+    // POST /api/v1/files/:id/touch
+    touchFile: builder.mutation({
+      query: ({ id }) => ({
+        url: `/files/${id}/touch`,
+        method: "POST",
+      }),
+      invalidatesTags: [TagTypes.FILES, TagTypes.RECENT_FILES],
+    }),
   }),
   overrideExisting: false,
 });
@@ -346,6 +382,9 @@ export const {
   useBulkDeleteMutation,
   useBulkMoveMutation,
   useBulkCopyMutation,
+  useBulkDownloadMutation,
+  useUpdateFileTagsMutation,
+  useTouchFileMutation,
 } = fileApi;
 
 export default fileApi;

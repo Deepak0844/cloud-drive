@@ -65,6 +65,10 @@ const fileSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    is_orphaned: {
+      type: Boolean,
+      default: false,
+    },
     deleted_at: {
       type: Date,
       default: null,
@@ -103,6 +107,10 @@ const fileSchema = new mongoose.Schema(
     hash: {
       type: String,
       index: true,
+    },
+    last_opened_at: {
+      type: Date,
+      default: Date.now,
     },
   },
   {

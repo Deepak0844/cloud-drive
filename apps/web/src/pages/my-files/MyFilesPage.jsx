@@ -7,6 +7,7 @@ import {
   CloudUploadOutlined,
   CopyOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   DragOutlined,
   FilterOutlined,
   FolderFilled,
@@ -35,6 +36,7 @@ import {
 import {
   useBulkCopyMutation,
   useBulkDeleteMutation,
+  useBulkDownloadMutation,
   useBulkMoveMutation,
   useCopyFileMutation,
   useDeleteFileMutation,
@@ -132,6 +134,7 @@ function MyFilesView() {
   const [bulkDelete] = useBulkDeleteMutation();
   const [bulkMove, { isLoading: bulkMoveLoading }] = useBulkMoveMutation();
   const [bulkCopy, { isLoading: bulkCopyLoading }] = useBulkCopyMutation();
+  const [bulkDownload, { isLoading: bulkDownloadLoading }] = useBulkDownloadMutation();
 
   const folders = contentsData?.data?.folders || [];
   const files = contentsData?.data?.files || [];
@@ -212,6 +215,30 @@ function MyFilesView() {
   function handleBulkCopyTrigger(items) {
     if (!items || items.length === 0) return;
     setFolderPicker({ visible: true, action: "bulk-copy", item: null, items });
+  }
+
+  async function handleBulkDownload(itemsToDownload) {
+    if (!itemsToDownload || itemsToDownload.length === 0) return;
+    // Only download file-type items (not folders) for now
+    const fileItems = itemsToDownload.filter((i) => i.type === "file");
+    if (fileItems.length === 0) {
+      message.warning("Please select at least one file to download");
+      return;
+    }
+    try {
+      const result = await bulkDownload({ items: fileItems }).unwrap();
+      // result is a Blob from the server (zip file)
+      const url = URL.createObjectURL(result);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "download.zip";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch {
+      message.error("Failed to download files");
+    }
   }
 
   function handleMoveTrigger(item) {
@@ -590,6 +617,17 @@ function MyFilesView() {
                   className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
                 >
                   <span className="text-[10px] uppercase tracking-tighter">Copy</span>
+                </Button>
+              </Tooltip>
+              <Tooltip title="Download selection (files only)">
+                <Button
+                  type="text"
+                  icon={<DownloadOutlined />}
+                  loading={bulkDownloadLoading}
+                  onClick={() => handleBulkDownload(selectedItems)}
+                  className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
+                >
+                  <span className="text-[10px] uppercase tracking-tighter">Download</span>
                 </Button>
               </Tooltip>
               <Tooltip title="Delete selection">

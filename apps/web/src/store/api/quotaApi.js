@@ -1,4 +1,5 @@
 import baseApi from "./baseApi";
+import { TagTypes } from "@/constants/apiTags";
 
 const quotaApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -7,7 +8,7 @@ const quotaApi = baseApi.injectEndpoints({
       query: () => ({
         url: "/quota/usage",
       }),
-      providesTags: ["Quota"],
+      providesTags: [TagTypes.QUOTA],
     }),
 
     // GET /api/v1/quota/breakdown
@@ -15,7 +16,7 @@ const quotaApi = baseApi.injectEndpoints({
       query: () => ({
         url: "/quota/breakdown",
       }),
-      providesTags: ["Quota"],
+      providesTags: [TagTypes.QUOTA],
     }),
 
     // POST /api/v1/quota/request
@@ -25,7 +26,7 @@ const quotaApi = baseApi.injectEndpoints({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Quota"],
+      invalidatesTags: [TagTypes.QUOTA],
     }),
   }),
   overrideExisting: false,

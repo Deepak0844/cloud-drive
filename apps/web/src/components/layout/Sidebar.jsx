@@ -14,7 +14,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 // constants
 import PageUrls from "@/constants/pageUrls";
 import PageNames from "@/constants/pageNames";
-import { STORAGE } from "@shared-constants/constants";
 import { Roles } from "@/constants/generalConstants";
 
 // utils
@@ -22,6 +21,10 @@ import AuthUtils from "@/utils/authUtils";
 
 // hooks
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useGetQuotaUsageQuery } from "@/store/api/quotaApi";
+
+// shared utils
+import { formatBytes } from "@shared-utils/utils";
 
 const { Sider } = Layout;
 
@@ -32,6 +35,11 @@ function Sidebar({ collapsed, isMobile }) {
 
   // Prefer server data; fallback to local storage during initial load
   const userRole = serverRole ?? AuthUtils.getUserRole();
+  const isAdmin = userRole === Roles.ADMIN;
+
+  const { data: quotaData } = useGetQuotaUsageQuery(undefined, {
+    skip: isAdmin,
+  });
 
   const allMenuItems = [
     {
@@ -115,28 +123,37 @@ function Sidebar({ collapsed, isMobile }) {
           className="sidebar-menu border-none px-2"
         />
 
-        {/* NAS-style Storage Section */}
-        <div
-          className={`absolute bottom-6 left-0 right-0 px-4 transition-all duration-300 ${collapsed ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-100 translate-y-0"}`}
-        >
-          <div className="bg-surface-dim/80 backdrop-blur-sm p-4 rounded-2xl border border-line shadow-sm group">
-            <div className="flex justify-between items-center mb-2.5">
-              <span className="text-[10px] font-bold text-label-tertiary uppercase tracking-wider">Storage Status</span>
-              <span className="text-xs font-black text-primary">{STORAGE.WARN_THRESHOLD_PERCENT}%</span>
-            </div>
+        {/* NAS-style Storage Section - Only for Users */}
+        {userRole === Roles.USER && (
+          <div
+            className={`absolute bottom-6 left-0 right-0 px-4 transition-all duration-300 ${collapsed ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-100 translate-y-0"}`}
+          >
+            <div className="bg-surface-dim/80 backdrop-blur-sm p-4 rounded-2xl border border-line shadow-sm group">
+              <div className="flex justify-between items-center mb-2.5">
+                <span className="text-[10px] font-bold text-label-tertiary uppercase tracking-wider">
+                  Storage Status
+                </span>
+                <span className="text-xs font-black text-primary">
+                  {quotaData?.data ? Math.round(quotaData.data.percentage) : 0}%
+                </span>
+              </div>
 
-            <div className="w-full bg-border-base/50 rounded-full h-1.5 overflow-hidden mb-3">
-              <div
-                className="bg-linear-to-r from-primary to-secondary h-full rounded-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)] transition-all duration-1000"
-                style={{ width: `${STORAGE.WARN_THRESHOLD_PERCENT}%` }}
-              ></div>
-            </div>
+              <div className="w-full bg-border-base/50 rounded-full h-1.5 overflow-hidden mb-3">
+                <div
+                  className="bg-linear-to-r from-primary to-secondary h-full rounded-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)] transition-all duration-1000"
+                  style={{ width: `${quotaData?.data?.percentage || 0}%` }}
+                ></div>
+              </div>
 
-            <div className="flex items-center justify-start gap-2">
-              <p className="text-[10px] font-medium text-label-secondary">1.5 GB of {STORAGE.TOTAL_QUOTA_GB} GB used</p>
+              <div className="flex items-center justify-start gap-2">
+                <p className="text-[10px] font-medium text-label-secondary">
+                  {quotaData?.data ? formatBytes(quotaData.data.used_bytes) : "0 B"} of{" "}
+                  {quotaData?.data ? formatBytes(quotaData.data.quota_bytes) : "0 B"} used
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </Sider>
   );

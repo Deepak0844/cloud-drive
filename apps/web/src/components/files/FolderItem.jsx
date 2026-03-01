@@ -35,6 +35,7 @@ function FolderItem({
   onCopy,
   viewMode = "grid",
   isTrashItem = false,
+  showParentContext = false,
 }) {
   const clickTimeoutRef = React.useRef(null);
   const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFolderFavoriteMutation();
@@ -134,7 +135,14 @@ function FolderItem({
         </div>
 
         <div className="flex-1 min-w-0 flex items-center justify-between">
-          <div className="font-medium text-sm text-label truncate">{folder.name}</div>
+          <div className="flex flex-col min-w-0">
+            <div className="font-medium text-sm text-label truncate">{folder.name}</div>
+            {showParentContext && folder.parent?.name && (
+              <div className="text-[10px] text-label-tertiary truncate leading-none mt-0.5">
+                in <span className="font-bold">{folder.parent.name}</span>
+              </div>
+            )}
+          </div>
           <div className="text-xs text-label-tertiary">{folder.itemCount || 0} items</div>
         </div>
 
@@ -186,6 +194,11 @@ function FolderItem({
             <Text strong className="block truncate text-[13px]" title={folder.name}>
               {folder.name}
             </Text>
+            {showParentContext && folder.parent?.name && (
+              <Text className="block truncate text-[10px] text-label-tertiary leading-none mb-1">
+                in <span className="font-bold">{folder.parent.name}</span>
+              </Text>
+            )}
             <Text type="secondary" className="text-[11px] font-medium text-label-tertiary">
               {folder.itemCount || 0} items
             </Text>

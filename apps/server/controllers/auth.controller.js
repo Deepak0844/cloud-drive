@@ -3,6 +3,7 @@ import User from "../models/User.js";
 
 // Services
 import EmailService from "../services/email.service.js";
+import FileService from "../services/file.service.js";
 
 // Constants
 import { ErrorMessages, SuccessMessages, StatusCodes } from "../constants/generalConstants.js";
@@ -67,6 +68,9 @@ export const login = asyncHandler(async (req, res) => {
     return ResponseHelper.error(res, ErrorMessages.ACCOUNT_DEACTIVATED, StatusCodes.FORBIDDEN);
   }
 
+  // Sync storage quota
+  await FileService.recalculateUsedBytes(user._id);
+
   sendTokenResponse(user, StatusCodes.OK, res, SuccessMessages.LOGIN_SUCCESS);
 });
 
@@ -85,7 +89,19 @@ export const logout = (req, res) => {
  * @access  Private
  */
 export const getMe = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.id);
+  // Sync storage quota only for standard users
+  if (req.user.role !== "ADMIN") {
+    await FileService.recalculateUsedBytes(req.user.id);
+  }
+
+  const userDoc = await User.findById(req.user.id);
+  const user = userDoc.toObject();
+
+  if (user.role === "ADMIN") {
+    delete user.quota_bytes;
+    delete user.used_bytes;
+  }
+
   return ResponseHelper.success(res, user);
 });
 

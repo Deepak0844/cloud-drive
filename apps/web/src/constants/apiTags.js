@@ -6,6 +6,11 @@ export const TagTypes = {
   FOLDERS: "Folders",
   AUTH: "Auth",
   TRASH: "Trash",
+  NOTIFICATIONS: "Notifications",
+  ADMIN_USERS: "AdminUsers",
+  ADMIN_STATS: "AdminStats",
+  ADMIN_QUOTA_REQUESTS: "AdminQuotaRequests",
+  QUOTA: "Quota",
 };
 
 /**

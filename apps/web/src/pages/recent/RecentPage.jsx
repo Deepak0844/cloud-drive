@@ -5,17 +5,18 @@ import {
   SearchOutlined,
   FilterOutlined,
   CloseOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
-import { Breadcrumb, Input, Spin, Typography, Tooltip } from "antd";
+import { Breadcrumb, Input, Spin, Typography, Tooltip, App } from "antd";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useState } from "react";
 
 // api
-import { useGetRecentFilesQuery } from "../../store/api/fileApi";
+import { useGetRecentFilesQuery, useTouchFileMutation, useBulkDownloadMutation } from "../../store/api/fileApi";
 
 // components
 import FileItem from "@/components/files/FileItem";
-import FolderItem from "@/components/files/FolderItem";
+
 import InfoDrawer from "@/components/files/InfoDrawer";
 import FilePreviewModal from "@/components/files/FilePreviewModal";
 import Button from "@shared-components/components/button";
@@ -25,14 +26,13 @@ import useDebounce from "@/hooks/useDebounce";
 const { Text } = Typography;
 
 function RecentPage() {
+  const { message } = App.useApp();
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
-  const [infoItem, setInfoItem] = useState(null);
+  const [viewMode, setViewMode] = useState("grid"); // Added missing viewMode state
   const [previewFile, setPreviewFile] = useState(null);
-
-  // Search/Filter State
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 500);
+  const [infoItem, setInfoItem] = useState(null); // Renamed infoDrawerItem to infoItem to match usage
   const [advancedFilters, setAdvancedFilters] = useState({});
 
   // API Queries
@@ -40,16 +40,40 @@ function RecentPage() {
     limit: 50,
     ...advancedFilters,
   });
+  const [touchFile] = useTouchFileMutation();
+  const [bulkDownload, { isLoading: isDownloading }] = useBulkDownloadMutation();
 
   const allItems = recentData?.data || [];
-
-  // Client-side search filtering (since backend current implementation is simple)
-  // Actually, I should probably update backend to support search in recent too,
-  // but for now, client-side is fine for a small "recent" list.
   const filteredItems = allItems.filter((item) => item.name.toLowerCase().includes(debouncedSearch.toLowerCase()));
 
-  const folders = filteredItems.filter((item) => item.type === "folder");
-  const files = filteredItems.filter((item) => item.type === "file");
+  // Time grouping logic
+  const groupItemsByTime = (items) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const groups = {
+      today: [],
+      yesterday: [],
+      earlier: [],
+    };
+
+    items.forEach((item) => {
+      const itemDate = new Date(item.last_opened_at || item.updatedAt);
+      if (itemDate >= today) {
+        groups.today.push(item);
+      } else if (itemDate >= yesterday) {
+        groups.yesterday.push(item);
+      } else {
+        groups.earlier.push(item);
+      }
+    });
+
+    return groups;
+  };
+
+  const timeGroups = groupItemsByTime(filteredItems);
 
   function toggleSelect(id, type) {
     setSelectedItems((prev) => {
@@ -59,6 +83,29 @@ function RecentPage() {
       }
       return [...prev, { id, type }];
     });
+  }
+
+  async function handleBulkDownload() {
+    if (selectedItems.length === 0) return;
+    const fileItems = selectedItems.filter((i) => i.type === "file");
+    if (fileItems.length === 0) {
+      message.warning("Please select at least one file to download");
+      return;
+    }
+
+    try {
+      const result = await bulkDownload({ items: fileItems }).unwrap();
+      const url = URL.createObjectURL(result);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "recent_download.zip";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch {
+      message.error("Failed to download files");
+    }
   }
 
   const clearSelection = useCallback(() => setSelectedItems([]), []);
@@ -125,9 +172,9 @@ function RecentPage() {
                   }
                 />
               }
-              className="premium-nav-search w-64 h-9 rounded-xl border-line bg-surface hover:bg-surface-alt focus:bg-white"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-transparent border-none text-white placeholder:text-white/30 h-10 w-64 md:w-80 shadow-none focus-within:shadow-none focus:bg-transparent"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               allowClear
             />
 
@@ -178,79 +225,57 @@ function RecentPage() {
             <Text className="text-label-tertiary">Tasks you work on will appear here</Text>
           </motion.div>
         ) : (
-          <div className="flex flex-col gap-8 py-4">
-            {folders.length > 0 && (
-              <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-label-tertiary">
-                    Recent Folders
-                  </span>
-                  <div className="h-px flex-1 bg-line/50" />
-                </div>
-                <div
-                  className={
-                    viewMode === "grid"
-                      ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
-                      : "flex flex-col gap-2"
-                  }
-                >
-                  {folders.map((folder) => (
-                    <FolderItem
-                      key={folder._id}
-                      folder={folder}
-                      viewMode={viewMode}
-                      isSelected={selectedItems.some((i) => i.id === folder._id)}
-                      onToggleSelect={() => toggleSelect(folder._id, "folder")}
-                      onShowInfo={() => setInfoItem({ ...folder, type: "folder" })}
-                      // Recent items might not need full interaction, or they might. Let's keep it simple for now.
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {files.length > 0 && (
-              <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-label-tertiary">
-                    Recent Files
-                  </span>
-                  <div className="h-px flex-1 bg-line/50" />
-                </div>
-                <div
-                  className={
-                    viewMode === "grid"
-                      ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6"
-                      : "flex flex-col gap-2"
-                  }
-                >
-                  {files.map((file) => (
-                    <FileItem
-                      key={file._id}
-                      file={file}
-                      viewMode={viewMode}
-                      isSelected={selectedItems.some((i) => i.id === file._id)}
-                      onToggleSelect={() => toggleSelect(file._id, "file")}
-                      onPreview={() => setPreviewFile(file)}
-                      onShowInfo={() => setInfoItem({ ...file, type: "file" })}
-                    />
-                  ))}
-                </div>
-              </section>
+          <div className="flex flex-col gap-12 py-4">
+            {Object.entries(timeGroups).map(
+              ([key, items]) =>
+                items.length > 0 && (
+                  <section key={key}>
+                    <div className="flex items-center gap-2 mb-6">
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary">
+                        {key === "today" ? "Today" : key === "yesterday" ? "Yesterday" : "Earlier"}
+                      </span>
+                      <div className="h-px flex-1 bg-linear-to-r from-line/50 to-transparent" />
+                    </div>
+                    <div
+                      className={
+                        viewMode === "grid"
+                          ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6"
+                          : "flex flex-col gap-2"
+                      }
+                    >
+                      {items.map((file) => {
+                        const id = String(file._id || file.id);
+                        return (
+                          <FileItem
+                            key={id}
+                            file={{ ...file, id }}
+                            viewMode={viewMode}
+                            isSelected={selectedItems.some((i) => String(i.id) === id)}
+                            onToggleSelect={() => toggleSelect(id, "file")}
+                            onOpen={() => {
+                              setPreviewFile(file);
+                              touchFile({ id });
+                            }}
+                            onShowInfo={() => setInfoItem({ ...file, id, type: "file" })}
+                            showParentContext={true}
+                          />
+                        );
+                      })}
+                    </div>
+                  </section>
+                )
             )}
           </div>
         )}
       </div>
 
-      {infoItem && <InfoDrawer item={infoItem} visible={!!infoItem} onClose={() => setInfoItem(null)} />}
-      {previewFile && (
-        <FilePreviewModal file={previewFile} visible={!!previewFile} onClose={() => setPreviewFile(null)} />
-      )}
+      {infoItem && <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />}
+      {previewFile && <FilePreviewModal file={previewFile} open={!!previewFile} onClose={() => setPreviewFile(null)} />}
 
       {/* Simplified Bulk Actions Bar for Recent Page */}
       {selectedItems.length > 0 && (
-        <div className="bulk-actions-bar rounded-[24px] p-2 pr-3 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.3)] fixed bottom-8 left-1/2 -translate-x-1/2 z-100 bg-[#1a1c1e] border border-white/5 w-[90%] max-w-[400px]">
-          <div className="flex items-center gap-3 ml-2">
+        <div className="bulk-actions-bar rounded-[24px] p-2 pr-3 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.3)] fixed bottom-10 left-1/2 -translate-x-1/2 z-1000 bg-[#1a1c1e] border border-white/10 w-[95%] max-w-[500px]">
+          <div className="flex items-center gap-3 ml-2 shrink-0">
             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
               <span className="text-primary font-black text-xs">{selectedItems.length}</span>
             </div>
@@ -258,19 +283,30 @@ function RecentPage() {
               <span className="text-white text-[11px] font-black uppercase tracking-wider leading-none">
                 Items Selected
               </span>
-              <span className="text-white/40 text-[9px] font-bold uppercase tracking-tight">Recent Management</span>
+              <span className="text-white/40 text-[9px] font-bold uppercase tracking-tight">Recent Page</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-[18px]">
+          <div className="flex items-center gap-2 p-1 bg-white/5 rounded-[20px] ml-4 overflow-hidden flex-nowrap">
             <Button
-              ghost
+              type="text"
               size="small"
               className="h-9 px-4 border-none text-white/90 hover:text-white hover:bg-white/10 font-bold text-xs flex items-center gap-2 rounded-xl"
               onClick={clearSelection}
             >
               <CloseOutlined />
               Deselect
+            </Button>
+            <div className="w-px h-4 bg-white/10" />
+            <Button
+              type="text"
+              size="small"
+              icon={<DownloadOutlined />}
+              loading={isDownloading}
+              className="h-9 px-4 border-none text-primary hover:text-primary-light hover:bg-white/10 font-bold text-xs flex items-center gap-2 rounded-xl"
+              onClick={handleBulkDownload}
+            >
+              Download
             </Button>
           </div>
         </div>

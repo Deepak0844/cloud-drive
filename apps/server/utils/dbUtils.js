@@ -152,12 +152,12 @@ async function permanentDeleteRecursive(type, id, userId) {
       safeUnlink(file.storage_path);
       safeUnlink(file.thumbnail_path);
 
-      // Update user quota
-      const user = await User.findById(userId);
-      if (user) {
-        user.used_bytes = Math.max(0, user.used_bytes - file.size_bytes);
-        await user.save();
-      }
+      // Update user quota atomically
+      await User.findByIdAndUpdate(userId, {
+        $inc: { used_bytes: -file.size_bytes },
+      });
+      // Safety check: ensure used_bytes doesn't go below 0
+      await User.findOneAndUpdate({ _id: userId, used_bytes: { $lt: 0 } }, { used_bytes: 0 });
 
       await file.deleteOne();
     }
