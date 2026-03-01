@@ -21,7 +21,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import ResponseHelper from "../utils/responseHelper.js";
 import MimeUtils from "../utils/mimeUtils.js";
 import MetadataService from "../services/metadata.service.js";
-import logger from "@/utils/logger.js";
+import logger from "../utils/logger.js";
 
 /**
  * @desc    Initiate chunked upload
