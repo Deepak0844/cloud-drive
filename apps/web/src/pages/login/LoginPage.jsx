@@ -18,20 +18,32 @@ function LoginPage() {
   const { message } = App.useApp();
   const location = useLocation();
   const { login, isLoginLoading } = useAuth();
+  const [form] = Form.useForm();
 
   // Redirect back to the page the user came from, or to the dashboard
   const from = location.state?.from?.pathname ?? "/";
 
   async function handleFinish(values) {
     try {
-      await login(
-        { email: values.email, password: values.password },
-        from,
-        { suppressGlobalError: true } // Let this component handle the error feedback
-      );
+      await login({ email: values.email, password: values.password }, from);
       message.success("Welcome back!");
     } catch (err) {
-      message.error(err?.data?.message ?? "Login failed. Please try again.");
+      const errorMessage =
+        err?.data?.error?.message ||
+        err?.data?.message ||
+        err?.data?.error ||
+        (typeof err?.data === "string" ? err.data : null);
+
+      if (errorMessage) {
+        form.setFields([
+          {
+            name: "password",
+            errors: [errorMessage],
+          },
+        ]);
+      } else {
+        message.error("Login failed. Please try again.");
+      }
     }
   }
 
@@ -56,7 +68,13 @@ function LoginPage() {
             <p className="text-label-secondary">Please enter your details to sign in.</p>
           </div>
 
-          <Form layout="vertical" initialValues={{ remember: true }} className="space-y-4" onFinish={handleFinish}>
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={{ remember: true }}
+            className="space-y-4"
+            onFinish={handleFinish}
+          >
             <Form.Item label="Email" name="email" rules={[{ required: true, message: "Please input your email!" }]}>
               <Input
                 prefix={<UserOutlined className="text-label-tertiary" />}

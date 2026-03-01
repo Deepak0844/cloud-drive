@@ -52,6 +52,11 @@ const userSchema = new mongoose.Schema(
         type: String,
       },
     ],
+    notification_preferences: {
+      email_notifications: { type: Boolean, default: true },
+      storage_alerts: { type: Boolean, default: true },
+      security_alerts: { type: Boolean, default: true },
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

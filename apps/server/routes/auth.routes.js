@@ -1,14 +1,30 @@
 import express from "express";
 
 // Controllers
-import { forgotPassword, getMe, login, logout, register, resetPassword } from "../controllers/auth.controller.js";
+import {
+  forgotPassword,
+  getMe,
+  login,
+  logout,
+  register,
+  resetPassword,
+  updateProfile,
+  updatePassword,
+} from "../controllers/auth.controller.js";
 
 // Middleware
 import { protect } from "../middleware/auth.js";
 import validate from "../middleware/validate.js";
 
 // Schemas
-import { forgotPasswordSchema, loginSchema, registerSchema, resetPasswordSchema } from "../schemas/auth.schema.js";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+  updateProfileSchema,
+  updatePasswordSchema,
+} from "../schemas/auth.schema.js";
 
 const router = express.Router();
 
@@ -21,5 +37,7 @@ router.put("/reset-password", validate(resetPasswordSchema), resetPassword);
 
 // Protected routes
 router.get("/me", protect, getMe);
+router.put("/me", protect, validate(updateProfileSchema), updateProfile);
+router.put("/password", protect, validate(updatePasswordSchema), updatePassword);
 
 export default router;

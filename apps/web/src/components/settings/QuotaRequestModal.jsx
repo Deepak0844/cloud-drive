@@ -2,22 +2,24 @@
 import { Form, Input, InputNumber, Modal, message } from "antd";
 import React from "react";
 
+import { useRequestQuotaIncreaseMutation } from "../../store/api/quotaApi";
+
 function QuotaRequestModal({ open, onClose }) {
   const [form] = Form.useForm();
+  const [requestQuota] = useRequestQuotaIncreaseMutation();
   const [loading, setLoading] = React.useState(false);
 
   async function handleOk() {
     try {
-      await form.validateFields();
+      const values = await form.validateFields();
       setLoading(true);
 
-      // Simulate API call for local mock state
-      setTimeout(() => {
-        message.success("Quota request submitted successfully!");
-        form.resetFields();
-        setLoading(false);
-        onClose();
-      }, 1000);
+      await requestQuota({ reason: values.reason, requested_bytes: values.amount * 1024 * 1024 * 1024 }).unwrap();
+
+      message.success("Quota request submitted successfully!");
+      form.resetFields();
+      setLoading(false);
+      onClose();
     } catch (_err) {
       message.error("Validation failed");
     }

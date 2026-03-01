@@ -19,6 +19,7 @@ import { Link } from "react-router-dom";
 
 // api
 import { useGetQuotaUsageQuery, useGetQuotaBreakdownQuery } from "../../store/api/quotaApi";
+import { useGetMeQuery, useUpdateProfileMutation } from "../../store/api/authApi";
 
 // constants
 import PageNames from "@/constants/pageNames";
@@ -26,6 +27,7 @@ import PageUrls from "@/constants/pageUrls";
 
 // components
 import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
+import ChangePasswordModal from "@/components/settings/ChangePasswordModal";
 import Button from "@shared-components/components/button";
 
 const { Text } = Typography;
@@ -50,8 +52,49 @@ function formatBytes(bytes, decimals = 2) {
 
 function SettingsPage() {
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
   const { data: usage, isLoading: usageLoading } = useGetQuotaUsageQuery();
   const { data: breakdown, isLoading: breakdownLoading } = useGetQuotaBreakdownQuery();
+  const { data: userResponse } = useGetMeQuery();
+  const [updateProfile] = useUpdateProfileMutation();
+
+  const user = userResponse?.data;
+  const [form] = Form.useForm();
+
+  React.useEffect(() => {
+    if (user) {
+      form.setFieldsValue({
+        name: user.name,
+        email: user.email,
+        email_notifications: user.notification_preferences?.email_notifications ?? true,
+        storage_alerts: user.notification_preferences?.storage_alerts ?? true,
+        security_alerts: user.notification_preferences?.security_alerts ?? true,
+      });
+    }
+  }, [user, form]);
+
+  async function handleUpdateProfile(isFormSubmit = true) {
+    try {
+      if (isFormSubmit) setIsSavingProfile(true);
+
+      const values = await form.validateFields();
+      await updateProfile({
+        name: values.name,
+        email: values.email,
+        notification_preferences: {
+          email_notifications: values.email_notifications,
+          storage_alerts: values.storage_alerts,
+          security_alerts: values.security_alerts,
+        },
+      }).unwrap();
+    } catch (_err) {
+      // handled by RTK error middleware or locally
+    } finally {
+      if (isFormSubmit) setIsSavingProfile(false);
+    }
+  }
 
   function handleRequestQuota() {
     setQuotaModalVisible(true);
@@ -91,58 +134,69 @@ function SettingsPage() {
               </div>
             </div>
 
-            <Form layout="vertical">
+            <Form form={form} layout="vertical" onFinish={() => handleUpdateProfile(true)}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Form.Item label={<span className="font-bold text-label-secondary">Full Name</span>}>
-                  <Input defaultValue="Deepak Ram" className="premium-input h-14" />
+                <Form.Item name="name" label={<span className="font-bold text-label-secondary">Full Name</span>}>
+                  <Input className="premium-input h-14" />
                 </Form.Item>
-                <Form.Item label={<span className="font-bold text-label-secondary">Email Address</span>}>
-                  <Input defaultValue="deepak@gmail.com" className="premium-input h-14" />
+                <Form.Item name="email" label={<span className="font-bold text-label-secondary">Email Address</span>}>
+                  <Input className="premium-input h-14" />
                 </Form.Item>
               </div>
-              <Button styleType="primary" className="h-12 px-10 font-bold rounded-2xl shadow-lg shadow-primary/20 mt-2">
+              <Button
+                htmlType="submit"
+                styleType="primary"
+                loading={isSavingProfile}
+                className="h-12 px-10 font-bold rounded-2xl shadow-lg shadow-primary/20 mt-2"
+              >
                 Save Profile
               </Button>
-            </Form>
 
-            <Divider className="my-10" />
+              <Divider className="my-10" />
 
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 bg-warning/10 text-warning rounded-2xl flex items-center justify-center">
-                <BellOutlined className="text-2xl" />
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-label-primary">Notifications</h2>
-                <p className="text-sm text-label-tertiary">Manage how you receive alerts and updates</p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              {[
-                {
-                  label: "Email Notifications",
-                  desc: "Receive updates about file sharing and system alerts",
-                  checked: true,
-                },
-                { label: "Storage Alerts", desc: "Get notified when your drive usage exceeds 80%", checked: true },
-                {
-                  label: "Security Alerts",
-                  desc: "Receive alerts about new sign-ins and password changes",
-                  checked: true,
-                },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between items-center p-4 rounded-2xl bg-surface-dim border border-line/50"
-                >
-                  <div className="pr-4">
-                    <p className="font-black text-label-primary">{item.label}</p>
-                    <p className="text-xs text-label-tertiary">{item.desc}</p>
-                  </div>
-                  <Switch defaultChecked={item.checked} className="premium-switch" />
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-warning/10 text-warning rounded-2xl flex items-center justify-center">
+                  <BellOutlined className="text-2xl" />
                 </div>
-              ))}
-            </div>
+                <div>
+                  <h2 className="text-xl font-black text-label-primary">Notifications</h2>
+                  <p className="text-sm text-label-tertiary">Manage how you receive alerts and updates</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {[
+                  {
+                    name: "email_notifications",
+                    label: "Email Notifications",
+                    desc: "Receive updates about file sharing and system alerts",
+                  },
+                  {
+                    name: "storage_alerts",
+                    label: "Storage Alerts",
+                    desc: "Get notified when your drive usage exceeds 80%",
+                  },
+                  {
+                    name: "security_alerts",
+                    label: "Security Alerts",
+                    desc: "Receive alerts about new sign-ins and password changes",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.name}
+                    className="flex justify-between items-center p-4 rounded-2xl bg-surface-dim border border-line/50"
+                  >
+                    <div className="pr-4">
+                      <p className="font-black text-label-primary">{item.label}</p>
+                      <p className="text-xs text-label-tertiary">{item.desc}</p>
+                    </div>
+                    <Form.Item name={item.name} valuePropName="checked" noStyle>
+                      <Switch className="premium-switch" onChange={() => handleUpdateProfile(false)} />
+                    </Form.Item>
+                  </div>
+                ))}
+              </div>
+            </Form>
           </Card>
 
           <Card className="rounded-[32px] border-line shadow-sm" styles={{ body: { padding: "32px" } }}>
@@ -157,15 +211,17 @@ function SettingsPage() {
             </div>
 
             <div className="flex flex-col md:flex-row gap-4">
-              <Button styleType="secondary" className="h-12 flex-1 font-bold rounded-2xl">
+              <Button
+                styleType="secondary"
+                className="h-12 flex-1 font-bold rounded-2xl"
+                onClick={() => setPasswordModalVisible(true)}
+              >
                 Change Password
-              </Button>
-              <Button styleType="ghost" className="h-12 flex-1 font-bold rounded-2xl border-line-strong">
-                Two-Factor Auth
               </Button>
               <Button
                 styleType="ghost"
                 className="h-12 flex-1 font-bold rounded-2xl border-line-strong text-error hover:bg-error/5"
+                disabled
               >
                 Delete Account
               </Button>
@@ -300,6 +356,7 @@ function SettingsPage() {
         </div>
       </div>
       <QuotaRequestModal open={quotaModalVisible} onClose={() => setQuotaModalVisible(false)} />
+      <ChangePasswordModal open={passwordModalVisible} onClose={() => setPasswordModalVisible(false)} />
     </motion.div>
   );
 }

@@ -90,6 +90,55 @@ export const getMe = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Update user profile
+ * @route   PUT /api/v1/auth/me
+ * @access  Private
+ */
+export const updateProfile = asyncHandler(async (req, res) => {
+  const fieldsToUpdate = {
+    name: req.body.name,
+    email: req.body.email,
+    notification_preferences: req.body.notification_preferences,
+  };
+
+  // Remove undefined fields
+  Object.keys(fieldsToUpdate).forEach((key) => {
+    if (fieldsToUpdate[key] === undefined) {
+      delete fieldsToUpdate[key];
+    }
+  });
+
+  const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
+    new: true,
+    runValidators: true,
+  });
+
+  return ResponseHelper.success(res, user);
+});
+
+/**
+ * @desc    Update password
+ * @route   PUT /api/v1/auth/password
+ * @access  Private
+ */
+export const updatePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await User.findById(req.user.id).select("+password");
+
+  // Check current password
+  if (!(await user.matchPassword(currentPassword))) {
+    return ResponseHelper.error(res, "Incorrect current password", StatusCodes.UNAUTHORIZED);
+  }
+
+  // Set new password
+  user.password = newPassword;
+  await user.save();
+
+  sendTokenResponse(user, StatusCodes.OK, res, "Password updated successfully");
+});
+
+/**
  * @desc    Forgot password
  * @route   POST /api/v1/auth/forgotpassword
  * @access  Public

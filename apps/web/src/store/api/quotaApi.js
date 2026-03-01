@@ -4,13 +4,17 @@ const quotaApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // GET /api/v1/quota/usage
     getQuotaUsage: builder.query({
-      query: () => "/quota/usage",
+      query: () => ({
+        url: "/quota/usage",
+      }),
       providesTags: ["Quota"],
     }),
 
     // GET /api/v1/quota/breakdown
     getQuotaBreakdown: builder.query({
-      query: () => "/quota/breakdown",
+      query: () => ({
+        url: "/quota/breakdown",
+      }),
       providesTags: ["Quota"],
     }),
 

@@ -12,16 +12,15 @@ const customBaseQuery =
   async (rawArgs, api) => {
     // Normalize args: RTK Query allows a string for simple GET requests
     const args = typeof rawArgs === "string" ? { url: rawArgs } : rawArgs;
-    const { url = "", method = "get", params: rawParams, data: rawData, body: rawBody, contentType } = args;
+    const { url = "", method = "get", params: rawParams, data: rawData, body: rawBody, contentType, onError } = args;
 
-    // Extract UI-only configuration flags
     const getUiFlags = (obj) => {
       if (!obj || typeof obj !== "object") return {};
-      return {
-        showToast: obj.showToast,
-        showPageError: obj.showPageError,
-        suppressGlobalError: obj.suppressGlobalError,
-      };
+      const flags = {};
+      if (obj.showToast !== undefined) flags.showToast = obj.showToast;
+      if (obj.showPageError !== undefined) flags.showPageError = obj.showPageError;
+      if (obj.suppressGlobalError !== undefined) flags.suppressGlobalError = obj.suppressGlobalError;
+      return flags;
     };
 
     // Filter out UI-only configuration flags so they aren't sent to the server
@@ -38,11 +37,13 @@ const customBaseQuery =
 
     const uiFlagsFromParams = getUiFlags(rawParams);
     const uiFlagsFromData = getUiFlags(rawData || rawBody);
+    const uiFlagsFromOnError = getUiFlags(onError);
 
-    // Combine flags (data/body takes precedence over params)
+    // Combine flags (onError takes precedence over data/body, which takes precedence over params)
     const uiFlags = {
       ...uiFlagsFromParams,
       ...uiFlagsFromData,
+      ...uiFlagsFromOnError,
     };
 
     const params = filterUiFlags(rawParams);

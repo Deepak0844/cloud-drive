@@ -18,6 +18,7 @@ const authApi = baseApi.injectEndpoints({
         url: "/auth/login",
         method: "POST",
         body: credentials,
+        onError: { suppressGlobalError: true }, // Let this component handle the error feedback
       }),
       async onQueryStarted(_args, { queryFulfilled }) {
         try {
@@ -45,7 +46,7 @@ const authApi = baseApi.injectEndpoints({
         url: "/auth/logout",
         method: "POST",
       }),
-      async onQueryStarted(_args, { dispatch, queryFulfilled }) {
+      async onQueryStarted(_args, { queryFulfilled }) {
         try {
           await queryFulfilled;
         } catch {
@@ -55,22 +56,67 @@ const authApi = baseApi.injectEndpoints({
           // Always clear regardless of server response
           AuthUtils.clearSession();
           HttpClientFactory.reset();
-
-          // Reset all cached RTK Query data
-          dispatch(baseApi.util.resetApiState());
         }
       },
     }),
 
     // GET /api/v1/auth/me  — used to get/revalidate the current user
     getMe: builder.query({
-      query: () => "/auth/me",
+      query: () => ({
+        url: "/auth/me",
+      }),
       providesTags: ["Auth"],
+    }),
+
+    // PUT /api/v1/auth/me — used to update the user profile
+    updateProfile: builder.mutation({
+      query: (body) => ({
+        url: "/auth/me",
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: ["Auth"],
+      async onQueryStarted(_args, { queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          AuthUtils.storeUserInfoInLocalStorage(data.data);
+        } catch {
+          // Handled component level
+        }
+      },
+    }),
+    // PUT /api/v1/auth/password — used to change password
+    updatePassword: builder.mutation({
+      query: (body) => ({
+        url: "/auth/password",
+        method: "PUT",
+        body,
+        onError: {
+          suppressGlobalError: true,
+        },
+      }),
+      invalidatesTags: ["Auth"],
+      async onQueryStarted(_args, { queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          AuthUtils.storeTokenInLocalStorage(data.data.token);
+          AuthUtils.storeUserInfoInLocalStorage(data.data.user);
+        } catch {
+          // Handled component level
+        }
+      },
     }),
   }),
   overrideExisting: false,
 });
 
-export const { useLoginMutation, useRegisterMutation, useLogoutMutation, useGetMeQuery } = authApi;
+export const {
+  useLoginMutation,
+  useRegisterMutation,
+  useLogoutMutation,
+  useGetMeQuery,
+  useUpdateProfileMutation,
+  useUpdatePasswordMutation,
+} = authApi;
 
 export default authApi;
