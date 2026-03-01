@@ -29,6 +29,9 @@ export const trashApi = baseApi.injectEndpoints({
           ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
           ...ApiUtils.listTags(TagTypes.FOLDERS),
           ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+          TagTypes.QUOTA,
+          TagTypes.ADMIN_STATS,
+          TagTypes.ADMIN_USERS,
         ];
       },
     }),
@@ -39,7 +42,12 @@ export const trashApi = baseApi.injectEndpoints({
         method: "DELETE",
         body: { items },
       }),
-      invalidatesTags: [...ApiUtils.listTags(TagTypes.TRASH)],
+      invalidatesTags: [
+        ...ApiUtils.listTags(TagTypes.TRASH),
+        TagTypes.QUOTA,
+        TagTypes.ADMIN_STATS,
+        TagTypes.ADMIN_USERS,
+      ],
     }),
 
     emptyTrash: builder.mutation({
@@ -47,7 +55,12 @@ export const trashApi = baseApi.injectEndpoints({
         url: "/trash/empty",
         method: "DELETE",
       }),
-      invalidatesTags: [...ApiUtils.listTags(TagTypes.TRASH)],
+      invalidatesTags: [
+        ...ApiUtils.listTags(TagTypes.TRASH),
+        TagTypes.QUOTA,
+        TagTypes.ADMIN_STATS,
+        TagTypes.ADMIN_USERS,
+      ],
     }),
   }),
 });

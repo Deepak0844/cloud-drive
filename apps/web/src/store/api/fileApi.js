@@ -90,6 +90,9 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FILES),
         ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+        TagTypes.QUOTA,
+        TagTypes.ADMIN_STATS,
+        TagTypes.ADMIN_USERS,
       ],
     }),
 
@@ -106,6 +109,9 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FILES),
         ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS), // Invalidate folder contents if uploaded to a folder
+        TagTypes.QUOTA,
+        TagTypes.ADMIN_STATS,
+        TagTypes.ADMIN_USERS,
       ],
     }),
 
@@ -207,6 +213,9 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FILES),
         ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+        TagTypes.QUOTA,
+        TagTypes.ADMIN_STATS,
+        TagTypes.ADMIN_USERS,
       ],
     }),
 
@@ -222,6 +231,9 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
         ...ApiUtils.listTags(TagTypes.TRASH),
+        TagTypes.QUOTA,
+        TagTypes.ADMIN_STATS,
+        TagTypes.ADMIN_USERS,
       ],
     }),
 
@@ -280,6 +292,9 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FILES),
         ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+        TagTypes.QUOTA,
+        TagTypes.ADMIN_STATS,
+        TagTypes.ADMIN_USERS,
       ],
     }),
 
@@ -296,6 +311,9 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FOLDERS),
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
         ...ApiUtils.listTags(TagTypes.TRASH),
+        TagTypes.QUOTA,
+        TagTypes.ADMIN_STATS,
+        TagTypes.ADMIN_USERS,
       ],
     }),
 
@@ -326,6 +344,9 @@ const fileApi = baseApi.injectEndpoints({
         ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
         ...ApiUtils.listTags(TagTypes.FOLDERS),
         ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+        TagTypes.QUOTA,
+        TagTypes.ADMIN_STATS,
+        TagTypes.ADMIN_USERS,
       ],
     }),
 
