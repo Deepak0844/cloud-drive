@@ -1,0 +1,19 @@
+extends layout
+
+block content
+  h2(style="color: #c9d1d9; margin-top: 0;") Storage Freed!
+  p Hello #{userName || 'User'},
+  
+  p Our automated systems have performed a routine cleanup of your trash to keep your account running smoothly.
+  
+  .alert-box(style="background-color: rgba(35, 134, 54, 0.1); border: 1px solid #238636; color: #3fb950;")
+    strong Recovery Status: 
+    | We've permanently deleted #{itemCount} expired items, recovering 
+    strong #{freedAmount} 
+    | of storage for you.
+  
+  p By permanently removing items that have been in the trash for over 30 days, we ensure you have more room for your important files.
+  
+  a.button(href=actionUrl || '#') Manage Storage
+  
+  p(style="margin-top: 30px; font-size: 14px; color: #8b949e;") If you'd like to adjust your trash settings or keep items for longer, please visit your account dashboard.

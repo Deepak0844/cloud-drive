@@ -2,6 +2,7 @@ import {
   BellOutlined,
   CheckCircleOutlined,
   CloudServerOutlined,
+  DeleteOutlined,
   InfoCircleOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
@@ -52,6 +53,8 @@ function getNotificationIcon(type) {
     case "QUOTA_CHANGE":
     case "QUOTA_REQUEST":
       return <CloudServerOutlined className="text-info" />;
+    case "TRASH_CLEANUP":
+      return <DeleteOutlined className="text-secondary" />;
     case "SYSTEM_ALERT":
     default:
       return <InfoCircleOutlined className="text-primary" />;
