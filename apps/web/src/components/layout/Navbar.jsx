@@ -41,12 +41,18 @@ const { Text } = Typography;
 
 function getNotificationIcon(type) {
   switch (type) {
-    case "warning":
-      return <WarningOutlined className="text-warning" />;
-    case "success":
+    case "STORAGE_ALERT":
+      return <CloudServerOutlined className="text-warning" />;
+    case "SECURITY_ALERT":
+      return <WarningOutlined className="text-error" />;
+    case "QUOTA_APPROVED":
       return <CheckCircleOutlined className="text-success" />;
-    case "storage":
+    case "QUOTA_REJECTED":
+      return <WarningOutlined className="text-error" />;
+    case "QUOTA_CHANGE":
+    case "QUOTA_REQUEST":
       return <CloudServerOutlined className="text-info" />;
+    case "SYSTEM_ALERT":
     default:
       return <InfoCircleOutlined className="text-primary" />;
   }

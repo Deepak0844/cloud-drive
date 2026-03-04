@@ -155,6 +155,11 @@ export const handleQuotaRequest = asyncHandler(async (req, res) => {
       "Quota Request Approved",
       `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been approved.`
     );
+    SocketService.emitToUser(String(user._id), SocketEvents.NOTIFICATION, {
+      type: NotificationTypes.QUOTA_APPROVED,
+      title: "Quota Request Approved",
+      message: `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been approved.`,
+    });
   } else {
     await createNotification(
       user._id,
@@ -162,6 +167,11 @@ export const handleQuotaRequest = asyncHandler(async (req, res) => {
       "Quota Request Rejected",
       `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been rejected.`
     );
+    SocketService.emitToUser(String(user._id), SocketEvents.NOTIFICATION, {
+      type: NotificationTypes.QUOTA_REJECTED,
+      title: "Quota Request Rejected",
+      message: `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been rejected.`,
+    });
   }
 
   SocketService.emitToUser(String(user._id), SocketEvents.QUOTA_UPDATE, {

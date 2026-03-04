@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB
+const CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
 const UploadContext = createContext(null);
 
 // eslint-disable-next-line react-refresh/only-export-components

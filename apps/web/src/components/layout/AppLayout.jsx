@@ -4,6 +4,7 @@ import { useDispatch } from "react-redux";
 import MainLayout from "./MainLayout";
 
 import baseApi from "../../store/api/baseApi";
+import { useSubscribeToSocketEventsQuery } from "@/store/api/socketApi";
 
 /**
  * Layout wrapper for protected routes.
@@ -11,6 +12,11 @@ import baseApi from "../../store/api/baseApi";
  */
 function AppLayout() {
   const dispatch = useDispatch();
+
+  // Activate the RTK Query socket subscription.
+  // This lives inside AppLayout (which is inside ProtectedRoute),
+  // so the user token is guaranteed to be available.
+  useSubscribeToSocketEventsQuery();
 
   useEffect(() => {
     return () => {

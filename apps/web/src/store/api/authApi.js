@@ -4,6 +4,9 @@ import baseApi from "./baseApi";
 import AuthUtils from "@/utils/authUtils";
 import HttpClientFactory from "@/utils/httpClientFactory";
 
+// Socket
+import SocketClient from "@/services/socketClient";
+
 /**
  * Auth API endpoints injected into the base RTK Query API.
  *
@@ -56,6 +59,7 @@ const authApi = baseApi.injectEndpoints({
           // Always clear regardless of server response
           AuthUtils.clearSession();
           HttpClientFactory.reset();
+          SocketClient.disconnect(); // Close WebSocket on logout
         }
       },
     }),

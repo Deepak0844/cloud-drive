@@ -40,7 +40,7 @@ describe("Advanced Media API", () => {
         user: user._id,
         mime_type: "image/jpeg",
         category: "image",
-        size_bytes: 1024,
+        size_bytes: 1000,
         storage_path: "/tmp/test.jpg",
         thumbnail_path: "/tmp/thumb.jpg",
         metadata: { width: 1920, height: 1080 },

@@ -10,7 +10,7 @@ export function formatStorageSize(bytes, decimals = 2) {
   }
 
   const units = ["B", "KB", "MB", "GB", "TB", "PB"];
-  const k = 1024;
+  const k = 1000;
   const dm = decimals < 0 ? 0 : decimals;
 
   const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -26,7 +26,7 @@ export function formatStorageSize(bytes, decimals = 2) {
  * @returns {number} Size in GB
  */
 export function bytesToGB(bytes, decimals = 2) {
-  const gb = bytes / (1024 * 1024 * 1024);
+  const gb = bytes / (1000 * 1000 * 1000);
   return Number(gb.toFixed(decimals));
 }
 
@@ -37,7 +37,7 @@ export function bytesToGB(bytes, decimals = 2) {
  * @returns {number} Size in MB
  */
 export function bytesToMB(bytes, decimals = 2) {
-  const mb = bytes / (1024 * 1024);
+  const mb = bytes / (1000 * 1000);
   return Number(mb.toFixed(decimals));
 }
 
@@ -47,7 +47,7 @@ export function bytesToMB(bytes, decimals = 2) {
  * @returns {number} Size in bytes
  */
 export function gbToBytes(gb) {
-  return gb * 1024 * 1024 * 1024;
+  return gb * 1000 * 1000 * 1000;
 }
 
 /**

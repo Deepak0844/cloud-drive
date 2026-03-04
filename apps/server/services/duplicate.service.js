@@ -56,7 +56,7 @@ async function findAndNotifyDuplicates() {
 
       await createNotification(
         userId,
-        NotificationTypes.SYSTEM,
+        NotificationTypes.SYSTEM_ALERT,
         "Duplicate Files Found",
         `We found ${totalFilesCount} duplicate files across ${totalDupSets} sets of content. View your files to optimize storage.`
       );

@@ -288,7 +288,8 @@ function SettingsPage() {
                   ) : (
                     sortedBreakdown.map((item) => {
                       const config = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.other;
-                      const percentage = (item.total_size_bytes / usage?.data?.used_bytes) * 100 || 0;
+                      // Calculate percentage over total quota size, fallback to 0 if quota is empty
+                      const percentage = (item.total_size_bytes / usage?.data?.quota_bytes) * 100 || 0;
 
                       return (
                         <div key={item.category} className="group cursor-default">

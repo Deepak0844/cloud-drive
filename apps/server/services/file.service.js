@@ -11,10 +11,19 @@ import User from "../models/User.js";
 // Config
 import config from "../config/env.js";
 
+// Constants
+import { NotificationTypes } from "../constants/generalConstants.js";
+
 // Utils
 import logger from "../utils/logger.js";
 
-// Path Helpers
+// ─── Circular-dependency-safe lazy import ────────────────────────────────────
+// notification.controller.js <-> file.service.js would be circular if imported
+// at module level, so we use a dynamic import inside the function body.
+async function _createNotification(...args) {
+  const { createNotification } = await import("../controllers/notification.controller.js");
+  return createNotification(...args);
+}
 
 /**
  * Root storage dir for a user's files.
@@ -98,6 +107,9 @@ async function checkQuota(userId, incomingBytes) {
  * @param {string} userId
  */
 async function recalculateUsedBytes(userId) {
+  // Read current usage before updating (to detect threshold crossings)
+  const userBefore = await User.findById(userId).select("used_bytes quota_bytes");
+
   const result = await File.aggregate([
     { $match: { user: new mongoose.Types.ObjectId(userId), is_deleted: false } },
     { $group: { _id: null, total: { $sum: "$size_bytes" } } },
@@ -105,6 +117,25 @@ async function recalculateUsedBytes(userId) {
 
   const totalUsed = result.length > 0 ? result[0].total : 0;
   await User.findByIdAndUpdate(userId, { used_bytes: totalUsed });
+
+  // ── Storage alert at 80% threshold ──────────────────────────────────────────
+  if (userBefore && userBefore.quota_bytes > 0) {
+    const prevPercent = (userBefore.used_bytes / userBefore.quota_bytes) * 100;
+    const newPercent = (totalUsed / userBefore.quota_bytes) * 100;
+    const THRESHOLD = 80;
+
+    // Only notify on the crossing (was below, now at or above)
+    if (prevPercent < THRESHOLD && newPercent >= THRESHOLD) {
+      const usedPct = newPercent.toFixed(1);
+      _createNotification(
+        userId,
+        NotificationTypes.STORAGE_ALERT,
+        "Storage Almost Full",
+        `You've used ${usedPct}% of your storage quota. Consider requesting a quota increase or freeing up space.`
+      ).catch((err) => logger.error("[StorageAlert] Failed to send storage alert:", err));
+    }
+  }
+
   return totalUsed;
 }
 

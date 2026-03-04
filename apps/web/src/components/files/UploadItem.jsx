@@ -37,8 +37,8 @@ const getFileIcon = (fileType) => {
  */
 const formatSpeed = (bps) => {
   if (!bps || bps <= 0) return null;
-  if (bps >= 1024 * 1024) return `${(bps / 1024 / 1024).toFixed(1)} MB/s`;
-  if (bps >= 1024) return `${(bps / 1024).toFixed(0)} KB/s`;
+  if (bps >= 1000 * 1000) return `${(bps / 1000 / 1000).toFixed(1)} MB/s`;
+  if (bps >= 1000) return `${(bps / 1000).toFixed(0)} KB/s`;
   return `${Math.round(bps)} B/s`;
 };
 
@@ -115,7 +115,7 @@ const UploadItem = ({ upload }) => {
   const executeUpload = useCallback(async () => {
     try {
       let initData = null;
-      if (!stateRef.current.uploadId && file.size > 10 * 1024 * 1024) {
+      if (!stateRef.current.uploadId && file.size > 10 * 1000 * 1000) {
         initData = await initPromise;
       }
 

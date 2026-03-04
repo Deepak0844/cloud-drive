@@ -14,7 +14,7 @@ function QuotaRequestModal({ open, onClose }) {
       const values = await form.validateFields();
       setLoading(true);
 
-      await requestQuota({ reason: values.reason, requested_bytes: values.amount * 1024 * 1024 * 1024 }).unwrap();
+      await requestQuota({ reason: values.reason, requested_bytes: values.amount * 1000 * 1000 * 1000 }).unwrap();
 
       message.success("Quota request submitted successfully!");
       form.resetFields();

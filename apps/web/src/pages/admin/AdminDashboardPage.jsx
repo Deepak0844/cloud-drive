@@ -87,7 +87,7 @@ export default function AdminDashboardPage() {
   async function handleUpdate() {
     try {
       const values = await form.validateFields();
-      const quotaBytes = values.quota * 1024 * 1024 * 1024;
+      const quotaBytes = values.quota * 1000 * 1000 * 1000;
       await updateUserQuota({ id: editingUser._id, quota_bytes: quotaBytes }).unwrap();
       antdMessage.success("Quota updated successfully");
       setIsModalOpen(false);

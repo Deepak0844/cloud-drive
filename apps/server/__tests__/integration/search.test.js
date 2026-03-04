@@ -26,7 +26,7 @@ describe("Search & Indexing API", () => {
       {
         name: "pic.jpg",
         original_name: "pic.jpg",
-        size_bytes: 1024,
+        size_bytes: 1000,
         user: user._id,
         storage_path: "/tmp/pic.jpg",
         mime_type: "image/jpeg",

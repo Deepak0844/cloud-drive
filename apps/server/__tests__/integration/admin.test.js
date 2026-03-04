@@ -55,7 +55,7 @@ describe("Admin API", () => {
   describe("PATCH /api/v1/admin/users/:id/quota", () => {
     it("should update user quota", async () => {
       const user = await createTestUser({ email: "user@example.com" });
-      const newQuota = 10 * 1024 * 1024 * 1024;
+      const newQuota = 10 * 1000 * 1000 * 1000;
 
       const response = await request(app)
         .patch(`/api/v1/admin/users/${user._id}/quota`)
@@ -75,7 +75,7 @@ describe("Admin API", () => {
     it("should approve a quota request", async () => {
       const user = await createTestUser({ email: "requester@example.com" });
       const initialQuota = user.quota_bytes;
-      const requestBytes = 5 * 1024 * 1024 * 1024;
+      const requestBytes = 5 * 1000 * 1000 * 1000;
       const qr = await QuotaRequest.create({
         user: user._id,
         requested_bytes: requestBytes,
@@ -110,7 +110,7 @@ describe("Admin API", () => {
       const userHeader = getAuthHeader(user);
       const qr = await QuotaRequest.create({
         user: user._id,
-        requested_bytes: 1024,
+        requested_bytes: 1000,
         reason: "Need",
       });
 

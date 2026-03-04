@@ -5,9 +5,16 @@ import User from "../models/User.js";
 // Services
 import PushService from "../services/push.service.js";
 import SocketService from "../services/socket.service.js";
+import EmailService from "../services/email.service.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, SocketEvents, StatusCodes } from "../constants/generalConstants.js";
+import {
+  ErrorMessages,
+  SuccessMessages,
+  SocketEvents,
+  StatusCodes,
+  NotificationTypes,
+} from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
@@ -15,6 +22,20 @@ import asyncHandler from "../middleware/asyncHandler.js";
 // Utils
 import ResponseHelper from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
+
+// ─── Preference Groupings ─────────────────────────────────────────────────────
+
+/**
+ * Notification types that are gated by the `storage_alerts` preference.
+ */
+const STORAGE_ALERT_TYPES = new Set([NotificationTypes.STORAGE_ALERT]);
+
+/**
+ * Notification types that are gated by the `security_alerts` preference.
+ */
+const SECURITY_ALERT_TYPES = new Set([NotificationTypes.SECURITY_ALERT]);
+
+// ─── Route Handlers ───────────────────────────────────────────────────────────
 
 /**
  * @desc    Get user notifications
@@ -73,15 +94,49 @@ export const registerPushToken = asyncHandler(async (req, res) => {
 });
 
 /**
- * Internal helper to create notification and send push
+ * Internal helper to create a notification, respecting the user's notification preferences.
+ *
+ * Preference gate:
+ *   STORAGE_ALERT_TYPES  → gated by user.notification_preferences.storage_alerts
+ *   SECURITY_ALERT_TYPES → gated by user.notification_preferences.security_alerts
+ *   everything else       → gated by user.notification_preferences.email_notifications
+ *
  * @param {string} userId - ID of the user to notify
- * @param {string} type - Notification type
+ * @param {string} type - Notification type (from NotificationTypes)
  * @param {string} title - Notification title
  * @param {string} message - Notification message
  * @param {object} data - Extra data for push notification
+ * @returns {Promise<Notification|null>} The created notification, or null if blocked by preference
  */
 export async function createNotification(userId, type, title, message, data = {}) {
   try {
+    // ── Check user notification preferences ───────────────────────────────────
+    const user = await User.findById(userId);
+    if (!user) {
+      logger.warn(`[Notification] User ${userId} not found. Skipping notification.`);
+      return null;
+    }
+
+    const prefs = user.notification_preferences ?? {};
+
+    if (STORAGE_ALERT_TYPES.has(type) && prefs.storage_alerts === false) {
+      logger.debug(`[Notification] Skipped (storage_alerts off) for user ${userId}: ${type}`);
+      return null;
+    }
+
+    if (SECURITY_ALERT_TYPES.has(type) && prefs.security_alerts === false) {
+      logger.debug(`[Notification] Skipped (security_alerts off) for user ${userId}: ${type}`);
+      return null;
+    }
+
+    // For all other types (SYSTEM_ALERT, QUOTA_*, UPLOAD_COMPLETE, etc.) gate by email_notifications
+    const isStorageOrSecurity = STORAGE_ALERT_TYPES.has(type) || SECURITY_ALERT_TYPES.has(type);
+    if (!isStorageOrSecurity && prefs.email_notifications === false) {
+      logger.debug(`[Notification] Skipped (email_notifications off) for user ${userId}: ${type}`);
+      return null;
+    }
+
+    // ── Persist and deliver ───────────────────────────────────────────────────
     const notification = await Notification.create({
       user: userId,
       type,
@@ -91,13 +146,21 @@ export async function createNotification(userId, type, title, message, data = {}
 
     SocketService.emitToUser(String(userId), SocketEvents.NOTIFICATION, notification.toJSON());
 
-    const user = await User.findById(userId);
-    if (user && user.push_tokens?.length > 0) {
+    if (user.push_tokens?.length > 0) {
       PushService.sendPushNotifications(user.push_tokens, {
         title,
         body: message,
         data,
       }).catch((err) => logger.error("Push Service Error:", err));
+    }
+
+    // ── Email ─────────────────────────────────────────────────────────────────
+    if (type === NotificationTypes.STORAGE_ALERT && user.email) {
+      EmailService.sendEmail({
+        email: user.email,
+        subject: title,
+        message,
+      }).catch((err) => logger.error(`[StorageAlert Email] Failed:`, err));
     }
 
     return notification;

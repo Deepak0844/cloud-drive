@@ -52,7 +52,7 @@ describe("Chunked Upload API", () => {
       const res = await request(app)
         .post("/api/v1/files/upload/init")
         .set(authHeader)
-        .send({ fileName: "big.bin", fileSize: 30 * 1024 * 1024, totalChunks: 2 })
+        .send({ fileName: "big.bin", fileSize: 30 * 1000 * 1000, totalChunks: 2 })
         .expect(200);
 
       expect(res.body.success).toBe(true);
@@ -64,7 +64,7 @@ describe("Chunked Upload API", () => {
       const res = await request(app)
         .post("/api/v1/files/upload/init")
         .set(authHeader)
-        .send({ fileName: "big.bin", fileSize: 10 * 1024 * 1024, totalChunks: 1 })
+        .send({ fileName: "big.bin", fileSize: 10 * 1000 * 1000, totalChunks: 1 })
         .expect(200);
 
       const { uploadId } = res.body.data;
@@ -79,7 +79,7 @@ describe("Chunked Upload API", () => {
       const res = await request(app)
         .post("/api/v1/files/upload/init")
         .set(authHeader)
-        .send({ fileName: "big.bin", fileSize: 1024, totalChunks: 1 })
+        .send({ fileName: "big.bin", fileSize: 1000, totalChunks: 1 })
         .expect(400);
 
       expect(res.body.success).toBe(false);
@@ -95,13 +95,13 @@ describe("Chunked Upload API", () => {
       const initRes = await request(app)
         .post("/api/v1/files/upload/init")
         .set(authHeader)
-        .send({ fileName: "big.bin", fileSize: 2 * 1024 * 1024, totalChunks: 2 });
+        .send({ fileName: "big.bin", fileSize: 2 * 1000 * 1000, totalChunks: 2 });
 
       uploadId = initRes.body.data.uploadId;
     });
 
     it("should accept a raw binary chunk via query params and write it to disk", async () => {
-      const chunkData = Buffer.alloc(1024, 0xab);
+      const chunkData = Buffer.alloc(1000, 0xab);
 
       const res = await request(app)
         .post(`/api/v1/files/upload/chunk?uploadId=${uploadId}&chunkIndex=0`)

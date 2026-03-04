@@ -8,6 +8,9 @@ import User from "../models/User.js";
 // Controllers
 import { createNotification } from "./notification.controller.js";
 
+// Services
+import SocketService from "../services/socket.service.js";
+
 // Constants
 import {
   ErrorMessages,
@@ -16,6 +19,7 @@ import {
   StatusCodes,
   NotificationTypes,
   QuotaStatus,
+  SocketEvents,
 } from "../constants/generalConstants.js";
 
 // Middleware
@@ -80,33 +84,53 @@ export const getQuotaBreakdown = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const requestQuotaIncrease = asyncHandler(async (req, res) => {
-  const { requested_bytes, reason } = req.body;
+  try {
+    const { requested_bytes, reason } = req.body;
 
-  const existingRequest = await QuotaRequest.findOne({ user: req.user.id, status: QuotaStatus.PENDING });
-  if (existingRequest) {
-    return ResponseHelper.error(res, ErrorMessages.ALREADY_PENDING_REQUEST, StatusCodes.BAD_REQUEST);
+    const existingRequest = await QuotaRequest.findOne({ user: req.user.id, status: QuotaStatus.PENDING });
+    if (existingRequest) {
+      return ResponseHelper.error(res, ErrorMessages.ALREADY_PENDING_REQUEST, StatusCodes.BAD_REQUEST);
+    }
+
+    const quotaRequest = await QuotaRequest.create({
+      user: req.user.id,
+      requested_bytes,
+      reason,
+    });
+
+    const admins = await User.find({ role: Roles.ADMIN });
+    const requestUser = await User.findById(req.user.id);
+    const userNameDisplay = requestUser?.name || requestUser?.email || "A User";
+
+    // 1. Create DB notifications
+    await Promise.all(
+      admins.map((admin) => {
+        // Must return the promise
+        return createNotification(
+          admin._id.toString(),
+          NotificationTypes.QUOTA_REQUEST,
+          "New Quota Request",
+          `${userNameDisplay} has requested ${(requested_bytes / (1000 * 1000 * 1000)).toFixed(0)} GB additional storage.`,
+          { requestId: quotaRequest._id }
+        );
+      })
+    );
+
+    // 2. Alert all admins immediately
+    SocketService.emitToAdmins(SocketEvents.NOTIFICATION, {
+      type: NotificationTypes.QUOTA_REQUEST,
+      title: "New Quota Request",
+      message: `${userNameDisplay} has requested ${(requested_bytes / (1000 * 1000 * 1000)).toFixed(0)} GB additional storage.`,
+    });
+
+    // 3. Trigger the admin table refresh
+    SocketService.emitToAdmins(SocketEvents.QUOTA_REQUEST, { userId: req.user.id });
+
+    return ResponseHelper.success(res, quotaRequest, StatusCodes.OK, {
+      message: SuccessMessages.QUOTA_REQUEST_SUBMITTED,
+    });
+  } catch (error) {
+    console.error("QUOTA REQUEST CRITICAL ERROR:", error);
+    throw error;
   }
-
-  const quotaRequest = await QuotaRequest.create({
-    user: req.user.id,
-    requested_bytes,
-    reason,
-  });
-
-  const admins = await User.find({ role: Roles.ADMIN });
-  await Promise.all(
-    admins.map((admin) =>
-      createNotification(
-        admin._id.toString(),
-        NotificationTypes.QUOTA_REQUEST,
-        "New Quota Request",
-        `${req.user.name || req.user.email} has requested ${(requested_bytes / (1024 * 1024 * 1024)).toFixed(0)} GB additional storage.`,
-        { requestId: quotaRequest._id }
-      )
-    )
-  );
-
-  return ResponseHelper.success(res, quotaRequest, StatusCodes.OK, {
-    message: SuccessMessages.QUOTA_REQUEST_SUBMITTED,
-  });
 });

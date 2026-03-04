@@ -9,7 +9,7 @@ export async function createTestUser(userData = {}) {
     email: "test@example.com",
     password: "password123",
     role: "USER",
-    quota_bytes: 5 * 1024 * 1024 * 1024, // 5GB
+    quota_bytes: 5 * 1000 * 1000 * 1000, // 5GB
     used_bytes: 0,
     is_active: true,
   };

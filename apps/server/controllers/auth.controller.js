@@ -5,14 +5,44 @@ import User from "../models/User.js";
 import EmailService from "../services/email.service.js";
 import FileService from "../services/file.service.js";
 
+// Controllers
+import { createNotification } from "./notification.controller.js";
+
 // Constants
-import { ErrorMessages, SuccessMessages, StatusCodes } from "../constants/generalConstants.js";
+import { ErrorMessages, SuccessMessages, StatusCodes, NotificationTypes } from "../constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
 
 // Utils
 import ResponseHelper from "../utils/responseHelper.js";
+import logger from "../utils/logger.js";
+
+// ─── Local Helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Helper to send an email for security events if the user's preferences allow it.
+ * @param {Object} user - User document
+ * @param {String} subject - Email subject
+ * @param {String} message - Email body message
+ */
+async function sendSecurityEmail(user, subject, message) {
+  try {
+    const prefs = user.notification_preferences ?? {};
+    if (prefs.security_alerts !== false && user.email) {
+      await EmailService.sendEmail({
+        email: user.email,
+        subject,
+        message,
+      });
+      logger.info(`[Security Email] Sent "${subject}" to ${user.email}`);
+    } else {
+      logger.debug(`[Security Email] Skipped "${subject}" to ${user.email} (Setting disabled)`);
+    }
+  } catch (err) {
+    logger.error(`[Security Email] Failed to send to ${user.email}:`, err);
+  }
+}
 
 /**
  * Helper to get token from model and send response
@@ -68,8 +98,19 @@ export const login = asyncHandler(async (req, res) => {
     return ResponseHelper.error(res, ErrorMessages.ACCOUNT_DEACTIVATED, StatusCodes.FORBIDDEN);
   }
 
-  // Sync storage quota
-  await FileService.recalculateUsedBytes(user._id);
+  // Send security email and in-app notification
+  sendSecurityEmail(
+    user,
+    "New login to your Cloud Drive account",
+    "We noticed a new login to your Cloud Drive account. If this was you, you can safely ignore this email. If you did not log in, please reset your password immediately and contact support."
+  );
+
+  createNotification(
+    user._id,
+    NotificationTypes.SECURITY_ALERT,
+    "New Login Detected",
+    "A new login was detected on your account. If this wasn't you, please change your password immediately."
+  ).catch(() => {});
 
   sendTokenResponse(user, StatusCodes.OK, res, SuccessMessages.LOGIN_SUCCESS);
 });
@@ -150,6 +191,21 @@ export const updatePassword = asyncHandler(async (req, res) => {
   // Set new password
   user.password = newPassword;
   await user.save();
+
+  // Fire an in-app security alert
+  createNotification(
+    user._id,
+    NotificationTypes.SECURITY_ALERT,
+    "Password Changed",
+    "Your account password was just changed. If this wasn't you, please contact support immediately."
+  ).catch(() => {}); // Non-blocking
+
+  // Fire a security email
+  sendSecurityEmail(
+    user,
+    "Your Cloud Drive password was changed",
+    "Your account password was just changed successfully. If you did not make this change, please contact support to secure your account."
+  );
 
   sendTokenResponse(user, StatusCodes.OK, res, "Password updated successfully");
 });

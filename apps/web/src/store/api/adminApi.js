@@ -23,7 +23,7 @@ const adminApi = baseApi.injectEndpoints({
         method: "PATCH",
         body: { quota_bytes },
       }),
-      invalidatesTags: [TagTypes.ADMIN_USERS],
+      invalidatesTags: [TagTypes.ADMIN_USERS, TagTypes.QUOTA],
     }),
 
     // PATCH /api/v1/admin/users/:id/status

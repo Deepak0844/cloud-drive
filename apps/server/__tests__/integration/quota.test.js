@@ -50,11 +50,11 @@ describe("Quota API", () => {
       const response = await request(app)
         .post("/api/v1/quota/request")
         .set(authHeader)
-        .send({ requested_bytes: 10 * 1024 * 1024 * 1024, reason: "Need more space" })
+        .send({ requested_bytes: 10 * 1000 * 1000 * 1000, reason: "Need more space" })
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.requested_bytes).toBe(10 * 1024 * 1024 * 1024);
+      expect(response.body.data.requested_bytes).toBe(10 * 1000 * 1000 * 1000);
 
       const qr = await QuotaRequest.findOne({ user: user._id });
       expect(qr).toBeDefined();
@@ -63,14 +63,14 @@ describe("Quota API", () => {
     it("should fail if already has a pending request", async () => {
       await QuotaRequest.create({
         user: user._id,
-        requested_bytes: 10 * 1024 * 1024 * 1024,
+        requested_bytes: 10 * 1000 * 1000 * 1000,
         reason: "First",
       });
 
       const response = await request(app)
         .post("/api/v1/quota/request")
         .set(authHeader)
-        .send({ requested_bytes: 20 * 1024 * 1024 * 1024, reason: "Second" })
+        .send({ requested_bytes: 20 * 1000 * 1000 * 1000, reason: "Second" })
         .expect(400);
 
       expect(response.body.success).toBe(false);
@@ -79,7 +79,7 @@ describe("Quota API", () => {
   describe("Quota Enforcement", () => {
     it("should fail to upload file if quota is exceeded", async () => {
       // Set user quota to a small value (1 KB)
-      user.quota_bytes = 1024;
+      user.quota_bytes = 1000;
       await user.save();
 
       // Create a large file (2 KB)

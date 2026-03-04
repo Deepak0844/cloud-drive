@@ -3,7 +3,7 @@ import ApiUtils from "./apiUtils";
 import { TagIds, TagTypes } from "@/constants/apiTags";
 import HttpClientFactory from "@/utils/httpClientFactory";
 
-const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB
+const CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
 
 /**
  * Send a single chunk as raw binary using XHR for real onUploadProgress events.

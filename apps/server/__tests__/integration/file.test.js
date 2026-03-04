@@ -30,10 +30,18 @@ describe("File API", () => {
     user = await createTestUser();
     authHeader = getAuthHeader(user);
 
-    // Ensure storage path exists for tests
-    const storagePath = process.env.NAS_STORAGE_PATH || "./test-storage";
-    if (!fs.existsSync(storagePath)) {
-      fs.mkdirSync(storagePath, { recursive: true });
+    // Ensure storage path exists for tests, fallback to /tmp if .env path is not writable
+    let storagePath = process.env.NAS_STORAGE_PATH || "./test-storage";
+    try {
+      if (!fs.existsSync(storagePath)) {
+        fs.mkdirSync(storagePath, { recursive: true });
+      }
+    } catch (_err) {
+      storagePath = "/tmp/cloud-drive-test-storage";
+      process.env.NAS_STORAGE_PATH = storagePath;
+      if (!fs.existsSync(storagePath)) {
+        fs.mkdirSync(storagePath, { recursive: true });
+      }
     }
   });
 
