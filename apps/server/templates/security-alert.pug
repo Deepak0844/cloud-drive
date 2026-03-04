@@ -1,0 +1,33 @@
+extends layout
+
+block content
+  h2(style="color: #c9d1d9; margin-top: 0;") #{alertTitle}
+  p Hello #{userName || 'User'},
+  p #{alertMessage}
+  
+  if session
+    div(style="margin: 30px 0; padding: 20px; background-color: #0d1117; border-radius: 8px; border: 1px solid #30363d;")
+      h3(style="color: #58a6ff; font-size: 14px; text-transform: uppercase; margin-top: 0; margin-bottom: 15px;") Session Details
+      table(style="width: 100%; font-size: 14px; border-collapse: collapse;")
+        tr
+          td(style="padding: 5px 0; color: #8b949e; width: 100px;") Device
+          td(style="padding: 5px 0; color: #c9d1d9;") #{session.device}
+        tr
+          td(style="padding: 5px 0; color: #8b949e;") IP Address
+          td(style="padding: 5px 0; color: #c9d1d9;") #{session.ip}
+        tr
+          td(style="padding: 5px 0; color: #8b949e;") Time
+          td(style="padding: 5px 0; color: #c9d1d9;") #{session.timestamp}
+
+  if alertType === 'login'
+    .alert-box.alert-warning
+      strong Warning: 
+      | A new login was detected on your account. If this wasn't you, please secure your account immediately.
+    div(style="margin-top: 25px;")
+      a.button(href=actionUrl || '#') Change Password
+  else
+    .alert-box.alert-danger
+      strong Important: 
+      | Your password has been successfully updated. If you did not authorize this change, please contact support immediately.
+    div(style="margin-top: 25px;")
+      a.button(href=actionUrl || '#') Secure Account

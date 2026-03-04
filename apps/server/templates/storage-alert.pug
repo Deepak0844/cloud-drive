@@ -1,0 +1,14 @@
+extends layout
+
+block content
+  h2(style="color: #c9d1d9; margin-top: 0;") #{alertTitle}
+  p Hello #{userName || 'User'},
+  p #{alertMessage}
+  
+  .alert-box.alert-warning
+    strong Quota Warning: 
+    | You have used #{usedPercentage}% of your #{totalQuota} storage limit.
+  
+  p Consider deleting unnecessary files or upgrading your storage plan to avoid service interruption.
+  
+  a.button(href=actionUrl || '#') View Storage

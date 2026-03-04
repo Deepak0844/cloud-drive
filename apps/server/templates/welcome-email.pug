@@ -1,0 +1,15 @@
+extends layout
+
+block content
+  h2(style="color: #c9d1d9; margin-top: 0;") Welcome to Cloud Drive!
+  p(style="font-size: 18px; color: #58a6ff;") We're excited to have you on board, #{userName}!
+  
+  p Your account has been successfully created. You can now start uploading, sharing, and managing your files with ease.
+  
+  .alert-box(style="background-color: rgba(88, 166, 255, 0.1); border: 1px solid #388bfd; color: #58a6ff;")
+    strong Pro Tip: 
+    | You can enable security alerts in your settings to stay informed about your account activity.
+  
+  a.button(href=actionUrl || '#') Go to My Files
+  
+  p(style="margin-top: 30px; font-size: 14px;") If you have any questions, feel free to reply to this email or visit our help center.

@@ -16,6 +16,7 @@ import { NotificationTypes } from "../constants/generalConstants.js";
 
 // Utils
 import logger from "../utils/logger.js";
+import FormatUtils from "../utils/formatUtils.js";
 
 // ─── Circular-dependency-safe lazy import ────────────────────────────────────
 // notification.controller.js <-> file.service.js would be circular if imported
@@ -131,7 +132,11 @@ async function recalculateUsedBytes(userId) {
         userId,
         NotificationTypes.STORAGE_ALERT,
         "Storage Almost Full",
-        `You've used ${usedPct}% of your storage quota. Consider requesting a quota increase or freeing up space.`
+        `You've used ${usedPct}% of your storage quota. Consider requesting a quota increase or freeing up space.`,
+        {
+          usedPercentage: usedPct,
+          totalQuota: FormatUtils.formatStorageSize(userBefore.quota_bytes),
+        }
       ).catch((err) => logger.error("[StorageAlert] Failed to send storage alert:", err));
     }
   }

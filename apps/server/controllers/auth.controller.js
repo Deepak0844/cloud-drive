@@ -11,12 +11,16 @@ import { createNotification } from "./notification.controller.js";
 // Constants
 import { ErrorMessages, SuccessMessages, StatusCodes, NotificationTypes } from "../constants/generalConstants.js";
 
+// Config
+import config from "../config/env.js";
+
 // Middleware
 import asyncHandler from "../middleware/asyncHandler.js";
 
 // Utils
 import ResponseHelper from "../utils/responseHelper.js";
 import logger from "../utils/logger.js";
+import SecurityUtils from "../utils/securityUtils.js";
 
 // ─── Local Helpers ────────────────────────────────────────────────────────────
 
@@ -26,16 +30,25 @@ import logger from "../utils/logger.js";
  * @param {String} subject - Email subject
  * @param {String} message - Email body message
  */
-async function sendSecurityEmail(user, subject, message) {
+async function sendSecurityEmail(user, subject, message, alertType = "security", sessionMetadata = null) {
   try {
     const prefs = user.notification_preferences ?? {};
     if (prefs.security_alerts !== false && user.email) {
-      await EmailService.sendEmail({
+      await EmailService.sendTemplateEmail({
         email: user.email,
         subject,
-        message,
+        templateName: "security-alert",
+        plainTextMessage: message,
+        data: {
+          userName: user.name,
+          alertTitle: subject,
+          alertMessage: message,
+          alertType, // 'login' or 'security'
+          actionUrl: `${config.APP_BASE_URL}/settings`,
+          session: sessionMetadata,
+        },
       });
-      logger.info(`[Security Email] Sent "${subject}" to ${user.email}`);
+      logger.info(`[Security Email] Sent HTML "${subject}" to ${user.email}`);
     } else {
       logger.debug(`[Security Email] Skipped "${subject}" to ${user.email} (Setting disabled)`);
     }
@@ -71,13 +84,25 @@ export const register = asyncHandler(async (req, res) => {
     return ResponseHelper.error(res, ErrorMessages.USER_ALREADY_EXISTS, StatusCodes.BAD_REQUEST);
   }
 
-  await User.create({
+  const user = await User.create({
     name,
     email,
     password,
   });
 
-  return ResponseHelper.success(res, {}, StatusCodes.CREATED, { message: SuccessMessages.REGISTRATION_SUCCESS });
+  // Welcome email
+  EmailService.sendTemplateEmail({
+    email: user.email,
+    subject: "Welcome to Cloud Drive!",
+    templateName: "welcome-email",
+    plainTextMessage: `Welcome to Cloud Drive, ${user.name}! We're excited to have you on board.`,
+    data: {
+      userName: user.name,
+      actionUrl: `${config.APP_BASE_URL}/files`,
+    },
+  }).catch((err) => logger.error("[Welcome Email] Failed:", err));
+
+  return sendTokenResponse(user, StatusCodes.CREATED, res, SuccessMessages.REGISTRATION_SUCCESS);
 });
 
 /**
@@ -102,7 +127,9 @@ export const login = asyncHandler(async (req, res) => {
   sendSecurityEmail(
     user,
     "New login to your Cloud Drive account",
-    "We noticed a new login to your Cloud Drive account. If this was you, you can safely ignore this email. If you did not log in, please reset your password immediately and contact support."
+    "We noticed a new login to your Cloud Drive account. If this was you, you can safely ignore this email. If you did not log in, please reset your password immediately and contact support.",
+    "login",
+    SecurityUtils.getSessionMetadata(req)
   );
 
   createNotification(
@@ -204,7 +231,9 @@ export const updatePassword = asyncHandler(async (req, res) => {
   sendSecurityEmail(
     user,
     "Your Cloud Drive password was changed",
-    "Your account password was just changed successfully. If you did not make this change, please contact support to secure your account."
+    "Your account password was just changed successfully. If you did not make this change, please contact support to secure your account.",
+    "security",
+    SecurityUtils.getSessionMetadata(req)
   );
 
   sendTokenResponse(user, StatusCodes.OK, res, "Password updated successfully");

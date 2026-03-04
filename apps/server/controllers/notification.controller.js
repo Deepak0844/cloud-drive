@@ -7,6 +7,9 @@ import PushService from "../services/push.service.js";
 import SocketService from "../services/socket.service.js";
 import EmailService from "../services/email.service.js";
 
+// Config
+import config from "../config/env.js";
+
 // Constants
 import {
   ErrorMessages,
@@ -156,10 +159,19 @@ export async function createNotification(userId, type, title, message, data = {}
 
     // ── Email ─────────────────────────────────────────────────────────────────
     if (type === NotificationTypes.STORAGE_ALERT && user.email) {
-      EmailService.sendEmail({
+      EmailService.sendTemplateEmail({
         email: user.email,
         subject: title,
-        message,
+        templateName: "storage-alert",
+        plainTextMessage: message,
+        data: {
+          userName: user.name,
+          alertTitle: title,
+          alertMessage: message,
+          usedPercentage: data.usedPercentage || "80",
+          totalQuota: data.totalQuota || "10GB",
+          actionUrl: `${config.APP_BASE_URL}/quota`,
+        },
       }).catch((err) => logger.error(`[StorageAlert Email] Failed:`, err));
     }
 
