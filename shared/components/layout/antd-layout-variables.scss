@@ -1,0 +1,46 @@
+// Layout ---------------------------------------------------------------------------------
+// Common
+$sidebar-menu-name-font-size-collapsed: 9px !default;
+$sidebar-menu-name-font-size-open: 15px !default;
+$sidebar-menu-padding-left-right: 0px !default;
+$sidebar-menu-margin-top-bottom: 10px !default;
+$sidebar-menu-height-open: 40px !default;
+$sidebar-menu-height-collapsed: 70px !default;
+$sidebar-menu-name-margin-top: 10px !default;
+
+// Left Sider Color Palette
+$left-sidebar-bg-color: #1e293b !default;
+$left-sidebar-sub-menu-bg-color: #2b3544 !default;
+$left-sidebar-menu-text-color: #ffff !default; // White
+
+$left-sidebar-menu-selected-bg-color: #1e293b !default; // Slate navy background
+$left-sidebar-menu-selected-icon-color: #38bdf8 !default; // Sky blue accent
+$left-sidebar-menu-selected-text-color: #38bdf8 !default; // White text
+
+$left-sidebar-menu-active-bg-color: #334155 !default; // Muted blue-gray
+$left-sidebar-menu-active-icon-color: #38bdf8 !default; // Light blue icon
+$left-sidebar-menu-active-text-color: #38bdf8 !default; // White text
+
+$left-menu-divider-border-color: white !default;
+$left-menu-divider-margin-horizontal: 10px !default;
+$left-menu-divider-margin-vertical: 0px !default;
+
+// === Right Sider Color Palette ===
+$right-sidebar-bg-color: #1e293b !default;
+$right-sidebar-sub-menu-bg-color: #2b3544 !default;
+$right-sidebar-menu-text-color: #ffff !default; // White
+
+$right-sidebar-menu-selected-bg-color: #78350f !default; // Rich amber-brown
+$right-sidebar-menu-selected-icon-color: #fbbf24 !default; // Bright golden icon
+$right-sidebar-menu-selected-text-color: #fde68a !default; // Soft yellow text
+
+$right-sidebar-menu-active-bg-color: #92400e !default; // Warm brown-orange
+$right-sidebar-menu-active-icon-color: #f59e0b !default; // Vibrant orange
+$right-sidebar-menu-active-text-color: #fed7aa !default; // Warm cream text
+
+$right-menu-divider-border-color: white !default;
+$right-menu-divider-margin-horizontal: 10px !default;
+$right-menu-divider-margin-vertical: 0px !default;
+
+// Topbar
+$topbar-bg-color: #1e293b !default;

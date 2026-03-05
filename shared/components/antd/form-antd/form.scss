@@ -1,0 +1,57 @@
+// Antd Form (read only)
+.ant-form-readonly {
+  ::placeholder {
+    color: gray !important;
+    font-weight: bold;
+  }
+
+  .ant-form-item-label {
+    padding: 0;
+  }
+
+  .ant-form-item-required::before {
+    display: none !important;
+  }
+
+  .required-mark {
+    display: none;
+  }
+
+  .common-ant-form-item {
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  input,
+  .ant-input-number,
+  .ant-input-number input,
+  .ant-picker {
+    @extend .common-ant-form-item;
+
+    &:hover,
+    &:focus,
+    &.ant-input-focused,
+    &.ant-input-number-focused,
+    &.ant-picker-focused {
+      border-color: transparent !important;
+      box-shadow: none !important;
+    }
+  }
+
+  .ant-select {
+    .ant-select-selector,
+    .ant-picker {
+      @extend .common-ant-form-item;
+    }
+  }
+
+  .ant-input-number-handler-wrap,
+  .anticon {
+    display: none;
+  }
+}
