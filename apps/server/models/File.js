@@ -122,7 +122,8 @@ const fileSchema = new mongoose.Schema(
 
 // Virtuals for URLs
 fileSchema.virtual("thumbnail_url").get(function () {
-  if (!this.thumbnail_path) {
+  const thumbnailCategories = new Set(["image", "video", "audio"]);
+  if (!thumbnailCategories.has(this.category)) {
     return null;
   }
   return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/preview?thumbnail=true`;

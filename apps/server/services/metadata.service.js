@@ -13,15 +13,19 @@ ffmpeg.setFfprobePath(ffprobePath);
  * Determine the category based on MIME type and extension
  */
 function getCategory(mimeType, filename) {
-  const ext = FileUtils.getFileExtension(filename);
+  const ext = FileUtils.getFileExtension(filename).toLowerCase();
 
-  if (mimeType.startsWith("image/")) {
+  const imageExts = ["jpg", "jpeg", "png", "gif", "webp", "avif", "heic", "heif", "tiff", "tif", "bmp", "svg"];
+  const videoExts = ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts", "3gp"];
+  const audioExts = ["mp3", "wav", "flac", "aac", "m4a", "ogg", "opus", "wma"];
+
+  if (mimeType.startsWith("image/") || imageExts.includes(ext)) {
     return "image";
   }
-  if (mimeType.startsWith("video/")) {
+  if (mimeType.startsWith("video/") || videoExts.includes(ext)) {
     return "video";
   }
-  if (mimeType.startsWith("audio/")) {
+  if (mimeType.startsWith("audio/") || audioExts.includes(ext)) {
     return "audio";
   }
 
