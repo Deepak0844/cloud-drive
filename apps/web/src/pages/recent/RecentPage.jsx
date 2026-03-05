@@ -23,28 +23,51 @@ import Button from "@shared-components/components/button";
 import AdvancedFilterDropdown from "@/components/search/AdvancedFilterDropdown";
 import useDebounce from "@/hooks/useDebounce";
 
+import { useInfiniteScroll } from "@shared-hooks/hooks";
+
 const { Text } = Typography;
 
 function RecentPage() {
   const { message } = App.useApp();
+  const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [viewMode, setViewMode] = useState("grid"); // Added missing viewMode state
+  const [viewMode, setViewMode] = useState("grid");
   const [previewFile, setPreviewFile] = useState(null);
-  const [infoItem, setInfoItem] = useState(null); // Renamed infoDrawerItem to infoItem to match usage
+  const [infoItem, setInfoItem] = useState(null);
   const [advancedFilters, setAdvancedFilters] = useState({});
 
+  // Reset page on filter change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, advancedFilters]);
+
   // API Queries
-  const { data: recentData, isLoading } = useGetRecentFilesQuery({
-    limit: 50,
+  const {
+    data: recentData,
+    isLoading,
+    isFetching,
+  } = useGetRecentFilesQuery({
+    pg: page,
+    ps: 30,
+    search: debouncedSearch || undefined,
     ...advancedFilters,
   });
+
+  const hasNextPage = recentData?.pagination?.hasNext || false;
+
+  const { loaderRef } = useInfiniteScroll({
+    hasNext: hasNextPage,
+    isLoading: isFetching,
+    onLoadMore: () => setPage((prev) => prev + 1),
+  });
+
   const [touchFile] = useTouchFileMutation();
   const [bulkDownload, { isLoading: isDownloading }] = useBulkDownloadMutation();
 
   const allItems = recentData?.data || [];
-  const filteredItems = allItems.filter((item) => item.name.toLowerCase().includes(debouncedSearch.toLowerCase()));
+  const filteredItems = allItems; // Filtering handled by backend now
 
   // Time grouping logic
   const groupItemsByTime = (items) => {
@@ -265,6 +288,16 @@ function RecentPage() {
                   </section>
                 )
             )}
+
+            {/* Infinite Scroll Loader */}
+            <div ref={loaderRef} className="py-12 flex justify-center w-full">
+              {isFetching && page > 1 && <Spin />}
+              {!hasNextPage && allItems.length > 0 && (
+                <Text type="secondary" className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">
+                  No more recent items
+                </Text>
+              )}
+            </div>
           </div>
         )}
       </div>

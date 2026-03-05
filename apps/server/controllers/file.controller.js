@@ -29,6 +29,7 @@ import MediaUtils from "../utils/mediaUtils.js";
 import { applyAdvancedFilters } from "../utils/filterUtils.js";
 import FileUtils from "../utils/fileUtils.js";
 import logger from "../utils/logger.js";
+import { paginateQuery } from "../utils/paginationUtils.js";
 
 // ─── Range Streaming Helper ───────────────────────────────────────────────────
 
@@ -208,24 +209,17 @@ export const getFiles = asyncHandler(async (req, res) => {
 
   query = applyAdvancedFilters(query, req.query, false);
 
-  const page = Math.max(1, parseInt(req.query.pn) || 1);
-  const limit = Math.min(200, Math.max(1, parseInt(req.query.ps) || 50));
-  const skip = (page - 1) * limit;
+  const { pg, ps } = req.query;
+  const sort = isFav ? "-favorited_at" : "-createdAt";
 
-  const [files, total] = await Promise.all([
-    File.find(query)
-      .sort(isFav ? "-favorited_at" : "-createdAt")
-      .skip(skip)
-      .limit(limit),
-    File.countDocuments(query),
-  ]);
-
-  return ResponseHelper.success(res, files, StatusCodes.OK, {
-    count: files.length,
-    total,
-    page,
-    pages: Math.ceil(total / limit),
+  const result = await paginateQuery(File, query, {
+    pg,
+    ps,
+    sort,
+    populate: { path: "folder", select: "name" },
   });
+
+  return ResponseHelper.success(res, result);
 });
 
 /**
@@ -367,10 +361,17 @@ export const getFilePreview = asyncHandler(async (req, res) => {
           return res.status(StatusCodes.ACCEPTED).send("");
         }
 
-        file.thumbnail_path = thumbPath;
-        await file.save();
+        // Verify file was actually created before saving path to DB
+        if (fs.existsSync(thumbPath)) {
+          file.thumbnail_path = thumbPath;
+          await file.save();
+        } else {
+          logger.warn(`[Preview] Thumbnail generation returned but file missing for ${fileId}`);
+          return res.status(StatusCodes.ACCEPTED).send("");
+        }
       } catch (err) {
         logger.warn(`[Preview] Thumbnail generation failed for ${fileId}: ${err.message}`);
+        // Return 202 Accepted to signal "processing failed/retry" rather than 500
         return res.status(StatusCodes.ACCEPTED).send("");
       }
     }
@@ -585,11 +586,24 @@ export const getRecentFiles = asyncHandler(async (req, res) => {
 
   query = applyAdvancedFilters(query, req.query, false);
 
-  const files = await File.find(query).populate("folder", "name").sort("-last_opened_at").limit(limit);
+  const { pg, ps } = req.query;
+  // Fallback to limit if provided (backward compatibility)
+  const pageSize = ps || limit || 50;
 
-  const mappedFiles = files.map((f) => ({ ...f.toObject(), type: ItemTypes.FILE }));
+  const result = await paginateQuery(File, query, {
+    pg,
+    ps: pageSize,
+    sort: "-last_opened_at",
+    populate: { path: "folder", select: "name" },
+  });
 
-  return ResponseHelper.success(res, mappedFiles);
+  // Maintain backward compatibility by returning array if no pg is provided
+  if (!pg) {
+    const mappedFiles = result.data.map((f) => ({ ...f.toObject(), type: ItemTypes.FILE }));
+    return ResponseHelper.success(res, mappedFiles);
+  }
+
+  return ResponseHelper.success(res, result);
 });
 
 /**

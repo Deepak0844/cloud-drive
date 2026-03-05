@@ -30,7 +30,6 @@ import {
   useHandleQuotaRequestMutation,
   useRunStorageReanalysisMutation,
 } from "@/store/api/adminApi";
-import { useGetMeQuery } from "@/store/api/authApi";
 
 // constants
 import { UI_COLORS } from "@shared-constants/constants";
@@ -61,11 +60,27 @@ export default function AdminDashboardPage() {
   const [editingUser, setEditingUser] = useState(null);
   const [activeTab, setActiveTab] = useState("1");
   const [form] = Form.useForm();
+  const [userPage, setUserPage] = useState(1);
+  const [requestPage, setRequestPage] = useState(1);
+  const pageSize = 10;
 
   // API Queries
-  const { data: usersData, isLoading: usersLoading } = useGetUsersQuery();
-  const { data: requestsData, isLoading: requestsLoading } = useGetAllQuotaRequestsQuery();
-  const { data: meData } = useGetMeQuery();
+  const {
+    data: usersData,
+    isLoading: usersLoading,
+    isFetching: usersFetching,
+  } = useGetUsersQuery({
+    pg: userPage,
+    ps: pageSize,
+  });
+  const {
+    data: requestsData,
+    isLoading: requestsLoading,
+    isFetching: requestsFetching,
+  } = useGetAllQuotaRequestsQuery({
+    pg: requestPage,
+    ps: pageSize,
+  });
 
   // API Mutations
   const [updateUserQuota] = useUpdateUserQuotaMutation();
@@ -73,9 +88,12 @@ export default function AdminDashboardPage() {
   const [handleQuotaRequest] = useHandleQuotaRequestMutation();
   const [runReanalysis, { isLoading: reanalyzing }] = useRunStorageReanalysisMutation();
 
-  const currentUser = meData?.data;
-  const users = (usersData?.data || []).filter((u) => u._id !== currentUser?._id);
+  // Note: Filter out current user if returned in same page, but usually backend handles this or admin is fine to see themselves
+  const users = usersData?.data || [];
   const requests = requestsData?.data || [];
+
+  const userPagination = usersData?.pagination;
+  const requestPagination = requestsData?.pagination;
 
   function handleEdit(user) {
     setEditingUser(user);
@@ -293,7 +311,14 @@ export default function AdminDashboardPage() {
           dataSource={users}
           rowKey="_id"
           className="bg-surface rounded-xl shadow-sm"
-          pagination={{ pageSize: 10 }}
+          loading={usersFetching}
+          pagination={{
+            current: userPage,
+            pageSize: pageSize,
+            total: userPagination?.totalItems || 0,
+            onChange: (p) => setUserPage(p),
+            showSizeChanger: false,
+          }}
           scroll={{ x: "max-content", y: "calc(100vh - 320px)" }}
         />
       ),
@@ -309,7 +334,14 @@ export default function AdminDashboardPage() {
           dataSource={requests}
           rowKey="_id"
           className="bg-surface rounded-xl shadow-sm"
-          pagination={{ pageSize: 10 }}
+          loading={requestsFetching}
+          pagination={{
+            current: requestPage,
+            pageSize: pageSize,
+            total: requestPagination?.totalItems || 0,
+            onChange: (p) => setRequestPage(p),
+            showSizeChanger: false,
+          }}
           scroll={{ x: "max-content", y: "calc(100vh - 320px)" }}
         />
       ),

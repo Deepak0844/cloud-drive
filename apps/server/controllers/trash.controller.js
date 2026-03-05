@@ -11,6 +11,7 @@ import { StatusCodes, ItemTypes } from "../constants/generalConstants.js";
 import ResponseHelper from "../utils/responseHelper.js";
 import DbUtils from "../utils/dbUtils.js";
 import { applyAdvancedFilters } from "../utils/filterUtils.js";
+import { paginateQuery } from "../utils/paginationUtils.js";
 
 // Services
 import SocketService from "../services/socket.service.js";
@@ -29,15 +30,20 @@ export const getTrashItems = asyncHandler(async (req, res) => {
   }
   folderQuery = applyAdvancedFilters(folderQuery, req.query, true);
 
-  let fileQuery = { user: req.user.id, is_deleted: true, deleted_directly: true };
+  const fileQuery = { user: req.user.id, is_deleted: true, deleted_directly: true };
   if (search && search !== "null" && search !== "undefined") {
     fileQuery.name = { $regex: search, $options: "i" };
   }
-  fileQuery = applyAdvancedFilters(fileQuery, req.query, false);
   // We only fetch items that were `deleted_directly` by the user.
   // Items deleted because their parent folder was deleted will NOT be shown at the root of the trash.
-  const folders = await Folder.find(folderQuery).sort("-deleted_at");
-  const files = await File.find(fileQuery).sort("-deleted_at");
+  const fileQueryPaginated = applyAdvancedFilters({ ...fileQuery }, req.query, false);
+
+  const { pg, ps } = req.query;
+
+  const [folders, fileResult] = await Promise.all([
+    Folder.find(folderQuery).sort("-deleted_at"),
+    paginateQuery(File, fileQueryPaginated, { pg, ps, sort: "-deleted_at" }),
+  ]);
 
   // Dynamically resolve itemCount for each folder in the trash
   const foldersWithCount = await Promise.all(
@@ -52,7 +58,11 @@ export const getTrashItems = asyncHandler(async (req, res) => {
     })
   );
 
-  return ResponseHelper.success(res, { folders: foldersWithCount, files });
+  return ResponseHelper.success(res, {
+    folders: foldersWithCount,
+    files: fileResult.data,
+    pagination: fileResult.pagination,
+  });
 });
 
 /**

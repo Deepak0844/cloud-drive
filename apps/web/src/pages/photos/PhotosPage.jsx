@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Breadcrumb, Empty, Skeleton, Typography, Image } from "antd";
+import { Breadcrumb, Empty, Skeleton, Typography, Image, Spin } from "antd";
 import { PictureOutlined, CalendarOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
@@ -16,13 +16,30 @@ import PageUrls from "@/constants/pageUrls";
 // components
 import Button from "@shared-components/components/button";
 
+import { useInfiniteScroll } from "@shared-hooks/hooks";
+
 const { Text } = Typography;
 
 const PhotosPage = () => {
-  const { data: filesResponse, isLoading } = useGetFilesQuery({
+  const [page, setPage] = React.useState(1);
+
+  const {
+    data: filesResponse,
+    isLoading,
+    isFetching,
+  } = useGetFilesQuery({
     category: "image",
     recursive: true,
-    ps: 200, // Load more for gallery
+    pg: page,
+    ps: 50,
+  });
+
+  const hasNextPage = filesResponse?.pagination?.hasNext || false;
+
+  const { loaderRef } = useInfiniteScroll({
+    hasNext: hasNextPage,
+    isLoading: isFetching,
+    onLoadMore: () => setPage((prev) => prev + 1),
   });
 
   const photos = useMemo(() => filesResponse?.data || [], [filesResponse]);
@@ -135,6 +152,24 @@ const PhotosPage = () => {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Infinite Scroll Loader */}
+      <div ref={loaderRef} className="py-12 flex flex-col items-center justify-center w-full gap-4">
+        {isFetching && page > 1 && (
+          <>
+            <Spin size="large" />
+            <Text type="secondary" className="text-xs font-bold uppercase tracking-widest opacity-50">
+              Loading more memories...
+            </Text>
+          </>
+        )}
+        {!hasNextPage && photos.length > 0 && (
+          <div className="flex flex-col items-center gap-2 opacity-30">
+            <div className="h-px bg-line w-24" />
+            <Text className="text-[10px] font-black uppercase tracking-[0.2em]">End of Gallery</Text>
+          </div>
+        )}
       </div>
     </motion.div>
   );

@@ -60,6 +60,7 @@ import Dropdown from "@shared-components/components/dropdown";
 import AdvancedFilterDropdown from "@/components/search/AdvancedFilterDropdown";
 import { useUploadDetails } from "@/contexts/UploadContext";
 import useDebounce from "@/hooks/useDebounce";
+import { useInfiniteScroll } from "@shared-hooks/hooks";
 
 const { Text } = Typography;
 
@@ -104,13 +105,34 @@ function MyFilesView() {
     items: [], // selection for bulk move/copy
   });
 
+  const [page, setPage] = useState(1);
+
   // API Queries
-  const { data: contentsData, isLoading: isContentsLoading } = useGetFolderContentsQuery({
+  const {
+    data: contentsData,
+    isLoading: isContentsLoading,
+    isFetching: isContentsFetching,
+  } = useGetFolderContentsQuery({
     folderId: currentFolderId,
     search: debouncedSearch,
     sortBy: sortBy,
     sortOrder: sortOrder,
+    pg: page,
+    ps: 40,
     ...advancedFilters,
+  });
+
+  // Reset page when folder or search/sort changes
+  useEffect(() => {
+    setPage(1);
+  }, [currentFolderId, debouncedSearch, sortBy, sortOrder, advancedFilters]);
+
+  const hasNextPage = contentsData?.pagination?.hasNext || false;
+
+  const { loaderRef } = useInfiniteScroll({
+    hasNext: hasNextPage,
+    isLoading: isContentsFetching,
+    onLoadMore: () => setPage((prev) => prev + 1),
   });
 
   const { data: detailsData } = useGetFolderDetailsQuery(
@@ -730,6 +752,16 @@ function MyFilesView() {
                     })}
                   </div>
                 )}
+
+                {/* Infinite Scroll Loader */}
+                <div ref={loaderRef} className="py-8 flex justify-center w-full">
+                  {isContentsFetching && page > 1 && <Spin />}
+                  {!hasNextPage && (folders.length > 0 || files.length > 0) && (
+                    <Text type="secondary" className="text-xs opacity-50 uppercase tracking-widest font-black">
+                      No more items
+                    </Text>
+                  )}
+                </div>
               </div>
             )}
 

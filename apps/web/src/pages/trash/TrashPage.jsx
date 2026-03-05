@@ -9,7 +9,7 @@ import {
   SearchOutlined,
   UndoOutlined,
 } from "@ant-design/icons";
-import { App, Breadcrumb, Input, Spin, Tooltip } from "antd";
+import { App, Breadcrumb, Input, Spin, Tooltip, Typography } from "antd";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -34,9 +34,14 @@ import Button from "@shared-components/components/button";
 import AdvancedFilterDropdown from "@/components/search/AdvancedFilterDropdown";
 import useDebounce from "@/hooks/useDebounce";
 
+import { useInfiniteScroll } from "@shared-hooks/hooks";
+
+const { Text } = Typography;
+
 function TrashView() {
   const { message, modal } = App.useApp();
 
+  const [page, setPage] = useState(1);
   const [selectedItems, setSelectedItems] = useState([]);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
   const [infoItem, setInfoItem] = useState(null);
@@ -46,10 +51,29 @@ function TrashView() {
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [advancedFilters, setAdvancedFilters] = useState({});
 
+  // Reset page relative to search/filters
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, advancedFilters]);
+
   // API Queries
-  const { data: trashData, isLoading } = useGetTrashItemsQuery({
+  const {
+    data: trashData,
+    isLoading,
+    isFetching,
+  } = useGetTrashItemsQuery({
     search: debouncedSearch || undefined,
+    pg: page,
+    ps: 40,
     ...advancedFilters,
+  });
+
+  const hasNextPage = trashData?.pagination?.hasNext || false;
+
+  const { loaderRef } = useInfiniteScroll({
+    hasNext: hasNextPage,
+    isLoading: isFetching,
+    onLoadMore: () => setPage((prev) => prev + 1),
   });
 
   // API Mutations
@@ -385,6 +409,16 @@ function TrashView() {
               </div>
             </motion.div>
           )}
+
+          {/* Infinite Scroll Loader */}
+          <div ref={loaderRef} className="py-12 flex justify-center w-full">
+            {isFetching && page > 1 && <Spin />}
+            {!hasNextPage && (folders.length > 0 || files.length > 0) && (
+              <Text type="secondary" className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">
+                No more trashed items
+              </Text>
+            )}
+          </div>
         </div>
       )}
 

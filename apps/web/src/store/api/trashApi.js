@@ -9,6 +9,18 @@ export const trashApi = baseApi.injectEndpoints({
         url: "/trash",
         params,
       }),
+      serializeQueryArgs: ({ endpointName, queryArgs }) => {
+        const { pg: _pg, ...rest } = queryArgs || {};
+        return `${endpointName}-${JSON.stringify(rest)}`;
+      },
+      merge: (currentCache, newItems, { arg }) => {
+        if (!arg?.pg || arg.pg === 1) return newItems;
+        return {
+          ...newItems,
+          files: [...currentCache.files, ...newItems.files],
+          folders: newItems.folders, // folders typically not paginated here
+        };
+      },
       providesTags: ApiUtils.listTags(TagTypes.TRASH),
     }),
 

@@ -2,6 +2,7 @@
 import File from "../models/File.js";
 import QuotaRequest from "../models/QuotaRequest.js";
 import User from "../models/User.js";
+import { paginateQuery } from "../utils/paginationUtils.js";
 
 // Controllers
 import { createNotification } from "./notification.controller.js";
@@ -33,22 +34,10 @@ import FormatUtils from "../utils/formatUtils.js";
  * @access  Private/Admin
  */
 export const getUsers = asyncHandler(async (req, res) => {
-  const page = Math.max(1, parseInt(req.query.pn) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.ps) || 20));
-  const skip = (page - 1) * limit;
+  const { pg, ps } = req.query;
   const queryFilter = { _id: { $ne: req.user.id } };
-
-  const [users, total] = await Promise.all([
-    User.find(queryFilter).select("-password").skip(skip).limit(limit).sort("-createdAt"),
-    User.countDocuments(queryFilter),
-  ]);
-
-  return ResponseHelper.success(res, users, StatusCodes.OK, {
-    count: users.length,
-    total,
-    page,
-    pages: Math.ceil(total / limit),
-  });
+  const result = await paginateQuery(User, queryFilter, { pg, ps, sort: "name", select: "-password" });
+  return ResponseHelper.success(res, result);
 });
 
 /**
@@ -115,8 +104,9 @@ export const getSystemStats = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 export const getAllQuotaRequests = asyncHandler(async (req, res) => {
-  const requests = await QuotaRequest.find().populate("user", "name email").sort("-createdAt");
-  return ResponseHelper.success(res, requests, StatusCodes.OK, { count: requests.length });
+  const { pg, ps } = req.query;
+  const result = await paginateQuery(QuotaRequest, {}, { pg, ps, sort: "-createdAt", populate: "user" });
+  return ResponseHelper.success(res, result);
 });
 
 /**

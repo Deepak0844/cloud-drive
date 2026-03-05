@@ -100,10 +100,13 @@ export const getFolderContents = asyncHandler(async (req, res) => {
   }
   fileQuery = applyAdvancedFilters(fileQuery, req.query, false);
 
-  // Determine sort parameters
+  const pg = Math.max(1, parseInt(req.query.pg) || 1);
+  const ps = Math.max(1, Math.min(100, parseInt(req.query.ps) || 20));
+  const skip = (pg - 1) * ps;
+
   const sortDirection = sortOrder === "desc" ? -1 : 1;
-  let fileSort = "-createdAt"; // default
-  let folderSort = "name"; // default
+  let fileSort = { createdAt: -1 };
+  let folderSort = { name: 1 };
 
   if (sortBy) {
     if (sortBy === "name") {
@@ -111,8 +114,7 @@ export const getFolderContents = asyncHandler(async (req, res) => {
       folderSort = { name: sortDirection };
     } else if (sortBy === "size") {
       fileSort = { size_bytes: sortDirection };
-      // Folders dont have a simple 'size' field, keep name sort or createdAt
-      folderSort = { name: sortDirection };
+      folderSort = { name: sortDirection }; // Folders don't have size normally
     } else if (sortBy === "updatedAt") {
       fileSort = { updatedAt: sortDirection };
       folderSort = { updatedAt: sortDirection };
@@ -122,25 +124,62 @@ export const getFolderContents = asyncHandler(async (req, res) => {
     }
   }
 
-  const [folders, files] = await Promise.all([
-    Folder.find(folderQuery).sort(folderSort),
-    File.find(fileQuery).sort(fileSort),
+  // Get total counts for both
+  const [totalFolders, totalFiles] = await Promise.all([
+    Folder.countDocuments(folderQuery),
+    File.countDocuments(fileQuery),
   ]);
 
-  // Dynamically resolve itemCount for each folder in the directory
+  const totalItems = totalFolders + totalFiles;
+  const totalPages = Math.ceil(totalItems / ps);
+
+  let folders = [];
+  let files = [];
+
+  // Logic to determine how many folders and files to fetch for the current page
+  if (skip < totalFolders) {
+    // Current page starts within or at folders
+    const folderLimit = Math.min(ps, totalFolders - skip);
+    folders = await Folder.find(folderQuery).sort(folderSort).skip(skip).limit(folderLimit);
+
+    // If there's still room in the page, fill with files
+    if (folders.length < ps && totalFiles > 0) {
+      const fileLimit = ps - folders.length;
+      files = await File.find(fileQuery).sort(fileSort).limit(fileLimit);
+    }
+  } else {
+    // Current page starts within files
+    const fileSkip = skip - totalFolders;
+    files = await File.find(fileQuery).sort(fileSort).skip(fileSkip).limit(ps);
+  }
+
+  // Dynamically resolve itemCount for each folder
   const foldersWithCount = await Promise.all(
     folders.map(async (folder) => {
       const fileCount = await File.countDocuments({ folder: folder._id, is_deleted: false });
       const subfolderCount = await Folder.countDocuments({ parent: folder._id, is_deleted: false });
       return {
         ...folder.toObject(),
-        id: folder._id, // Ensure id is available
+        id: folder._id,
         itemCount: fileCount + subfolderCount,
       };
     })
   );
 
-  return ResponseHelper.success(res, { folders: foldersWithCount, files });
+  return ResponseHelper.success(res, {
+    folders: foldersWithCount,
+    files,
+    pagination: {
+      total: totalItems,
+      page: pg,
+      ps,
+      pages: totalPages,
+      hasNext: pg < totalPages,
+      hasPrev: pg > 1,
+      totalFolders,
+      totalFiles,
+    },
+  });
 });
 
 /**

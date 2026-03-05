@@ -11,6 +11,7 @@ export const TagTypes = {
   ADMIN_STATS: "AdminStats",
   ADMIN_QUOTA_REQUESTS: "AdminQuotaRequests",
   QUOTA: "Quota",
+  ACTIVITY: "Activity",
 };
 
 /**

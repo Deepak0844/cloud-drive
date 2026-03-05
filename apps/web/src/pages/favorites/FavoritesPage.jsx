@@ -49,12 +49,15 @@ import Button from "@shared-components/components/button";
 import AdvancedFilterDropdown from "@/components/search/AdvancedFilterDropdown";
 import useDebounce from "@/hooks/useDebounce";
 
+import { useInfiniteScroll } from "@shared-hooks/hooks";
+
 const { Text } = Typography;
 
 function FavoritesPage() {
   const { message } = App.useApp();
+  const [page, setPage] = useState(1);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState("grid");
   const [infoItem, setInfoItem] = useState(null);
   const [renameItem, setRenameItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
@@ -72,18 +75,37 @@ function FavoritesPage() {
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [advancedFilters, setAdvancedFilters] = useState({});
 
-  // Fetch favorite folders
+  // Reset page on filter change
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, advancedFilters]);
+
+  // Fetch favorite folders (typically folders aren't many, so we fetch all or just use a large limit)
   const { data: foldersData, isLoading: foldersLoading } = useGetFoldersQuery({
     isFavorite: "true",
     search: debouncedSearch || undefined,
     ...advancedFilters,
   });
 
-  // Fetch favorite files
-  const { data: filesData, isLoading: filesLoading } = useGetFilesQuery({
+  // Fetch favorite files with pagination
+  const {
+    data: filesData,
+    isLoading: filesLoading,
+    isFetching: filesFetching,
+  } = useGetFilesQuery({
     isFavorite: "true",
     search: debouncedSearch || undefined,
+    pg: page,
+    ps: 40,
     ...advancedFilters,
+  });
+
+  const hasNextPage = filesData?.pagination?.hasNext || false;
+
+  const { loaderRef } = useInfiniteScroll({
+    hasNext: hasNextPage,
+    isLoading: filesFetching,
+    onLoadMore: () => setPage((prev) => prev + 1),
   });
 
   // API Mutations
@@ -458,6 +480,20 @@ function FavoritesPage() {
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Infinite Scroll Loader */}
+                <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4">
+                  {filesFetching ? (
+                    <>
+                      <Spin size="medium" />
+                      <Text className="text-label-tertiary text-sm">Loading more favorites...</Text>
+                    </>
+                  ) : hasNextPage ? (
+                    <Text className="text-label-tertiary text-sm italic">Scroll for more</Text>
+                  ) : (
+                    <Text className="text-label-tertiary text-sm italic">No more favorites</Text>
+                  )}
                 </div>
               </div>
             )}
