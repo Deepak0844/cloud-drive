@@ -5,6 +5,7 @@ import {
   HistoryOutlined,
   SettingOutlined,
   StarOutlined,
+  PictureOutlined,
 } from "@ant-design/icons";
 import { Layout, Menu } from "antd";
 import { AnimatePresence, motion } from "framer-motion";
@@ -46,6 +47,12 @@ function Sidebar({ collapsed, isMobile }) {
       key: PageUrls.MyFilesPage,
       icon: <FolderOpenOutlined className="text-lg" />,
       label: <span className="font-semibold">{PageNames.MY_FILES}</span>,
+      roles: [Roles.USER],
+    },
+    {
+      key: PageUrls.PhotosPage,
+      icon: <PictureOutlined className="text-lg" />,
+      label: <span className="font-semibold">{PageNames.PHOTOS}</span>,
       roles: [Roles.USER],
     },
     {

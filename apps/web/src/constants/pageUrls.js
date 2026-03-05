@@ -14,6 +14,7 @@ const PageUrls = {
   RecentPage: "/recent",
   FavoritesPage: "/favorites",
   TrashPage: "/trash",
+  PhotosPage: "/photos",
   SettingsPage: "/settings",
   AdminPage: "/admin",
 };

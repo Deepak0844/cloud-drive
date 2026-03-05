@@ -4,7 +4,6 @@ import {
   CloudServerOutlined,
   LockOutlined,
   SendOutlined,
-  UserOutlined,
   FileImageOutlined,
   PlayCircleOutlined,
   AudioOutlined,
@@ -118,18 +117,11 @@ function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Side: Profile & Security */}
         <div className="lg:col-span-8 flex flex-col gap-8">
-          <Card className="rounded-[32px] border-line shadow-sm overflow-hidden" styles={{ body: { padding: "32px" } }}>
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
-                <UserOutlined className="text-2xl" />
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-label-primary">Profile Information</h2>
-                <p className="text-sm text-label-tertiary">Update your personal details and public profile</p>
-              </div>
-            </div>
-
-            <Form form={form} layout="vertical" onFinish={() => handleUpdateProfile(true)}>
+          <Form form={form} layout="vertical" onFinish={() => handleUpdateProfile(true)}>
+            <Card
+              className="rounded-[32px] border-line shadow-sm overflow-hidden"
+              styles={{ body: { padding: "32px" } }}
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Form.Item name="name" label={<span className="font-bold text-label-secondary">Full Name</span>}>
                   <Input className="premium-input h-14" />
@@ -191,37 +183,37 @@ function SettingsPage() {
                   </div>
                 ))}
               </div>
-            </Form>
-          </Card>
+            </Card>
 
-          <Card className="rounded-[32px] border-line shadow-sm" styles={{ body: { padding: "32px" } }}>
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 bg-secondary/10 text-secondary rounded-2xl flex items-center justify-center">
-                <LockOutlined className="text-2xl" />
+            <Card className="rounded-[32px] border-line shadow-sm" styles={{ body: { padding: "32px" } }}>
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-secondary/10 text-secondary rounded-2xl flex items-center justify-center">
+                  <LockOutlined className="text-2xl" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-label-primary">Security & Privacy</h2>
+                  <p className="text-sm text-label-tertiary">Control your account&apos;s security settings</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-black text-label-primary">Security & Privacy</h2>
-                <p className="text-sm text-label-tertiary">Control your account&apos;s security settings</p>
-              </div>
-            </div>
 
-            <div className="flex flex-col md:flex-row gap-4">
-              <Button
-                styleType="secondary"
-                className="h-12 flex-1 font-bold rounded-2xl"
-                onClick={() => setPasswordModalVisible(true)}
-              >
-                Change Password
-              </Button>
-              <Button
-                styleType="ghost"
-                className="h-12 flex-1 font-bold rounded-2xl border-line-strong text-error hover:bg-error/5"
-                disabled
-              >
-                Delete Account
-              </Button>
-            </div>
-          </Card>
+              <div className="flex flex-col md:flex-row gap-4">
+                <Button
+                  styleType="secondary"
+                  className="h-12 flex-1 font-bold rounded-2xl"
+                  onClick={() => setPasswordModalVisible(true)}
+                >
+                  Change Password
+                </Button>
+                <Button
+                  styleType="ghost"
+                  className="h-12 flex-1 font-bold rounded-2xl border-line-strong text-error hover:bg-error/5"
+                  disabled
+                >
+                  Delete Account
+                </Button>
+              </div>
+            </Card>
+          </Form>
         </div>
 
         {/* Right Side: Storage Dashboard */}

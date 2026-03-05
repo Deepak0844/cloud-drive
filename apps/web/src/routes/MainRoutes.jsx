@@ -10,6 +10,7 @@ import { Roles } from "@/constants/generalConstants";
 // Pages
 import RoleBasedDefaultPage from "./RoleBasedDefaultPage";
 import MyFilesPage from "@/pages/my-files/MyFilesPage";
+import PhotosPage from "@/pages/photos/PhotosPage";
 import FavoritesPage from "@/pages/favorites/FavoritesPage";
 import RecentPage from "@/pages/recent/RecentPage";
 import TrashPage from "@/pages/trash/TrashPage";
@@ -43,6 +44,14 @@ export const MainRoutes = {
       element: (
         <ProtectedRoute allowedRoles={USER_ONLY}>
           <MyFilesPage />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: PageUrls.PhotosPage,
+      element: (
+        <ProtectedRoute allowedRoles={USER_ONLY}>
+          <PhotosPage />
         </ProtectedRoute>
       ),
     },

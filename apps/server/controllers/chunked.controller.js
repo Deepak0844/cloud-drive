@@ -10,6 +10,7 @@ import User from "../models/User.js";
 // Services
 import FileService from "../services/file.service.js";
 import SocketService from "../services/socket.service.js";
+import MetadataService from "../services/metadata.service.js";
 
 // Constants
 import { ErrorMessages, StatusCodes } from "../constants/generalConstants.js";
@@ -20,7 +21,6 @@ import asyncHandler from "../middleware/asyncHandler.js";
 // Utils
 import ResponseHelper from "../utils/responseHelper.js";
 import MimeUtils from "../utils/mimeUtils.js";
-import MetadataService from "../services/metadata.service.js";
 import logger from "../utils/logger.js";
 
 /**

@@ -186,13 +186,15 @@ export const getFiles = asyncHandler(async (req, res) => {
     query.name = { $regex: search, $options: "i" };
   }
 
+  const isRecursive = recursive === "true" || recursive === true;
   const isFav = isFavorite === "true" || isFavorite === true;
+  const category = req.query.category;
 
   if (folderId && folderId !== "null" && folderId !== "undefined") {
-    if (!(search && recursive)) {
+    if (!(search && isRecursive)) {
       query.folder = folderId;
     }
-  } else if ((!search || search === "null" || search === "undefined" || !recursive) && !isFav) {
+  } else if (!search && !isRecursive && !isFav && !category) {
     query.folder = null;
   }
 
@@ -292,6 +294,7 @@ export const uploadFile = asyncHandler(async (req, res) => {
   });
 
   // No background processing — all derivatives are lazy
+
   return ResponseHelper.success(res, file, StatusCodes.CREATED);
 });
 
@@ -572,9 +575,14 @@ export const bulkDelete = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const getRecentFiles = asyncHandler(async (req, res) => {
-  const { limit } = req.query;
+  const { limit, search } = req.query;
 
   let query = { user: req.user.id, is_deleted: false };
+
+  if (search && search !== "null" && search !== "undefined") {
+    query.name = { $regex: search, $options: "i" };
+  }
+
   query = applyAdvancedFilters(query, req.query, false);
 
   const files = await File.find(query).populate("folder", "name").sort("-last_opened_at").limit(limit);

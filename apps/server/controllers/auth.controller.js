@@ -179,23 +179,36 @@ export const getMe = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const updateProfile = asyncHandler(async (req, res) => {
-  const fieldsToUpdate = {
-    name: req.body.name,
-    email: req.body.email,
-    notification_preferences: req.body.notification_preferences,
-  };
+  const { name, email, notification_preferences } = req.body;
 
-  // Remove undefined fields
-  Object.keys(fieldsToUpdate).forEach((key) => {
-    if (fieldsToUpdate[key] === undefined) {
-      delete fieldsToUpdate[key];
+  const update = {};
+  if (name !== undefined) {
+    update.name = name;
+  }
+  if (email !== undefined) {
+    update.email = email;
+  }
+
+  if (notification_preferences) {
+    if (notification_preferences.email_notifications !== undefined) {
+      update["notification_preferences.email_notifications"] = notification_preferences.email_notifications;
     }
-  });
+    if (notification_preferences.storage_alerts !== undefined) {
+      update["notification_preferences.storage_alerts"] = notification_preferences.storage_alerts;
+    }
+    if (notification_preferences.security_alerts !== undefined) {
+      update["notification_preferences.security_alerts"] = notification_preferences.security_alerts;
+    }
+  }
 
-  const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
-    new: true,
-    runValidators: true,
-  });
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { $set: update },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 
   return ResponseHelper.success(res, user);
 });

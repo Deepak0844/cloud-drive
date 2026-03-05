@@ -34,9 +34,9 @@ export const updateProfileSchema = z.object({
     email: z.string().email("Invalid email address").optional(),
     notification_preferences: z
       .object({
-        email_notifications: z.boolean(),
-        storage_alerts: z.boolean(),
-        security_alerts: z.boolean(),
+        email_notifications: z.boolean().optional(),
+        storage_alerts: z.boolean().optional(),
+        security_alerts: z.boolean().optional(),
       })
       .optional(),
   }),

@@ -57,6 +57,7 @@ const userSchema = new mongoose.Schema(
       storage_alerts: { type: Boolean, default: true },
       security_alerts: { type: Boolean, default: true },
     },
+    preferences: {},
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

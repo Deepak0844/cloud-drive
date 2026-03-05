@@ -206,6 +206,7 @@ function InfoDrawer({ item, open, onClose }) {
             </div>
           )}
         </div>
+        <Divider className="my-2 border-line-base" />
       </div>
     );
   }

@@ -13,6 +13,7 @@ const PageNames = {
   RECENT: "Recent",
   FAVORITES: "Favorites",
   TRASH: "Trash",
+  PHOTOS: "Photos",
   SETTINGS: "Settings",
   ADMIN: "Admin",
 
