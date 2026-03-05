@@ -1,4 +1,5 @@
 // Native modules
+import { execFile } from "child_process";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
@@ -210,7 +211,65 @@ async function generateImageThumbnail(sourcePath, destPath) {
       return destPath;
     }
 
-    // ── All other sharp-native formats (JPEG, PNG, WebP, AVIF, TIFF, BMP, GIF) ──
+    // ── AVIF: sharp → sips (macOS) → ffmpeg fallback chain ──
+    if (ext === ".avif") {
+      logger.debug(`[Thumbnail] AVIF detected: ${sourcePath}`);
+
+      // Attempt 1: sharp (works for 8-bit AVIF)
+      try {
+        await sharp(sourcePath)
+          .resize(300, 300, { fit: "cover", withoutEnlargement: false })
+          .toFormat("jpeg", { quality: 85 })
+          .toFile(destPath);
+        logger.info(`[Thumbnail] AVIF thumbnail generated via sharp: ${destPath}`);
+        return destPath;
+      } catch (sharpErr) {
+        logger.warn(`[Thumbnail] AVIF sharp failed (${sharpErr.message}), trying sips fallback`);
+      }
+
+      // Attempt 2: macOS sips (handles 10/12-bit AVIF that sharp can't decode)
+      const sipsTempJpeg = destPath.replace(".jpg", "_sips_temp.jpg");
+      try {
+        await new Promise((resolve, reject) => {
+          execFile(
+            "sips",
+            ["-s", "format", "jpeg", "-s", "formatOptions", "85", "-Z", "300", sourcePath, "--out", sipsTempJpeg],
+            { timeout: 15000 },
+            (err) => (err ? reject(err) : resolve())
+          );
+        });
+        // sips doesn't do cover-crop, so re-process through sharp for exact 300×300
+        await sharp(sipsTempJpeg)
+          .resize(300, 300, { fit: "cover", withoutEnlargement: false })
+          .toFormat("jpeg", { quality: 85 })
+          .toFile(destPath);
+        fs.unlinkSync(sipsTempJpeg);
+        logger.info(`[Thumbnail] AVIF thumbnail generated via sips fallback: ${destPath}`);
+        return destPath;
+      } catch (sipsErr) {
+        if (fs.existsSync(sipsTempJpeg)) fs.unlinkSync(sipsTempJpeg);
+        logger.warn(`[Thumbnail] AVIF sips fallback failed (${sipsErr.message}), trying ffmpeg`);
+      }
+
+      // Attempt 3: ffmpeg (last resort)
+      const ffmpegTempJpeg = destPath.replace(".jpg", "_avif_temp.jpg");
+      try {
+        await extractRawImageFrame(sourcePath, ffmpegTempJpeg);
+        await sharp(ffmpegTempJpeg)
+          .resize(300, 300, { fit: "cover", withoutEnlargement: false })
+          .toFormat("jpeg", { quality: 85 })
+          .toFile(destPath);
+        fs.unlinkSync(ffmpegTempJpeg);
+        logger.info(`[Thumbnail] AVIF thumbnail generated via ffmpeg fallback: ${destPath}`);
+        return destPath;
+      } catch (fallbackErr) {
+        logger.error(`[Thumbnail] AVIF all fallbacks failed: ${fallbackErr.message}`);
+        if (fs.existsSync(ffmpegTempJpeg)) fs.unlinkSync(ffmpegTempJpeg);
+        throw fallbackErr;
+      }
+    }
+
+    // ── All other sharp-native formats (JPEG, PNG, WebP, TIFF, BMP, GIF) ──
     if (SHARP_NATIVE_FORMATS.has(ext) || ext === "") {
       await sharp(sourcePath)
         .resize(300, 300, { fit: "cover", withoutEnlargement: false })

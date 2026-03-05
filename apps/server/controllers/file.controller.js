@@ -351,9 +351,9 @@ export const getFilePreview = asyncHandler(async (req, res) => {
         return res.status(StatusCodes.ACCEPTED).send(""); // original missing, no thumb possible
       }
       try {
-        if (file.mime_type.startsWith("image/")) {
+        if (file.category === "image" || file.mime_type.startsWith("image/")) {
           await MediaUtils.generateImageThumbnail(file.storage_path, thumbPath);
-        } else if (file.mime_type.startsWith("video/")) {
+        } else if (file.category === "video" || file.mime_type.startsWith("video/")) {
           await MediaUtils.generateVideoThumbnail(file.storage_path, thumbDir, `${fileId}.jpg`);
         } else if (file.category === "audio" || file.mime_type.startsWith("audio/")) {
           await MediaUtils.extractAudioAlbumArt(file.storage_path, thumbPath);

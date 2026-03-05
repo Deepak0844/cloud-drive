@@ -17,6 +17,12 @@ function getMimeType(filename) {
     png: "image/png",
     gif: "image/gif",
     webp: "image/webp",
+    avif: "image/avif",
+    heic: "image/heic",
+    heif: "image/heif",
+    tiff: "image/tiff",
+    tif: "image/tiff",
+    bmp: "image/bmp",
     svg: "image/svg+xml",
     ico: "image/x-icon",
 
@@ -27,12 +33,22 @@ function getMimeType(filename) {
     avi: "video/x-msvideo",
     mkv: "video/x-matroska",
     wmv: "video/x-ms-wmv",
+    flv: "video/x-flv",
+    ts: "video/mp2t",
+    "3gp": "video/3gpp",
+    m4v: "video/mp4",
 
     // Audio
     mp3: "audio/mpeg",
     wav: "audio/wav",
     ogg: "audio/ogg",
     m4a: "audio/mp4",
+    flac: "audio/flac",
+    aac: "audio/aac",
+    opus: "audio/opus",
+    wma: "audio/x-ms-wma",
+    aiff: "audio/x-aiff",
+    aif: "audio/x-aiff",
 
     // Documents
     pdf: "application/pdf",
@@ -44,6 +60,7 @@ function getMimeType(filename) {
     pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     txt: "text/plain",
     csv: "text/csv",
+    md: "text/markdown",
 
     // Archives
     zip: "application/zip",

@@ -187,7 +187,12 @@ function FileItem({
           className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden text-xl ${getFileInfo(file.type).bg} ${getFileInfo(file.type).color}`}
         >
           {thumbnailSrc ? (
-            <img src={thumbnailSrc} alt={file.name} className="w-full h-full object-cover" />
+            <img
+              src={thumbnailSrc}
+              alt={file.name}
+              className="w-full h-full object-cover"
+              onError={() => setThumbnailSrc(null)}
+            />
           ) : (
             getFileInfo(file.type).icon
           )}
@@ -253,7 +258,12 @@ function FileItem({
           } ${getFileInfo(file.type).color}`}
         >
           {thumbnailSrc ? (
-            <img src={thumbnailSrc} alt={file.name} className="w-full h-full object-cover pointer-events-none" />
+            <img
+              src={thumbnailSrc}
+              alt={file.name}
+              className="w-full h-full object-cover pointer-events-none"
+              onError={() => setThumbnailSrc(null)}
+            />
           ) : (
             getFileInfo(file.type).icon
           )}
