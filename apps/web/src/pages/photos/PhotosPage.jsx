@@ -7,7 +7,6 @@ import dayjs from "dayjs";
 
 // api
 import { useGetFilesQuery } from "../../store/api/fileApi";
-import HttpClientFactory from "@/utils/httpClientFactory";
 
 // constants
 import PageNames from "@/constants/pageNames";
@@ -55,14 +54,12 @@ const PhotosPage = () => {
         if (!groups[groupKey]) groups[groupKey] = [];
         groups[groupKey].push(photo);
       });
-    const httpClient = HttpClientFactory.getInstance();
-    const token = httpClient.authToken;
     return Object.entries(groups).map(([group, groupPhotos]) => [
       group,
       groupPhotos.map((p) => ({
         ...p,
-        thumbnailUrl: `/api/v1/files/${p._id}/preview?thumbnail=true&token=${token}`,
-        previewUrl: `/api/v1/files/${p._id}/preview?token=${token}`,
+        thumbnailUrl: `/api/v1/files/${p._id}/preview?thumbnail=true`,
+        previewUrl: `/api/v1/files/${p._id}/preview`,
       })),
     ]);
   }, [photos]);

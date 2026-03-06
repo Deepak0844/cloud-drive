@@ -1,6 +1,3 @@
-// external
-import { jwtDecode } from "jwt-decode";
-
 // Constants
 import { STORAGE_KEYS } from "../constants/generalConstants";
 
@@ -9,45 +6,29 @@ import LocalStorage from "./localStorageUtils";
 
 /**
  * Authentication and Authorization related Utilities.
+ * With cookie-based auth the JWT lives in an HttpOnly cookie managed by the
+ * browser — it is never accessible to JavaScript. Only the user's profile
+ * object is stored in localStorage for UI purposes (role, name, etc.).
  */
-function getToken() {
-  return LocalStorage.get(STORAGE_KEYS.TOKEN) || "";
-}
 
 function isUserAuthenticated() {
-  const token = getToken();
-  if (!token) return false;
-
-  try {
-    const decoded = jwtDecode(token);
-    if (!decoded || !decoded.exp) return true; // Fallback if no exp claim
-
-    const currentTime = Math.floor(Date.now() / 1000);
-    const isExpired = decoded.exp < currentTime;
-
-    if (isExpired) {
-      clearSession();
-      return false;
-    }
-
-    return true;
-  } catch {
-    return false;
-  }
+  // Cookie validity is enforced by the server on every request.
+  // On the client side, we infer the session is alive if the user object exists.
+  // If the cookie has expired the next API call returns 401 and the error
+  // middleware clears the session and redirects to login.
+  const user = LocalStorage.get(STORAGE_KEYS.USER);
+  return !!user;
 }
 
 /**
- * Function to store the loggedIn user info in the Local Storage.
+ * Stores the logged-in user's profile in localStorage (for UI use only — NOT the token).
  */
 function storeUserInfoInLocalStorage(data) {
-  const { token, user } = data;
-
-  if (token) LocalStorage.set(STORAGE_KEYS.TOKEN, token);
+  const { user } = data;
   if (user) LocalStorage.set(STORAGE_KEYS.USER, user);
 }
 
 function clearSession() {
-  LocalStorage.clear(STORAGE_KEYS.TOKEN);
   LocalStorage.clear(STORAGE_KEYS.USER);
 }
 
@@ -67,7 +48,6 @@ function isRole(role) {
 }
 
 const AuthUtils = {
-  getToken,
   isUserAuthenticated,
   storeUserInfoInLocalStorage,
   clearSession,

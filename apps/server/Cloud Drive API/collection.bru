@@ -3,14 +3,19 @@ meta {
 }
 
 auth {
-  mode: none
+  mode: bearer
+  token: {{authToken}}
 }
 
 vars:pre-request {
   base_url: http://localhost:9000/api/v1
-  authToken: YOUR_JWT_TOKEN
+  authToken: 
 }
 
 docs {
-  API collection for Cloud Drive, including Auth, Files, Folders, Trash, and Quota management.
+  ## Authentication
+  Cookie-based auth: Login first — the server sets an HttpOnly cookie automatically.
+  For Bruno (non-browser), the Login post-response script captures the token from
+  the response body and stores it in {{authToken}}, which is sent as Bearer on all
+  subsequent requests via collection-level auth.
 }

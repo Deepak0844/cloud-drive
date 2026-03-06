@@ -19,11 +19,13 @@ export default defineConfig({
       "/api/v1": {
         target: "http://127.0.0.1:9000",
         changeOrigin: true,
+        cookieDomainRewrite: "localhost",
       },
       "/socket.io/": {
         target: "http://127.0.0.1:9000",
         changeOrigin: true,
         ws: true,
+        cookieDomainRewrite: "localhost",
       },
     },
   },

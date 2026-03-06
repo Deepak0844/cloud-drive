@@ -23,9 +23,11 @@ body:json {
 
 script:post-response {
   var jsonData = res.getBody();
-  if (jsonData.success && jsonData.data.token) {
+  if (jsonData.success && jsonData.data && jsonData.data.token) {
       bru.setVar("authToken", jsonData.data.token);
-      console.log("Token set automatically");
+      console.log("✅ authToken set — all subsequent requests will use Bearer auth");
+  } else {
+      console.log("❌ Login failed or no token in response");
   }
 }
 

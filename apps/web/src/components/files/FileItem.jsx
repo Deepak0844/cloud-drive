@@ -20,14 +20,11 @@ import { motion } from "framer-motion";
 import React, { useEffect, useState } from "react";
 
 // api
-import HttpClientFactory from "@/utils/httpClientFactory";
 import { useToggleFileFavoriteMutation } from "@/store/api/fileApi";
 
 // utils
 function triggerFileDownload(fileId, fileName) {
-  const httpClient = HttpClientFactory.getInstance();
-  const token = httpClient.authToken;
-  const url = `/api/v1/files/${fileId}/download?token=${encodeURIComponent(token)}`;
+  const url = `/api/v1/files/${fileId}/download`;
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = fileName;
@@ -85,10 +82,8 @@ function FileItem({
 
   useEffect(() => {
     if (hasThumbnail) {
-      const httpClient = HttpClientFactory.getInstance();
-      const token = httpClient.authToken;
       const fileId = file.id || file._id;
-      setThumbnailSrc(`/api/v1/files/${fileId}/preview?thumbnail=true&token=${token}`);
+      setThumbnailSrc(`/api/v1/files/${fileId}/preview?thumbnail=true`);
     } else {
       setThumbnailSrc(null);
     }

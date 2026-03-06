@@ -1,6 +1,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
@@ -110,6 +111,7 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
 // Routes

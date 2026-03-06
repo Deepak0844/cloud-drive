@@ -63,6 +63,15 @@ async function sendSecurityEmail(user, subject, message, alertType = "security",
 function sendTokenResponse(user, statusCode, res, message) {
   const token = user.getSignedJwtToken();
 
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+    ...(config.NODE_ENV === "production" && { secure: true }),
+  };
+
+  res.cookie("token", token, cookieOptions);
+
   return ResponseHelper.success(
     res,
     { token, user: { id: user._id, name: user.name, email: user.email, role: user.role } },
@@ -148,6 +157,7 @@ export const login = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const logout = (req, res) => {
+  res.clearCookie("token", { httpOnly: true, sameSite: "strict" });
   return ResponseHelper.success(res, {}, StatusCodes.OK, { message: SuccessMessages.LOGOUT_SUCCESS });
 };
 

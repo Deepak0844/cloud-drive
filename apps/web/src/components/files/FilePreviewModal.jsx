@@ -23,20 +23,17 @@ export default function FilePreviewModal({ file, open, onClose }) {
 
     try {
       setHasError(false);
-      const httpClient = HttpClientFactory.getInstance();
-      const token = httpClient.authToken;
-
       const fileId = file.id || file._id;
       const type = file.category || file.type;
 
       let url = "";
-      const cacheBust = `&_t=${Date.now()}`;
+      const cacheBust = `?_t=${Date.now()}`;
 
       if (type === "audio") {
-        url = `/api/v1/files/${fileId}/stream?token=${token}${cacheBust}`;
+        url = `/api/v1/files/${fileId}/stream${cacheBust}`;
       } else {
         // Video and Images natively stream through the Express preview handler
-        url = `/api/v1/files/${fileId}/preview?token=${token}${cacheBust}`;
+        url = `/api/v1/files/${fileId}/preview${cacheBust}`;
       }
 
       setPreviewSrc(url);
@@ -123,10 +120,8 @@ export default function FilePreviewModal({ file, open, onClose }) {
             onError={() => {
               // If direct /preview fails (non-native format), retry via /stream (on-the-fly transcode)
               if (previewSrc && !previewSrc.includes("/stream")) {
-                const httpClient = HttpClientFactory.getInstance();
-                const token = httpClient.authToken;
                 const fileId = file.id || file._id;
-                setPreviewSrc(`/api/v1/files/${fileId}/stream?token=${token}&_t=${Date.now()}`);
+                setPreviewSrc(`/api/v1/files/${fileId}/stream?_t=${Date.now()}`);
               } else {
                 setHasError(true);
               }

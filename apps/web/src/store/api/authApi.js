@@ -2,7 +2,6 @@ import baseApi from "./baseApi";
 
 // utils
 import AuthUtils from "@/utils/authUtils";
-import HttpClientFactory from "@/utils/httpClientFactory";
 
 // Socket
 import SocketClient from "@/services/socketClient";
@@ -27,7 +26,6 @@ const authApi = baseApi.injectEndpoints({
         try {
           const { data } = await queryFulfilled;
           AuthUtils.storeUserInfoInLocalStorage(data.data);
-          HttpClientFactory.reload();
         } catch {
           // Error surfaced via the hook
         }
@@ -58,7 +56,6 @@ const authApi = baseApi.injectEndpoints({
         } finally {
           // Always clear regardless of server response
           AuthUtils.clearSession();
-          HttpClientFactory.reset();
           SocketClient.disconnect(); // Close WebSocket on logout
         }
       },
@@ -103,8 +100,7 @@ const authApi = baseApi.injectEndpoints({
       async onQueryStarted(_args, { queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          AuthUtils.storeTokenInLocalStorage(data.data.token);
-          AuthUtils.storeUserInfoInLocalStorage(data.data.user);
+          AuthUtils.storeUserInfoInLocalStorage(data.data);
         } catch {
           // Handled component level
         }

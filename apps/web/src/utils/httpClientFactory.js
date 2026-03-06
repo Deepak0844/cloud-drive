@@ -1,10 +1,11 @@
 // Utils
-import AuthUtils from "./authUtils";
 import HttpClient from "./httpClient";
 
 /**
  * Factory for HttpClient instances.
  * Implements a Singleton pattern for the primary API client.
+ * With cookie-based auth the client needs no auth token —
+ * the browser sends the HttpOnly cookie automatically.
  */
 class HttpClientFactory {
   httpClient = false;
@@ -17,16 +18,15 @@ class HttpClientFactory {
   };
 
   /**
-   * Reloads the HttpClient instance with the current auth token.
+   * Reloads (recreates) the HttpClient singleton.
    */
   reload = () => {
-    const authToken = AuthUtils.getToken();
-    this.httpClient = new HttpClient(authToken);
+    this.httpClient = new HttpClient();
   };
 
   /**
    * Returns the singleton instance of HttpClient.
-   * If it doesn't exist, it reloads/creates it.
+   * Creates it if it doesn't exist yet.
    */
   getInstance = () => {
     if (!this.httpClient) {
@@ -36,10 +36,10 @@ class HttpClientFactory {
   };
 
   /**
-   * Creates a fresh HttpClient instance with a specific token.
+   * Creates a fresh HttpClient instance.
    */
-  newInstance = (authToken) => {
-    return new HttpClient(authToken);
+  newInstance = () => {
+    return new HttpClient();
   };
 }
 
