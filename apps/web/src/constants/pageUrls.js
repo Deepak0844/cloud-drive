@@ -7,6 +7,7 @@ const PageUrls = {
   RegisterPage: "/register",
   ErrorPage: "/error",
   ForgotPasswordPage: "/forgot-password",
+  ResetPasswordPage: "/reset-password",
 
   // Main
   DashboardPage: "/",

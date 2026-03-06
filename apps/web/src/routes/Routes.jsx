@@ -13,6 +13,8 @@ import PublicRoute from "@/components/hoc/PublicRoute";
 import LoginPage from "@/pages/login/LoginPage";
 import RegisterPage from "@/pages/register/RegisterPage";
 import ErrorPage from "@/pages/error/ErrorPage";
+import ForgotPasswordPage from "@/pages/forgot-password/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/reset-password/ResetPasswordPage";
 
 // Utils
 import NavigationSetter from "@/utils/NavigationSetter";
@@ -58,6 +60,24 @@ const Router = createBrowserRouter([
       {
         path: PageUrls.ErrorPage,
         element: <ErrorPage />,
+      },
+
+      {
+        path: PageUrls.ForgotPasswordPage,
+        element: (
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
+        ),
+      },
+
+      {
+        path: PageUrls.ResetPasswordPage,
+        element: (
+          <PublicRoute>
+            <ResetPasswordPage />
+          </PublicRoute>
+        ),
       },
 
       // Catch-all route for 404s

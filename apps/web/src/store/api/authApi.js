@@ -110,6 +110,26 @@ const authApi = baseApi.injectEndpoints({
         }
       },
     }),
+
+    // POST /api/v1/auth/forgot-password — send a password reset email
+    forgotPassword: builder.mutation({
+      query: (body) => ({
+        url: "/auth/forgot-password",
+        method: "POST",
+        body,
+        onError: { suppressGlobalError: true },
+      }),
+    }),
+
+    // PUT /api/v1/auth/reset-password — set a new password using the reset token
+    resetPassword: builder.mutation({
+      query: (body) => ({
+        url: "/auth/reset-password",
+        method: "PUT",
+        body,
+        onError: { suppressGlobalError: true },
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -121,6 +141,8 @@ export const {
   useGetMeQuery,
   useUpdateProfileMutation,
   useUpdatePasswordMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
 } = authApi;
 
 export default authApi;

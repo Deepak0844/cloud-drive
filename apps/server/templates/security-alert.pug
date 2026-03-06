@@ -24,10 +24,10 @@ block content
       strong Warning: 
       | A new login was detected on your account. If this wasn't you, please secure your account immediately.
     div(style="margin-top: 25px;")
-      a.button(href=actionUrl || '#') Change Password
+      a.button(href=actionUrl || '#') #{actionLabel || 'Change Password'}
   else
     .alert-box.alert-danger
       strong Important: 
-      | Your password has been successfully updated. If you did not authorize this change, please contact support immediately.
+      | If you did not authorize this action, please contact support immediately.
     div(style="margin-top: 25px;")
-      a.button(href=actionUrl || '#') Secure Account
+      a.button(href=actionUrl || '#') #{actionLabel || 'Secure Account'}

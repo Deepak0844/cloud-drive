@@ -273,16 +273,25 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
   await user.save({ validateBeforeSave: false });
 
-  // Create reset url
-  const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/reset-password?token=${resetToken}`;
-
-  const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl} \n\n (Include the token in your request body)`;
+  // Create reset url pointing to the frontend reset page
+  const resetUrl = `${config.APP_BASE_URL}/reset-password?token=${resetToken}`;
 
   try {
-    await EmailService.sendEmail({
+    await EmailService.sendTemplateEmail({
       email: user.email,
-      subject: "Password reset token",
-      message,
+      subject: "Reset your Cloud Drive password",
+      templateName: "security-alert",
+      plainTextMessage: `You requested a password reset. Visit the following link to reset your password: ${resetUrl}. This link expires in 10 minutes. If you did not request this, please ignore this email.`,
+      data: {
+        userName: user.name,
+        alertTitle: "Password Reset Request",
+        alertMessage:
+          "We received a request to reset the password for your Cloud Drive account. Click the button below to choose a new password. This link will expire in 10 minutes.",
+        alertType: "security",
+        actionUrl: resetUrl,
+        actionLabel: "Reset Password",
+        session: null,
+      },
     });
 
     return ResponseHelper.success(res, {
