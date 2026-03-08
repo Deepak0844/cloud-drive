@@ -1,11 +1,11 @@
 import express from "express";
 
 // Controllers
-import { handleBulkOperation } from "../controllers/item.controller.js";
+import { handleBulkOperation } from "../controllers/itemController.js";
 
 // Middleware
-import { protect } from "../middleware/auth.js";
-import validate from "../middleware/validate.js";
+import { protect } from "../middlewares/auth.js";
+import validate from "../middlewares/validate.js";
 
 // Schemas
 import { bulkOperationSchema } from "../schemas/item.schema.js";

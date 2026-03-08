@@ -1,10 +1,10 @@
+import { Roles } from "@shared-constants/constants";
 import { jest } from "@jest/globals";
 import request from "supertest";
 import app from "../../app.js";
 import File from "../../models/File.js";
 import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
 import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
-import { Roles } from "../../constants/generalConstants.js";
 
 // Import service after setup to ensure mongoose is ready
 let DuplicateService;
@@ -19,7 +19,7 @@ describe("System & Maintenance API", () => {
 
   beforeAll(async () => {
     await setupTests();
-    DuplicateService = (await import("../../services/duplicate.service.js")).default;
+    DuplicateService = (await import("../../services/duplicateService.js")).default;
   });
 
   afterAll(async () => {

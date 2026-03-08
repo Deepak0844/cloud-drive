@@ -1,7 +1,7 @@
 import express from "express";
 
 // Controllers
-import { finalizeChunkedUpload, initChunkedUpload, uploadChunk } from "../controllers/chunked.controller.js";
+import { finalizeChunkedUpload, initChunkedUpload, uploadChunk } from "../controllers/chunkedController.js";
 import {
   bulkDelete,
   copyFile,
@@ -17,15 +17,15 @@ import {
   touchFile,
   updateFileTags,
   uploadFile,
-  uploadMiddleware,
   downloadAsZip,
   bulkMove,
   bulkCopy,
-} from "../controllers/file.controller.js";
+} from "../controllers/fileController.js";
 
 // Middleware
-import { protect } from "../middleware/auth.js";
-import validate from "../middleware/validate.js";
+import { protect } from "../middlewares/auth.js";
+import validate from "../middlewares/validate.js";
+import uploadMiddleware from "../middlewares/uploadMiddleware.js";
 
 // Schemas
 import { finalizeChunkedUploadSchema, initChunkedUploadSchema } from "../schemas/chunked.schema.js";

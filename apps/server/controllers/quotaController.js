@@ -6,27 +6,20 @@ import QuotaRequest from "../models/QuotaRequest.js";
 import User from "../models/User.js";
 
 // Controllers
-import { createNotification } from "./notification.controller.js";
+import { createNotification } from "./notificationController.js";
 
 // Services
-import SocketService from "../services/socket.service.js";
+import SocketService from "../services/socketService.js";
 
 // Constants
-import {
-  ErrorMessages,
-  SuccessMessages,
-  Roles,
-  StatusCodes,
-  NotificationTypes,
-  QuotaStatus,
-  SocketEvents,
-} from "../constants/generalConstants.js";
+import { ErrorMessages, SuccessMessages, NotificationTypes, SocketEvents } from "../constants/generalConstants.js";
+import { Roles, HttpStatus, QuotaStatus } from "@shared-constants/constants";
 
 // Middleware
-import asyncHandler from "../middleware/asyncHandler.js";
+import asyncHandler from "../middlewares/asyncHandler.js";
 
 // Utils
-import ResponseHelper from "../utils/responseHelper.js";
+import ResponseUtils from "../utils/responseUtils.js";
 
 /**
  * @desc    Get current quota usage
@@ -36,7 +29,7 @@ import ResponseHelper from "../utils/responseHelper.js";
 export const getQuotaUsage = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
 
-  return ResponseHelper.success(res, {
+  return ResponseUtils.success(res, {
     quota_bytes: user.quota_bytes,
     used_bytes: user.used_bytes,
     percentage: (user.used_bytes / user.quota_bytes) * 100,
@@ -75,7 +68,7 @@ export const getQuotaBreakdown = asyncHandler(async (req, res) => {
     return found || { category: cat, total_size_bytes: 0, count: 0 };
   });
 
-  return ResponseHelper.success(res, result);
+  return ResponseUtils.success(res, result);
 });
 
 /**
@@ -89,7 +82,7 @@ export const requestQuotaIncrease = asyncHandler(async (req, res) => {
 
     const existingRequest = await QuotaRequest.findOne({ user: req.user.id, status: QuotaStatus.PENDING });
     if (existingRequest) {
-      return ResponseHelper.error(res, ErrorMessages.ALREADY_PENDING_REQUEST, StatusCodes.BAD_REQUEST);
+      return ResponseUtils.error(res, ErrorMessages.ALREADY_PENDING_REQUEST, HttpStatus.BAD_REQUEST);
     }
 
     const quotaRequest = await QuotaRequest.create({
@@ -126,7 +119,7 @@ export const requestQuotaIncrease = asyncHandler(async (req, res) => {
     // 3. Trigger the admin table refresh
     SocketService.emitToAdmins(SocketEvents.QUOTA_REQUEST, { userId: req.user.id });
 
-    return ResponseHelper.success(res, quotaRequest, StatusCodes.OK, {
+    return ResponseUtils.success(res, quotaRequest, HttpStatus.OK, {
       message: SuccessMessages.QUOTA_REQUEST_SUBMITTED,
     });
   } catch (error) {

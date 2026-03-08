@@ -8,18 +8,19 @@ import File from "../models/File.js";
 import User from "../models/User.js";
 
 // Services
-import FileService from "../services/file.service.js";
-import SocketService from "../services/socket.service.js";
-import MetadataService from "../services/metadata.service.js";
+import FileService from "../services/fileService.js";
+import SocketService from "../services/socketService.js";
+import MetadataService from "../services/metadataService.js";
 
 // Constants
-import { ErrorMessages, StatusCodes } from "../constants/generalConstants.js";
+import { HttpStatus } from "@shared-constants/constants";
+import { ErrorMessages } from "../constants/generalConstants.js";
 
 // Middleware
-import asyncHandler from "../middleware/asyncHandler.js";
+import asyncHandler from "../middlewares/asyncHandler.js";
 
 // Utils
-import ResponseHelper from "../utils/responseHelper.js";
+import ResponseUtils from "../utils/responseUtils.js";
 import MimeUtils from "../utils/mimeUtils.js";
 import logger from "../utils/logger.js";
 
@@ -34,7 +35,7 @@ export const initChunkedUpload = asyncHandler(async (req, res) => {
   // Quota check — req.user already populated by auth middleware
   const { used_bytes, quota_bytes } = req.user;
   if (used_bytes + fileSize > quota_bytes) {
-    return ResponseHelper.error(res, ErrorMessages.QUOTA_EXCEEDED, StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.QUOTA_EXCEEDED, HttpStatus.BAD_REQUEST);
   }
 
   const uploadId = `${req.user.id}_${Date.now()}`;
@@ -42,7 +43,7 @@ export const initChunkedUpload = asyncHandler(async (req, res) => {
 
   await fs.promises.mkdir(chunkDir, { recursive: true });
 
-  return ResponseHelper.success(res, { uploadId, totalChunks });
+  return ResponseUtils.success(res, { uploadId, totalChunks });
 });
 
 /**
@@ -57,19 +58,19 @@ export const uploadChunk = asyncHandler(async (req, res) => {
   const { uploadId, chunkIndex } = req.query;
 
   if (!uploadId || chunkIndex === undefined) {
-    return ResponseHelper.error(res, "uploadId and chunkIndex are required", StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, "uploadId and chunkIndex are required", HttpStatus.BAD_REQUEST);
   }
 
   const chunkBuffer = req.body;
 
   if (!Buffer.isBuffer(chunkBuffer) || chunkBuffer.length === 0) {
-    return ResponseHelper.error(res, ErrorMessages.NO_CHUNK_FILE, StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.NO_CHUNK_FILE, HttpStatus.BAD_REQUEST);
   }
 
   const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
 
   if (!fs.existsSync(chunkDir)) {
-    return ResponseHelper.error(res, ErrorMessages.UPLOAD_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   const idx = parseInt(chunkIndex, 10);
@@ -77,7 +78,7 @@ export const uploadChunk = asyncHandler(async (req, res) => {
 
   await fs.promises.writeFile(chunkPath, chunkBuffer);
 
-  return ResponseHelper.success(res, { chunkIndex: idx, uploadId });
+  return ResponseUtils.success(res, { chunkIndex: idx, uploadId });
 });
 
 /**
@@ -90,7 +91,7 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
   const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
 
   if (!fs.existsSync(chunkDir)) {
-    return ResponseHelper.error(res, ErrorMessages.UPLOAD_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   const chunks = fs
@@ -103,7 +104,7 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
     });
 
   if (chunks.length === 0) {
-    return ResponseHelper.error(res, "No chunks found for this upload", StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, "No chunks found for this upload", HttpStatus.BAD_REQUEST);
   }
 
   // Pre-generate a stable MongoDB ObjectId so we can name the file after it
@@ -137,7 +138,7 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
       if (fs.existsSync(finalPath)) {
         await fs.promises.unlink(finalPath);
       }
-      return ResponseHelper.error(res, "File assembly failed: Size mismatch", StatusCodes.INTERNAL_SERVER_ERROR);
+      return ResponseUtils.error(res, "File assembly failed: Size mismatch", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     const mime_type = mimeType || MimeUtils.getMimeType(name);
@@ -176,12 +177,12 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
     // Clean up the chunk directory
     await fs.promises.rmdir(chunkDir);
 
-    return ResponseHelper.success(res, file, StatusCodes.CREATED);
+    return ResponseUtils.success(res, file, HttpStatus.CREATED);
   } catch (err) {
     logger.error(`[Upload] Finalization error for ${name}: ${err.message}`);
     if (fs.existsSync(finalPath)) {
       await fs.promises.unlink(finalPath);
     }
-    return ResponseHelper.error(res, "Failed to finalize upload", StatusCodes.INTERNAL_SERVER_ERROR);
+    return ResponseUtils.error(res, "Failed to finalize upload", HttpStatus.INTERNAL_SERVER_ERROR);
   }
 });

@@ -7,7 +7,7 @@ import File from "../../models/File.js";
 import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
 import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
 
-jest.mock("../../services/face.service.js", () => ({
+jest.mock("../../services/faceService.js", () => ({
   detectFaces: jest.fn().mockResolvedValue({}),
 }));
 
@@ -80,21 +80,21 @@ describe("Advanced Media API", () => {
     });
   });
 
-  describe("HLS Video Streaming", () => {
-    it("should return 404 if streaming is not ready", async () => {
+  describe("Streaming Restrictions", () => {
+    it("should return 400 if streaming is not supported for this file type", async () => {
       const file = await File.create({
         name: "video.mp4",
         original_name: "video.mp4",
         user: user._id,
-        mime_type: "video/mp4",
-        category: "video",
+        mime_type: "application/msword",
+        category: "document",
         size_bytes: 10000000,
-        storage_path: "/tmp/video.mp4",
+        storage_path: "/tmp/doc.docx",
       });
 
-      const res = await request(app).get(`/api/v1/files/${file._id}/stream`).set(authHeader).expect(404);
+      const res = await request(app).get(`/api/v1/files/${file._id}/stream`).set(authHeader).expect(400);
 
-      expect(res.body.error).toContain("Streaming not available");
+      expect(res.body.error).toContain("Streaming not supported for this file type");
     });
   });
 });

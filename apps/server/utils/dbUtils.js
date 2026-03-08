@@ -7,10 +7,11 @@ import Folder from "../models/Folder.js";
 import User from "../models/User.js";
 
 // Services
-import FileService from "../services/file.service.js";
+import FileService from "../services/fileService.js";
 
 // Constants
-import { ItemTypes, ErrorMessages } from "../constants/generalConstants.js";
+import { ErrorMessages } from "../constants/generalConstants.js";
+import { ItemTypes } from "@shared-constants/constants";
 
 // Utils
 import logger from "./logger.js";

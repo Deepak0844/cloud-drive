@@ -142,6 +142,14 @@ fileSchema.virtual("original_url").get(function () {
   return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/download`;
 });
 
+fileSchema.virtual("stream_url").get(function () {
+  const mediaCategories = new Set(["video", "audio"]);
+  if (!mediaCategories.has(this.category)) {
+    return null;
+  }
+  return `${Env.APP_BASE_URL}/api/v1/files/${this._id}/stream`;
+});
+
 // Indexes
 fileSchema.index({ user: 1, folder: 1 });
 fileSchema.index({ user: 1, is_favorite: 1 });

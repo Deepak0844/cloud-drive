@@ -2,8 +2,12 @@ import * as faceapi from "face-api.js";
 import canvas from "canvas";
 import path from "path";
 import fs from "fs";
-import logger from "../utils/logger.js";
+
+// Models
 import File from "../models/File.js";
+
+// Utils
+import logger from "../utils/logger.js";
 
 const { Canvas, Image, ImageData } = canvas;
 faceapi.env.monkeyPatch({ Canvas, Image, ImageData });

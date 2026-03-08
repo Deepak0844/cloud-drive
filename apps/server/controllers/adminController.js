@@ -5,27 +5,22 @@ import User from "../models/User.js";
 import { paginateQuery } from "../utils/paginationUtils.js";
 
 // Controllers
-import { createNotification } from "./notification.controller.js";
+import { createNotification } from "./notificationController.js";
 
 // Services
-import SocketService from "../services/socket.service.js";
-import SystemService from "../services/system.service.js";
-import FileService from "../services/file.service.js";
+import SocketService from "../services/socketService.js";
+import SystemService from "../services/systemService.js";
+import FileService from "../services/fileService.js";
 
 // Constants
-import {
-  ErrorMessages,
-  NotificationTypes,
-  QuotaStatus,
-  SocketEvents,
-  StatusCodes,
-} from "../constants/generalConstants.js";
+import { QuotaStatus, HttpStatus } from "@shared-constants/constants";
+import { ErrorMessages, NotificationTypes, SocketEvents } from "../constants/generalConstants.js";
 
 // Middleware
-import asyncHandler from "../middleware/asyncHandler.js";
+import asyncHandler from "../middlewares/asyncHandler.js";
 
 // Utils
-import ResponseHelper from "../utils/responseHelper.js";
+import ResponseUtils from "../utils/responseUtils.js";
 import FormatUtils from "../utils/formatUtils.js";
 
 /**
@@ -37,7 +32,7 @@ export const getUsers = asyncHandler(async (req, res) => {
   const { pg, ps } = req.query;
   const queryFilter = { _id: { $ne: req.user.id } };
   const result = await paginateQuery(User, queryFilter, { pg, ps, sort: "name", select: "-password" });
-  return ResponseHelper.success(res, result);
+  return ResponseUtils.success(res, result);
 });
 
 /**
@@ -50,7 +45,7 @@ export const updateUserQuota = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
 
   if (!user) {
-    return ResponseHelper.error(res, ErrorMessages.USER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   const oldQuota = user.quota_bytes;
@@ -71,7 +66,7 @@ export const updateUserQuota = asyncHandler(async (req, res) => {
     used_bytes: user.used_bytes,
   });
 
-  return ResponseHelper.success(res, user);
+  return ResponseUtils.success(res, user);
 });
 
 /**
@@ -88,7 +83,7 @@ export const getSystemStats = asyncHandler(async (req, res) => {
   const userCount = await User.countDocuments();
   const fileCount = await File.countDocuments({ is_deleted: false });
 
-  return ResponseHelper.success(res, {
+  return ResponseUtils.success(res, {
     system: hardware,
     analytics: analytics,
     counts: {
@@ -106,7 +101,7 @@ export const getSystemStats = asyncHandler(async (req, res) => {
 export const getAllQuotaRequests = asyncHandler(async (req, res) => {
   const { pg, ps } = req.query;
   const result = await paginateQuery(QuotaRequest, {}, { pg, ps, sort: "-createdAt", populate: "user" });
-  return ResponseHelper.success(res, result);
+  return ResponseUtils.success(res, result);
 });
 
 /**
@@ -119,11 +114,11 @@ export const handleQuotaRequest = asyncHandler(async (req, res) => {
   const request = await QuotaRequest.findById(req.params.id);
 
   if (!request) {
-    return ResponseHelper.error(res, ErrorMessages.QUOTA_REQUEST_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.QUOTA_REQUEST_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   if (request.status !== QuotaStatus.PENDING) {
-    return ResponseHelper.error(res, ErrorMessages.REQUEST_ALREADY_PROCESSED, StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.REQUEST_ALREADY_PROCESSED, HttpStatus.BAD_REQUEST);
   }
 
   request.status = status;
@@ -132,7 +127,7 @@ export const handleQuotaRequest = asyncHandler(async (req, res) => {
 
   const user = await User.findById(request.user);
   if (!user) {
-    return ResponseHelper.error(res, ErrorMessages.USER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   if (status === QuotaStatus.APPROVED) {
@@ -170,7 +165,7 @@ export const handleQuotaRequest = asyncHandler(async (req, res) => {
   });
 
   await request.populate("user", "name email");
-  return ResponseHelper.success(res, request);
+  return ResponseUtils.success(res, request);
 });
 
 /**
@@ -183,10 +178,10 @@ export const updateUserStatus = asyncHandler(async (req, res) => {
   const user = await User.findByIdAndUpdate(req.params.id, { is_active }, { new: true });
 
   if (!user) {
-    return ResponseHelper.error(res, ErrorMessages.USER_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  return ResponseHelper.success(res, user);
+  return ResponseUtils.success(res, user);
 });
 
 /**
@@ -201,7 +196,7 @@ export const runStorageReanalysis = asyncHandler(async (req, res) => {
   // Notify all admins via socket that sync is done (optional)
   SocketService.emitToAdmins("STORAGE_SYNC_COMPLETE", { ...summary, targetUserId: userId });
 
-  return ResponseHelper.success(res, summary, StatusCodes.OK, {
+  return ResponseUtils.success(res, summary, HttpStatus.OK, {
     message: userId
       ? `Deep storage re-analysis for user ${userId} completed successfully`
       : "Full deep storage re-analysis completed successfully",

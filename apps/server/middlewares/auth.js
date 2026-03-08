@@ -8,13 +8,14 @@ import User from "../models/User.js";
 import Env from "../config/env.js";
 
 // Constants
-import { ErrorMessages, Roles, StatusCodes } from "../constants/generalConstants.js";
+import { ErrorMessages } from "../constants/generalConstants.js";
+import { Roles, HttpStatus } from "@shared-constants/constants";
 
 // Middleware
 import asyncHandler from "./asyncHandler.js";
 
 // Utils
-import ResponseHelper from "../utils/responseHelper.js";
+import ResponseUtils from "../utils/responseUtils.js";
 
 // Protect routes
 export const protect = asyncHandler(async (req, res, next) => {
@@ -29,7 +30,7 @@ export const protect = asyncHandler(async (req, res, next) => {
 
     // Check if token exists
     if (!token) {
-      return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);
+      return ResponseUtils.error(res, ErrorMessages.NOT_AUTHORIZED, HttpStatus.UNAUTHORIZED);
     }
 
     // Verify token
@@ -37,20 +38,20 @@ export const protect = asyncHandler(async (req, res, next) => {
     req.user = await User.findById(decoded.id);
 
     if (!req.user) {
-      return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);
+      return ResponseUtils.error(res, ErrorMessages.NOT_AUTHORIZED, HttpStatus.UNAUTHORIZED);
     }
 
     if (req.user.is_active === false) {
-      return ResponseHelper.error(res, ErrorMessages.ACCOUNT_DEACTIVATED, StatusCodes.FORBIDDEN);
+      return ResponseUtils.error(res, ErrorMessages.ACCOUNT_DEACTIVATED, HttpStatus.FORBIDDEN);
     }
 
     next();
   } catch (err) {
     // Distinguish expired tokens so clients can trigger a token refresh
     if (err.name === "TokenExpiredError") {
-      return ResponseHelper.error(res, ErrorMessages.TOKEN_EXPIRED, StatusCodes.UNAUTHORIZED);
+      return ResponseUtils.error(res, ErrorMessages.TOKEN_EXPIRED, HttpStatus.UNAUTHORIZED);
     }
-    return ResponseHelper.error(res, ErrorMessages.NOT_AUTHORIZED, StatusCodes.UNAUTHORIZED);
+    return ResponseUtils.error(res, ErrorMessages.NOT_AUTHORIZED, HttpStatus.UNAUTHORIZED);
   }
 });
 
@@ -58,10 +59,10 @@ export const protect = asyncHandler(async (req, res, next) => {
 export const authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
-      return ResponseHelper.error(
+      return ResponseUtils.error(
         res,
         `User role ${req.user.role} is not authorized to access this route`,
-        StatusCodes.FORBIDDEN
+        HttpStatus.FORBIDDEN
       );
     }
     next();

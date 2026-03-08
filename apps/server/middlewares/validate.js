@@ -1,5 +1,8 @@
-import { StatusCodes } from "../constants/generalConstants.js";
-import ResponseHelper from "../utils/responseHelper.js";
+// Constants
+import { HttpStatus } from "@shared-constants/constants";
+
+// Utils
+import ResponseUtils from "../utils/responseUtils.js";
 
 /**
  * Middleware to validate request using Zod schema
@@ -27,7 +30,7 @@ const validate = (schema) => (req, res, next) => {
     next();
   } catch (error) {
     const message = error.errors ? error.errors[0].message : "Validation error";
-    return ResponseHelper.error(res, message, StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, message, HttpStatus.BAD_REQUEST);
   }
 };
 

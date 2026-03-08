@@ -32,7 +32,7 @@ import {
 } from "@/store/api/adminApi";
 
 // constants
-import { UI_COLORS } from "@shared-constants/constants";
+import { UI_COLORS } from "@/constants/uiConstants";
 import PageNames from "@/constants/pageNames";
 
 // utils

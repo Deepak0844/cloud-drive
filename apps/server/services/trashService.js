@@ -4,7 +4,7 @@ import Folder from "../models/Folder.js";
 import User from "../models/User.js";
 
 // Services
-import EmailService from "./email.service.js";
+import EmailService from "./emailService.js";
 
 // Utils
 import logger from "../utils/logger.js";
@@ -15,11 +15,12 @@ import FormatUtils from "../utils/formatUtils.js";
 import config from "../config/env.js";
 
 // Constants
-import { ItemTypes, NotificationTypes } from "../constants/generalConstants.js";
+import { NotificationTypes } from "../constants/generalConstants.js";
+import { ItemTypes } from "@shared-constants/constants";
 
 // Lazy import to avoid circular dependency
 async function _createNotification(...args) {
-  const { createNotification } = await import("../controllers/notification.controller.js");
+  const { createNotification } = await import("../controllers/notificationController.js");
   return createNotification(...args);
 }
 

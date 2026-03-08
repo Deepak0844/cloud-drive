@@ -7,7 +7,7 @@ import crypto from "crypto";
 import Env from "../config/env.js";
 
 // Constants
-import { Roles } from "../constants/generalConstants.js";
+import { Roles } from "@shared-constants/constants";
 
 const userSchema = new mongoose.Schema(
   {

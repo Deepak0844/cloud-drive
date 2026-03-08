@@ -182,10 +182,10 @@ describe("File API", () => {
         },
       ]);
 
-      const response = await request(app).get("/api/v1/files?pn=2&ps=2").set(authHeader).expect(200);
+      const response = await request(app).get("/api/v1/files?pg=2&ps=2").set(authHeader).expect(200);
 
       expect(response.body.data.length).toBe(2);
-      expect(response.body.page).toBe(2);
+      expect(response.body.pagination.page).toBe(2);
     });
   });
 

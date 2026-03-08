@@ -1,20 +1,12 @@
 import express from "express";
 
 // Controllers
-import {
-  forgotPassword,
-  getMe,
-  login,
-  logout,
-  register,
-  resetPassword,
-  updateProfile,
-  updatePassword,
-} from "../controllers/auth.controller.js";
+import { getMe, login, logout, register, updateProfile } from "../controllers/authController.js";
+import { forgotPassword, resetPassword, updatePassword } from "../controllers/passwordController.js";
 
 // Middleware
-import { protect } from "../middleware/auth.js";
-import validate from "../middleware/validate.js";
+import { protect } from "../middlewares/auth.js";
+import validate from "../middlewares/validate.js";
 
 // Schemas
 import {

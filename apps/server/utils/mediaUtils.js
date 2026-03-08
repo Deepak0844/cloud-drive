@@ -247,7 +247,9 @@ async function generateImageThumbnail(sourcePath, destPath) {
         logger.info(`[Thumbnail] AVIF thumbnail generated via sips fallback: ${destPath}`);
         return destPath;
       } catch (sipsErr) {
-        if (fs.existsSync(sipsTempJpeg)) fs.unlinkSync(sipsTempJpeg);
+        if (fs.existsSync(sipsTempJpeg)) {
+          fs.unlinkSync(sipsTempJpeg);
+        }
         logger.warn(`[Thumbnail] AVIF sips fallback failed (${sipsErr.message}), trying ffmpeg`);
       }
 
@@ -264,7 +266,9 @@ async function generateImageThumbnail(sourcePath, destPath) {
         return destPath;
       } catch (fallbackErr) {
         logger.error(`[Thumbnail] AVIF all fallbacks failed: ${fallbackErr.message}`);
-        if (fs.existsSync(ffmpegTempJpeg)) fs.unlinkSync(ffmpegTempJpeg);
+        if (fs.existsSync(ffmpegTempJpeg)) {
+          fs.unlinkSync(ffmpegTempJpeg);
+        }
         throw fallbackErr;
       }
     }

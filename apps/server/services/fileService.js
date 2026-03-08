@@ -12,17 +12,19 @@ import User from "../models/User.js";
 import config from "../config/env.js";
 
 // Constants
-import { NotificationTypes } from "../constants/generalConstants.js";
+import { NotificationTypes, ErrorMessages } from "../constants/generalConstants.js";
 
 // Utils
 import logger from "../utils/logger.js";
 import FormatUtils from "../utils/formatUtils.js";
+import FileUtils from "../utils/fileUtils.js";
+import MetadataService from "./metadataService.js";
 
 // ─── Circular-dependency-safe lazy import ────────────────────────────────────
-// notification.controller.js <-> file.service.js would be circular if imported
+// notificationController.js <-> fileService.js would be circular if imported
 // at module level, so we use a dynamic import inside the function body.
 async function _createNotification(...args) {
-  const { createNotification } = await import("../controllers/notification.controller.js");
+  const { createNotification } = await import("../controllers/notificationController.js");
   return createNotification(...args);
 }
 
@@ -390,6 +392,89 @@ async function bulkCopy(userId, items, targetFolderId) {
   }
 }
 
+// ─── Zip Export ───────────────────────────────────────────────────────────────
+
+async function processUpload(userId, folderId, fileObj) {
+  const hasQuota = await checkQuota(userId, fileObj.size);
+  if (!hasQuota) {
+    FileUtils.cleanupFile(fileObj.path);
+    throw new Error(ErrorMessages.QUOTA_EXCEEDED);
+  }
+
+  const sanitizedOriginalName = path.basename(fileObj.originalname);
+  const uniqueName = await getUniqueFilename(userId, folderId, sanitizedOriginalName);
+  const extension = FileUtils.getFileExtension(fileObj.originalname);
+  const category = MetadataService.getCategory(fileObj.mimetype, fileObj.originalname);
+
+  const [{ metadata, extra }, hash] = await Promise.all([
+    MetadataService.extractMetadata(fileObj.path, category),
+    MetadataService.calculateHash(fileObj.path),
+  ]);
+
+  // Create DB record first to obtain a stable _id
+  const file = await File.create({
+    name: uniqueName,
+    original_name: sanitizedOriginalName,
+    user: userId,
+    folder: folderId === "null" || !folderId ? null : folderId,
+    mime_type: fileObj.mimetype,
+    extension,
+    category,
+    size_bytes: fileObj.size,
+    storage_path: "pending", // will be updated below
+    metadata,
+    hash,
+    ...extra,
+  });
+
+  // Copy+unlink instead of rename (cross-device safe: tmpdir and NAS are different mount points)
+  const stablePath = getPhysicalFilePath(userId, file._id.toString(), `.${extension}`);
+  await fs.promises.copyFile(fileObj.path, stablePath);
+  await fs.promises.unlink(fileObj.path);
+  file.storage_path = stablePath;
+  await file.save();
+
+  await User.findByIdAndUpdate(userId, { $inc: { used_bytes: fileObj.size } });
+
+  return file;
+}
+
+async function collectFolderFiles(folderId, userId, parentPath, zipItems) {
+  const folder = await Folder.findOne({ _id: folderId, user: userId });
+  if (!folder) {
+    return;
+  }
+
+  const currentPath = parentPath ? `${parentPath}/${folder.name}` : folder.name;
+
+  const files = await File.find({ folder: folderId, user: userId, is_deleted: false });
+  for (const f of files) {
+    if (fs.existsSync(f.storage_path)) {
+      zipItems.push({ path: f.storage_path, name: `${currentPath}/${f.original_name || f.name}`, type: "file" });
+    }
+  }
+
+  const subfolders = await Folder.find({ parent: folderId, user: userId, is_deleted: false });
+  for (const sf of subfolders) {
+    await collectFolderFiles(sf._id, userId, currentPath, zipItems);
+  }
+}
+
+async function prepareZipPayload(userId, items) {
+  const zipItems = [];
+  for (const item of items) {
+    if (item.type === "file") {
+      const file = await File.findOne({ _id: item.id, user: userId });
+      if (file && fs.existsSync(file.storage_path)) {
+        zipItems.push({ path: file.storage_path, name: file.original_name || file.name, type: "file" });
+      }
+    } else if (item.type === "folder") {
+      await collectFolderFiles(item.id, userId, "", zipItems);
+    }
+  }
+  return zipItems;
+}
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 const FileService = {
@@ -404,6 +489,8 @@ const FileService = {
   getUniqueFilename,
   bulkMove,
   bulkCopy,
+  prepareZipPayload,
+  processUpload,
 };
 
 export default FileService;

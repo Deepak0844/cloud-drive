@@ -6,11 +6,11 @@ import {
   markAllAsRead,
   markAsRead,
   registerPushToken,
-} from "../controllers/notification.controller.js";
+} from "../controllers/notificationController.js";
 
 // Middleware
-import { protect } from "../middleware/auth.js";
-import validate from "../middleware/validate.js";
+import { protect } from "../middlewares/auth.js";
+import validate from "../middlewares/validate.js";
 
 // Schemas
 import { registerPushTokenSchema } from "../schemas/common.schema.js";

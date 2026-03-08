@@ -1,4 +1,3 @@
-import FileUtils from "../utils/fileUtils.js";
 import { path as ffprobePath } from "@ffprobe-installer/ffprobe";
 import ffmpeg from "fluent-ffmpeg";
 import sharp from "sharp";
@@ -6,6 +5,9 @@ import * as mm from "music-metadata";
 import ExifParser from "exif-parser";
 import fs from "fs";
 import crypto from "crypto";
+
+// Utils
+import FileUtils from "../utils/fileUtils.js";
 
 ffmpeg.setFfprobePath(ffprobePath);
 

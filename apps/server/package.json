@@ -8,9 +8,9 @@
     "dev": "nodemon ./bin/www.js",
     "build": "echo 'No build needed for Node.js server'",
     "lint": "eslint .",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
-    "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
+    "test": "NODE_ENV=test NAS_STORAGE_PATH=./test-storage NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "NODE_ENV=test NAS_STORAGE_PATH=./test-storage NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:coverage": "NODE_ENV=test NAS_STORAGE_PATH=./test-storage NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "author": "",
   "license": "ISC",
@@ -51,6 +51,7 @@
   "devDependencies": {
     "@shared-eslint/config": "*",
     "@shared-js-config/config": "*",
+    "@shared-constants/constants": "*",
     "@types/archiver": "^7.0.0",
     "@types/jest": "^30.0.0",
     "jest": "^30.2.0",

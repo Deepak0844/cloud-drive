@@ -9,11 +9,11 @@ import {
   runStorageReanalysis,
   updateUserQuota,
   updateUserStatus,
-} from "../controllers/admin.controller.js";
+} from "../controllers/adminController.js";
 
 // Middleware
-import { admin, protect } from "../middleware/auth.js";
-import validate from "../middleware/validate.js";
+import { admin, protect } from "../middlewares/auth.js";
+import validate from "../middlewares/validate.js";
 
 // Schemas
 import { handleQuotaRequestSchema, updateUserQuotaSchema, updateUserStatusSchema } from "../schemas/admin.schema.js";

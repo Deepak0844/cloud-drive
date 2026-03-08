@@ -6,8 +6,8 @@ import path from "path";
 import cron from "node-cron";
 
 // Services
-import DuplicateService from "../services/duplicate.service.js";
-import TrashService from "../services/trash.service.js";
+import DuplicateService from "../services/duplicateService.js";
+import TrashService from "../services/trashService.js";
 
 // Config
 import config from "../config/env.js";

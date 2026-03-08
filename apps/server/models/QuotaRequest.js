@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 // Constants
-import { QuotaStatus } from "../constants/generalConstants.js";
+import { QuotaStatus } from "@shared-constants/constants";
 
 const quotaRequestSchema = new mongoose.Schema(
   {

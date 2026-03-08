@@ -3,27 +3,22 @@ import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 
 // Services
-import PushService from "../services/push.service.js";
-import SocketService from "../services/socket.service.js";
-import EmailService from "../services/email.service.js";
+import PushService from "../services/pushService.js";
+import SocketService from "../services/socketService.js";
+import EmailService from "../services/emailService.js";
 
 // Config
 import config from "../config/env.js";
 
 // Constants
-import {
-  ErrorMessages,
-  SuccessMessages,
-  SocketEvents,
-  StatusCodes,
-  NotificationTypes,
-} from "../constants/generalConstants.js";
+import { ErrorMessages, SuccessMessages, SocketEvents, NotificationTypes } from "../constants/generalConstants.js";
+import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
-import asyncHandler from "../middleware/asyncHandler.js";
+import asyncHandler from "../middlewares/asyncHandler.js";
 
 // Utils
-import ResponseHelper from "../utils/responseHelper.js";
+import ResponseUtils from "../utils/responseUtils.js";
 import logger from "../utils/logger.js";
 
 // ─── Preference Groupings ─────────────────────────────────────────────────────
@@ -47,7 +42,7 @@ const SECURITY_ALERT_TYPES = new Set([NotificationTypes.SECURITY_ALERT]);
  */
 export const getNotifications = asyncHandler(async (req, res) => {
   const notifications = await Notification.find({ user: req.user.id }).sort("-createdAt");
-  return ResponseHelper.success(res, notifications, StatusCodes.OK, { count: notifications.length });
+  return ResponseUtils.success(res, notifications, HttpStatus.OK, { count: notifications.length });
 });
 
 /**
@@ -63,10 +58,10 @@ export const markAsRead = asyncHandler(async (req, res) => {
   );
 
   if (!notification) {
-    return ResponseHelper.error(res, ErrorMessages.NOTIFICATION_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.NOTIFICATION_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  return ResponseHelper.success(res, notification);
+  return ResponseUtils.success(res, notification);
 });
 
 /**
@@ -76,7 +71,7 @@ export const markAsRead = asyncHandler(async (req, res) => {
  */
 export const markAllAsRead = asyncHandler(async (req, res) => {
   await Notification.updateMany({ user: req.user.id, is_read: false }, { is_read: true });
-  return ResponseHelper.success(res, { message: SuccessMessages.NOTIFICATIONS_MARKED_READ });
+  return ResponseUtils.success(res, { message: SuccessMessages.NOTIFICATIONS_MARKED_READ });
 });
 
 /**
@@ -93,7 +88,7 @@ export const registerPushToken = asyncHandler(async (req, res) => {
     await user.save();
   }
 
-  return ResponseHelper.success(res, { message: SuccessMessages.PUSH_TOKEN_REGISTERED });
+  return ResponseUtils.success(res, { message: SuccessMessages.PUSH_TOKEN_REGISTERED });
 });
 
 /**

@@ -28,9 +28,9 @@ function error(res, message = "Server Error", statusCode = 500, extra = {}) {
   });
 }
 
-const ResponseHelper = {
+const ResponseUtils = {
   success,
   error,
 };
 
-export default ResponseHelper;
+export default ResponseUtils;

@@ -5,7 +5,7 @@ import app from "../app.js";
 import Env from "../config/env.js";
 
 // Services
-import SocketService from "../services/socket.service.js";
+import SocketService from "../services/socketService.js";
 
 // Utils
 import logger from "../utils/logger.js";

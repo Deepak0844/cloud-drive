@@ -1,8 +1,17 @@
+// Models
 import File from "../models/File.js";
-import { createNotification } from "../controllers/notification.controller.js";
+
+// Controllers
+import { createNotification } from "../controllers/notificationController.js";
+
+// Constants
 import { NotificationTypes } from "../constants/generalConstants.js";
+
+// Utils
 import logger from "../utils/logger.js";
-import MetadataService from "./metadata.service.js";
+
+// Services
+import MetadataService from "./metadataService.js";
 
 /**
  * Scan all files and populate missing hashes

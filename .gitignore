@@ -38,3 +38,6 @@ package-lock.json
 .gemini
 
 .agent
+
+# Test Storage
+test-storage

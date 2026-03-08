@@ -12,11 +12,11 @@ import {
   renameFolder,
   toggleFavorite,
   updateFolderTags,
-} from "../controllers/folder.controller.js";
+} from "../controllers/folderController.js";
 
 // Middleware
-import { protect } from "../middleware/auth.js";
-import validate from "../middleware/validate.js";
+import { protect } from "../middlewares/auth.js";
+import validate from "../middlewares/validate.js";
 
 // Schemas
 import {

@@ -1,15 +1,15 @@
 // Utils
-import ResponseHelper from "../utils/responseHelper.js";
+import ResponseUtils from "../utils/responseUtils.js";
 import DbUtils from "../utils/dbUtils.js";
 
 // Services
-import SocketService from "../services/socket.service.js";
+import SocketService from "../services/socketService.js";
 
 // Constants
 import { SocketEvents } from "../constants/generalConstants.js";
 
 // Middleware
-import asyncHandler from "../middleware/asyncHandler.js";
+import asyncHandler from "../middlewares/asyncHandler.js";
 
 /**
  * @desc    Handle bulk operations (delete, restore, permanent delete, move, copy)
@@ -52,5 +52,5 @@ export const handleBulkOperation = asyncHandler(async (req, res) => {
     destination_folder_id,
   });
 
-  return ResponseHelper.success(res, results);
+  return ResponseUtils.success(res, results);
 });

@@ -1,20 +1,21 @@
-import asyncHandler from "../middleware/asyncHandler.js";
-
 // Models
 import File from "../models/File.js";
 import Folder from "../models/Folder.js";
 
 // Constants
-import { StatusCodes, ItemTypes } from "../constants/generalConstants.js";
+import { HttpStatus, ItemTypes } from "@shared-constants/constants";
 
 // Utils
-import ResponseHelper from "../utils/responseHelper.js";
+import ResponseUtils from "../utils/responseUtils.js";
 import DbUtils from "../utils/dbUtils.js";
 import { applyAdvancedFilters } from "../utils/filterUtils.js";
 import { paginateQuery } from "../utils/paginationUtils.js";
 
 // Services
-import SocketService from "../services/socket.service.js";
+import SocketService from "../services/socketService.js";
+
+// Middlewares
+import asyncHandler from "../middlewares/asyncHandler.js";
 
 /**
  * @desc    Get all files and folders currently in the trash (only items deleted directly)
@@ -58,7 +59,7 @@ export const getTrashItems = asyncHandler(async (req, res) => {
     })
   );
 
-  return ResponseHelper.success(res, {
+  return ResponseUtils.success(res, {
     folders: foldersWithCount,
     files: fileResult.data,
     pagination: fileResult.pagination,
@@ -74,7 +75,7 @@ export const restoreItems = asyncHandler(async (req, res) => {
   const { items } = req.body; // Expects array of { id, type }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
-    return ResponseHelper.error(res, "No items provided for restoration", StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, "No items provided for restoration", HttpStatus.BAD_REQUEST);
   }
 
   for (const item of items) {
@@ -88,7 +89,7 @@ export const restoreItems = asyncHandler(async (req, res) => {
   }
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "RESTORE", items });
-  return ResponseHelper.success(res, { message: "Items restored successfully" });
+  return ResponseUtils.success(res, { message: "Items restored successfully" });
 });
 
 /**
@@ -100,7 +101,7 @@ export const deleteItemsPermanently = asyncHandler(async (req, res) => {
   const { items } = req.body; // Expects array of { id, type }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
-    return ResponseHelper.error(res, "No items provided for deletion", StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, "No items provided for deletion", HttpStatus.BAD_REQUEST);
   }
 
   for (const item of items) {
@@ -113,7 +114,7 @@ export const deleteItemsPermanently = asyncHandler(async (req, res) => {
   }
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "PERMANENT_DELETE", items });
-  return ResponseHelper.success(res, { message: "Items permanently deleted" });
+  return ResponseUtils.success(res, { message: "Items permanently deleted" });
 });
 
 /**
@@ -132,7 +133,7 @@ export const emptyTrash = asyncHandler(async (req, res) => {
   ];
 
   if (itemsToDelete.length === 0) {
-    return ResponseHelper.success(res, { message: "Trash is already empty" });
+    return ResponseUtils.success(res, { message: "Trash is already empty" });
   }
 
   for (const item of itemsToDelete) {
@@ -140,5 +141,5 @@ export const emptyTrash = asyncHandler(async (req, res) => {
   }
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "EMPTY_TRASH" });
-  return ResponseHelper.success(res, { message: "Trash emptied successfully" });
+  return ResponseUtils.success(res, { message: "Trash emptied successfully" });
 });

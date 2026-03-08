@@ -41,7 +41,7 @@ describe("Admin API", () => {
       const response = await request(app).get("/api/v1/admin/users").set(adminHeader).expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.length).toBe(2); // admin + user2
+      expect(response.body.data.length).toBe(1); // user2
     });
 
     it("should fail for non-admin users", async () => {

@@ -13,12 +13,12 @@ import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
 import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
 
 // Services
-import FileService from "../../services/file.service.js";
+import FileService from "../../services/fileService.js";
 
 describe("Chunked Upload API", () => {
   let user;
   let authHeader;
-  let userDir;
+  let chunksDir;
 
   beforeAll(async () => {
     await setupTests();
@@ -32,16 +32,16 @@ describe("Chunked Upload API", () => {
     await resetTests();
     user = await createTestUser();
     authHeader = getAuthHeader(user);
-    userDir = FileService.getUserDir(user._id.toString());
-    if (!fs.existsSync(userDir)) {
-      fs.mkdirSync(userDir, { recursive: true });
+    chunksDir = FileService.getChunksDir(user._id.toString());
+    if (!fs.existsSync(chunksDir)) {
+      fs.mkdirSync(chunksDir, { recursive: true });
     }
   });
 
   afterEach(() => {
     // Clean both assembled files and chunk dirs to prevent cross-test leakage
-    if (fs.existsSync(userDir)) {
-      fs.rmSync(userDir, { recursive: true, force: true });
+    if (fs.existsSync(chunksDir)) {
+      fs.rmSync(chunksDir, { recursive: true, force: true });
     }
   });
 
@@ -68,7 +68,7 @@ describe("Chunked Upload API", () => {
         .expect(200);
 
       const { uploadId } = res.body.data;
-      const chunkDir = path.join(userDir, ".chunks", uploadId);
+      const chunkDir = path.join(chunksDir, uploadId);
       expect(fs.existsSync(chunkDir)).toBe(true);
     });
 
@@ -113,7 +113,7 @@ describe("Chunked Upload API", () => {
       expect(res.body.success).toBe(true);
       expect(Number(res.body.data.chunkIndex)).toBe(0);
 
-      const chunkPath = path.join(userDir, ".chunks", uploadId, "chunk_0");
+      const chunkPath = path.join(chunksDir, uploadId, "chunk_0");
       expect(fs.existsSync(chunkPath)).toBe(true);
       expect(fs.statSync(chunkPath).size).toBe(chunkData.length);
     });
@@ -200,7 +200,7 @@ describe("Chunked Upload API", () => {
       expect(assembled.subarray(512).every((b) => b === 0xbb)).toBe(true);
 
       // Verify chunk dir cleaned up
-      const chunkDir = path.join(userDir, ".chunks", uploadId);
+      const chunkDir = path.join(chunksDir, uploadId);
       expect(fs.existsSync(chunkDir)).toBe(false);
     });
 

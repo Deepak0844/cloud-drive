@@ -1,10 +1,8 @@
 // Native modules
 import fs from "fs";
-import os from "os";
 import path from "path";
 
 // Packages
-import multer from "multer";
 
 // Models
 import File from "../models/File.js";
@@ -12,164 +10,24 @@ import Folder from "../models/Folder.js";
 import User from "../models/User.js";
 
 // Services
-import FileService from "../services/file.service.js";
-import MetadataService from "../services/metadata.service.js";
-import SocketService from "../services/socket.service.js";
+import FileService from "../services/fileService.js";
+import SocketService from "../services/socketService.js";
 
 // Constants
-import { ErrorMessages, StatusCodes, ItemTypes } from "../constants/generalConstants.js";
+import { ErrorMessages } from "../constants/generalConstants.js";
+import { HttpStatus, ItemTypes } from "@shared-constants/constants";
 
 // Middleware
-import asyncHandler from "../middleware/asyncHandler.js";
+import asyncHandler from "../middlewares/asyncHandler.js";
 
 // Utils
-import ResponseHelper from "../utils/responseHelper.js";
+import ResponseUtils from "../utils/responseUtils.js";
 import DbUtils from "../utils/dbUtils.js";
 import MediaUtils from "../utils/mediaUtils.js";
 import { applyAdvancedFilters } from "../utils/filterUtils.js";
-import FileUtils from "../utils/fileUtils.js";
 import logger from "../utils/logger.js";
 import { paginateQuery } from "../utils/paginationUtils.js";
-
-// ─── Range Streaming Helper ───────────────────────────────────────────────────
-
-/**
- * Serve a file using HTTP 206 Partial Content (YouTube-style progressive streaming).
- * The browser requests only the bytes it needs right now; seeks trigger new Range requests.
- * Always sets Content-Disposition: inline so the browser plays inline, never prompts download.
- *
- * @param {object} res - Express response
- * @param {string} filePath - Absolute path to the file to serve
- * @param {string} mimeType - MIME type to set on the response
- * @param {string|null} rangeHeader - Value of the request Range header (may be undefined)
- */
-function serveWithRange(res, filePath, mimeType, rangeHeader) {
-  const stat = fs.statSync(filePath);
-  const fileSize = stat.size;
-
-  const sharedHeaders = {
-    "Content-Type": mimeType,
-    "Content-Disposition": "inline",
-    "Accept-Ranges": "bytes",
-    "Cache-Control": "private, no-store", // no-store prevents caching error responses
-  };
-
-  let stream;
-
-  if (rangeHeader) {
-    const parts = rangeHeader.replace(/bytes=/, "").split("-");
-    const start = parseInt(parts[0], 10) || 0;
-    // Guard against empty end (e.g. "bytes=0-") → use fileSize - 1
-    const end = parts[1] && parts[1].trim() !== "" ? parseInt(parts[1], 10) : fileSize - 1;
-    const chunkSize = end - start + 1;
-
-    res.writeHead(206, {
-      ...sharedHeaders,
-      "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-      "Content-Length": chunkSize,
-    });
-    stream = fs.createReadStream(filePath, { start, end });
-  } else {
-    res.writeHead(200, {
-      ...sharedHeaders,
-      "Content-Length": fileSize,
-    });
-    stream = fs.createReadStream(filePath);
-  }
-
-  // Guard against stream errors after headers are sent (e.g. file deleted mid-stream)
-  stream.on("error", (err) => {
-    logger.error(`[Stream] Read stream error for ${filePath}: ${err.message}`);
-    if (!res.writableEnded) {
-      res.end();
-    }
-  });
-
-  stream.pipe(res);
-}
-
-// ─── Allowed MIME Types ───────────────────────────────────────────────────────
-
-const ALLOWED_MIME_TYPES = new Set([
-  // Images
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "image/avif",
-  "image/tiff",
-  "image/bmp",
-  "image/svg+xml",
-  "image/heic",
-  "image/heif",
-  // Videos
-  "video/mp4",
-  "video/webm",
-  "video/quicktime",
-  "video/x-msvideo",
-  "video/x-matroska",
-  "video/x-flv",
-  "video/mpeg",
-  "video/3gpp",
-  "video/ogg",
-  "video/x-ms-wmv",
-  "video/mp2t",
-  // Audio
-  "audio/mpeg",
-  "audio/flac",
-  "audio/ogg",
-  "audio/wav",
-  "audio/aac",
-  "audio/mp4",
-  "audio/x-m4a",
-  "audio/opus",
-  "audio/webm",
-  "audio/x-aiff",
-  "audio/x-ms-wma",
-  // Documents
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "text/plain",
-  "text/csv",
-  "text/markdown",
-  // Archives
-  "application/zip",
-  "application/x-rar-compressed",
-  "application/x-7z-compressed",
-  "application/x-tar",
-  "application/gzip",
-  // Chunked uploads
-  "application/octet-stream",
-]);
-
-// ─── Multer — writes to OS temp dir; we rename to stable path after DB insert ─
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, os.tmpdir()),
-  filename: (_req, file, cb) => {
-    const sanitized = path.basename(file.originalname);
-    cb(null, `${Date.now()}-${sanitized}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1000 * 1000 * 1000 }, // 5 GB cap
-  fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error(ErrorMessages.FILE_TYPE_NOT_ALLOWED), false);
-    }
-  },
-});
-
-export const uploadMiddleware = upload.single("file");
+import StreamingUtils from "../utils/streamingUtils.js";
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 
@@ -209,7 +67,8 @@ export const getFiles = asyncHandler(async (req, res) => {
 
   query = applyAdvancedFilters(query, req.query, false);
 
-  const { pg, ps } = req.query;
+  const pg = req.query.pg || req.query.pn;
+  const ps = req.query.ps;
   const sort = isFav ? "-favorited_at" : "-createdAt";
 
   const result = await paginateQuery(File, query, {
@@ -219,7 +78,7 @@ export const getFiles = asyncHandler(async (req, res) => {
     populate: { path: "folder", select: "name" },
   });
 
-  return ResponseHelper.success(res, result);
+  return ResponseUtils.success(res, result);
 });
 
 /**
@@ -229,67 +88,33 @@ export const getFiles = asyncHandler(async (req, res) => {
  */
 export const uploadFile = asyncHandler(async (req, res) => {
   if (!req.file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_REQUIRED, StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.FILE_REQUIRED, HttpStatus.BAD_REQUEST);
   }
 
   const { folderId } = req.body;
 
-  const hasQuota = await FileService.checkQuota(req.user.id, req.file.size);
-  if (!hasQuota) {
-    FileUtils.cleanupFile(req.file.path);
-    return ResponseHelper.error(res, ErrorMessages.QUOTA_EXCEEDED, StatusCodes.FORBIDDEN);
+  try {
+    const file = await FileService.processUpload(req.user.id, folderId, req.file);
+
+    const updatedUser = await User.findById(req.user.id);
+    SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
+      quota_bytes: updatedUser.quota_bytes,
+      used_bytes: updatedUser.used_bytes,
+    });
+
+    SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
+      action: "UPLOAD",
+      fileId: file._id,
+      folderId,
+    });
+
+    return ResponseUtils.success(res, file, HttpStatus.CREATED);
+  } catch (err) {
+    if (err.message === ErrorMessages.QUOTA_EXCEEDED) {
+      return ResponseUtils.error(res, err.message, HttpStatus.FORBIDDEN);
+    }
+    throw err;
   }
-
-  const sanitizedOriginalName = path.basename(req.file.originalname);
-  const uniqueName = await FileService.getUniqueFilename(req.user.id, folderId, sanitizedOriginalName);
-  const extension = FileUtils.getFileExtension(req.file.originalname);
-  const category = MetadataService.getCategory(req.file.mimetype, req.file.originalname);
-
-  const [{ metadata, extra }, hash] = await Promise.all([
-    MetadataService.extractMetadata(req.file.path, category),
-    MetadataService.calculateHash(req.file.path),
-  ]);
-
-  // Create DB record first to obtain a stable _id
-  const file = await File.create({
-    name: uniqueName,
-    original_name: sanitizedOriginalName,
-    user: req.user.id,
-    folder: folderId === "null" || !folderId ? null : folderId,
-    mime_type: req.file.mimetype,
-    extension,
-    category,
-    size_bytes: req.file.size,
-    storage_path: "pending", // will be updated below
-    metadata,
-    hash,
-    ...extra,
-  });
-
-  // Copy+unlink instead of rename (cross-device safe: tmpdir and NAS are different mount points)
-  const stablePath = FileService.getPhysicalFilePath(req.user.id, file._id.toString(), `.${extension}`);
-  await fs.promises.copyFile(req.file.path, stablePath);
-  await fs.promises.unlink(req.file.path);
-  file.storage_path = stablePath;
-  await file.save();
-
-  await User.findByIdAndUpdate(req.user.id, { $inc: { used_bytes: req.file.size } });
-  const updatedUser = await User.findById(req.user.id);
-
-  SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
-    quota_bytes: updatedUser.quota_bytes,
-    used_bytes: updatedUser.used_bytes,
-  });
-
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
-    action: "UPLOAD",
-    fileId: file._id,
-    folderId,
-  });
-
-  // No background processing — all derivatives are lazy
-
-  return ResponseHelper.success(res, file, StatusCodes.CREATED);
 });
 
 /**
@@ -301,10 +126,10 @@ export const downloadFile = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
 
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
   if (!fs.existsSync(file.storage_path)) {
-    return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   // Update last opened timestamp
@@ -330,7 +155,7 @@ export const downloadFile = asyncHandler(async (req, res) => {
 export const getFilePreview = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   // Update last opened timestamp
@@ -348,7 +173,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
 
     if (!fs.existsSync(thumbPath)) {
       if (!fs.existsSync(file.storage_path)) {
-        return res.status(StatusCodes.ACCEPTED).send(""); // original missing, no thumb possible
+        return res.status(HttpStatus.ACCEPTED).send(""); // original missing, no thumb possible
       }
       try {
         if (file.category === "image" || file.mime_type.startsWith("image/")) {
@@ -358,7 +183,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
         } else if (file.category === "audio" || file.mime_type.startsWith("audio/")) {
           await MediaUtils.extractAudioAlbumArt(file.storage_path, thumbPath);
         } else {
-          return res.status(StatusCodes.ACCEPTED).send("");
+          return res.status(HttpStatus.ACCEPTED).send("");
         }
 
         // Verify file was actually created before saving path to DB
@@ -367,12 +192,12 @@ export const getFilePreview = asyncHandler(async (req, res) => {
           await file.save();
         } else {
           logger.warn(`[Preview] Thumbnail generation returned but file missing for ${fileId}`);
-          return res.status(StatusCodes.ACCEPTED).send("");
+          return res.status(HttpStatus.ACCEPTED).send("");
         }
       } catch (err) {
         logger.warn(`[Preview] Thumbnail generation failed for ${fileId}: ${err.message}`);
         // Return 202 Accepted to signal "processing failed/retry" rather than 500
-        return res.status(StatusCodes.ACCEPTED).send("");
+        return res.status(HttpStatus.ACCEPTED).send("");
       }
     }
 
@@ -384,27 +209,27 @@ export const getFilePreview = asyncHandler(async (req, res) => {
   // ── Video preview — direct Range stream (all formats) ───────────────────────
   if (file.category === "video") {
     if (!fs.existsSync(file.storage_path)) {
-      return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+      return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
     // Serve the original file directly via HTTP Range.
     // Use video/mp4 for non-native containers (.mov, .avi, .mkv) to help browser compatibility.
     const mimeType = MediaUtils.needsVideoPreview(file.storage_path, file.mime_type) ? "video/mp4" : file.mime_type;
-    return serveWithRange(res, file.storage_path, mimeType, req.headers.range);
+    return StreamingUtils.serveWithRange(res, file.storage_path, mimeType, req.headers.range);
   }
 
   // ── Audio preview/stream — HTTP Range ────────────────────────────────────────
   if (file.category === "audio") {
     if (!fs.existsSync(file.storage_path)) {
-      return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+      return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
-    return serveWithRange(res, file.storage_path, file.mime_type, req.headers.range);
+    return StreamingUtils.serveWithRange(res, file.storage_path, file.mime_type, req.headers.range);
   }
 
   // ── Image preview — inline serve ─────────────────────────────────────────────
   if (file.mime_type.startsWith("image/")) {
     if (!fs.existsSync(file.storage_path)) {
-      return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+      return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
     const ext = path.extname(file.storage_path).toLowerCase();
@@ -431,7 +256,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
   }
 
   // ── Other file types: not previewable ────────────────────────────────────────
-  return ResponseHelper.error(res, "Preview not supported for this file type", StatusCodes.BAD_REQUEST);
+  return ResponseUtils.error(res, "Preview not supported for this file type", HttpStatus.BAD_REQUEST);
 });
 
 /**
@@ -445,15 +270,15 @@ export const getFilePreview = asyncHandler(async (req, res) => {
 export const streamFile = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   if (file.category !== "video" && file.category !== "audio") {
-    return ResponseHelper.error(res, "Streaming not supported for this file type", StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, "Streaming not supported for this file type", HttpStatus.BAD_REQUEST);
   }
 
   if (!fs.existsSync(file.storage_path)) {
-    return ResponseHelper.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   // Non-native video: on-the-fly transcode via ffmpeg pipe (zero disk usage)
@@ -468,7 +293,7 @@ export const streamFile = asyncHandler(async (req, res) => {
   }
 
   // Native format (MP4, WebM) or audio: serve directly via Range
-  return serveWithRange(res, file.storage_path, file.mime_type, req.headers.range);
+  return StreamingUtils.serveWithRange(res, file.storage_path, file.mime_type, req.headers.range);
 });
 
 /**
@@ -481,12 +306,12 @@ export const renameFile = asyncHandler(async (req, res) => {
   const file = await File.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, { name }, { new: true });
 
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "RENAME", fileId: file._id, name });
 
-  return ResponseHelper.success(res, file);
+  return ResponseUtils.success(res, file);
 });
 
 /**
@@ -500,18 +325,18 @@ export const moveFile = asyncHandler(async (req, res) => {
   if (folderId) {
     const folder = await Folder.findOne({ _id: folderId, user: req.user.id });
     if (!folder) {
-      return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+      return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
   }
 
   const file = await DbUtils.moveItem(ItemTypes.FILE, req.params.id, folderId, req.user.id);
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "MOVE", fileId: file._id, destFolderId: folderId });
 
-  return ResponseHelper.success(res, file);
+  return ResponseUtils.success(res, file);
 });
 
 /**
@@ -523,14 +348,14 @@ export const copyFile = asyncHandler(async (req, res) => {
   const { folderId } = req.body;
   const file = await DbUtils.copyRecursive(ItemTypes.FILE, req.params.id, folderId, req.user.id);
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   const user = await User.findById(req.user.id);
   SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", { quota_bytes: user.quota_bytes, used_bytes: user.used_bytes });
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "COPY", folderId });
 
-  return ResponseHelper.success(res, file);
+  return ResponseUtils.success(res, file);
 });
 
 /**
@@ -541,14 +366,14 @@ export const copyFile = asyncHandler(async (req, res) => {
 export const deleteFile = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   await DbUtils.softDeleteRecursive(ItemTypes.FILE, req.params.id, req.user.id, true);
 
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "DELETE", fileId: req.params.id });
 
-  return ResponseHelper.success(res, { message: "File moved to trash" });
+  return ResponseUtils.success(res, { message: "File moved to trash" });
 });
 
 /**
@@ -562,7 +387,7 @@ export const bulkDelete = asyncHandler(async (req, res) => {
     await DbUtils.softDeleteRecursive(item.type, item.id, req.user.id, true);
   }
   SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "BULK_DELETE", items });
-  return ResponseHelper.success(res, { message: "Items moved to trash" });
+  return ResponseUtils.success(res, { message: "Items moved to trash" });
 });
 
 /**
@@ -586,7 +411,8 @@ export const getRecentFiles = asyncHandler(async (req, res) => {
 
   query = applyAdvancedFilters(query, req.query, false);
 
-  const { pg, ps } = req.query;
+  const pg = req.query.pg || req.query.pn;
+  const ps = req.query.ps;
   // Fallback to limit if provided (backward compatibility)
   const pageSize = ps || limit || 50;
 
@@ -600,10 +426,10 @@ export const getRecentFiles = asyncHandler(async (req, res) => {
   // Maintain backward compatibility by returning array if no pg is provided
   if (!pg) {
     const mappedFiles = result.data.map((f) => ({ ...f.toObject(), type: ItemTypes.FILE }));
-    return ResponseHelper.success(res, mappedFiles);
+    return ResponseUtils.success(res, mappedFiles);
   }
 
-  return ResponseHelper.success(res, result);
+  return ResponseUtils.success(res, result);
 });
 
 /**
@@ -614,13 +440,13 @@ export const getRecentFiles = asyncHandler(async (req, res) => {
 export const touchFile = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   file.last_opened_at = new Date();
   await file.save();
 
-  return ResponseHelper.success(res, { message: "File touched" });
+  return ResponseUtils.success(res, { message: "File touched" });
 });
 
 /**
@@ -631,14 +457,14 @@ export const touchFile = asyncHandler(async (req, res) => {
 export const toggleFavorite = asyncHandler(async (req, res) => {
   const file = await File.findOne({ _id: req.params.id, user: req.user.id });
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   file.is_favorite = !file.is_favorite;
   file.favorited_at = file.is_favorite ? new Date() : null;
   await file.save();
 
-  return ResponseHelper.success(res, file);
+  return ResponseUtils.success(res, file);
 });
 
 /**
@@ -650,9 +476,9 @@ export const updateFileTags = asyncHandler(async (req, res) => {
   const { tags } = req.body;
   const file = await File.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, { tags }, { new: true });
   if (!file) {
-    return ResponseHelper.error(res, ErrorMessages.FILE_NOT_FOUND, StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
-  return ResponseHelper.success(res, file);
+  return ResponseUtils.success(res, file);
 });
 
 /**
@@ -663,49 +489,18 @@ export const updateFileTags = asyncHandler(async (req, res) => {
 export const downloadAsZip = asyncHandler(async (req, res) => {
   const { items } = req.body;
   if (!items || !items.length) {
-    return ResponseHelper.error(res, "No items selected for download", StatusCodes.BAD_REQUEST);
+    return ResponseUtils.error(res, "No items selected for download", HttpStatus.BAD_REQUEST);
   }
 
-  const zipItems = [];
-  for (const item of items) {
-    if (item.type === "file") {
-      const file = await File.findOne({ _id: item.id, user: req.user.id });
-      if (file && fs.existsSync(file.storage_path)) {
-        zipItems.push({ path: file.storage_path, name: file.original_name || file.name, type: "file" });
-      }
-    } else if (item.type === "folder") {
-      await collectFolderFiles(item.id, req.user.id, "", zipItems);
-    }
-  }
+  const zipItems = await FileService.prepareZipPayload(req.user.id, items);
 
   if (zipItems.length === 0) {
-    return ResponseHelper.error(res, "No valid files found for download", StatusCodes.NOT_FOUND);
+    return ResponseUtils.error(res, "No valid files found for download", HttpStatus.NOT_FOUND);
   }
 
   res.attachment(`cloud-drive-download-${Date.now()}.zip`);
   await MediaUtils.createZipStream(zipItems, res);
 });
-
-async function collectFolderFiles(folderId, userId, parentPath, zipItems) {
-  const folder = await Folder.findOne({ _id: folderId, user: userId });
-  if (!folder) {
-    return;
-  }
-
-  const currentPath = parentPath ? `${parentPath}/${folder.name}` : folder.name;
-
-  const files = await File.find({ folder: folderId, user: userId, is_deleted: false });
-  for (const f of files) {
-    if (fs.existsSync(f.storage_path)) {
-      zipItems.push({ path: f.storage_path, name: `${currentPath}/${f.original_name || f.name}`, type: "file" });
-    }
-  }
-
-  const subfolders = await Folder.find({ parent: folderId, user: userId, is_deleted: false });
-  for (const sf of subfolders) {
-    await collectFolderFiles(sf._id, userId, currentPath, zipItems);
-  }
-}
 
 /**
  * @desc    Bulk move items
@@ -717,13 +512,13 @@ export const bulkMove = asyncHandler(async (req, res) => {
   if (targetFolderId) {
     const folder = await Folder.findOne({ _id: targetFolderId, user: req.user.id });
     if (!folder) {
-      return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+      return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
   }
 
   await FileService.bulkMove(req.user.id, items, targetFolderId);
   SocketService.emitToUser(req.user.id, "ITEM_BULK_CHANGE", { action: "MOVE", items, targetFolderId });
-  return ResponseHelper.success(res, { message: "Items moved successfully" });
+  return ResponseUtils.success(res, { message: "Items moved successfully" });
 });
 
 /**
@@ -736,7 +531,7 @@ export const bulkCopy = asyncHandler(async (req, res) => {
   if (targetFolderId) {
     const folder = await Folder.findOne({ _id: targetFolderId, user: req.user.id });
     if (!folder) {
-      return ResponseHelper.error(res, ErrorMessages.FOLDER_NOT_FOUND, StatusCodes.NOT_FOUND);
+      return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
   }
 
@@ -745,5 +540,5 @@ export const bulkCopy = asyncHandler(async (req, res) => {
 
   SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", { quota_bytes: user.quota_bytes, used_bytes: user.used_bytes });
   SocketService.emitToUser(req.user.id, "ITEM_BULK_CHANGE", { action: "COPY", targetFolderId });
-  return ResponseHelper.success(res, { message: "Items copied successfully" });
+  return ResponseUtils.success(res, { message: "Items copied successfully" });
 });

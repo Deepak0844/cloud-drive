@@ -14,22 +14,23 @@ import connectToDatabase from "./config/db.js";
 import Env from "./config/env.js";
 
 // Constants
-import { ErrorMessages, StatusCodes } from "./constants/generalConstants.js";
+import { ErrorMessages } from "./constants/generalConstants.js";
+import { HttpStatus } from "@shared-constants/constants";
 
 // Utils
 import CronUtils from "./utils/cronUtils.js";
 import logger from "./utils/logger.js";
-import ResponseHelper from "./utils/responseHelper.js";
+import ResponseUtils from "./utils/responseUtils.js";
 
 // Routes
-import authRoutes from "./routes/auth.routes.js";
-import fileRoutes from "./routes/file.routes.js";
-import folderRoutes from "./routes/folder.routes.js";
-import trashRoutes from "./routes/trash.routes.js";
-import quotaRoutes from "./routes/quota.routes.js";
-import adminRoutes from "./routes/admin.routes.js";
-import itemRoutes from "./routes/item.routes.js";
-import notificationRoutes from "./routes/notification.routes.js";
+import authRoutes from "./routes/authRoutes.js";
+import fileRoutes from "./routes/fileRoutes.js";
+import folderRoutes from "./routes/folderRoutes.js";
+import trashRoutes from "./routes/trashRoutes.js";
+import quotaRoutes from "./routes/quotaRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import itemRoutes from "./routes/itemRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -131,19 +132,19 @@ if (Env.NODE_ENV !== "test") {
 
 // Base route
 app.get("/", (req, res) => {
-  ResponseHelper.success(res, { message: "Cloud Drive API is running", version: "0.0.1" });
+  ResponseUtils.success(res, { message: "Cloud Drive API is running", version: "0.0.1" });
 });
 
 // catch 404 and forward to error handler
 app.use((_req, _res, next) => {
-  next(createError(StatusCodes.NOT_FOUND, ErrorMessages.RESOURCE_NOT_FOUND));
+  next(createError(HttpStatus.NOT_FOUND, ErrorMessages.RESOURCE_NOT_FOUND));
 });
 
 // error handler
 app.use((err, req, res, _next) => {
   const statusCode =
     err.status ||
-    (err.message === ErrorMessages.FILE_TYPE_NOT_ALLOWED ? StatusCodes.BAD_REQUEST : StatusCodes.INTERNAL_SERVER_ERROR);
+    (err.message === ErrorMessages.FILE_TYPE_NOT_ALLOWED ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR);
   const message = err.message || ErrorMessages.SERVER_ERROR;
 
   // Log error
@@ -152,7 +153,7 @@ app.use((err, req, res, _next) => {
     logger.error(err.stack);
   }
 
-  ResponseHelper.error(res, message, statusCode, {
+  ResponseUtils.error(res, message, statusCode, {
     ...(Env.NODE_ENV !== "production" && { stack: err.stack }),
   });
 });

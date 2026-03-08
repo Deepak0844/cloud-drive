@@ -59,7 +59,11 @@ describe("Advanced Trash & Tagging API", () => {
       await request(app).delete(`/api/v1/files/${file._id}`).set(authHeader).expect(200);
 
       // Restore
-      await request(app).post(`/api/v1/trash/${file._id}/restore`).set(authHeader).expect(200);
+      await request(app)
+        .post(`/api/v1/trash/restore`)
+        .set(authHeader)
+        .send({ items: [{ id: file._id, type: "file" }] })
+        .expect(200);
 
       const restoredFile = await File.findById(file._id);
       expect(restoredFile.is_deleted).toBe(false);
@@ -84,7 +88,11 @@ describe("Advanced Trash & Tagging API", () => {
       await request(app).delete(`/api/v1/folders/${folder._id}`).set(authHeader).expect(200);
 
       // Restore file
-      await request(app).post(`/api/v1/trash/${file._id}/restore`).set(authHeader).expect(200);
+      await request(app)
+        .post(`/api/v1/trash/restore`)
+        .set(authHeader)
+        .send({ items: [{ id: file._id, type: "file" }] })
+        .expect(200);
 
       const restoredFile = await File.findById(file._id);
       expect(restoredFile.is_deleted).toBe(false);

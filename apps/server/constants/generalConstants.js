@@ -1,12 +1,4 @@
 /**
- * Item types in the system
- */
-export const ItemTypes = {
-  FILE: "file",
-  FOLDER: "folder",
-};
-
-/**
  * Socket.io event names
  */
 export const SocketEvents = {
@@ -29,40 +21,6 @@ export const NotificationTypes = {
   SECURITY_ALERT: "SECURITY_ALERT",
   UPLOAD_COMPLETE: "UPLOAD_COMPLETE",
   TRASH_CLEANUP: "TRASH_CLEANUP",
-};
-
-/**
- * Quota request statuses
- */
-export const QuotaStatus = {
-  PENDING: "PENDING",
-  APPROVED: "APPROVED",
-  REJECTED: "REJECTED",
-};
-
-/**
- * User Roles
- */
-export const Roles = {
-  ADMIN: "ADMIN",
-  USER: "USER",
-};
-
-/**
- * HTTP Status Codes
- */
-export const StatusCodes = {
-  OK: 200,
-  CREATED: 201,
-  PARTIAL_CONTENT: 206,
-  NO_CONTENT: 204,
-  ACCEPTED: 202,
-  BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  UNPROCESSABLE_ENTITY: 422,
-  INTERNAL_SERVER_ERROR: 500,
 };
 
 /**
