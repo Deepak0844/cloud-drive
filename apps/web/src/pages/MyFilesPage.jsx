@@ -18,8 +18,6 @@ import {
   WarningOutlined,
 } from "@ant-design/icons";
 import { App, Breadcrumb, Input, Modal, Tooltip, Typography, Upload } from "antd";
-import SearchInput from "@shared-components/components/search-input";
-import Loader from "@shared-components/components/loader";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -49,6 +47,12 @@ import {
 import { STORAGE, ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
 import PageNames from "@constants/pageNames";
 
+// hooks
+import { useInfiniteScroll } from "@shared-hooks/hooks";
+
+// contexts
+import { useUploadDetails } from "@contexts/UploadContext";
+
 // components
 import FileItem from "@components/files/FileItem";
 import FolderItem from "@components/files/FolderItem";
@@ -56,11 +60,11 @@ import InfoDrawer from "@components/files/InfoDrawer";
 import FilePreviewModal from "@components/files/FilePreviewModal";
 import FolderPickerModal from "@components/files/FolderPickerModal";
 import QuotaRequestModal from "@components/settings/QuotaRequestModal";
+import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
-import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
-import { useUploadDetails } from "@contexts/UploadContext";
-import { useInfiniteScroll } from "@shared-hooks/hooks";
+import SearchInput from "@shared-components/components/search-input";
+import Loader from "@shared-components/components/loader";
 
 const { Text } = Typography;
 

@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Breadcrumb, Empty, Skeleton, Typography, Image } from "antd";
-import Loader from "@shared-components/components/loader";
 import { PictureOutlined, CalendarOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
@@ -15,6 +14,7 @@ import PageUrls from "@constants/pageUrls";
 
 // components
 import Button from "@shared-components/components/button";
+import Loader from "@shared-components/components/loader";
 
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 

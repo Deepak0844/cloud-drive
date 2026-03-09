@@ -9,13 +9,13 @@ import { Roles } from "@shared-constants/constants";
 
 // Pages
 import RoleBasedDefaultPage from "./RoleBasedDefaultPage";
-import MyFilesPage from "@pages/my-files/MyFilesPage";
-import PhotosPage from "@pages/photos/PhotosPage";
-import FavoritesPage from "@pages/favorites/FavoritesPage";
-import RecentPage from "@pages/recent/RecentPage";
-import TrashPage from "@pages/trash/TrashPage";
-import SettingsPage from "@pages/settings/SettingsPage";
-import AdminDashboardPage from "@pages/admin/AdminDashboardPage";
+import MyFilesPage from "@pages/MyFilesPage";
+import PhotosPage from "@pages/PhotosPage";
+import FavoritesPage from "@pages/FavoritesPage";
+import RecentPage from "@pages/RecentPage";
+import TrashPage from "@pages/TrashPage";
+import SettingsPage from "@pages/SettingsPage";
+import AdminDashboardPage from "@pages/AdminDashboardPage";
 
 // Layout
 import AppLayout from "@components/layout/AppLayout";

@@ -11,17 +11,12 @@ import {
   WarningOutlined,
 } from "@ant-design/icons";
 import { App, Breadcrumb, Typography, Tooltip, Modal, Input } from "antd";
-import SearchInput from "@shared-components/components/search-input";
-import Loader from "@shared-components/components/loader";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 // Hooks
 import { useInfiniteScroll } from "@shared-hooks/hooks";
-
-// Constants
-import { ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
 
 // api
 import {
@@ -43,6 +38,7 @@ import {
 } from "@services/api/fileApi";
 
 // constants
+import { ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
 
@@ -52,9 +48,10 @@ import FolderItem from "@components/files/FolderItem";
 import InfoDrawer from "@components/files/InfoDrawer";
 import FilePreviewModal from "@components/files/FilePreviewModal";
 import FolderPickerModal from "@components/files/FolderPickerModal";
-
-import Button from "@shared-components/components/button";
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
+import SearchInput from "@shared-components/components/search-input";
+import Button from "@shared-components/components/button";
+import Loader from "@shared-components/components/loader";
 
 const { Text } = Typography;
 

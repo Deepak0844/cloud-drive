@@ -10,11 +10,11 @@ import { MainRoutes } from "./MainRoutes";
 import PublicRoute from "@components/hoc/PublicRoute";
 
 // Pages
-import LoginPage from "@pages/login/LoginPage";
-import RegisterPage from "@pages/register/RegisterPage";
-import ErrorPage from "@pages/error/ErrorPage";
-import ForgotPasswordPage from "@pages/forgot-password/ForgotPasswordPage";
-import ResetPasswordPage from "@pages/reset-password/ResetPasswordPage";
+import LoginPage from "@pages/LoginPage";
+import RegisterPage from "@pages/RegisterPage";
+import ErrorPage from "@pages/ErrorPage";
+import ForgotPasswordPage from "@pages/ForgotPasswordPage";
+import ResetPasswordPage from "@pages/ResetPasswordPage";
 
 // Utils
 import NavigationSetter from "@utils/NavigationSetter";

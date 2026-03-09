@@ -7,7 +7,6 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { Tabs, Tag, Typography, message as antdMessage, Modal, Form, InputNumber, Space, Skeleton } from "antd";
-import Button from "@shared-components/components/button";
 import { motion } from "framer-motion";
 import React, { useState } from "react";
 
@@ -31,6 +30,7 @@ import { formatBytes } from "@shared-utils/utils";
 // components
 import Table from "@shared-components/components/table";
 import TableActionButton from "@shared-components/components/table-action-button";
+import Button from "@shared-components/components/button";
 
 const { Text, Title } = Typography;
 

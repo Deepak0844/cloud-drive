@@ -7,24 +7,27 @@ import {
   HistoryOutlined,
 } from "@ant-design/icons";
 import { Breadcrumb, Typography, Tooltip, App } from "antd";
-import SearchInput from "@shared-components/components/search-input";
-import Loader from "@shared-components/components/loader";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useInfiniteScroll } from "@shared-hooks/hooks";
 
 // api
 import { useGetRecentFilesQuery, useTouchFileMutation, useBulkDownloadMutation } from "@services/api/fileApi";
 
+// constants
 import { ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
+
+// hooks
+import { useInfiniteScroll } from "@shared-hooks/hooks";
 
 // components
 import FileItem from "@components/files/FileItem";
 import InfoDrawer from "@components/files/InfoDrawer";
 import FilePreviewModal from "@components/files/FilePreviewModal";
-import Button from "@shared-components/components/button";
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
+import Button from "@shared-components/components/button";
+import SearchInput from "@shared-components/components/search-input";
+import Loader from "@shared-components/components/loader";
 
 const { Text } = Typography;
 

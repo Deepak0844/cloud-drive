@@ -9,12 +9,9 @@ import {
   UndoOutlined,
 } from "@ant-design/icons";
 import { App, Breadcrumb, Tooltip } from "antd";
-import SearchInput from "@shared-components/components/search-input";
-import Loader from "@shared-components/components/loader";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useInfiniteScroll } from "@shared-hooks/hooks";
 
 // api
 import {
@@ -29,12 +26,17 @@ import { ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constan
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
 
+// hooks
+import { useInfiniteScroll } from "@shared-hooks/hooks";
+
 // components
 import FileItem from "@components/files/FileItem";
 import FolderItem from "@components/files/FolderItem";
 import InfoDrawer from "@components/files/InfoDrawer";
-import Button from "@shared-components/components/button";
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
+import Button from "@shared-components/components/button";
+import SearchInput from "@shared-components/components/search-input";
+import Loader from "@shared-components/components/loader";
 
 function TrashView() {
   const { message, modal } = App.useApp();
