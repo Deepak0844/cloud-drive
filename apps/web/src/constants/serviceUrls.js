@@ -22,7 +22,12 @@ export const FileServiceUrls = {
   copyFile: `${FilesBasePath}/:id/copy`,
   updateFileTags: `${FilesBasePath}/:id/tags`,
   touchFile: `${FilesBasePath}/:id/touch`,
-  downloadFile: `${ApiBasePath}${FilesBasePath}/:id/download`,
+  downloadFile: `${FilesBasePath}/:id/download`,
+  preview: `${FilesBasePath}/:id/preview`,
+  stream: `${FilesBasePath}/:id/stream`,
+  thumbnail: `${FilesBasePath}/:id/preview?thumbnail=true`,
+  initUpload: `${FilesBasePath}/upload/init`,
+  uploadChunk: `${FilesBasePath}/upload/chunk`,
 };
 
 // Bulk Service Urls

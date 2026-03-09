@@ -487,7 +487,18 @@ export const updateFileTags = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const downloadAsZip = asyncHandler(async (req, res) => {
-  const { items } = req.body;
+  let { items } = req.body;
+  const { payload } = req.body;
+
+  if (!items && payload) {
+    try {
+      const parsed = JSON.parse(payload);
+      items = parsed.items;
+    } catch (_err) {
+      return ResponseUtils.error(res, "Invalid payload format", HttpStatus.BAD_REQUEST);
+    }
+  }
+
   if (!items || !items.length) {
     return ResponseUtils.error(res, "No items selected for download", HttpStatus.BAD_REQUEST);
   }

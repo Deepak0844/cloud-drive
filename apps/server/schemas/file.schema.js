@@ -117,14 +117,19 @@ export const bulkMoveSchema = z.object({
 export const bulkCopySchema = bulkMoveSchema;
 
 export const bulkDownloadSchema = z.object({
-  body: z.object({
-    items: z
-      .array(
-        z.object({
-          type: z.enum(["file", "folder"]),
-          id: z.string(),
-        })
-      )
-      .min(1, "At least one item is required"),
-  }),
+  body: z
+    .object({
+      items: z
+        .array(
+          z.object({
+            type: z.enum(["file", "folder"]),
+            id: z.string(),
+          })
+        )
+        .optional(),
+      payload: z.string().optional(),
+    })
+    .refine((data) => data.items || data.payload, {
+      message: "At least one item or a payload is required",
+    }),
 });

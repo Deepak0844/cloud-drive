@@ -1,5 +1,6 @@
 import { App, Modal } from "antd";
 import { useState } from "react";
+import { FileUtils } from "@shared-utils/utils";
 
 // RTK Query hooks
 import {
@@ -14,15 +15,11 @@ import {
   useMoveFileMutation,
   useRenameFileMutation,
 } from "@services/api/fileApi";
-import {
-  useBulkCopyMutation,
-  useBulkDeleteMutation,
-  useBulkDownloadMutation,
-  useBulkMoveMutation,
-} from "@services/api/bulkApi";
+import { useBulkCopyMutation, useBulkDeleteMutation, useBulkMoveMutation } from "@services/api/bulkApi";
 
 // Constants
 import { ItemTypes } from "@shared-constants/constants";
+import { ApiBasePath, FileServiceUrls, BulkServiceUrls } from "@constants/serviceUrls";
 
 export function useFileActions({ folders, clearSelection }) {
   const { message } = App.useApp();
@@ -50,7 +47,6 @@ export function useFileActions({ folders, clearSelection }) {
   const [bulkDelete] = useBulkDeleteMutation();
   const [bulkMove, { isLoading: bulkMoveLoading }] = useBulkMoveMutation();
   const [bulkCopy, { isLoading: bulkCopyLoading }] = useBulkCopyMutation();
-  const [bulkDownload, { isLoading: bulkDownloadLoading }] = useBulkDownloadMutation();
 
   const isActionLoading =
     moveFileLoading || copyFileLoading || moveFolderLoading || copyFolderLoading || bulkMoveLoading || bulkCopyLoading;
@@ -173,25 +169,32 @@ export function useFileActions({ folders, clearSelection }) {
   }
 
   // Download Actions
-  async function handleBulkDownload(itemsToDownload) {
+  function handleDownload(file) {
+    if (!file) return;
+    FileUtils.startFileDownload(file, `${ApiBasePath}${FileServiceUrls.downloadFile}`);
+    message.success({ content: "Download started", key: "downloading" });
+  }
+
+  function handleBulkDownload(itemsToDownload) {
     if (!itemsToDownload || itemsToDownload.length === 0) return;
     const fileItems = itemsToDownload.filter((i) => i.type === ItemTypes.FILE);
     if (fileItems.length === 0) {
       message.warning("Please select at least one file to download");
       return;
     }
+
     try {
-      const result = await bulkDownload({ items: fileItems }).unwrap();
-      const url = URL.createObjectURL(result);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = "download.zip";
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
+      const url = `${ApiBasePath}${BulkServiceUrls.bulkDownload}`;
+      const payload = { items: fileItems };
+
+      // Use triggerPostDownload to support streaming for heavy ZIP files
+      // This bypasses RTK Query/Axios to allow the browser to handle the stream directly.
+      FileUtils.triggerPostDownload(url, payload);
+
+      message.success("Preparing your download...");
+      clearSelection();
     } catch {
-      message.error("Failed to download files");
+      message.error("Failed to initiate bulk download");
     }
   }
 
@@ -215,9 +218,9 @@ export function useFileActions({ folders, clearSelection }) {
     handleBulkMoveTrigger,
     handleBulkCopyTrigger,
     handleFolderPickerConfirm,
+    handleDownload,
     handleBulkDownload,
 
     isActionLoading,
-    bulkDownloadLoading,
   };
 }

@@ -1,13 +1,13 @@
 // React core & third-party libraries
 import React, { useEffect, useState } from "react";
-import { App, Modal, Typography } from "antd";
+import { Modal, Typography } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 
 // Constants
-import { FileServiceUrls } from "@constants/serviceUrls";
+import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 
 // Utils
-import { FileUtils } from "@shared-utils/utils";
+import { UrlUtils } from "@shared-utils/utils";
 
 // Components
 import Button from "@shared-components/components/button";
@@ -15,14 +15,13 @@ import Loader from "@shared-components/components/loader";
 
 const { Text } = Typography;
 
-export default function FilePreviewModal({ file, open, onClose }) {
+export default function FilePreviewModal({ file, open, onClose, handleDownload }) {
   // Local state
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [previewSrc, setPreviewSrc] = useState(null);
 
   // Custom & shared hooks
-  const { message } = App.useApp();
 
   // useEffect
   // Derive resource endpoints via our authenticated proxy helper
@@ -40,13 +39,14 @@ export default function FilePreviewModal({ file, open, onClose }) {
       const type = file.category || file.type;
 
       let url = "";
-      const cacheBust = `?_t=${Date.now()}`;
 
       if (type === "audio") {
-        url = `/api/v1/files/${fileId}/stream${cacheBust}`;
+        url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.stream}`, { id: fileId });
+        url += `${url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
       } else {
         // Video and Images natively stream through the Express preview handler
-        url = `/api/v1/files/${fileId}/preview${cacheBust}`;
+        url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.preview}`, { id: fileId });
+        url += `${url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
       }
 
       setPreviewSrc(url);
@@ -67,10 +67,9 @@ export default function FilePreviewModal({ file, open, onClose }) {
   }, [file, open]);
 
   // Event handlers
-  function handleDownload() {
+  function onDownload() {
     if (!file) return;
-    FileUtils.startFileDownload(file, FileServiceUrls.downloadFile);
-    message.success({ content: "Download started", key: "downloading" });
+    handleDownload?.(file);
   }
 
   // Render
@@ -91,12 +90,7 @@ export default function FilePreviewModal({ file, open, onClose }) {
           <Text className="text-label-secondary text-center max-w-xs mb-4">
             We couldn&apos;t generate a preview for this file type, or the file may be corrupted.
           </Text>
-          <Button
-            type="primary"
-            icon={<DownloadOutlined />}
-            onClick={handleDownload}
-            className="font-bold rounded-xl h-10"
-          >
+          <Button type="primary" icon={<DownloadOutlined />} onClick={onDownload} className="font-bold rounded-xl h-10">
             Download File Instead
           </Button>
         </div>
@@ -117,7 +111,9 @@ export default function FilePreviewModal({ file, open, onClose }) {
               // If direct /preview fails (non-native format), retry via /stream (on-the-fly transcode)
               if (previewSrc && !previewSrc.includes("/stream")) {
                 const fileId = file.id || file._id;
-                setPreviewSrc(`/api/v1/files/${fileId}/stream?_t=${Date.now()}`);
+                let streamUrl = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.stream}`, { id: fileId });
+                streamUrl += `${streamUrl.includes("?") ? "&" : "?"}_t=${Date.now()}`;
+                setPreviewSrc(streamUrl);
               } else {
                 setHasError(true);
               }
@@ -172,7 +168,7 @@ export default function FilePreviewModal({ file, open, onClose }) {
               <Button
                 type="primary"
                 icon={<DownloadOutlined />}
-                onClick={handleDownload}
+                onClick={onDownload}
                 className="font-bold rounded-xl h-10"
               >
                 Download PDF
@@ -191,7 +187,7 @@ export default function FilePreviewModal({ file, open, onClose }) {
         <Button
           type="primary"
           icon={<DownloadOutlined />}
-          onClick={handleDownload}
+          onClick={onDownload}
           className="font-bold rounded-xl h-10 mt-2"
         >
           Download File
@@ -215,7 +211,7 @@ export default function FilePreviewModal({ file, open, onClose }) {
             type="text"
             icon={<DownloadOutlined />}
             size="small"
-            onClick={handleDownload}
+            onClick={onDownload}
             className="text-primary hover:bg-primary-light rounded-lg font-semibold"
           >
             Download

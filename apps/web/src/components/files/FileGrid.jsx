@@ -29,6 +29,7 @@ export default function FileGrid({
   handleDeleteTrigger,
   handleMoveTrigger,
   handleCopyTrigger,
+  handleDownload,
   isDragging,
 }) {
   // Render
@@ -109,6 +110,7 @@ export default function FileGrid({
                       onDelete={handleDeleteTrigger}
                       onMove={handleMoveTrigger}
                       onCopy={handleCopyTrigger}
+                      handleDownload={handleDownload}
                     />
                   </div>
                 );

@@ -270,7 +270,7 @@ const touchFileMutation = () => ({
     url: UrlUtils.format(FileServiceUrls.touchFile, { id }),
     method: HttpMethods.POST,
   }),
-  invalidatesTags: [TagTypes.FILES, TagTypes.FILES],
+  invalidatesTags: [TagTypes.FILES],
 });
 
 // ---------------------------------------------------------------------------

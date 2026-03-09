@@ -20,13 +20,12 @@ import {
 import { motion } from "framer-motion";
 
 // Constants
-import { FileServiceUrls } from "@constants/serviceUrls";
-
+import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 // Services (RTK Query hooks)
 import { useToggleFileFavoriteMutation } from "@services/api/fileApi";
 
 // Utils
-import { FileUtils } from "@shared-utils/utils";
+import { UrlUtils } from "@shared-utils/utils";
 
 // Components
 import Button from "@shared-components/components/button";
@@ -57,6 +56,7 @@ function FileItem({
   onDelete,
   onMove,
   onCopy,
+  handleDownload,
   viewMode = "grid",
   isTrashItem = false,
   showParentContext = false,
@@ -84,7 +84,8 @@ function FileItem({
   useEffect(() => {
     if (hasThumbnail) {
       const fileId = file.id || file._id;
-      setThumbnailSrc(`/api/v1/files/${fileId}/preview?thumbnail=true`);
+      const url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.thumbnail}`, { id: fileId });
+      setThumbnailSrc(url);
     } else {
       setThumbnailSrc(null);
     }
@@ -115,8 +116,8 @@ function FileItem({
     onOpen?.(file);
   }
 
-  function handleDownload() {
-    FileUtils.startFileDownload(file, FileServiceUrls.downloadFile);
+  function onDownload() {
+    handleDownload?.(file);
   }
 
   const menuItems = (() => {
@@ -129,7 +130,7 @@ function FileItem({
         key: "download",
         label: "Download",
         icon: <DownloadOutlined />,
-        onClick: handleDownload,
+        onClick: onDownload,
       },
       {
         key: "favorite",

@@ -159,9 +159,9 @@ function MyFilesView() {
     handleBulkMoveTrigger,
     handleBulkCopyTrigger,
     handleFolderPickerConfirm,
+    handleDownload,
     handleBulkDownload,
     isActionLoading,
-    bulkDownloadLoading,
   } = useFileActions({ folders, clearSelection });
 
   const { handleCreateFolder } = useFolderCreation({ currentFolderId });
@@ -238,7 +238,6 @@ function MyFilesView() {
               <Button
                 type="text"
                 icon={<DownloadOutlined />}
-                loading={bulkDownloadLoading}
                 onClick={() => handleBulkDownload(selectedItems)}
                 className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
               >
@@ -278,6 +277,7 @@ function MyFilesView() {
             handleDeleteTrigger={handleDeleteTrigger}
             handleMoveTrigger={handleMoveTrigger}
             handleCopyTrigger={handleCopyTrigger}
+            handleDownload={handleDownload}
             isDragging={isDragging}
           />
         </Dragger>
@@ -341,7 +341,12 @@ function MyFilesView() {
       </div>
 
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
-      <FilePreviewModal file={previewFile} open={!!previewFile} onClose={() => setPreviewFile(null)} />
+      <FilePreviewModal
+        file={previewFile}
+        open={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+        handleDownload={handleDownload}
+      />
       <QuotaRequestModal open={quotaRequestModalVisible} onClose={() => setQuotaRequestModalVisible(false)} />
 
       <FolderPickerModal

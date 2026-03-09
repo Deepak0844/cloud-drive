@@ -2,7 +2,7 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Breadcrumb, Empty, Image, Skeleton, Typography } from "antd";
-import { CalendarOutlined, PictureOutlined } from "@ant-design/icons";
+import { CalendarOutlined, DownloadOutlined, PictureOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { motion } from "framer-motion";
 
@@ -12,10 +12,15 @@ import { useGetFilesQuery } from "@services/api/fileApi";
 // Hooks
 import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
 import { useListPageParams } from "@hooks/files/useListPageParams";
+import { useFileActions } from "@hooks/files/useFileActions";
 
 // Constants
+import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
+
+// Utils
+import { UrlUtils } from "@shared-utils/utils";
 
 // Components
 import PageHeader from "@components/layout/PageHeader";
@@ -26,6 +31,7 @@ const { Text } = Typography;
 
 function PhotosPage() {
   const { page, pageSize, setPage, updateParams } = useListPageParams({ defaultPageSize: 50 });
+  const { handleDownload } = useFileActions({ folders: [], clearSelection: () => {} });
 
   // RTK Query hooks
   const {
@@ -67,11 +73,14 @@ function PhotosPage() {
       });
     return Object.entries(groups).map(([group, groupPhotos]) => [
       group,
-      groupPhotos.map((p) => ({
-        ...p,
-        thumbnailUrl: `/api/v1/files/${p._id}/preview?thumbnail=true`,
-        previewUrl: `/api/v1/files/${p._id}/preview`,
-      })),
+      groupPhotos.map((p) => {
+        const id = p._id || p.id;
+        return {
+          ...p,
+          thumbnailUrl: UrlUtils.format(`${ApiBasePath}${FileServiceUrls.thumbnail}`, { id }),
+          previewUrl: UrlUtils.format(`${ApiBasePath}${FileServiceUrls.preview}`, { id }),
+        };
+      }),
     ]);
   }, [photos]);
 
@@ -166,7 +175,7 @@ function PhotosPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               <Image.PreviewGroup>
                 {groupPhotos.map((photo) => (
-                  <PhotoCard key={photo._id} photo={photo} />
+                  <PhotoCard key={photo._id || photo.id} photo={photo} handleDownload={handleDownload} />
                 ))}
               </Image.PreviewGroup>
             </div>
@@ -195,7 +204,7 @@ function PhotosPage() {
   );
 }
 
-function PhotoCard({ photo }) {
+function PhotoCard({ photo, handleDownload }) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -229,9 +238,28 @@ function PhotoCard({ photo }) {
         </Text>
       </div>
 
-      {/* Top Right Icon */}
-      <div className="absolute top-2 right-2 w-8 h-8 bg-black/20 backdrop-blur-sm rounded-xl border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-        <PictureOutlined className="text-white text-xs" />
+      <div className="absolute top-2 right-2 flex gap-2 z-10 pointer-events-auto">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDownload?.(photo);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              handleDownload?.(photo);
+            }
+          }}
+          className="w-8 h-8 bg-black/20 hover:bg-primary/40 backdrop-blur-sm rounded-xl border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
+        >
+          <DownloadOutlined className="text-white text-xs" />
+        </div>
+        <div className="w-8 h-8 bg-black/20 backdrop-blur-sm rounded-xl border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          <PictureOutlined className="text-white text-xs" />
+        </div>
       </div>
     </motion.div>
   );

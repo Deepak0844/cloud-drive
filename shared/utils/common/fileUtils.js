@@ -96,6 +96,31 @@ function startFileDownload(file = {}, downloadUrlTemplate = "") {
   document.body.removeChild(anchor);
 }
 
+/**
+ * ------------------------------------------------------------------------------
+ * triggerPostDownload - Trigger browser download for a POST request using a hidden form.
+ * This allows the browser to handle the response as a stream, saving it directly to disk.
+ * @param {string} url - The download endpoint URL
+ * @param {Object} data - The POST body data (e.g., { items: [...] })
+ * @returns {void}
+ */
+function triggerPostDownload(url, data = {}) {
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = url;
+  form.style.display = "none";
+
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = "payload"; // The server should expect the JSON in this field or similar
+  input.value = JSON.stringify(data);
+  form.appendChild(input);
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
+
 // Exports
 // --------------------------------------------------------------------
 const FileUtils = {
@@ -104,6 +129,7 @@ const FileUtils = {
   base64ToFile,
   convertBinaryToBase64StringImage,
   startFileDownload,
+  triggerPostDownload,
 };
 
 export default FileUtils;

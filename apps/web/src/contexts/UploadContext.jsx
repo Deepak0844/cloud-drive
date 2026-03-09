@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 
-// Utils
-import HttpClientFactory from "@utils/httpClientFactory";
+// Services
+import { useInitChunkedUploadMutation } from "@services/api/fileApi";
 
 const CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
 const UploadContext = createContext(null);
@@ -15,44 +15,33 @@ export function useUploadDetails() {
   return context;
 }
 
-/**
- * Fire the init API immediately — before React even renders UploadItem.
- * Returns a promise that resolves to { uploadId, totalChunks }.
- */
-async function preInitUpload(file, folderId, chunkSize) {
-  const httpClient = HttpClientFactory.getInstance();
-  const totalChunks = Math.ceil(file.size / chunkSize);
-
-  const res = await httpClient.post(
-    "/api/v1/files/upload/init",
-    {},
-    {
-      fileName: file.name,
-      fileSize: file.size,
-      totalChunks,
-      folderId: folderId || null,
-    }
-  );
-
-  if (!res?.success) {
-    throw new Error(res?.message || "Failed to initialize upload");
-  }
-
-  return res.data; // { uploadId, totalChunks }
-}
-
 export function UploadProvider({ children }) {
   const [uploads, setUploads] = useState([]);
+  const [initChunkedUpload] = useInitChunkedUploadMutation();
 
-  const addUpload = useCallback((file, folderId) => {
-    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const addUpload = useCallback(
+    (file, folderId) => {
+      const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // For small files no init needed — just queue normally
-    // For large files, pre-fire the init API RIGHT NOW before any React rendering
-    const initPromise = file.size > CHUNK_SIZE ? preInitUpload(file, folderId, CHUNK_SIZE) : Promise.resolve(null);
+      // For large files, pre-fire the init API using the standard mutation hook
+      let initPromise = Promise.resolve(null);
+      if (file.size > CHUNK_SIZE) {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        const body = {
+          fileName: file.name,
+          fileSize: file.size,
+          totalChunks,
+          folderId: folderId || null,
+        };
 
-    setUploads((prev) => [...prev, { id, file, folderId, initPromise }]);
-  }, []);
+        // Mutation triggers return a promise with an .unwrap() method
+        initPromise = initChunkedUpload(body).unwrap();
+      }
+
+      setUploads((prev) => [...prev, { id, file, folderId, initPromise }]);
+    },
+    [initChunkedUpload]
+  );
 
   const removeUpload = useCallback((id) => {
     setUploads((prev) => prev.filter((u) => u.id !== id));

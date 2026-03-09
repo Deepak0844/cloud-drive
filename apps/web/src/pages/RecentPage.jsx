@@ -3,8 +3,14 @@ import React, { useMemo, useState } from "react";
 import { App, Breadcrumb, Typography } from "antd";
 import { CloseOutlined, DownloadOutlined, HistoryOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
+import { FileUtils } from "@shared-utils/utils";
+
+// Services (RTK Query hooks)
+import { useGetRecentFilesQuery, useTouchFileMutation } from "@services/api/fileApi";
 
 // Constants
+import PageNames from "@constants/pageNames";
+import { ApiBasePath, BulkServiceUrls } from "@constants/serviceUrls";
 import { ItemTypes } from "@shared-constants/constants";
 
 // Hooks
@@ -12,10 +18,6 @@ import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
 import { useListPageParams } from "@hooks/files/useListPageParams";
 import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
 import { useSelectableItems } from "@hooks/files/useSelectableItems";
-
-// Services (RTK Query hooks)
-import { useGetRecentFilesQuery, useTouchFileMutation } from "@services/api/fileApi";
-import { useBulkDownloadMutation } from "@services/api/bulkApi";
 
 // Components
 import FileItem from "@components/files/FileItem";
@@ -25,9 +27,6 @@ import ListControls from "@components/files/ListControls";
 import PageHeader from "@components/layout/PageHeader";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
-
-// Constants
-import PageNames from "@constants/pageNames";
 
 const { Text } = Typography;
 
@@ -54,7 +53,6 @@ export default function RecentPage() {
   const { advancedFilters, debouncedSearch, page, pageSize, setPage, updateParams } = useListPageParams();
 
   // RTK Query hooks
-  const [bulkDownload, { isLoading: isDownloading }] = useBulkDownloadMutation();
   const [touchFile] = useTouchFileMutation();
 
   const {
@@ -110,7 +108,7 @@ export default function RecentPage() {
 
   // Event handlers
 
-  async function handleBulkDownload() {
+  function handleBulkDownload() {
     if (selectedItems.length === 0) return;
     const fileItems = selectedItems.filter((i) => i.type === ItemTypes.FILE);
     if (fileItems.length === 0) {
@@ -119,17 +117,12 @@ export default function RecentPage() {
     }
 
     try {
-      const result = await bulkDownload({ items: fileItems }).unwrap();
-      const url = URL.createObjectURL(result);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = "recent_download.zip";
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
+      const url = `${ApiBasePath}${BulkServiceUrls.bulkDownload}`;
+      FileUtils.triggerPostDownload(url, { items: fileItems });
+      message.success("Preparing your download...");
+      clearSelection();
     } catch {
-      message.error("Failed to download files");
+      message.error("Failed to initiate bulk download");
     }
   }
 
@@ -306,7 +299,6 @@ export default function RecentPage() {
               type="text"
               size="small"
               icon={<DownloadOutlined />}
-              loading={isDownloading}
               className="h-9 px-4 border-none text-primary hover:text-primary-light hover:bg-white/10 font-bold text-xs flex items-center gap-2 rounded-xl"
               onClick={handleBulkDownload}
             >

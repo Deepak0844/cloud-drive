@@ -1,3 +1,6 @@
+// Constants
+import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
+
 /**
  * Send a single chunk as raw binary using XHR for real onUploadProgress events.
  * Metadata goes in query params — no FormData serialization.
@@ -7,7 +10,9 @@ export function uploadChunkRaw({ uploadId, chunkIndex, buffer, signal, onProgres
     if (signal?.aborted) return reject(new Error("canceled"));
 
     const xhr = new XMLHttpRequest();
-    const url = `/api/v1/files/upload/chunk?uploadId=${encodeURIComponent(uploadId)}&chunkIndex=${chunkIndex}`;
+    const url = `${ApiBasePath}${FileServiceUrls.uploadChunk}?uploadId=${encodeURIComponent(
+      uploadId
+    )}&chunkIndex=${chunkIndex}`;
 
     xhr.open("POST", url);
     xhr.setRequestHeader("Authorization", `Bearer ${authToken}`);
