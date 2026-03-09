@@ -1,12 +1,12 @@
 import express from "express";
 
 // Controllers
-import { getMe, login, logout, register, updateProfile } from "../controllers/authController.js";
-import { forgotPassword, resetPassword, updatePassword } from "../controllers/passwordController.js";
+import { getMe, login, logout, register, updateProfile } from "#controllers/authController.js";
+import { forgotPassword, resetPassword, updatePassword } from "#controllers/passwordController.js";
 
 // Middleware
-import { protect } from "../middlewares/auth.js";
-import validate from "../middlewares/validate.js";
+import { protect } from "#middlewares/auth.js";
+import validate from "#middlewares/validate.js";
 
 // Schemas
 import {
@@ -16,7 +16,7 @@ import {
   resetPasswordSchema,
   updateProfileSchema,
   updatePasswordSchema,
-} from "../schemas/auth.schema.js";
+} from "#schemas/auth.schema.js";
 
 const router = express.Router();
 

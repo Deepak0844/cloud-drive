@@ -1,9 +1,9 @@
 import request from "supertest";
-import app from "../../app.js";
-import File from "../../models/File.js";
-import Folder from "../../models/Folder.js";
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
+import app from "#app";
+import File from "#models/File.js";
+import Folder from "#models/Folder.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createTestUser, getAuthHeader } from "#test-helpers/auth.helper.js";
 
 describe("Advanced Trash & Tagging API", () => {
   let user;

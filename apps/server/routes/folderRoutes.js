@@ -12,11 +12,11 @@ import {
   renameFolder,
   toggleFavorite,
   updateFolderTags,
-} from "../controllers/folderController.js";
+} from "#controllers/folderController.js";
 
 // Middleware
-import { protect } from "../middlewares/auth.js";
-import validate from "../middlewares/validate.js";
+import { protect } from "#middlewares/auth.js";
+import validate from "#middlewares/validate.js";
 
 // Schemas
 import {
@@ -27,8 +27,8 @@ import {
   getFoldersSchema,
   folderIdParamSchema,
   favoriteFolderSchema,
-} from "../schemas/folder.schema.js";
-import { updateTagsSchema } from "../schemas/file.schema.js"; // Reuse file tagging schema
+} from "#schemas/folder.schema.js";
+import { updateTagsSchema } from "#schemas/file.schema.js"; // Reuse file tagging schema
 
 const router = express.Router();
 

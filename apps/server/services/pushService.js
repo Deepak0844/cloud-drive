@@ -2,7 +2,7 @@
 import { Expo } from "expo-server-sdk";
 
 // Utils
-import logger from "../utils/logger.js";
+import logger from "#utils/logger.js";
 
 const expo = new Expo();
 

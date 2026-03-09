@@ -6,8 +6,9 @@ import ExifParser from "exif-parser";
 import fs from "fs";
 import crypto from "crypto";
 
-// Utils
-import FileUtils from "../utils/fileUtils.js";
+import FileUtils from "#utils/fileUtils.js";
+import { FileCategories } from "#constants/generalConstants.js";
+import logger from "#utils/logger.js";
 
 ffmpeg.setFfprobePath(ffprobePath);
 
@@ -22,26 +23,26 @@ function getCategory(mimeType, filename) {
   const audioExts = ["mp3", "wav", "flac", "aac", "m4a", "ogg", "opus", "wma"];
 
   if (mimeType.startsWith("image/") || imageExts.includes(ext)) {
-    return "image";
+    return FileCategories.IMAGE;
   }
   if (mimeType.startsWith("video/") || videoExts.includes(ext)) {
-    return "video";
+    return FileCategories.VIDEO;
   }
   if (mimeType.startsWith("audio/") || audioExts.includes(ext)) {
-    return "audio";
+    return FileCategories.AUDIO;
   }
 
   const docs = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "md"];
   if (docs.includes(ext) || mimeType.includes("document") || mimeType.includes("pdf") || mimeType.includes("text")) {
-    return "document";
+    return FileCategories.DOCUMENT;
   }
 
   const archives = ["zip", "rar", "7z", "tar", "gz"];
   if (archives.includes(ext) || mimeType.includes("zip") || mimeType.includes("archive")) {
-    return "archive";
+    return FileCategories.ARCHIVE;
   }
 
-  return "other";
+  return FileCategories.OTHER;
 }
 
 /**
@@ -67,7 +68,7 @@ async function extractMetadata(filePath, category) {
   const extra = {};
 
   try {
-    if (category === "image") {
+    if (category === FileCategories.IMAGE) {
       const imageInfo = await sharp(filePath).metadata();
       metadata.width = imageInfo.width;
       metadata.height = imageInfo.height;
@@ -93,7 +94,7 @@ async function extractMetadata(filePath, category) {
       } catch (exifErr) {
         console.warn("EXIF extraction failed:", exifErr.message);
       }
-    } else if (category === "video") {
+    } else if (category === FileCategories.VIDEO) {
       const probeData = await probeFile(filePath);
       if (probeData.streams) {
         const videoStream = probeData.streams.find((s) => s.codec_type === "video");
@@ -119,7 +120,7 @@ async function extractMetadata(filePath, category) {
           metadata.sampleRate = parseInt(audioStream.sample_rate);
         }
       }
-    } else if (category === "audio") {
+    } else if (category === FileCategories.AUDIO) {
       const audioInfo = await mm.parseFile(filePath);
       metadata.duration = audioInfo.format.duration;
       metadata.bitrate = audioInfo.format.bitrate;
@@ -141,7 +142,7 @@ async function extractMetadata(filePath, category) {
       }
     }
   } catch (error) {
-    console.error(`Metadata extraction failed for ${filePath}:`, error);
+    logger.error(`Metadata extraction failed for ${filePath}:`, error);
   }
 
   return { metadata, extra };

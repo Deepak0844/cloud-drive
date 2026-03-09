@@ -4,25 +4,25 @@ import path from "path";
 import mongoose from "mongoose";
 
 // Models
-import File from "../models/File.js";
-import User from "../models/User.js";
+import File from "#models/File.js";
+import User from "#models/User.js";
 
 // Services
-import FileService from "../services/fileService.js";
-import SocketService from "../services/socketService.js";
-import MetadataService from "../services/metadataService.js";
+import FileService from "#services/fileService.js";
+import SocketService from "#services/socketService.js";
+import MetadataService from "#services/metadataService.js";
 
 // Constants
 import { HttpStatus } from "@shared-constants/constants";
-import { ErrorMessages } from "../constants/generalConstants.js";
+import { ErrorMessages } from "#constants/generalConstants.js";
 
 // Middleware
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
-import MimeUtils from "../utils/mimeUtils.js";
-import logger from "../utils/logger.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import MimeUtils from "#utils/mimeUtils.js";
+import logger from "#utils/logger.js";
 
 /**
  * @desc    Initiate chunked upload

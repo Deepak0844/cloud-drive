@@ -1,19 +1,14 @@
 import express from "express";
 
 // Controllers
-import {
-  getNotifications,
-  markAllAsRead,
-  markAsRead,
-  registerPushToken,
-} from "../controllers/notificationController.js";
+import { getNotifications, markAllAsRead, markAsRead, registerPushToken } from "#controllers/notificationController.js";
 
 // Middleware
-import { protect } from "../middlewares/auth.js";
-import validate from "../middlewares/validate.js";
+import { protect } from "#middlewares/auth.js";
+import validate from "#middlewares/validate.js";
 
 // Schemas
-import { registerPushTokenSchema } from "../schemas/common.schema.js";
+import { registerPushTokenSchema } from "#schemas/common.schema.js";
 
 const router = express.Router();
 

@@ -19,4 +19,6 @@ export {
   ICON_SIZE,
   NotificationTypes,
   QUERY_PARAMS_KEYS,
+  FileCategories,
+  BulkActions,
 } from "./generalConstants.js";

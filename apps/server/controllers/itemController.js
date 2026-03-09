@@ -1,15 +1,15 @@
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
-import DbUtils from "../utils/dbUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import DbUtils from "#utils/dbUtils.js";
 
 // Services
-import SocketService from "../services/socketService.js";
+import SocketService from "#services/socketService.js";
 
 // Constants
-import { SocketEvents } from "../constants/generalConstants.js";
+import { SocketEvents, BulkActions } from "#constants/generalConstants.js";
 
 // Middleware
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 /**
  * @desc    Handle bulk operations (delete, restore, permanent delete, move, copy)
@@ -28,15 +28,15 @@ export const handleBulkOperation = asyncHandler(async (req, res) => {
     const { id, type } = item;
 
     try {
-      if (action === "delete") {
+      if (action === BulkActions.DELETE) {
         await DbUtils.softDeleteRecursive(type, id, req.user.id, true);
-      } else if (action === "restore") {
+      } else if (action === BulkActions.RESTORE) {
         await DbUtils.restoreRecursive(type, id, req.user.id);
-      } else if (action === "permanent_delete") {
+      } else if (action === BulkActions.PERMANENT_DELETE) {
         await DbUtils.permanentDeleteRecursive(type, id, req.user.id);
-      } else if (action === "move") {
+      } else if (action === BulkActions.MOVE) {
         await DbUtils.moveItem(type, id, destination_folder_id, req.user.id);
-      } else if (action === "copy") {
+      } else if (action === BulkActions.COPY) {
         await DbUtils.copyRecursive(type, id, destination_folder_id, req.user.id);
       }
       results.success.push(id);

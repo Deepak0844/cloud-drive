@@ -3,16 +3,16 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 
 // Models
-import User from "../models/User.js";
+import User from "#models/User.js";
 
 // Config
-import config from "../config/env.js";
+import config from "#config/env.js";
 
 // Constants
 import { Roles } from "@shared-constants/constants";
 
 // Utils
-import logger from "../utils/logger.js";
+import logger from "#utils/logger.js";
 
 let io = null;
 

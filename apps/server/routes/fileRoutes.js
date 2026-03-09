@@ -1,7 +1,7 @@
 import express from "express";
 
 // Controllers
-import { finalizeChunkedUpload, initChunkedUpload, uploadChunk } from "../controllers/chunkedController.js";
+import { finalizeChunkedUpload, initChunkedUpload, uploadChunk } from "#controllers/chunkedController.js";
 import {
   bulkDelete,
   copyFile,
@@ -20,15 +20,15 @@ import {
   downloadAsZip,
   bulkMove,
   bulkCopy,
-} from "../controllers/fileController.js";
+} from "#controllers/fileController.js";
 
 // Middleware
-import { protect } from "../middlewares/auth.js";
-import validate from "../middlewares/validate.js";
-import uploadMiddleware from "../middlewares/uploadMiddleware.js";
+import { protect } from "#middlewares/auth.js";
+import validate from "#middlewares/validate.js";
+import uploadMiddleware from "#middlewares/uploadMiddleware.js";
 
 // Schemas
-import { finalizeChunkedUploadSchema, initChunkedUploadSchema } from "../schemas/chunked.schema.js";
+import { finalizeChunkedUploadSchema, initChunkedUploadSchema } from "#schemas/chunked.schema.js";
 import {
   moveFileSchema,
   renameFileSchema,
@@ -43,7 +43,7 @@ import {
   bulkMoveSchema,
   bulkCopySchema,
   bulkDownloadSchema,
-} from "../schemas/file.schema.js";
+} from "#schemas/file.schema.js";
 
 const router = express.Router();
 

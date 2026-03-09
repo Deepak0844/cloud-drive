@@ -4,7 +4,22 @@
     "baseUrl": ".",
     "checkJs": false,
     "paths": {
-      "@/*": ["./*"]
+      "#app": ["./app.js"],
+      "#assets/*": ["./assets/*"],
+      "#bin/*": ["./bin/*"],
+      "#config/*": ["./config/*"],
+      "#constants/*": ["./constants/*"],
+      "#controllers/*": ["./controllers/*"],
+      "#middlewares/*": ["./middlewares/*"],
+      "#models/*": ["./models/*"],
+      "#public/*": ["./public/*"],
+      "#routes/*": ["./routes/*"],
+      "#schemas/*": ["./schemas/*"],
+      "#services/*": ["./services/*"],
+      "#templates/*": ["./templates/*"],
+      "#test-helpers/*": ["./__tests__/helpers/*"],
+      "#utils/*": ["./utils/*"],
+      "#views/*": ["./views/*"]
     }
   },
   "include": ["**/*.js"],

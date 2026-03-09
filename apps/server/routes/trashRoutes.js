@@ -1,10 +1,10 @@
 import express from "express";
 
 // Middleware
-import { protect } from "../middlewares/auth.js";
+import { protect } from "#middlewares/auth.js";
 
 // Controllers
-import { getTrashItems, restoreItems, deleteItemsPermanently, emptyTrash } from "../controllers/trashController.js";
+import { getTrashItems, restoreItems, deleteItemsPermanently, emptyTrash } from "#controllers/trashController.js";
 
 const router = express.Router();
 

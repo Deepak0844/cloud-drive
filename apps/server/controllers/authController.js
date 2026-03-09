@@ -1,28 +1,28 @@
 // Models
-import User from "../models/User.js";
+import User from "#models/User.js";
 
 // Services
-import EmailService from "../services/emailService.js";
-import FileService from "../services/fileService.js";
+import EmailService from "#services/emailService.js";
+import FileService from "#services/fileService.js";
 
 // Controllers
-import { createNotification } from "./notificationController.js";
+import { createNotification } from "#controllers/notificationController.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, NotificationTypes } from "../constants/generalConstants.js";
+import { ErrorMessages, SuccessMessages, NotificationTypes } from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Config
-import config from "../config/env.js";
+import config from "#config/env.js";
 
 // Middleware
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
-import logger from "../utils/logger.js";
-import SecurityUtils from "../utils/securityUtils.js";
-import { sendTokenResponse } from "../utils/authUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import logger from "#utils/logger.js";
+import SecurityUtils from "#utils/securityUtils.js";
+import { sendTokenResponse } from "#utils/authUtils.js";
 
 // ─── Local Helpers ────────────────────────────────────────────────────────────
 

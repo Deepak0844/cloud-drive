@@ -1,25 +1,32 @@
 import mongoose from "mongoose";
 
 // Models
-import File from "../models/File.js";
-import QuotaRequest from "../models/QuotaRequest.js";
-import User from "../models/User.js";
+import File from "#models/File.js";
+import QuotaRequest from "#models/QuotaRequest.js";
+import User from "#models/User.js";
 
 // Controllers
-import { createNotification } from "./notificationController.js";
+import { createNotification } from "#controllers/notificationController.js";
 
 // Services
-import SocketService from "../services/socketService.js";
+import SocketService from "#services/socketService.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, NotificationTypes, SocketEvents } from "../constants/generalConstants.js";
+import {
+  ErrorMessages,
+  SuccessMessages,
+  NotificationTypes,
+  SocketEvents,
+  FileCategories,
+} from "#constants/generalConstants.js";
 import { Roles, HttpStatus, QuotaStatus } from "@shared-constants/constants";
 
 // Middleware
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import logger from "#utils/logger.js";
 
 /**
  * @desc    Get current quota usage
@@ -62,7 +69,14 @@ export const getQuotaBreakdown = asyncHandler(async (req, res) => {
   ]);
 
   // Ensure all categories are present, even if empty
-  const categories = ["image", "video", "audio", "document", "archive", "other"];
+  const categories = [
+    FileCategories.IMAGE,
+    FileCategories.VIDEO,
+    FileCategories.AUDIO,
+    FileCategories.DOCUMENT,
+    FileCategories.ARCHIVE,
+    FileCategories.OTHER,
+  ];
   const result = categories.map((cat) => {
     const found = breakdown.find((b) => b.category === cat);
     return found || { category: cat, total_size_bytes: 0, count: 0 };
@@ -123,7 +137,7 @@ export const requestQuotaIncrease = asyncHandler(async (req, res) => {
       message: SuccessMessages.QUOTA_REQUEST_SUBMITTED,
     });
   } catch (error) {
-    console.error("QUOTA REQUEST CRITICAL ERROR:", error);
+    logger.error("QUOTA REQUEST CRITICAL ERROR:", error);
     throw error;
   }
 });

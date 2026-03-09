@@ -1,27 +1,27 @@
 // Models
-import File from "../models/File.js";
-import QuotaRequest from "../models/QuotaRequest.js";
-import User from "../models/User.js";
-import { paginateQuery } from "../utils/paginationUtils.js";
+import File from "#models/File.js";
+import QuotaRequest from "#models/QuotaRequest.js";
+import User from "#models/User.js";
+import { paginateQuery } from "#utils/paginationUtils.js";
 
 // Controllers
-import { createNotification } from "./notificationController.js";
+import { createNotification } from "#controllers/notificationController.js";
 
 // Services
-import SocketService from "../services/socketService.js";
-import SystemService from "../services/systemService.js";
-import FileService from "../services/fileService.js";
+import SocketService from "#services/socketService.js";
+import SystemService from "#services/systemService.js";
+import FileService from "#services/fileService.js";
 
 // Constants
 import { QuotaStatus, HttpStatus } from "@shared-constants/constants";
-import { ErrorMessages, NotificationTypes, SocketEvents } from "../constants/generalConstants.js";
+import { ErrorMessages, NotificationTypes, SocketEvents } from "#constants/generalConstants.js";
 
 // Middleware
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
-import FormatUtils from "../utils/formatUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import FormatUtils from "#utils/formatUtils.js";
 
 /**
  * @desc    Get all users

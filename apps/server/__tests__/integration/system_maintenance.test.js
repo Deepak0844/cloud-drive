@@ -1,10 +1,10 @@
 import { Roles } from "@shared-constants/constants";
 import { jest } from "@jest/globals";
 import request from "supertest";
-import app from "../../app.js";
-import File from "../../models/File.js";
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
+import app from "#app";
+import File from "#models/File.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createTestUser, getAuthHeader } from "#test-helpers/auth.helper.js";
 
 // Import service after setup to ensure mongoose is ready
 let DuplicateService;

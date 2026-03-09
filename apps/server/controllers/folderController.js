@@ -1,22 +1,22 @@
 // Models
-import Folder from "../models/Folder.js";
-import File from "../models/File.js";
+import Folder from "#models/Folder.js";
+import File from "#models/File.js";
 
 // Constants
-import { ErrorMessages } from "../constants/generalConstants.js";
+import { ErrorMessages } from "#constants/generalConstants.js";
 import { HttpStatus, ItemTypes } from "@shared-constants/constants";
 
 // Middleware
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
-import { applyAdvancedFilters } from "../utils/filterUtils.js";
-import DbUtils from "../utils/dbUtils.js";
-import FolderUtils from "../utils/folderUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import { applyAdvancedFilters } from "#utils/filterUtils.js";
+import DbUtils from "#utils/dbUtils.js";
+import FolderUtils from "#utils/folderUtils.js";
 
 // Services
-import SocketService from "../services/socketService.js";
+import SocketService from "#services/socketService.js";
 
 /**
  * @desc    Get all folders for current user

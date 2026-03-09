@@ -1,17 +1,17 @@
 import { jest } from "@jest/globals";
 
 // Models
-import File from "../../models/File.js";
-import Folder from "../../models/Folder.js";
-import Notification from "../../models/Notification.js";
+import File from "#models/File.js";
+import Folder from "#models/Folder.js";
+import Notification from "#models/Notification.js";
 
 // Services
-import TrashService from "../../services/trashService.js";
-import EmailService from "../../services/emailService.js";
+import TrashService from "#services/trashService.js";
+import EmailService from "#services/emailService.js";
 
 // Helpers
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createTestUser } from "../helpers/auth.helper.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createTestUser } from "#test-helpers/auth.helper.js";
 
 // Mock EmailService
 jest.mock("../../services/emailService.js", () => ({

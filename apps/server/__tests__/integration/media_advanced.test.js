@@ -1,11 +1,11 @@
 import { jest } from "@jest/globals";
 import request from "supertest";
-import app from "../../app.js";
-import File from "../../models/File.js";
+import app from "#app";
+import File from "#models/File.js";
 
 // Helpers
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createTestUser, getAuthHeader } from "#test-helpers/auth.helper.js";
 
 jest.mock("../../services/faceService.js", () => ({
   detectFaces: jest.fn().mockResolvedValue({}),

@@ -1,14 +1,14 @@
 import express from "express";
 
 // Controllers
-import { getQuotaUsage, getQuotaBreakdown, requestQuotaIncrease } from "../controllers/quotaController.js";
+import { getQuotaUsage, getQuotaBreakdown, requestQuotaIncrease } from "#controllers/quotaController.js";
 
 // Middleware
-import { protect } from "../middlewares/auth.js";
-import validate from "../middlewares/validate.js";
+import { protect } from "#middlewares/auth.js";
+import validate from "#middlewares/validate.js";
 
 // Schemas
-import { requestQuotaIncreaseSchema } from "../schemas/common.schema.js";
+import { requestQuotaIncreaseSchema } from "#schemas/common.schema.js";
 
 const router = express.Router();
 

@@ -1,22 +1,22 @@
 // Models
-import User from "../models/User.js";
+import User from "#models/User.js";
 
 // Services
-import EmailService from "../services/emailService.js";
+import EmailService from "#services/emailService.js";
 
 // Config
-import config from "../config/env.js";
+import config from "#config/env.js";
 
 // Constants
-import { ErrorMessages } from "../constants/generalConstants.js";
+import { ErrorMessages } from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
-import { sendTokenResponse } from "../utils/authUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import { sendTokenResponse } from "#utils/authUtils.js";
 
 /**
  * @desc    Update password
@@ -38,7 +38,7 @@ export const updatePassword = asyncHandler(async (req, res) => {
   await user.save();
 
   // Fire an in-app security alert
-  const { createNotification } = await import("./notificationController.js");
+  const { createNotification } = await import("#controllers/notificationController.js");
   createNotification(
     user._id,
     "security", // NotificationTypes.SECURITY_ALERT

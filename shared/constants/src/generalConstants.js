@@ -83,6 +83,29 @@ export const NotificationTypes = {
 };
 
 /**
+ * File Categories
+ */
+export const FileCategories = {
+  IMAGE: "image",
+  VIDEO: "video",
+  AUDIO: "audio",
+  DOCUMENT: "document",
+  ARCHIVE: "archive",
+  OTHER: "other",
+};
+
+/**
+ * Bulk Actions
+ */
+export const BulkActions = {
+  DELETE: "delete",
+  RESTORE: "restore",
+  PERMANENT_DELETE: "permanent_delete",
+  MOVE: "move",
+  COPY: "copy",
+};
+
+/**
  * Icon Sizes
  */
 export const ICON_SIZE = {

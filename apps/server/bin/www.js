@@ -1,14 +1,14 @@
 import http from "http";
-import app from "../app.js";
+import app from "#app";
 
 // Config
-import Env from "../config/env.js";
+import Env from "#config/env.js";
 
 // Services
-import SocketService from "../services/socketService.js";
+import SocketService from "#services/socketService.js";
 
 // Utils
-import logger from "../utils/logger.js";
+import logger from "#utils/logger.js";
 
 /**
  * Get port from environment and store in Express.

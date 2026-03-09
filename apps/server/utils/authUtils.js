@@ -1,7 +1,7 @@
-import config from "../config/env.js";
+import config from "#config/env.js";
 
 // Utils
-import ResponseUtils from "./responseUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
 
 /**
  * Helper to get token from model and send response

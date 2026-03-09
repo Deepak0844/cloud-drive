@@ -1,11 +1,11 @@
 import si from "systeminformation";
 
 // Models
-import User from "../models/User.js";
-import File from "../models/File.js";
+import User from "#models/User.js";
+import File from "#models/File.js";
 
 // Utils
-import logger from "../utils/logger.js";
+import logger from "#utils/logger.js";
 
 /**
  * Get real-time hardware information

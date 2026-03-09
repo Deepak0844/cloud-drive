@@ -9,7 +9,7 @@ import {
   sanitizeFilename,
   getFileExtension,
   getFilenameWithoutExtension,
-} from "../../../utils/fileUtils.js";
+} from "#utils/fileUtils.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

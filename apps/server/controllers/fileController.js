@@ -5,29 +5,29 @@ import path from "path";
 // Packages
 
 // Models
-import File from "../models/File.js";
-import Folder from "../models/Folder.js";
-import User from "../models/User.js";
+import File from "#models/File.js";
+import Folder from "#models/Folder.js";
+import User from "#models/User.js";
 
 // Services
-import FileService from "../services/fileService.js";
-import SocketService from "../services/socketService.js";
+import FileService from "#services/fileService.js";
+import SocketService from "#services/socketService.js";
 
 // Constants
-import { ErrorMessages } from "../constants/generalConstants.js";
+import { ErrorMessages, FileCategories } from "#constants/generalConstants.js";
 import { HttpStatus, ItemTypes } from "@shared-constants/constants";
 
 // Middleware
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
-import DbUtils from "../utils/dbUtils.js";
-import MediaUtils from "../utils/mediaUtils.js";
-import { applyAdvancedFilters } from "../utils/filterUtils.js";
-import logger from "../utils/logger.js";
-import { paginateQuery } from "../utils/paginationUtils.js";
-import StreamingUtils from "../utils/streamingUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import DbUtils from "#utils/dbUtils.js";
+import MediaUtils from "#utils/mediaUtils.js";
+import { applyAdvancedFilters } from "#utils/filterUtils.js";
+import logger from "#utils/logger.js";
+import { paginateQuery } from "#utils/paginationUtils.js";
+import StreamingUtils from "#utils/streamingUtils.js";
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 
@@ -176,11 +176,11 @@ export const getFilePreview = asyncHandler(async (req, res) => {
         return res.status(HttpStatus.ACCEPTED).send(""); // original missing, no thumb possible
       }
       try {
-        if (file.category === "image" || file.mime_type.startsWith("image/")) {
+        if (file.category === FileCategories.IMAGE || file.mime_type.startsWith("image/")) {
           await MediaUtils.generateImageThumbnail(file.storage_path, thumbPath);
-        } else if (file.category === "video" || file.mime_type.startsWith("video/")) {
+        } else if (file.category === FileCategories.VIDEO || file.mime_type.startsWith("video/")) {
           await MediaUtils.generateVideoThumbnail(file.storage_path, thumbDir, `${fileId}.jpg`);
-        } else if (file.category === "audio" || file.mime_type.startsWith("audio/")) {
+        } else if (file.category === FileCategories.AUDIO || file.mime_type.startsWith("audio/")) {
           await MediaUtils.extractAudioAlbumArt(file.storage_path, thumbPath);
         } else {
           return res.status(HttpStatus.ACCEPTED).send("");
@@ -207,7 +207,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
   }
 
   // ── Video preview — direct Range stream (all formats) ───────────────────────
-  if (file.category === "video") {
+  if (file.category === FileCategories.VIDEO) {
     if (!fs.existsSync(file.storage_path)) {
       return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
@@ -219,7 +219,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
   }
 
   // ── Audio preview/stream — HTTP Range ────────────────────────────────────────
-  if (file.category === "audio") {
+  if (file.category === FileCategories.AUDIO) {
     if (!fs.existsSync(file.storage_path)) {
       return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
@@ -273,7 +273,7 @@ export const streamFile = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  if (file.category !== "video" && file.category !== "audio") {
+  if (file.category !== FileCategories.VIDEO && file.category !== FileCategories.AUDIO) {
     return ResponseUtils.error(res, "Streaming not supported for this file type", HttpStatus.BAD_REQUEST);
   }
 
@@ -282,7 +282,7 @@ export const streamFile = asyncHandler(async (req, res) => {
   }
 
   // Non-native video: on-the-fly transcode via ffmpeg pipe (zero disk usage)
-  if (file.category === "video" && MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)) {
+  if (file.category === FileCategories.VIDEO && MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)) {
     logger.info(`[Stream] On-the-fly transcode ${file.mime_type} → MP4 pipe for file ${file._id}`);
     res.writeHead(200, {
       "Content-Type": "video/mp4",

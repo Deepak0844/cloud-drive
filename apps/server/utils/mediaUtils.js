@@ -13,7 +13,7 @@ import heicConvert from "heic-convert";
 import sharp from "sharp";
 
 // Utils
-import logger from "./logger.js";
+import logger from "#utils/logger.js";
 
 // Set ffmpeg and ffprobe paths
 ffmpeg.setFfmpegPath(ffmpegPath);

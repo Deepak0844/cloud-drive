@@ -2,15 +2,15 @@ import { jest } from "@jest/globals";
 import request from "supertest";
 
 // App
-import app from "../../app.js";
+import app from "#app";
 
 // Models
-import User from "../../models/User.js";
-import QuotaRequest from "../../models/QuotaRequest.js";
+import User from "#models/User.js";
+import QuotaRequest from "#models/QuotaRequest.js";
 
 // Helpers
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createAdminUser, createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createAdminUser, createTestUser, getAuthHeader } from "#test-helpers/auth.helper.js";
 
 describe("Admin API", () => {
   let admin;

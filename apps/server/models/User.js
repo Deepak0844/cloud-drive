@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 // Config
-import Env from "../config/env.js";
+import Env from "#config/env.js";
 
 // Constants
 import { Roles } from "@shared-constants/constants";

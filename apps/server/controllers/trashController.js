@@ -1,21 +1,21 @@
 // Models
-import File from "../models/File.js";
-import Folder from "../models/Folder.js";
+import File from "#models/File.js";
+import Folder from "#models/Folder.js";
 
 // Constants
 import { HttpStatus, ItemTypes } from "@shared-constants/constants";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
-import DbUtils from "../utils/dbUtils.js";
-import { applyAdvancedFilters } from "../utils/filterUtils.js";
-import { paginateQuery } from "../utils/paginationUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import DbUtils from "#utils/dbUtils.js";
+import { applyAdvancedFilters } from "#utils/filterUtils.js";
+import { paginateQuery } from "#utils/paginationUtils.js";
 
 // Services
-import SocketService from "../services/socketService.js";
+import SocketService from "#services/socketService.js";
 
 // Middlewares
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 /**
  * @desc    Get all files and folders currently in the trash (only items deleted directly)

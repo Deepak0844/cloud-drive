@@ -9,14 +9,14 @@ import {
   runStorageReanalysis,
   updateUserQuota,
   updateUserStatus,
-} from "../controllers/adminController.js";
+} from "#controllers/adminController.js";
 
 // Middleware
-import { admin, protect } from "../middlewares/auth.js";
-import validate from "../middlewares/validate.js";
+import { admin, protect } from "#middlewares/auth.js";
+import validate from "#middlewares/validate.js";
 
 // Schemas
-import { handleQuotaRequestSchema, updateUserQuotaSchema, updateUserStatusSchema } from "../schemas/admin.schema.js";
+import { handleQuotaRequestSchema, updateUserQuotaSchema, updateUserStatusSchema } from "#schemas/admin.schema.js";
 
 const router = express.Router();
 

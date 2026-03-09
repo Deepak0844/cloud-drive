@@ -1,25 +1,25 @@
 // Models
-import Notification from "../models/Notification.js";
-import User from "../models/User.js";
+import Notification from "#models/Notification.js";
+import User from "#models/User.js";
 
 // Services
-import PushService from "../services/pushService.js";
-import SocketService from "../services/socketService.js";
-import EmailService from "../services/emailService.js";
+import PushService from "#services/pushService.js";
+import SocketService from "#services/socketService.js";
+import EmailService from "#services/emailService.js";
 
 // Config
-import config from "../config/env.js";
+import config from "#config/env.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, SocketEvents, NotificationTypes } from "../constants/generalConstants.js";
+import { ErrorMessages, SuccessMessages, SocketEvents, NotificationTypes } from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
-import asyncHandler from "../middlewares/asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
-import logger from "../utils/logger.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import logger from "#utils/logger.js";
 
 // ─── Preference Groupings ─────────────────────────────────────────────────────
 

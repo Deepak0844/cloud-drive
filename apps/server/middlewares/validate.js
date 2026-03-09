@@ -2,7 +2,7 @@
 import { HttpStatus } from "@shared-constants/constants";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
 
 /**
  * Middleware to validate request using Zod schema

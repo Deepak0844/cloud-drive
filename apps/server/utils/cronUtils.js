@@ -6,14 +6,14 @@ import path from "path";
 import cron from "node-cron";
 
 // Services
-import DuplicateService from "../services/duplicateService.js";
-import TrashService from "../services/trashService.js";
+import DuplicateService from "#services/duplicateService.js";
+import TrashService from "#services/trashService.js";
 
 // Config
-import config from "../config/env.js";
+import config from "#config/env.js";
 
 // Utils
-import logger from "./logger.js";
+import logger from "#utils/logger.js";
 
 /**
  * Initialize cron jobs

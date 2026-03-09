@@ -5,10 +5,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 // Config
-import config from "../config/env.js";
+import config from "#config/env.js";
 
 // Utils
-import logger from "../utils/logger.js";
+import logger from "#utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

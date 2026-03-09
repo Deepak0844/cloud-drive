@@ -2,17 +2,17 @@ import { jest } from "@jest/globals";
 import request from "supertest";
 
 // App
-import app from "../../app.js";
+import app from "#app";
 
 // Models
-import User from "../../models/User.js";
+import User from "#models/User.js";
 
 // Services
-import EmailService from "../../services/emailService.js";
+import EmailService from "#services/emailService.js";
 
 // Helpers
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createTestUser, getAuthHeader } from "#test-helpers/auth.helper.js";
 
 describe("Auth API", () => {
   beforeAll(async () => {

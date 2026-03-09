@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 // Config
-import Env from "../config/env.js";
+import Env from "#config/env.js";
 
 const fileSchema = new mongoose.Schema(
   {

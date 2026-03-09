@@ -1,26 +1,26 @@
 // Models
-import File from "../models/File.js";
-import Folder from "../models/Folder.js";
-import User from "../models/User.js";
+import File from "#models/File.js";
+import Folder from "#models/Folder.js";
+import User from "#models/User.js";
 
 // Services
-import EmailService from "./emailService.js";
+import EmailService from "#services/emailService.js";
 
 // Utils
-import logger from "../utils/logger.js";
-import DbUtils from "../utils/dbUtils.js";
-import FormatUtils from "../utils/formatUtils.js";
+import logger from "#utils/logger.js";
+import DbUtils from "#utils/dbUtils.js";
+import FormatUtils from "#utils/formatUtils.js";
 
 // Config
-import config from "../config/env.js";
+import config from "#config/env.js";
 
 // Constants
-import { NotificationTypes } from "../constants/generalConstants.js";
+import { NotificationTypes } from "#constants/generalConstants.js";
 import { ItemTypes } from "@shared-constants/constants";
 
 // Lazy import to avoid circular dependency
 async function _createNotification(...args) {
-  const { createNotification } = await import("../controllers/notificationController.js");
+  const { createNotification } = await import("#controllers/notificationController.js");
   return createNotification(...args);
 }
 

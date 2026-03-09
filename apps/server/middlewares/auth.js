@@ -2,20 +2,20 @@
 import jwt from "jsonwebtoken";
 
 // Models
-import User from "../models/User.js";
+import User from "#models/User.js";
 
 // Config
-import Env from "../config/env.js";
+import Env from "#config/env.js";
 
 // Constants
-import { ErrorMessages } from "../constants/generalConstants.js";
+import { ErrorMessages } from "#constants/generalConstants.js";
 import { Roles, HttpStatus } from "@shared-constants/constants";
 
 // Middleware
-import asyncHandler from "./asyncHandler.js";
+import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
-import ResponseUtils from "../utils/responseUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
 
 // Protect routes
 export const protect = asyncHandler(async (req, res, next) => {

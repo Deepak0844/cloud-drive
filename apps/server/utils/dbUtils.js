@@ -2,19 +2,19 @@ import fs from "fs";
 import path from "path";
 
 // Models
-import File from "../models/File.js";
-import Folder from "../models/Folder.js";
-import User from "../models/User.js";
+import File from "#models/File.js";
+import Folder from "#models/Folder.js";
+import User from "#models/User.js";
 
 // Services
-import FileService from "../services/fileService.js";
+import FileService from "#services/fileService.js";
 
 // Constants
-import { ErrorMessages } from "../constants/generalConstants.js";
+import { ErrorMessages } from "#constants/generalConstants.js";
 import { ItemTypes } from "@shared-constants/constants";
 
 // Utils
-import logger from "./logger.js";
+import logger from "#utils/logger.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

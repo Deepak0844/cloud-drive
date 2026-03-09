@@ -3,7 +3,7 @@ import path from "path";
 import multer from "multer";
 
 // Constants
-import { ErrorMessages } from "../constants/generalConstants.js";
+import { ErrorMessages } from "#constants/generalConstants.js";
 
 // ─── Allowed MIME Types ───────────────────────────────────────────────────────
 

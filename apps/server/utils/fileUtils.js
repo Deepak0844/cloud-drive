@@ -2,7 +2,7 @@
 import fs from "fs";
 
 // Utils
-import logger from "./logger.js";
+import logger from "#utils/logger.js";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

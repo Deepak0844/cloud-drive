@@ -70,6 +70,29 @@ export const SuccessMessages = {
   LOGOUT_SUCCESS: "Logged out successfully",
   QUOTA_REQUEST_SUBMITTED: "Quota request submitted successfully.",
   NOTIFICATIONS_MARKED_READ: "All notifications marked as read",
-  PUSH_TOKEN_REGISTERED: "Push token registered successfully",
   TRASH_EMPTIED: "Trash emptied successfully",
+  PUSH_TOKEN_REGISTERED: "Push token registered successfully",
+};
+
+/**
+ * File Categories
+ */
+export const FileCategories = {
+  IMAGE: "image",
+  VIDEO: "video",
+  AUDIO: "audio",
+  DOCUMENT: "document",
+  ARCHIVE: "archive",
+  OTHER: "other",
+};
+
+/**
+ * Bulk Actions
+ */
+export const BulkActions = {
+  DELETE: "delete",
+  RESTORE: "restore",
+  PERMANENT_DELETE: "permanent_delete",
+  MOVE: "move",
+  COPY: "copy",
 };

@@ -8,29 +8,29 @@ import helmet from "helmet";
 import createError from "http-errors";
 
 // Database connection
-import connectToDatabase from "./config/db.js";
+import connectToDatabase from "#config/db.js";
 
 // Config
-import Env from "./config/env.js";
+import Env from "#config/env.js";
 
 // Constants
-import { ErrorMessages } from "./constants/generalConstants.js";
+import { ErrorMessages } from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Utils
-import CronUtils from "./utils/cronUtils.js";
-import logger from "./utils/logger.js";
-import ResponseUtils from "./utils/responseUtils.js";
+import CronUtils from "#utils/cronUtils.js";
+import logger from "#utils/logger.js";
+import ResponseUtils from "#utils/responseUtils.js";
 
 // Routes
-import authRoutes from "./routes/authRoutes.js";
-import fileRoutes from "./routes/fileRoutes.js";
-import folderRoutes from "./routes/folderRoutes.js";
-import trashRoutes from "./routes/trashRoutes.js";
-import quotaRoutes from "./routes/quotaRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import itemRoutes from "./routes/itemRoutes.js";
-import notificationRoutes from "./routes/notificationRoutes.js";
+import authRoutes from "#routes/authRoutes.js";
+import fileRoutes from "#routes/fileRoutes.js";
+import folderRoutes from "#routes/folderRoutes.js";
+import trashRoutes from "#routes/trashRoutes.js";
+import quotaRoutes from "#routes/quotaRoutes.js";
+import adminRoutes from "#routes/adminRoutes.js";
+import itemRoutes from "#routes/itemRoutes.js";
+import notificationRoutes from "#routes/notificationRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

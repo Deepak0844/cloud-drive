@@ -1,7 +1,7 @@
 import fs from "fs";
 
 // Utils
-import logger from "./logger.js";
+import logger from "#utils/logger.js";
 
 /**
  * Serve a file using HTTP 206 Partial Content (YouTube-style progressive streaming).
