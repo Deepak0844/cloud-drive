@@ -12,14 +12,15 @@ import {
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 
+// Constants
+import { DefaultPagination, ItemTypes, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
+
+// Hooks
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 
 // Services (RTK Query hooks)
 import { useGetRecentFilesQuery, useTouchFileMutation } from "@services/api/fileApi";
 import { useBulkDownloadMutation } from "@services/api/bulkApi";
-
-// Constants
-import { DefaultPagination, ItemTypes, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
 
 // Components
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
@@ -32,9 +33,23 @@ import SearchInput from "@shared-components/components/search-input";
 
 const { Text } = Typography;
 
-function RecentPage() {
+const VIEW_MODES = {
+  GRID: "grid",
+  LIST: "list",
+};
+
+const TIME_LABELS = {
+  TODAY: "Today",
+  YESTERDAY: "Yesterday",
+  EARLIER: "Earlier",
+};
+
+export default function RecentPage() {
   // Router hooks & params
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Redux hooks
+  const { message } = App.useApp();
 
   // Local state
   const [infoItem, setInfoItem] = useState(null);
@@ -44,12 +59,12 @@ function RecentPage() {
   });
   const [previewFile, setPreviewFile] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState(VIEW_MODES.GRID);
 
-  // Custom & shared hooks
-  const { message } = App.useApp();
+  // RTK Query hooks
+  const [bulkDownload, { isLoading: isDownloading }] = useBulkDownloadMutation();
+  const [touchFile] = useTouchFileMutation();
 
-  // Derived / computed variables
   const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
   const pageSize = useMemo(() => {
     const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
@@ -74,10 +89,6 @@ function RecentPage() {
     return filters;
   }, [searchParams]);
 
-  // RTK Query hooks
-  const [bulkDownload, { isLoading: isDownloading }] = useBulkDownloadMutation();
-  const [touchFile] = useTouchFileMutation();
-
   const {
     data: recentData,
     isLoading,
@@ -89,13 +100,23 @@ function RecentPage() {
     ...advancedFilters,
   });
 
-  // Derived / computed variables (part 2)
+  // Custom & shared hooks
+  const { loaderRef } = useInfiniteScroll({
+    hasNext: recentData?.pagination?.hasNext || false,
+    isLoading: isFetching,
+    onLoadMore: function handleLoadMore() {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
+    },
+  });
+
+  // Derived / computed variables
   const paginationData = recentData?.pagination || {};
   const allItems = recentData?.data || [];
-  const filteredItems = allItems; // Filtering handled by backend now
+  const filteredItems = allItems;
 
-  // Time grouping logic
-  const groupItemsByTime = (items) => {
+  const timeGroups = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const yesterday = new Date(today);
@@ -107,7 +128,7 @@ function RecentPage() {
       earlier: [],
     };
 
-    items.forEach((item) => {
+    filteredItems.forEach((item) => {
       const itemDate = new Date(item.last_opened_at || item.updatedAt);
       if (itemDate >= today) {
         groups.today.push(item);
@@ -119,57 +140,21 @@ function RecentPage() {
     });
 
     return groups;
-  };
-
-  const timeGroups = groupItemsByTime(filteredItems);
+  }, [filteredItems]);
 
   // Event handlers
-  const updateParams = useCallback(
-    (updates) => {
-      const newParams = new URLSearchParams(searchParams);
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === "") {
-          newParams.delete(key);
-        } else {
-          newParams.set(key, String(value));
-        }
-      });
-      setSearchParams(newParams, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
+  function updateParams(updates) {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === "") {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, String(value));
+      }
+    });
+    setSearchParams(newParams, { replace: true });
+  }
 
-  // Custom & shared hooks (part 2)
-  const { loaderRef } = useInfiniteScroll({
-    hasNext: paginationData?.hasNext || false,
-    isLoading: isFetching,
-    onLoadMore: () => {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
-    },
-  });
-
-  // useEffect
-  useEffect(() => {
-    // Handled by updateParams, but good for external URL changes
-  }, [debouncedSearch, advancedFilters]);
-
-  // Sync internal page state with URL
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
-
-  useEffect(() => {
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  }, [handleClickOutside]);
-
-  // Render
   function toggleSelect(id, type) {
     setSelectedItems((prev) => {
       const exists = prev.find((item) => item.id === id);
@@ -203,7 +188,9 @@ function RecentPage() {
     }
   }
 
-  const clearSelection = useCallback(() => setSelectedItems([]), []);
+  const clearSelection = useCallback(() => {
+    setSelectedItems([]);
+  }, []);
 
   const handleClickOutside = useCallback(
     (e) => {
@@ -219,6 +206,21 @@ function RecentPage() {
     [clearSelection]
   );
 
+  // useEffect
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
+
+  useEffect(() => {
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [handleClickOutside]);
+
+  // Render
   return (
     <div className="flex flex-col h-full bg-surface">
       {/* Premium Header */}
@@ -287,20 +289,20 @@ function RecentPage() {
             <div className="flex items-center gap-1 bg-surface-dim p-1 rounded-xl border border-line">
               <Tooltip title="Grid View">
                 <Button
-                  styleType={viewMode === "grid" ? "primary" : "ghost"}
+                  styleType={viewMode === VIEW_MODES.GRID ? "primary" : "ghost"}
                   size="small"
                   className="w-8 h-8 p-0 flex items-center justify-center rounded-lg"
-                  onClick={() => setViewMode("grid")}
+                  onClick={() => setViewMode(VIEW_MODES.GRID)}
                 >
                   <AppstoreOutlined />
                 </Button>
               </Tooltip>
               <Tooltip title="List View">
                 <Button
-                  styleType={viewMode === "list" ? "primary" : "ghost"}
+                  styleType={viewMode === VIEW_MODES.LIST ? "primary" : "ghost"}
                   size="small"
                   className="w-8 h-8 p-0 flex items-center justify-center rounded-lg"
-                  onClick={() => setViewMode("list")}
+                  onClick={() => setViewMode(VIEW_MODES.LIST)}
                 >
                   <BarsOutlined />
                 </Button>
@@ -336,13 +338,17 @@ function RecentPage() {
                   <section key={key}>
                     <div className="flex items-center gap-2 mb-6">
                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary">
-                        {key === "today" ? "Today" : key === "yesterday" ? "Yesterday" : "Earlier"}
+                        {key === "today"
+                          ? TIME_LABELS.TODAY
+                          : key === "yesterday"
+                            ? TIME_LABELS.YESTERDAY
+                            : TIME_LABELS.EARLIER}
                       </span>
                       <div className="h-px flex-1 bg-linear-to-r from-line/50 to-transparent" />
                     </div>
                     <div
                       className={
-                        viewMode === "grid"
+                        viewMode === VIEW_MODES.GRID
                           ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-6"
                           : "flex flex-col gap-2"
                       }
@@ -355,12 +361,16 @@ function RecentPage() {
                             file={{ ...file, id }}
                             viewMode={viewMode}
                             isSelected={selectedItems.some((i) => String(i.id) === id)}
-                            onToggleSelect={() => toggleSelect(id, "file")}
+                            onToggleSelect={() => {
+                              toggleSelect(id, "file");
+                            }}
                             onOpen={() => {
                               setPreviewFile(file);
                               touchFile({ id });
                             }}
-                            onShowInfo={() => setInfoItem({ ...file, id, type: "file" })}
+                            onShowInfo={() => {
+                              setInfoItem({ ...file, id, type: "file" });
+                            }}
                             showParentContext={true}
                           />
                         );
@@ -387,8 +397,24 @@ function RecentPage() {
         )}
       </div>
 
-      {infoItem && <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />}
-      {previewFile && <FilePreviewModal file={previewFile} open={!!previewFile} onClose={() => setPreviewFile(null)} />}
+      {infoItem && (
+        <InfoDrawer
+          item={infoItem}
+          open={!!infoItem}
+          onClose={() => {
+            setInfoItem(null);
+          }}
+        />
+      )}
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          open={!!previewFile}
+          onClose={() => {
+            setPreviewFile(null);
+          }}
+        />
+      )}
 
       {/* Simplified Bulk Actions Bar for Recent Page */}
       {selectedItems.length > 0 && (
@@ -432,5 +458,3 @@ function RecentPage() {
     </div>
   );
 }
-
-export default RecentPage;

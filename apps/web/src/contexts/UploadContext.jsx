@@ -1,17 +1,19 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
+
+// Utils
+import HttpClientFactory from "@utils/httpClientFactory";
+
 const CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
 const UploadContext = createContext(null);
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const useUploadDetails = () => {
+export function useUploadDetails() {
   const context = useContext(UploadContext);
   if (!context) {
     throw new Error("useUploadDetails must be used within an UploadProvider");
   }
   return context;
-};
-
-import HttpClientFactory from "@utils/httpClientFactory";
+}
 
 /**
  * Fire the init API immediately — before React even renders UploadItem.
@@ -39,7 +41,7 @@ async function preInitUpload(file, folderId, chunkSize) {
   return res.data; // { uploadId, totalChunks }
 }
 
-export const UploadProvider = ({ children }) => {
+export function UploadProvider({ children }) {
   const [uploads, setUploads] = useState([]);
 
   const addUpload = useCallback((file, folderId) => {
@@ -57,4 +59,4 @@ export const UploadProvider = ({ children }) => {
   }, []);
 
   return <UploadContext.Provider value={{ uploads, addUpload, removeUpload }}>{children}</UploadContext.Provider>;
-};
+}

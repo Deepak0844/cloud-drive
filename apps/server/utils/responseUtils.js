@@ -1,11 +1,11 @@
 /**
  * Send a success response
  */
-function success(res, data = {}, statusCode = 200, extra = {}) {
+function success(res, data = {}, statusCode = 200, message = "Success") {
   const response = {
     success: true,
+    message,
     data,
-    ...extra,
   };
 
   // If data structure contains pagination (from paginateQuery utility), move it to top level
@@ -20,11 +20,11 @@ function success(res, data = {}, statusCode = 200, extra = {}) {
 /**
  * Send an error response (usually handled by global error middleware)
  */
-function error(res, message = "Server Error", statusCode = 500, extra = {}) {
+function error(res, message = "An error occurred", statusCode = 500, errors = []) {
   return res.status(statusCode).json({
     success: false,
-    error: message,
-    ...extra,
+    message,
+    errors,
   });
 }
 

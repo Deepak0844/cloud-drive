@@ -10,6 +10,7 @@ import { HttpStatus, ItemTypes } from "@shared-constants/constants";
 import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
+import { AppError } from "#utils/errorUtils.js";
 import ResponseUtils from "#utils/responseUtils.js";
 import { applyAdvancedFilters } from "#utils/filterUtils.js";
 import DbUtils from "#utils/dbUtils.js";
@@ -68,7 +69,7 @@ export const updateFolderTags = asyncHandler(async (req, res) => {
   const folder = await Folder.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, { tags }, { new: true });
 
   if (!folder) {
-    return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   return ResponseUtils.success(res, folder);
@@ -191,7 +192,7 @@ export const getFolderContents = asyncHandler(async (req, res) => {
 export const getFolderDetails = asyncHandler(async (req, res) => {
   const folder = await Folder.findOne({ _id: req.params.id, user: req.user.id });
   if (!folder) {
-    return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   // Get breadcrumbs
@@ -208,35 +209,22 @@ export const getFolderDetails = asyncHandler(async (req, res) => {
 export const createFolder = asyncHandler(async (req, res) => {
   const { name, parent } = req.body;
 
-  // Calculate folder path
-  let folderPath;
-  try {
-    folderPath = await FolderUtils.calculateFolderPath(parent);
-  } catch (error) {
-    return ResponseUtils.error(res, error.message, HttpStatus.NOT_FOUND);
-  }
+  const folderPath = await FolderUtils.calculateFolderPath(parent);
 
-  try {
-    const folder = await Folder.create({
-      user: req.user.id,
-      name,
-      parent: parent,
-      path: folderPath,
-    });
+  const folder = await Folder.create({
+    user: req.user.id,
+    name,
+    parent: parent,
+    path: folderPath,
+  });
 
-    SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
-      action: "CREATE",
-      folderId: folder._id,
-      parentId: folder.parent,
-    });
+  SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
+    action: "CREATE",
+    folderId: folder._id,
+    parentId: folder.parent,
+  });
 
-    return ResponseUtils.success(res, folder, HttpStatus.CREATED);
-  } catch (err) {
-    if (err.code === 11000) {
-      return ResponseUtils.error(res, ErrorMessages.FOLDER_ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
-    }
-    throw err;
-  }
+  return ResponseUtils.success(res, folder, HttpStatus.CREATED);
 });
 
 /**
@@ -295,7 +283,7 @@ export const copyFolder = asyncHandler(async (req, res) => {
   const newFolder = await DbUtils.copyRecursive(ItemTypes.FOLDER, req.params.id, parentId, req.user.id);
 
   if (!newFolder) {
-    return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   // HEAD did not have socket event for copyFolder, so omitting it to confirm exact restoration/behavior
