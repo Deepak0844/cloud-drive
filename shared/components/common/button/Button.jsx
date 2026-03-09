@@ -1,3 +1,5 @@
+import React from "react";
+
 // Helpers
 function constructClassName(disabled, loading, className) {
   const modifierClassName = disabled || loading ? "opacity-50" : "";
@@ -33,7 +35,7 @@ function IconAndLoader({ loading = false, icon = null, loadingMode = "replace" }
  * @param {Function} onClick
  * @param {Boolean} loading
  * @param {String} iconPosition : start || end
- * @param {Component} icon
+ * @param {React.ElementType} icon
  * @param {String} loadingMode : replace || combine || only-spinner
  * @param {Other Props} rest
  * @returns

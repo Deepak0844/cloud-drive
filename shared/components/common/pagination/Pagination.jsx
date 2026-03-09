@@ -1,11 +1,11 @@
 import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+// Constants
+import { ICON_SIZE, PAGINATION, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
+
 // Components
 import Icon from "../icon/Icon";
-
-// Constants
-import { ICON_SIZE, DefaultPagination, QueryParamsKeys } from "../../constants/constants";
 
 // Styles
 import "./Pagination.css";
@@ -26,8 +26,8 @@ export default function Pagination({ className = "", paginationObj = {} }) {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const urlPageNumber = searchParams.get(QueryParamsKeys.pageNumber);
-  const pageNumber = urlPageNumber ? Number(urlPageNumber) : pageFirst;
+  const urlPageNumber = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+  const pageNumber = urlPageNumber ? Number(urlPageNumber) : PAGINATION.DEFAULT_PAGE;
 
   const isFirstPage = pageNumber <= 1;
   const isLastPage = pageLast >= totalCount;
@@ -44,7 +44,7 @@ export default function Pagination({ className = "", paginationObj = {} }) {
     const params = Object.fromEntries([...searchParams]);
     const newPage = isNext ? pageNumber + 1 : pageNumber - 1;
 
-    setSearchParams({ ...params, [QueryParamsKeys.pageNumber]: newPage });
+    setSearchParams({ ...params, [QUERY_PARAMS_KEYS.PAGE_NO]: newPage });
   };
 
   return (

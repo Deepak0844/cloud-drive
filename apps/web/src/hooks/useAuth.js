@@ -8,7 +8,7 @@ import AuthUtils from "../utils/authUtils";
 
 // constants
 import PageUrls from "../constants/pageUrls";
-import { Roles } from "../constants/generalConstants";
+import { Roles } from "@shared-constants/constants";
 
 /**
  * Custom hook for Authentication related actions.

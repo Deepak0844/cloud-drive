@@ -1,5 +1,6 @@
 import { ArrowLeftOutlined, FolderFilled, FolderOpenFilled, HomeFilled } from "@ant-design/icons";
-import { Breadcrumb, List, Modal, Spin, Typography } from "antd";
+import { Breadcrumb, List, Modal, Typography } from "antd";
+import Loader from "@shared-components/components/loader";
 import React, { useState } from "react";
 import { useGetFoldersQuery } from "@services/api/folderApi";
 import Button from "@shared-components/components/button";
@@ -125,7 +126,7 @@ function FolderPickerModal({
         <div className="flex-1 overflow-y-auto pr-1">
           {isFoldersLoading ? (
             <div className="py-20 flex justify-center w-full">
-              <Spin size="large" />
+              <Loader size={32} />
             </div>
           ) : visibleFolders.length === 0 ? (
             <div className="py-20 flex flex-col items-center justify-center text-center opacity-60">

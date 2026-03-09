@@ -8,7 +8,11 @@
     "./button": "./src/button/Button.jsx",
     "./dropdown": "./src/dropdown/Dropdown.jsx",
     "./table": "./src/table/Table.jsx",
-    "./table-action-button": "./src/table-action-button/TableActionButton.jsx"
+    "./table-action-button": "./src/table-action-button/TableActionButton.jsx",
+    "./search-input": "./src/search-input/SearchInput.jsx",
+    "./modal": "./src/modal/Modal.jsx",
+    "./loader": "./src/loader/Loader.jsx",
+    "./pagination": "./common/pagination/Pagination.jsx"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",

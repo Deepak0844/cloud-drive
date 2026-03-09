@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 
 // Constants
-import { ICON_SIZE } from "../../constants/constants";
+import { ICON_SIZE } from "@shared-constants/constants";
 
 // Components
 import Icon from "../icon/Icon";

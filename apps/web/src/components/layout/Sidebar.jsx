@@ -15,7 +15,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 // constants
 import PageUrls from "@constants/pageUrls";
 import PageNames from "@constants/pageNames";
-import { Roles } from "@constants/generalConstants";
+import { Roles } from "@shared-constants/constants";
 
 // utils
 import AuthUtils from "@utils/authUtils";

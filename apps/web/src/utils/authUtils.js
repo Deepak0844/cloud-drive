@@ -1,5 +1,5 @@
 // Constants
-import { STORAGE_KEYS } from "../constants/generalConstants";
+import { STORAGE_KEYS } from "@shared-constants/constants";
 
 // Utils
 import LocalStorage from "./localStorageUtils";

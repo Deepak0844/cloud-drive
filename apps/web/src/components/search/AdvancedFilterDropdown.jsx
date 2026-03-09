@@ -3,7 +3,8 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 
 import { CloseOutlined, FilterOutlined } from "@ant-design/icons";
-import { Button, DatePicker, InputNumber, Select } from "antd";
+import { DatePicker, InputNumber, Select } from "antd";
+import Button from "@shared-components/components/button";
 import { motion, AnimatePresence } from "framer-motion";
 import React, { useState } from "react";
 

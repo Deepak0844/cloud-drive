@@ -6,7 +6,7 @@ import AuthUtils from "@utils/authUtils";
 
 // Constants
 import PageUrls from "@constants/pageUrls";
-import { Roles } from "@constants/generalConstants";
+import { Roles } from "@shared-constants/constants";
 
 // Pages (not needed anymore — we Navigate instead of render)
 

@@ -6,18 +6,8 @@ import {
   ReloadOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import {
-  Tabs,
-  Tag,
-  Typography,
-  message as antdMessage,
-  Modal,
-  Form,
-  InputNumber,
-  Space,
-  Skeleton,
-  Button as AntdButton,
-} from "antd";
+import { Tabs, Tag, Typography, message as antdMessage, Modal, Form, InputNumber, Space, Skeleton } from "antd";
+import Button from "@shared-components/components/button";
 import { motion } from "framer-motion";
 import React, { useState } from "react";
 
@@ -363,14 +353,14 @@ export default function AdminDashboardPage() {
           </Title>
           <Text type="secondary">Manage users and storage requests</Text>
         </div>
-        <AntdButton
+        <Button
           icon={<ReloadOutlined />}
           loading={reanalyzing}
           onClick={() => handleSyncStorage()}
           className="rounded-xl font-bold h-10 border-primary text-primary hover:bg-primary-light"
         >
           Re-analyze All Storage
-        </AntdButton>
+        </Button>
       </div>
 
       <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} className="admin-tabs flex-1" />

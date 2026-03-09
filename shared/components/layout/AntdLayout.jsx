@@ -1,3 +1,4 @@
+import React from "react";
 import { Layout as AntDLayout } from "antd";
 const { Content, Header, Footer } = AntDLayout;
 import { Outlet } from "react-router-dom";
@@ -24,8 +25,8 @@ import "./antd-layout.scss";
  * @param {Object} leftSidebarConfig
  * @param {Object} rightSidebarConfig
  * @param {Number} topbarHeight
- * @param {Component} topbarContent
- * @param {Component} pageFooterContent
+ * @param {React.ReactNode} topbarContent
+ * @param {React.ReactNode} pageFooterContent
  */
 export default function AntdLayout({
   outletProps = {},

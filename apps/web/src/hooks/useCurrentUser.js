@@ -1,5 +1,5 @@
 import { useGetMeQuery } from "@services/api/authApi";
-import { Roles } from "../constants/generalConstants";
+import { Roles } from "@shared-constants/constants";
 
 /**
  * Server-authoritative hook for the current logged-in user.

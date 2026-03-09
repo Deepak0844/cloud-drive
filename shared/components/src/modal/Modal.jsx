@@ -25,9 +25,10 @@ export default function Modal({
   modalTitle = "",
   modalWidth = 600,
   modalStyle = {},
-  btnText = "",
+  btnText = "Submit",
   btnLoading = false,
-  handleReset = () => {},
+  cancelText = "Cancel",
+  handleReset = () => {}, // Re-using handleReset for onAfterClose if needed, but primarily onCancel
   handleSubmit = () => {},
   handleCloseModal = () => {},
   children,
@@ -43,16 +44,19 @@ export default function Modal({
       closable={false}
       footer={() => (
         <ModalFooter
-          handleReset={handleReset}
-          handleSubmit={handleSubmit}
-          upsertBtnText={btnText}
-          upsertBtnLoading={btnLoading}
+          onCancel={handleCloseModal}
+          onOk={handleSubmit}
+          okText={btnText}
+          okLoading={btnLoading}
+          cancelText={cancelText}
         />
       )}
+      className="premium-modal"
+      centered
     >
       {modalTitle && <ModalHeader title={modalTitle} onClose={handleCloseModal} />}
 
-      {children}
+      <div className="modal-content-wrapper min-h-[100px]">{children}</div>
     </AntDModal>
   );
 }

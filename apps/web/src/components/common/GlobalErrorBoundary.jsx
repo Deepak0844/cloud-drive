@@ -1,5 +1,6 @@
 import React, { Component } from "react";
-import { Button, Typography } from "antd";
+import { Typography } from "antd";
+import Button from "@shared-components/components/button";
 import { WarningOutlined, ReloadOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;

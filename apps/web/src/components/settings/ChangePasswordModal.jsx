@@ -1,5 +1,6 @@
 // external
-import { Form, Input, Modal, message } from "antd";
+import { Form, Input, message } from "antd";
+import Modal from "@shared-components/components/modal";
 import React from "react";
 
 // api
@@ -50,13 +51,12 @@ function ChangePasswordModal({ open, onClose }) {
 
   return (
     <Modal
-      title="Change Password"
+      modalTitle="Change Password"
       open={open}
-      onOk={handleOk}
-      onCancel={handleCancel}
-      confirmLoading={isLoading}
-      okText="Update Password"
-      centered
+      handleSubmit={handleOk}
+      handleCloseModal={handleCancel}
+      btnLoading={isLoading}
+      btnText="Update Password"
     >
       <Form form={form} layout="vertical">
         <Form.Item

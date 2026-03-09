@@ -1,5 +1,5 @@
 // Constants
-import { DefaultPagination } from "./constants/webConstants";
+import { DefaultPagination } from "@shared-constants/constants";
 
 /**
  * Table Serial Number Function

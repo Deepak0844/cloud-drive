@@ -13,14 +13,15 @@ import {
   FolderFilled,
   HomeOutlined,
   PlusOutlined,
-  SearchOutlined,
   SendOutlined,
   UploadOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { App, Breadcrumb, Input, Modal, Spin, Tooltip, Typography, Upload } from "antd";
+import { App, Breadcrumb, Input, Modal, Tooltip, Typography, Upload } from "antd";
+import SearchInput from "@shared-components/components/search-input";
+import Loader from "@shared-components/components/loader";
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 // api
@@ -45,7 +46,7 @@ import {
 } from "@services/api/fileApi";
 
 // constants
-import { STORAGE } from "@shared-constants/constants";
+import { STORAGE, ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
 import PageNames from "@constants/pageNames";
 
 // components
@@ -59,7 +60,6 @@ import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
 import { useUploadDetails } from "@contexts/UploadContext";
-import useDebounce from "@hooks/useDebounce";
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 
 const { Text } = Typography;
@@ -72,12 +72,13 @@ function MyFilesView() {
   const currentFolderId = searchParams.get("folder") || "root";
 
   const setCurrentFolderId = (id) => {
+    const newParams = new URLSearchParams(searchParams);
     if (id === "root" || !id) {
-      searchParams.delete("folder");
-      setSearchParams(searchParams);
+      newParams.delete("folder");
     } else {
-      setSearchParams({ folder: id });
+      newParams.set("folder", id);
     }
+    setSearchParams(newParams);
   };
 
   const [selectedItems, setSelectedItems] = useState([]);
@@ -88,14 +89,46 @@ function MyFilesView() {
   const [infoItem, setInfoItem] = useState(null);
   const [renameItem, setRenameItem] = useState(null);
   const [deleteItem, setDeleteItem] = useState(null);
-  const [previewFile, setPreviewFile] = useState(null);
   const [newName, setNewName] = useState("");
+  const [previewFile, setPreviewFile] = useState(null);
+  // Derived State from URL
+  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 500);
-  const [advancedFilters, setAdvancedFilters] = useState({});
-  const [sortBy, setSortBy] = useState("updatedAt");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const advancedFilters = useMemo(() => {
+    const filters = {};
+    const cat = searchParams.get(QUERY_PARAMS_KEYS.CATEGORY);
+    const sd = searchParams.get(QUERY_PARAMS_KEYS.START_DATE);
+    const ed = searchParams.get(QUERY_PARAMS_KEYS.END_DATE);
+    const min = searchParams.get(QUERY_PARAMS_KEYS.MIN_SIZE);
+    const max = searchParams.get(QUERY_PARAMS_KEYS.MAX_SIZE);
+    const tag = searchParams.get(QUERY_PARAMS_KEYS.TAG);
+
+    if (cat) filters.category = cat;
+    if (sd) filters.startDate = sd;
+    if (ed) filters.endDate = ed;
+    if (min) filters.minSize = Number(min);
+    if (max) filters.maxSize = Number(max);
+    if (tag) filters.tag = tag;
+    return filters;
+  }, [searchParams]);
+
+  const sortBy = searchParams.get(QUERY_PARAMS_KEYS.SORT_BY) || "updatedAt";
+  const sortOrder = searchParams.get(QUERY_PARAMS_KEYS.SORT_ORDER) || "desc";
+
+  const updateParams = useCallback(
+    (updates) => {
+      const newParams = new URLSearchParams(searchParams);
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, String(value));
+        }
+      });
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
   // Folder Picker State
   const [folderPicker, setFolderPicker] = useState({
@@ -105,7 +138,22 @@ function MyFilesView() {
     items: [], // selection for bulk move/copy
   });
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    return p ? Number(p) : DefaultPagination.pageNumber;
+  });
+
+  const pageSize = useMemo(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
+    return p ? Number(p) : DefaultPagination.pageSize;
+  }, [searchParams]);
+
+  // Sync internal page state with URL (optional but good for consistency)
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
 
   // API Queries
   const {
@@ -114,25 +162,24 @@ function MyFilesView() {
     isFetching: isContentsFetching,
   } = useGetFolderContentsQuery({
     folderId: currentFolderId,
-    search: debouncedSearch,
+    search: debouncedSearch || undefined,
     sortBy: sortBy,
     sortOrder: sortOrder,
     pg: page,
-    ps: 40,
+    ps: pageSize,
     ...advancedFilters,
   });
 
-  // Reset page when folder or search/sort changes
-  useEffect(() => {
-    setPage(1);
-  }, [currentFolderId, debouncedSearch, sortBy, sortOrder, advancedFilters]);
-
-  const hasNextPage = contentsData?.pagination?.hasNext || false;
+  const paginationData = contentsData?.pagination || {};
 
   const { loaderRef } = useInfiniteScroll({
-    hasNext: hasNextPage,
+    hasNext: paginationData?.hasNext || false,
     isLoading: isContentsFetching,
-    onLoadMore: () => setPage((prev) => prev + 1),
+    onLoadMore: () => {
+      const nextPage = page + 1;
+      setPage(nextPage); // This updates the query param via useEffect/updateParams
+      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
+    },
   });
 
   const { data: detailsData } = useGetFolderDetailsQuery(
@@ -242,7 +289,7 @@ function MyFilesView() {
   async function handleBulkDownload(itemsToDownload) {
     if (!itemsToDownload || itemsToDownload.length === 0) return;
     // Only download file-type items (not folders) for now
-    const fileItems = itemsToDownload.filter((i) => i.type === "file");
+    const fileItems = itemsToDownload.filter((i) => i.type === ItemTypes.FILE);
     if (fileItems.length === 0) {
       message.warning("Please select at least one file to download");
       return;
@@ -448,7 +495,7 @@ function MyFilesView() {
   }
 
   const uploadProps = {
-    name: "file",
+    name: ItemTypes.FILE,
     multiple: true,
     showUploadList: false,
     beforeUpload: (file) => {
@@ -502,18 +549,35 @@ function MyFilesView() {
 
         <div className="flex gap-2 grow justify-end items-center">
           <div className="w-56 flex-none">
-            <Input
+            <SearchInput
               id="search-input"
               name="search"
               placeholder="Search in My Files..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              prefix={<SearchOutlined className="text-primary text-sm" />}
               suffix={
                 <AdvancedFilterDropdown
                   initialFilters={advancedFilters}
-                  onFilter={(filters) => setAdvancedFilters(filters)}
-                  onClear={() => setAdvancedFilters({})}
+                  onFilter={(filters) =>
+                    updateParams({
+                      [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
+                      [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
+                      [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
+                      [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
+                      [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
+                      [QUERY_PARAMS_KEYS.TAG]: filters.tag,
+                      [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber, // Reset page on filter change
+                    })
+                  }
+                  onClear={() =>
+                    updateParams({
+                      [QUERY_PARAMS_KEYS.CATEGORY]: null,
+                      [QUERY_PARAMS_KEYS.START_DATE]: null,
+                      [QUERY_PARAMS_KEYS.END_DATE]: null,
+                      [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
+                      [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
+                      [QUERY_PARAMS_KEYS.TAG]: null,
+                      [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+                    })
+                  }
                   trigger={
                     <Tooltip title="Advanced Filters">
                       <div className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-alt cursor-pointer transition-all group/filter -mr-1">
@@ -543,8 +607,11 @@ function MyFilesView() {
                 ],
                 onClick: ({ key }) => {
                   const [f, o] = key.split("-");
-                  setSortBy(f);
-                  setSortOrder(o);
+                  updateParams({
+                    [QUERY_PARAMS_KEYS.SORT_BY]: f,
+                    [QUERY_PARAMS_KEYS.SORT_ORDER]: o,
+                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber, // Reset page on sort change
+                  });
                 },
                 selectable: true,
                 defaultSelectedKeys: [`${sortBy}-${sortOrder}`],
@@ -578,11 +645,11 @@ function MyFilesView() {
             menu={{
               items: [
                 { key: "upload", label: "Upload File", icon: <UploadOutlined /> },
-                { key: "folder", label: "New Folder", icon: <PlusOutlined /> },
+                { key: ItemTypes.FOLDER, label: "New Folder", icon: <PlusOutlined /> },
               ],
               onClick: ({ key }) => {
                 if (key === "upload") handleUploadClick();
-                else if (key === "folder") handleCreateFolder();
+                else if (key === ItemTypes.FOLDER) handleCreateFolder();
               },
             }}
             placement="bottomRight"
@@ -679,7 +746,7 @@ function MyFilesView() {
                 </h2>
                 {isContentsLoading ? (
                   <div className="py-10 flex justify-center w-full">
-                    <Spin size="large" />
+                    <Loader size={32} />
                   </div>
                 ) : (
                   <div
@@ -697,7 +764,7 @@ function MyFilesView() {
                             folder={{ ...folder, id }} // normalize id for the component
                             viewMode={viewMode}
                             isSelected={selectedItems.some((i) => String(i.id) === id)}
-                            onToggleSelect={(id) => toggleSelect(String(id), "folder")}
+                            onToggleSelect={(id) => toggleSelect(String(id), ItemTypes.FOLDER)}
                             onOpen={handleOpen}
                             onShowInfo={handleShowInfo}
                             onRename={handleRenameTrigger}
@@ -721,7 +788,7 @@ function MyFilesView() {
                 </h2>
                 {isContentsLoading ? (
                   <div className="py-10 flex justify-center w-full">
-                    <Spin size="large" />
+                    <Loader size={32} />
                   </div>
                 ) : (
                   <div
@@ -739,7 +806,7 @@ function MyFilesView() {
                             file={{ ...file, id }} // normalize id for the component
                             viewMode={viewMode}
                             isSelected={selectedItems.some((i) => String(i.id) === id)}
-                            onToggleSelect={(id) => toggleSelect(String(id), "file")}
+                            onToggleSelect={(id) => toggleSelect(String(id), ItemTypes.FILE)}
                             onOpen={handleOpen}
                             onShowInfo={handleShowInfo}
                             onRename={handleRenameTrigger}
@@ -754,12 +821,16 @@ function MyFilesView() {
                 )}
 
                 {/* Infinite Scroll Loader */}
-                <div ref={loaderRef} className="py-8 flex justify-center w-full">
-                  {isContentsFetching && page > 1 && <Spin />}
-                  {!hasNextPage && (folders.length > 0 || files.length > 0) && (
-                    <Text type="secondary" className="text-xs opacity-50 uppercase tracking-widest font-black">
-                      No more items
-                    </Text>
+                <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
+                  {isContentsFetching ? (
+                    <>
+                      <Loader size={24} />
+                      <Text className="text-label-tertiary text-sm">Loading more files...</Text>
+                    </>
+                  ) : paginationData?.hasNext ? (
+                    <Text className="text-label-tertiary text-sm italic">Scroll for more</Text>
+                  ) : (
+                    <Text className="text-label-tertiary text-sm italic">No more files</Text>
                   )}
                 </div>
               </div>

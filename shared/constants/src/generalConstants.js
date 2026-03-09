@@ -1,10 +1,36 @@
 /**
  * Pagination Defaults
  */
-export const PAGINATION = {
-  DEFAULT_PAGE: 1,
-  DEFAULT_PAGE_SIZE: 20,
-  MAX_PAGE_SIZE: 100,
+export const STORAGE_KEYS = {
+  TOKEN: "AuthToken",
+  USER: "User",
+};
+
+/**
+ * Pagination Defaults
+ */
+export const DefaultPagination = {
+  pageNumber: 1,
+  pageSize: 20,
+  totalCount: 0,
+  maxPageSize: 1000,
+};
+
+/**
+ * Query Parameter Keys
+ */
+export const QUERY_PARAMS_KEYS = {
+  PAGE_NO: "pn",
+  PAGE_SIZE: "ps",
+  SEARCH: "q",
+  SORT_BY: "sb",
+  SORT_ORDER: "so",
+  CATEGORY: "cat",
+  START_DATE: "sd",
+  END_DATE: "ed",
+  MIN_SIZE: "min",
+  MAX_SIZE: "max",
+  TAG: "tag",
 };
 
 /**
@@ -40,4 +66,28 @@ export const QuotaStatus = {
   PENDING: "PENDING",
   APPROVED: "APPROVED",
   REJECTED: "REJECTED",
+};
+
+/**
+ * Notification Types
+ */
+export const NotificationTypes = {
+  STORAGE_ALERT: "STORAGE_ALERT",
+  SECURITY_ALERT: "SECURITY_ALERT",
+  QUOTA_APPROVED: "QUOTA_APPROVED",
+  QUOTA_REJECTED: "QUOTA_REJECTED",
+  QUOTA_CHANGE: "QUOTA_CHANGE",
+  QUOTA_REQUEST: "QUOTA_REQUEST",
+  TRASH_CLEANUP: "TRASH_CLEANUP",
+  SYSTEM_ALERT: "SYSTEM_ALERT",
+};
+
+/**
+ * Icon Sizes
+ */
+export const ICON_SIZE = {
+  small: 16,
+  medium: 20,
+  large: 24,
+  xlarge: 32,
 };

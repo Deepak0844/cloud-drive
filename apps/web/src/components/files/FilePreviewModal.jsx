@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Typography, Spin, App } from "antd";
+import { Modal, Typography, App } from "antd";
+import Loader from "@shared-components/components/loader";
 import { DownloadOutlined } from "@ant-design/icons";
 import HttpClientFactory from "@utils/httpClientFactory";
 import Button from "@shared-components/components/button";
@@ -82,7 +83,7 @@ export default function FilePreviewModal({ file, open, onClose }) {
     if (loading) {
       return (
         <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70">
-          <Spin size="large" />
+          <Loader size={32} />
           <Text className="text-label-tertiary">Loading preview...</Text>
         </div>
       );

@@ -6,13 +6,15 @@ import {
   FilterOutlined,
   HomeOutlined,
   RestOutlined,
-  SearchOutlined,
   UndoOutlined,
 } from "@ant-design/icons";
-import { App, Breadcrumb, Input, Spin, Tooltip, Typography } from "antd";
+import { App, Breadcrumb, Tooltip } from "antd";
+import SearchInput from "@shared-components/components/search-input";
+import Loader from "@shared-components/components/loader";
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useInfiniteScroll } from "@shared-hooks/hooks";
 
 // api
 import {
@@ -23,6 +25,7 @@ import {
 } from "@services/api/trashApi";
 
 // constants
+import { ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
 
@@ -32,28 +35,71 @@ import FolderItem from "@components/files/FolderItem";
 import InfoDrawer from "@components/files/InfoDrawer";
 import Button from "@shared-components/components/button";
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
-import useDebounce from "@hooks/useDebounce";
-
-import { useInfiniteScroll } from "@shared-hooks/hooks";
-
-const { Text } = Typography;
 
 function TrashView() {
   const { message, modal } = App.useApp();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    return p ? Number(p) : DefaultPagination.pageNumber;
+  });
+
+  const pageSize = useMemo(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
+    return p ? Number(p) : DefaultPagination.pageSize;
+  }, [searchParams]);
+
+  // Sync internal page state with URL
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
+
   const [selectedItems, setSelectedItems] = useState([]);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
   const [infoItem, setInfoItem] = useState(null);
 
-  // Search/Filter State
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 500);
-  const [advancedFilters, setAdvancedFilters] = useState({});
+  // Derived State from URL
+  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
+
+  const advancedFilters = useMemo(() => {
+    const filters = {};
+    const cat = searchParams.get(QUERY_PARAMS_KEYS.CATEGORY);
+    const sd = searchParams.get(QUERY_PARAMS_KEYS.START_DATE);
+    const ed = searchParams.get(QUERY_PARAMS_KEYS.END_DATE);
+    const min = searchParams.get(QUERY_PARAMS_KEYS.MIN_SIZE);
+    const max = searchParams.get(QUERY_PARAMS_KEYS.MAX_SIZE);
+    const tag = searchParams.get(QUERY_PARAMS_KEYS.TAG);
+
+    if (cat) filters.category = cat;
+    if (sd) filters.startDate = sd;
+    if (ed) filters.endDate = ed;
+    if (min) filters.minSize = Number(min);
+    if (max) filters.maxSize = Number(max);
+    if (tag) filters.tag = tag;
+    return filters;
+  }, [searchParams]);
+
+  const updateParams = useCallback(
+    (updates) => {
+      const newParams = new URLSearchParams(searchParams);
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, String(value));
+        }
+      });
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
   // Reset page relative to search/filters
   useEffect(() => {
-    setPage(1);
+    // Handled by updateParams, but good for external URL changes
   }, [debouncedSearch, advancedFilters]);
 
   // API Queries
@@ -64,16 +110,20 @@ function TrashView() {
   } = useGetTrashItemsQuery({
     search: debouncedSearch || undefined,
     pg: page,
-    ps: 40,
+    ps: pageSize,
     ...advancedFilters,
   });
 
-  const hasNextPage = trashData?.pagination?.hasNext || false;
+  const paginationData = trashData?.pagination || {};
 
   const { loaderRef } = useInfiniteScroll({
-    hasNext: hasNextPage,
+    hasNext: paginationData?.hasNext || false,
     isLoading: isFetching,
-    onLoadMore: () => setPage((prev) => prev + 1),
+    onLoadMore: () => {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
+    },
   });
 
   // API Mutations
@@ -203,13 +253,34 @@ function TrashView() {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Bar */}
-          <Input
-            prefix={<SearchOutlined className="text-label-tertiary" />}
+          <SearchInput
+            placeholder="Search in trash..."
+            className="w-full md:w-64 h-10"
             suffix={
               <AdvancedFilterDropdown
                 initialFilters={advancedFilters}
-                onFilter={(filters) => setAdvancedFilters(filters)}
-                onClear={() => setAdvancedFilters({})}
+                onFilter={(filters) =>
+                  updateParams({
+                    [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
+                    [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
+                    [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
+                    [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
+                    [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
+                    [QUERY_PARAMS_KEYS.TAG]: filters.tag,
+                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+                  })
+                }
+                onClear={() =>
+                  updateParams({
+                    [QUERY_PARAMS_KEYS.CATEGORY]: null,
+                    [QUERY_PARAMS_KEYS.START_DATE]: null,
+                    [QUERY_PARAMS_KEYS.END_DATE]: null,
+                    [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
+                    [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
+                    [QUERY_PARAMS_KEYS.TAG]: null,
+                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+                  })
+                }
                 trigger={
                   <Tooltip title="Advanced Filters">
                     <div className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-alt cursor-pointer transition-all group/filter -mr-1">
@@ -221,11 +292,6 @@ function TrashView() {
                 }
               />
             }
-            placeholder="Search in trash..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="premium-nav-search w-full md:w-64 h-10 rounded-xl"
-            allowClear
           />
 
           <div className="flex items-center gap-2 bg-surface-alt p-1 rounded-xl shrink-0">
@@ -317,7 +383,7 @@ function TrashView() {
 
       {isLoading ? (
         <div className="py-20 flex justify-center w-full">
-          <Spin size="large" />
+          <Loader size={32} />
         </div>
       ) : folders.length === 0 && files.length === 0 ? (
         <div className="bg-surface rounded-3xl border border-line shadow-sm flex flex-col items-center justify-center py-24 px-8 mt-4 hover:border-primary/20 transition-colors">
@@ -361,8 +427,8 @@ function TrashView() {
                         folder={{ ...folder, id }}
                         viewMode={viewMode}
                         isSelected={isSelected(id)}
-                        onToggleSelect={(folderId) => toggleSelect(folderId, "folder")}
-                        onOpen={() => toggleSelect(id, "folder")} // prevent navigation in trash, just select
+                        onToggleSelect={(folderId) => toggleSelect(folderId, ItemTypes.FOLDER)}
+                        onOpen={() => toggleSelect(id, ItemTypes.FOLDER)} // prevent navigation in trash, just select
                         onShowInfo={setInfoItem}
                         isTrashItem={true}
                       />
@@ -398,7 +464,7 @@ function TrashView() {
                         file={{ ...file, id }}
                         viewMode={viewMode}
                         isSelected={isSelected(id)}
-                        onToggleSelect={(fileId) => toggleSelect(fileId, "file")}
+                        onToggleSelect={(fileId) => toggleSelect(fileId, ItemTypes.FILE)}
                         onOpen={() => toggleSelect(id, "file")} // prevent preview in trash, just select
                         onShowInfo={setInfoItem}
                         isTrashItem={true}
@@ -411,12 +477,16 @@ function TrashView() {
           )}
 
           {/* Infinite Scroll Loader */}
-          <div ref={loaderRef} className="py-12 flex justify-center w-full">
-            {isFetching && page > 1 && <Spin />}
-            {!hasNextPage && (folders.length > 0 || files.length > 0) && (
-              <Text type="secondary" className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30">
-                No more trashed items
-              </Text>
+          <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
+            {isFetching ? (
+              <>
+                <Loader size={24} />
+                <span className="text-label-tertiary text-sm">Loading more items...</span>
+              </>
+            ) : paginationData?.hasNext ? (
+              <span className="text-label-tertiary text-sm italic">Scroll for more</span>
+            ) : (
+              <span className="text-label-tertiary text-sm italic">No more items in trash</span>
             )}
           </div>
         </div>

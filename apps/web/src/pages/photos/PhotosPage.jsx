@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Breadcrumb, Empty, Skeleton, Typography, Image, Spin } from "antd";
+import { Breadcrumb, Empty, Skeleton, Typography, Image } from "antd";
+import Loader from "@shared-components/components/loader";
 import { PictureOutlined, CalendarOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
@@ -155,7 +156,7 @@ const PhotosPage = () => {
       <div ref={loaderRef} className="py-12 flex flex-col items-center justify-center w-full gap-4">
         {isFetching && page > 1 && (
           <>
-            <Spin size="large" />
+            <Loader size={32} />
             <Text type="secondary" className="text-xs font-bold uppercase tracking-widest opacity-50">
               Loading more memories...
             </Text>

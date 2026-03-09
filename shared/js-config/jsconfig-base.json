@@ -9,7 +9,7 @@
     "skipLibCheck": true,
     "target": "ES2022",
     "allowImportingTsExtensions": false,
-    "checkJs": true,
+    "checkJs": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitAny": false,

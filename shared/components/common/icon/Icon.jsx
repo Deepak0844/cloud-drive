@@ -1,22 +1,24 @@
+import React from "react";
 import { Tooltip } from "antd";
 
 // Constants
-import { ICON_SIZE } from "../../constants/constants";
+import { ICON_SIZE } from "@shared-constants/constants";
 
 /**
  * Icon Component
- * @param {Component} icon :  The Lucide-React icon component (e.g., `Eye`, `Trash2`).
- * @param {String} label
- * @param {String} labelClassName
- * @param {String} className
- * @param {String} containerClassName
- * @param {String} color
- * @param {Number} size
- * @param {Number} strokeWidth
- * @param {String} title - Used for Tooltip
- * @param {Boolean} loading
- * @param {Function} onClick
- * @returns
+ * @param {Object} props
+ * @param {React.ElementType} props.icon - The Lucide-React icon component (e.g., `Eye`, `Trash2`).
+ * @param {string} [props.label]
+ * @param {string} [props.labelClassName]
+ * @param {string} [props.className]
+ * @param {string} [props.containerClassName]
+ * @param {string} [props.color]
+ * @param {number|string} [props.size]
+ * @param {number} [props.strokeWidth]
+ * @param {string} [props.title] - Used for Tooltip
+ * @param {boolean} [props.loading]
+ * @param {Function} [props.onClick]
+ * @returns {React.ReactNode}
  */
 export default function Icon({
   icon: IconWrapper,
@@ -40,20 +42,22 @@ export default function Icon({
 
   //
   if (loading) {
-    return <span className="spinner-border spinner-border-sm" />;
+    return (
+      <span className="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+    );
   }
 
   return (
     <Tooltip title={title}>
       <span
-        className={`cursor-pointer ${containerClassName}`}
+        className={`cursor-pointer inline-flex items-center ${containerClassName}`}
         onClick={onClick}
         onKeyDown={(e) => e.key === "Enter" && onClick(e)}
         role="button"
         tabIndex={0}
       >
         <IconWrapper className={className} color={color} size={iconSize} strokeWidth={strokeWidth} {...rest} />
-        {label && <small className={`ms-1 ${labelClassName}`}>{label}</small>}
+        {label && <small className={`ml-1 ${labelClassName}`}>{label}</small>}
       </span>
     </Tooltip>
   );

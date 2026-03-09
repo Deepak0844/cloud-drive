@@ -7,14 +7,21 @@ import {
   DragOutlined,
   FilterOutlined,
   HomeOutlined,
-  SearchOutlined,
   StarFilled,
   WarningOutlined,
 } from "@ant-design/icons";
-import { App, Breadcrumb, Input, Spin, Typography, Tooltip, Modal } from "antd";
+import { App, Breadcrumb, Typography, Tooltip, Modal, Input } from "antd";
+import SearchInput from "@shared-components/components/search-input";
+import Loader from "@shared-components/components/loader";
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+
+// Hooks
+import { useInfiniteScroll } from "@shared-hooks/hooks";
+
+// Constants
+import { ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
 
 // api
 import {
@@ -45,17 +52,32 @@ import FolderItem from "@components/files/FolderItem";
 import InfoDrawer from "@components/files/InfoDrawer";
 import FilePreviewModal from "@components/files/FilePreviewModal";
 import FolderPickerModal from "@components/files/FolderPickerModal";
+
 import Button from "@shared-components/components/button";
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
-import useDebounce from "@hooks/useDebounce";
-
-import { useInfiniteScroll } from "@shared-hooks/hooks";
 
 const { Text } = Typography;
 
 function FavoritesPage() {
   const { message } = App.useApp();
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    return p ? Number(p) : DefaultPagination.pageNumber;
+  });
+
+  const pageSize = useMemo(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
+    return p ? Number(p) : DefaultPagination.pageSize;
+  }, [searchParams]);
+
+  // Sync internal page state with URL
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [viewMode, setViewMode] = useState("grid");
   const [infoItem, setInfoItem] = useState(null);
@@ -71,13 +93,44 @@ function FavoritesPage() {
     items: [],
   });
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const debouncedSearch = useDebounce(searchTerm, 500);
-  const [advancedFilters, setAdvancedFilters] = useState({});
+  // Derived State from URL
+  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
+  const advancedFilters = useMemo(() => {
+    const filters = {};
+    const cat = searchParams.get(QUERY_PARAMS_KEYS.CATEGORY);
+    const sd = searchParams.get(QUERY_PARAMS_KEYS.START_DATE);
+    const ed = searchParams.get(QUERY_PARAMS_KEYS.END_DATE);
+    const min = searchParams.get(QUERY_PARAMS_KEYS.MIN_SIZE);
+    const max = searchParams.get(QUERY_PARAMS_KEYS.MAX_SIZE);
+    const tag = searchParams.get(QUERY_PARAMS_KEYS.TAG);
+
+    if (cat) filters.category = cat;
+    if (sd) filters.startDate = sd;
+    if (ed) filters.endDate = ed;
+    if (min) filters.minSize = Number(min);
+    if (max) filters.maxSize = Number(max);
+    if (tag) filters.tag = tag;
+    return filters;
+  }, [searchParams]);
+
+  const updateParams = useCallback(
+    (updates) => {
+      const newParams = new URLSearchParams(searchParams);
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, String(value));
+        }
+      });
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
   // Reset page on filter change
   useEffect(() => {
-    setPage(1);
+    // Handled by updateParams, but good for external URL changes
   }, [debouncedSearch, advancedFilters]);
 
   // Fetch favorite folders (typically folders aren't many, so we fetch all or just use a large limit)
@@ -96,16 +149,20 @@ function FavoritesPage() {
     isFavorite: "true",
     search: debouncedSearch || undefined,
     pg: page,
-    ps: 40,
+    ps: pageSize,
     ...advancedFilters,
   });
 
-  const hasNextPage = filesData?.pagination?.hasNext || false;
+  const paginationData = filesData?.pagination || {};
 
   const { loaderRef } = useInfiniteScroll({
-    hasNext: hasNextPage,
+    hasNext: paginationData?.hasNext || false,
     isLoading: filesFetching,
-    onLoadMore: () => setPage((prev) => prev + 1),
+    onLoadMore: () => {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
+    },
   });
 
   // API Mutations
@@ -297,16 +354,34 @@ function FavoritesPage() {
 
         <div className="flex gap-2 grow justify-end items-center">
           <div className="w-56 flex-none">
-            <Input
+            <SearchInput
               placeholder="Search in Favorites..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              prefix={<SearchOutlined className="text-primary text-sm" />}
+              className="h-10 w-full"
               suffix={
                 <AdvancedFilterDropdown
                   initialFilters={advancedFilters}
-                  onFilter={(filters) => setAdvancedFilters(filters)}
-                  onClear={() => setAdvancedFilters({})}
+                  onFilter={(filters) =>
+                    updateParams({
+                      [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
+                      [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
+                      [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
+                      [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
+                      [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
+                      [QUERY_PARAMS_KEYS.TAG]: filters.tag,
+                      [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+                    })
+                  }
+                  onClear={() =>
+                    updateParams({
+                      [QUERY_PARAMS_KEYS.CATEGORY]: null,
+                      [QUERY_PARAMS_KEYS.START_DATE]: null,
+                      [QUERY_PARAMS_KEYS.END_DATE]: null,
+                      [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
+                      [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
+                      [QUERY_PARAMS_KEYS.TAG]: null,
+                      [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+                    })
+                  }
                   trigger={
                     <Tooltip title="Advanced Filters">
                       <div className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-alt cursor-pointer transition-all group/filter -mr-1">
@@ -318,8 +393,6 @@ function FavoritesPage() {
                   }
                 />
               }
-              className="h-10 rounded-xl border-line bg-surface shadow-sm focus:shadow-md transition-all text-sm w-full premium-nav-search"
-              allowClear
             />
           </div>
 
@@ -407,7 +480,7 @@ function FavoritesPage() {
       <div className="space-y-6">
         {isLoading ? (
           <div className="py-24 flex flex-col items-center justify-center gap-4">
-            <Spin size="large" />
+            <Loader size={32} />
             <Text className="text-label-tertiary">Loading favorites...</Text>
           </div>
         ) : (
@@ -433,7 +506,7 @@ function FavoritesPage() {
                           folder={{ ...folder, id }}
                           viewMode={viewMode}
                           isSelected={selectedItems.some((i) => i.id === id)}
-                          onToggleSelect={(id) => toggleSelect(id, "folder")}
+                          onToggleSelect={(id) => toggleSelect(id, ItemTypes.FOLDER)}
                           onOpen={handleOpen}
                           onShowInfo={setInfoItem}
                           onRename={handleRenameTrigger}
@@ -469,7 +542,7 @@ function FavoritesPage() {
                           file={{ ...file, id }}
                           viewMode={viewMode}
                           isSelected={selectedItems.some((i) => i.id === id)}
-                          onToggleSelect={(id) => toggleSelect(id, "file")}
+                          onToggleSelect={(id) => toggleSelect(id, ItemTypes.FILE)}
                           onOpen={handleOpen}
                           onShowInfo={setInfoItem}
                           onRename={handleRenameTrigger}
@@ -483,16 +556,16 @@ function FavoritesPage() {
                 </div>
 
                 {/* Infinite Scroll Loader */}
-                <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4">
+                <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
                   {filesFetching ? (
                     <>
-                      <Spin size="medium" />
-                      <Text className="text-label-tertiary text-sm">Loading more favorites...</Text>
+                      <Loader size={24} />
+                      <Text className="text-label-tertiary text-sm">Loading more files...</Text>
                     </>
-                  ) : hasNextPage ? (
+                  ) : paginationData?.hasNext ? (
                     <Text className="text-label-tertiary text-sm italic">Scroll for more</Text>
                   ) : (
-                    <Text className="text-label-tertiary text-sm italic">No more favorites</Text>
+                    <Text className="text-label-tertiary text-sm italic">No more files</Text>
                   )}
                 </div>
               </div>

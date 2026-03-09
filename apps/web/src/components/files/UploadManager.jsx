@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { useUploadDetails } from "@contexts/UploadContext";
 import UploadItem from "./UploadItem";
 import { motion } from "framer-motion";
-import { Button, Typography } from "antd";
+import { Typography } from "antd";
+import Button from "@shared-components/components/button";
 import { UpOutlined, DownOutlined, CloudUploadOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;

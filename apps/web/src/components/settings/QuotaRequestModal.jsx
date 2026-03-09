@@ -1,5 +1,6 @@
 // external
-import { Form, Input, InputNumber, Modal, message } from "antd";
+import { Form, Input, InputNumber, message } from "antd";
+import Modal from "@shared-components/components/modal";
 import React from "react";
 
 import { useRequestQuotaIncreaseMutation } from "@services/api/quotaApi";
@@ -27,13 +28,12 @@ function QuotaRequestModal({ open, onClose }) {
 
   return (
     <Modal
-      title="Request Quota Increase"
+      modalTitle="Request Quota Increase"
       open={open}
-      onOk={handleOk}
-      onCancel={onClose}
-      confirmLoading={loading}
-      okText="Submit Request"
-      centered
+      handleSubmit={handleOk}
+      handleCloseModal={onClose}
+      btnLoading={loading}
+      btnText="Submit Request"
     >
       <Form form={form} layout="vertical" initialValues={{ amount: 10 }}>
         <Form.Item

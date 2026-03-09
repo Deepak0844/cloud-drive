@@ -1,8 +1,10 @@
+import React from "react";
+
 /**
  * Label Component
  * @param {Boolean} isMandatory
  * @param {String} className
- * @param {Component} children
+ * @param {React.ReactNode} children
  * @returns
  */
 export default function Label({ isMandatory = false, className = "", children }) {

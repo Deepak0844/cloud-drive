@@ -23,7 +23,8 @@ import { useAuth } from "@hooks/useAuth";
 import { useCurrentUser } from "@hooks/useCurrentUser";
 
 // constants
-import { STORAGE_KEYS } from "@constants/generalConstants";
+import { STORAGE_KEYS, TIMEOUTS, NotificationTypes } from "@shared-constants/constants";
+import PageUrls from "@constants/pageUrls";
 
 // utils
 import LocalStorage from "@utils/localStorageUtils";
@@ -46,20 +47,20 @@ const { Text } = Typography;
 
 function getNotificationIcon(type) {
   switch (type) {
-    case "STORAGE_ALERT":
+    case NotificationTypes.STORAGE_ALERT:
       return <CloudServerOutlined className="text-warning" />;
-    case "SECURITY_ALERT":
+    case NotificationTypes.SECURITY_ALERT:
       return <WarningOutlined className="text-error" />;
-    case "QUOTA_APPROVED":
+    case NotificationTypes.QUOTA_APPROVED:
       return <CheckCircleOutlined className="text-success" />;
-    case "QUOTA_REJECTED":
+    case NotificationTypes.QUOTA_REJECTED:
       return <WarningOutlined className="text-error" />;
-    case "QUOTA_CHANGE":
-    case "QUOTA_REQUEST":
+    case NotificationTypes.QUOTA_CHANGE:
+    case NotificationTypes.QUOTA_REQUEST:
       return <CloudServerOutlined className="text-info" />;
-    case "TRASH_CLEANUP":
+    case NotificationTypes.TRASH_CLEANUP:
       return <DeleteOutlined className="text-secondary" />;
-    case "SYSTEM_ALERT":
+    case NotificationTypes.SYSTEM_ALERT:
     default:
       return <InfoCircleOutlined className="text-primary" />;
   }
@@ -81,7 +82,7 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
   // Real notification data from API
   const { data: notificationsData, isLoading: notificationsLoading } = useGetNotificationsQuery(undefined, {
     // Poll every 60 seconds to keep notifications fresh
-    pollingInterval: 60000,
+    pollingInterval: TIMEOUTS.NOTIFICATION_POLL_MS,
     skip: !notificationOpen && false, // always fetch so badge count is accurate
   });
   const [markAsRead] = useMarkAsReadMutation();
@@ -197,14 +198,14 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
       label: "My Profile",
       icon: <UserOutlined />,
       className: "font-semibold rounded-lg",
-      onClick: () => navigate("/settings"),
+      onClick: () => navigate(PageUrls.SettingsPage),
     },
     {
       key: "settings",
       label: "Settings",
       icon: <SettingOutlined />,
       className: "font-semibold rounded-lg",
-      onClick: () => navigate("/settings"),
+      onClick: () => navigate(PageUrls.SettingsPage),
     },
     { type: "divider" },
     {

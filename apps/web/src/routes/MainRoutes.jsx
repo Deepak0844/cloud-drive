@@ -5,7 +5,7 @@ import ProtectedRoute from "@components/hoc/ProtectedRoute";
 
 // Constants
 import PageUrls from "@constants/pageUrls";
-import { Roles } from "@constants/generalConstants";
+import { Roles } from "@shared-constants/constants";
 
 // Pages
 import RoleBasedDefaultPage from "./RoleBasedDefaultPage";
