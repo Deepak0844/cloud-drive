@@ -1,12 +1,13 @@
 import baseApi from "./api";
 import { TagTypes } from "@constants/apiTags";
+import { QuotaServiceUrls } from "@constants/serviceUrls";
 
 const quotaApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // GET /api/v1/quota/usage
     getQuotaUsage: builder.query({
       query: () => ({
-        url: "/quota/usage",
+        url: QuotaServiceUrls.getQuotaUsage,
       }),
       providesTags: [TagTypes.QUOTA],
     }),
@@ -14,7 +15,7 @@ const quotaApi = baseApi.injectEndpoints({
     // GET /api/v1/quota/breakdown
     getQuotaBreakdown: builder.query({
       query: () => ({
-        url: "/quota/breakdown",
+        url: QuotaServiceUrls.getQuotaBreakdown,
       }),
       providesTags: [TagTypes.QUOTA],
     }),
@@ -22,7 +23,7 @@ const quotaApi = baseApi.injectEndpoints({
     // POST /api/v1/quota/request
     requestQuotaIncrease: builder.mutation({
       query: (body) => ({
-        url: "/quota/request",
+        url: QuotaServiceUrls.requestQuotaIncrease,
         method: "POST",
         body,
       }),

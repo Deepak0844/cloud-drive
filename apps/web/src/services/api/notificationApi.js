@@ -1,5 +1,7 @@
 import baseApi from "./api";
+import { UrlUtils } from "@shared-utils/utils";
 import { TagTypes } from "@constants/apiTags";
+import { NotificationServiceUrls } from "@constants/serviceUrls";
 
 /**
  * Notification API endpoints.
@@ -9,7 +11,7 @@ const notificationApi = baseApi.injectEndpoints({
     // GET /api/v1/notifications
     getNotifications: builder.query({
       query: (params) => ({
-        url: "/notifications",
+        url: NotificationServiceUrls.getNotificationList,
         params,
       }),
       providesTags: [TagTypes.NOTIFICATIONS],
@@ -18,7 +20,7 @@ const notificationApi = baseApi.injectEndpoints({
     // PATCH /api/v1/notifications/:id/read
     markAsRead: builder.mutation({
       query: ({ id }) => ({
-        url: `/notifications/${id}/read`,
+        url: UrlUtils.format(NotificationServiceUrls.markAsRead, { id }),
         method: "PATCH",
       }),
       invalidatesTags: [TagTypes.NOTIFICATIONS],
@@ -27,7 +29,7 @@ const notificationApi = baseApi.injectEndpoints({
     // PATCH /api/v1/notifications/read-all
     markAllAsRead: builder.mutation({
       query: () => ({
-        url: "/notifications/read-all",
+        url: NotificationServiceUrls.markAllAsRead,
         method: "PATCH",
       }),
       invalidatesTags: [TagTypes.NOTIFICATIONS],

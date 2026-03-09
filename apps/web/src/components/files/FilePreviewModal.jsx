@@ -3,8 +3,11 @@ import React, { useEffect, useState } from "react";
 import { App, Modal, Typography } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 
-// App-local utilities
-import HttpClientFactory from "@utils/httpClientFactory";
+// Constants
+import { FileServiceUrls } from "@constants/serviceUrls";
+
+// Utils
+import { FileUtils } from "@shared-utils/utils";
 
 // Components
 import Button from "@shared-components/components/button";
@@ -66,27 +69,8 @@ export default function FilePreviewModal({ file, open, onClose }) {
   // Event handlers
   function handleDownload() {
     if (!file) return;
-    const httpClient = HttpClientFactory.getInstance();
-
-    message.loading({ content: "Preparing download...", key: "downloading" });
-
-    httpClient
-      .get(`/api/v1/files/${file.id || file._id}/download`, {}, null, { responseType: "blob" })
-      .then((blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-
-        URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        message.success({ content: "Download complete", key: "downloading" });
-      })
-      .catch(() => {
-        message.error({ content: "Download failed", key: "downloading" });
-      });
+    FileUtils.startFileDownload(file, FileServiceUrls.downloadFile);
+    message.success({ content: "Download started", key: "downloading" });
   }
 
   // Render

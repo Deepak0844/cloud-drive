@@ -1,12 +1,13 @@
 import baseApi from "./api";
 import { TagTypes, TagIds } from "@constants/apiTags";
+import { TrashServiceUrls } from "@constants/serviceUrls";
 import ApiUtils from "./apiUtils";
 
 export const trashApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getTrashItems: builder.query({
       query: (params) => ({
-        url: "/trash",
+        url: TrashServiceUrls.getTrashItems,
         params,
       }),
       serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
@@ -17,7 +18,7 @@ export const trashApi = baseApi.injectEndpoints({
 
     restoreItems: builder.mutation({
       query: ({ items }) => ({
-        url: "/trash/restore",
+        url: TrashServiceUrls.restoreItems,
         method: "POST",
         body: { items },
       }),
@@ -41,7 +42,7 @@ export const trashApi = baseApi.injectEndpoints({
 
     permanentlyDeleteItems: builder.mutation({
       query: ({ items }) => ({
-        url: "/trash/permanent",
+        url: TrashServiceUrls.permanentlyDeleteItems,
         method: "DELETE",
         body: { items },
       }),
@@ -55,7 +56,7 @@ export const trashApi = baseApi.injectEndpoints({
 
     emptyTrash: builder.mutation({
       query: () => ({
-        url: "/trash/empty",
+        url: TrashServiceUrls.emptyTrash,
         method: "DELETE",
       }),
       invalidatesTags: [

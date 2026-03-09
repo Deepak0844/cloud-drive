@@ -1,17 +1,8 @@
 // React core & third-party libraries
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { App, Breadcrumb, Tooltip } from "antd";
-import {
-  AppstoreOutlined,
-  BarsOutlined,
-  CloseOutlined,
-  DeleteOutlined,
-  FilterOutlined,
-  HomeOutlined,
-  RestOutlined,
-  UndoOutlined,
-} from "@ant-design/icons";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { App, Breadcrumb } from "antd";
+import { DeleteOutlined, HomeOutlined, RestOutlined, UndoOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
@@ -23,62 +14,35 @@ import {
 } from "@services/api/trashApi";
 
 // Constants
-import { DefaultPagination, ItemTypes, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
+import { ItemTypes } from "@shared-constants/constants";
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
 
 // Hooks
-import { useInfiniteScroll } from "@shared-hooks/hooks";
+import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
+import { useListPageParams } from "@hooks/files/useListPageParams";
+import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
+import { useSelectableItems } from "@hooks/files/useSelectableItems";
 
 // Components
-import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
 import FileItem from "@components/files/FileItem";
+import FloatingBulkActionsBar from "@components/files/FloatingBulkActionsBar";
 import FolderItem from "@components/files/FolderItem";
 import InfoDrawer from "@components/files/InfoDrawer";
+import ListControls from "@components/files/ListControls";
+import PageHeader from "@components/layout/PageHeader";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
-import SearchInput from "@shared-components/components/search-input";
 
 function TrashView() {
-  // Router hooks & params
-  const [searchParams, setSearchParams] = useSearchParams();
-
   // Local state
   const [infoItem, setInfoItem] = useState(null);
-  const [page, setPage] = useState(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    return p ? Number(p) : DefaultPagination.pageNumber;
-  });
-  const [selectedItems, setSelectedItems] = useState([]);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
+  const { clearSelection, isSelected, selectedItems, toggleSelect } = useSelectableItems();
+  const { advancedFilters, debouncedSearch, page, pageSize, setPage, updateParams } = useListPageParams();
 
   // Custom & shared hooks
   const { message, modal } = App.useApp();
-
-  // Derived / computed variables
-  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
-  const pageSize = useMemo(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
-    return p ? Number(p) : DefaultPagination.pageSize;
-  }, [searchParams]);
-
-  const advancedFilters = useMemo(() => {
-    const filters = {};
-    const cat = searchParams.get(QUERY_PARAMS_KEYS.CATEGORY);
-    const sd = searchParams.get(QUERY_PARAMS_KEYS.START_DATE);
-    const ed = searchParams.get(QUERY_PARAMS_KEYS.END_DATE);
-    const min = searchParams.get(QUERY_PARAMS_KEYS.MIN_SIZE);
-    const max = searchParams.get(QUERY_PARAMS_KEYS.MAX_SIZE);
-    const tag = searchParams.get(QUERY_PARAMS_KEYS.TAG);
-
-    if (cat) filters.category = cat;
-    if (sd) filters.startDate = sd;
-    if (ed) filters.endDate = ed;
-    if (min) filters.minSize = Number(min);
-    if (max) filters.maxSize = Number(max);
-    if (tag) filters.tag = tag;
-    return filters;
-  }, [searchParams]);
 
   // RTK Query hooks
   const [emptyTrash, { isLoading: isEmptying }] = useEmptyTrashMutation();
@@ -102,76 +66,21 @@ function TrashView() {
   const files = trashData?.data?.files || [];
 
   // Event handlers
-  const updateParams = useCallback(
-    (updates) => {
-      const newParams = new URLSearchParams(searchParams);
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === "") {
-          newParams.delete(key);
-        } else {
-          newParams.set(key, String(value));
-        }
-      });
-      setSearchParams(newParams, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
-
-  const clearSelection = useCallback(() => setSelectedItems([]), []);
-
-  const handleClickOutside = useCallback(
-    (e) => {
-      if (
-        e.target.closest(".animate-item") ||
-        e.target.closest(".bulk-actions-bar") ||
-        e.target.closest(".ant-modal-root") ||
-        e.target.closest(".ant-dropdown")
-      )
-        return;
-      clearSelection();
-    },
-    [clearSelection]
-  );
 
   // Custom & shared hooks
-  const { loaderRef } = useInfiniteScroll({
+  const { loaderRef } = useInfinitePaging({
     hasNext: paginationData?.hasNext || false,
     isLoading: isFetching,
-    onLoadMore: () => {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
-    },
+    page,
+    setPage,
+    updateParams,
   });
 
   // useEffect
   useEffect(() => {
     // Handled by updateParams, but good for external URL changes
   }, [debouncedSearch, advancedFilters]);
-
-  // Sync internal page state with URL
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
-
-  useEffect(() => {
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  }, [handleClickOutside]);
-
-  function toggleSelect(id, type) {
-    setSelectedItems((prev) => {
-      const exists = prev.find((item) => item.id === id);
-      if (exists) {
-        return prev.filter((item) => item.id !== id);
-      }
-      return [...prev, { id, type }];
-    });
-  }
+  useOutsideClickClear({ clearSelection });
 
   function handleEmptyTrash() {
     modal.confirm({
@@ -229,19 +138,12 @@ function TrashView() {
     });
   }
 
-  function isSelected(id) {
-    return selectedItems.some((item) => item.id === id);
-  }
-
   return (
     <div className="flex flex-col gap-6 pb-24">
-      {/* Redesigned Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
-        <div>
-          <h1 className="text-2xl font-bold text-label mb-2 flex items-center gap-3">
-            <RestOutlined className="text-danger opacity-80" />
-            {PageNames.TRASH}
-          </h1>
+      <PageHeader
+        title={PageNames.TRASH}
+        icon={<RestOutlined className="text-danger opacity-80" />}
+        breadcrumbNode={
           <Breadcrumb
             items={[
               {
@@ -257,136 +159,60 @@ function TrashView() {
               { title: <span className="text-label-secondary font-medium text-xs">{PageNames.TRASH}</span> },
             ]}
           />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Search Bar */}
-          <SearchInput
-            placeholder="Search in trash..."
-            className="w-full md:w-64 h-10"
-            suffix={
-              <AdvancedFilterDropdown
-                initialFilters={advancedFilters}
-                onFilter={(filters) =>
-                  updateParams({
-                    [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
-                    [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
-                    [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
-                    [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
-                    [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
-                    [QUERY_PARAMS_KEYS.TAG]: filters.tag,
-                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-                  })
-                }
-                onClear={() =>
-                  updateParams({
-                    [QUERY_PARAMS_KEYS.CATEGORY]: null,
-                    [QUERY_PARAMS_KEYS.START_DATE]: null,
-                    [QUERY_PARAMS_KEYS.END_DATE]: null,
-                    [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
-                    [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
-                    [QUERY_PARAMS_KEYS.TAG]: null,
-                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-                  })
-                }
-                trigger={
-                  <Tooltip title="Advanced Filters">
-                    <div className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-alt cursor-pointer transition-all group/filter -mr-1">
-                      <FilterOutlined
-                        className={`text-xs ${Object.keys(advancedFilters).length > 0 ? "text-primary" : "text-label-tertiary"} group-hover/filter:text-primary`}
-                      />
-                    </div>
-                  </Tooltip>
-                }
-              />
-            }
-          />
-
-          <div className="flex items-center gap-2 bg-surface-alt p-1 rounded-xl shrink-0">
-            {/* View Mode Toggles */}
-            <div className="flex items-center gap-1">
-              <Button
-                type={viewMode === "grid" ? "default" : "text"}
-                size="small"
-                icon={<AppstoreOutlined />}
-                onClick={() => setViewMode("grid")}
-                className={`rounded-lg w-8 h-8 flex items-center justify-center border-none ${
-                  viewMode === "grid"
-                    ? "bg-surface shadow-sm text-primary"
-                    : "text-label-secondary hover:bg-surface-alt"
-                }`}
-              />
-              <Button
-                type={viewMode === "list" ? "default" : "text"}
-                size="small"
-                icon={<BarsOutlined />}
-                onClick={() => setViewMode("list")}
-                className={`rounded-lg w-8 h-8 flex items-center justify-center border-none ${
-                  viewMode === "list"
-                    ? "bg-surface shadow-sm text-primary"
-                    : "text-label-secondary hover:bg-surface-alt"
-                }`}
-              />
-            </div>
-          </div>
-
-          <Button
-            danger
-            type="primary"
-            icon={<RestOutlined />}
-            onClick={handleEmptyTrash}
-            disabled={folders.length === 0 && files.length === 0}
-            loading={isEmptying}
-            className="rounded-xl h-10 shadow-lg font-bold hover:scale-[1.02] transition-transform active:scale-95"
-          >
-            Empty Trash
-          </Button>
-        </div>
-      </div>
-
-      {/* Styled Bulk Actions Bar (Pill design) */}
-      {selectedItems.length > 0 && (
-        <div className="bulk-actions-bar rounded-[24px] p-2 pr-3 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.3)] fixed bottom-8 left-1/2 -translate-x-1/2 z-100 bg-[#1a1c1e] border border-white/5 w-[90%] max-w-[400px]">
-          <div className="flex items-center gap-3 ml-2">
-            <Button
-              ghost
-              size="small"
-              shape="circle"
-              icon={<CloseOutlined className="text-[10px]" />}
-              onClick={clearSelection}
-              className="hover:rotate-90 transition-transform flex items-center justify-center w-6 h-6 border-white/10 text-white/40 hover:text-white hover:border-white/30"
+        }
+        rightContent={
+          <>
+            <ListControls
+              advancedFilters={advancedFilters}
+              placeholder="Search in trash..."
+              searchClassName="w-full md:w-64 h-10"
+              showSearchContainer={false}
+              updateParams={updateParams}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+              variant="trash"
             />
-            <div className="flex flex-col">
-              <span className="text-white text-sm font-bold leading-none">{selectedItems.length} selected</span>
-              <span className="text-white/40 text-[10px] uppercase font-black tracking-widest leading-none mt-1">
-                Trash Management
-              </span>
-            </div>
-          </div>
 
-          <div className="flex gap-2">
             <Button
-              size="small"
+              danger
+              type="primary"
+              icon={<RestOutlined />}
+              onClick={handleEmptyTrash}
+              disabled={folders.length === 0 && files.length === 0}
+              loading={isEmptying}
+              className="rounded-xl h-10 shadow-lg font-bold hover:scale-[1.02] transition-transform active:scale-95"
+            >
+              Empty Trash
+            </Button>
+          </>
+        }
+      />
+
+      {/* Bulk Actions Bar */}
+      {selectedItems.length > 0 && (
+        <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}>
+          <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
+            <Button
+              type="text"
               icon={<UndoOutlined />}
               onClick={handleBulkRestore}
               loading={isRestoring}
-              className="rounded-[14px] font-bold border-none h-9 hover:scale-105 transition-all text-[#1a1c1e] bg-primary hover:bg-primary/90 text-xs px-4"
+              className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary-light border-none justify-center"
             >
-              Restore
+              <span className="text-[10px] uppercase tracking-tighter">Restore</span>
             </Button>
             <Button
-              size="small"
+              type="text"
               danger
-              type="primary"
               icon={<DeleteOutlined />}
               onClick={handleBulkDelete}
               loading={isDeleting}
-              className="rounded-[14px] font-bold h-9 border-none shadow-lg hover:scale-105 transition-all text-xs px-4 bg-danger hover:bg-danger-hover"
+              className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-danger hover:bg-danger-light border-none justify-center"
             >
-              Delete Forever
+              <span className="text-[10px] uppercase tracking-tighter">Delete</span>
             </Button>
-          </div>
-        </div>
+          </FloatingBulkActionsBar>
+        </motion.div>
       )}
 
       {isLoading ? (

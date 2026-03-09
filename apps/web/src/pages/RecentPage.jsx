@@ -1,35 +1,33 @@
 // React core & third-party libraries
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { App, Breadcrumb, Tooltip, Typography } from "antd";
-import {
-  AppstoreOutlined,
-  BarsOutlined,
-  CloseOutlined,
-  DownloadOutlined,
-  FilterOutlined,
-  HistoryOutlined,
-} from "@ant-design/icons";
+import React, { useMemo, useState } from "react";
+import { App, Breadcrumb, Typography } from "antd";
+import { CloseOutlined, DownloadOutlined, HistoryOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 
 // Constants
-import { DefaultPagination, ItemTypes, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
+import { ItemTypes } from "@shared-constants/constants";
 
 // Hooks
-import { useInfiniteScroll } from "@shared-hooks/hooks";
+import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
+import { useListPageParams } from "@hooks/files/useListPageParams";
+import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
+import { useSelectableItems } from "@hooks/files/useSelectableItems";
 
 // Services (RTK Query hooks)
 import { useGetRecentFilesQuery, useTouchFileMutation } from "@services/api/fileApi";
 import { useBulkDownloadMutation } from "@services/api/bulkApi";
 
 // Components
-import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
 import FileItem from "@components/files/FileItem";
 import FilePreviewModal from "@components/files/FilePreviewModal";
 import InfoDrawer from "@components/files/InfoDrawer";
+import ListControls from "@components/files/ListControls";
+import PageHeader from "@components/layout/PageHeader";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
-import SearchInput from "@shared-components/components/search-input";
+
+// Constants
+import PageNames from "@constants/pageNames";
 
 const { Text } = Typography;
 
@@ -45,49 +43,19 @@ const TIME_LABELS = {
 };
 
 export default function RecentPage() {
-  // Router hooks & params
-  const [searchParams, setSearchParams] = useSearchParams();
-
   // Redux hooks
   const { message } = App.useApp();
 
   // Local state
   const [infoItem, setInfoItem] = useState(null);
-  const [page, setPage] = useState(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    return p ? Number(p) : DefaultPagination.pageNumber;
-  });
   const [previewFile, setPreviewFile] = useState(null);
-  const [selectedItems, setSelectedItems] = useState([]);
   const [viewMode, setViewMode] = useState(VIEW_MODES.GRID);
+  const { clearSelection, selectedItems, toggleSelect } = useSelectableItems();
+  const { advancedFilters, debouncedSearch, page, pageSize, setPage, updateParams } = useListPageParams();
 
   // RTK Query hooks
   const [bulkDownload, { isLoading: isDownloading }] = useBulkDownloadMutation();
   const [touchFile] = useTouchFileMutation();
-
-  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
-  const pageSize = useMemo(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
-    return p ? Number(p) : DefaultPagination.pageSize || 30;
-  }, [searchParams]);
-
-  const advancedFilters = useMemo(() => {
-    const filters = {};
-    const cat = searchParams.get(QUERY_PARAMS_KEYS.CATEGORY);
-    const sd = searchParams.get(QUERY_PARAMS_KEYS.START_DATE);
-    const ed = searchParams.get(QUERY_PARAMS_KEYS.END_DATE);
-    const min = searchParams.get(QUERY_PARAMS_KEYS.MIN_SIZE);
-    const max = searchParams.get(QUERY_PARAMS_KEYS.MAX_SIZE);
-    const tag = searchParams.get(QUERY_PARAMS_KEYS.TAG);
-
-    if (cat) filters.category = cat;
-    if (sd) filters.startDate = sd;
-    if (ed) filters.endDate = ed;
-    if (min) filters.minSize = Number(min);
-    if (max) filters.maxSize = Number(max);
-    if (tag) filters.tag = tag;
-    return filters;
-  }, [searchParams]);
 
   const {
     data: recentData,
@@ -101,14 +69,12 @@ export default function RecentPage() {
   });
 
   // Custom & shared hooks
-  const { loaderRef } = useInfiniteScroll({
+  const { loaderRef } = useInfinitePaging({
     hasNext: recentData?.pagination?.hasNext || false,
     isLoading: isFetching,
-    onLoadMore: function handleLoadMore() {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
-    },
+    page,
+    setPage,
+    updateParams,
   });
 
   // Derived / computed variables
@@ -143,27 +109,6 @@ export default function RecentPage() {
   }, [filteredItems]);
 
   // Event handlers
-  function updateParams(updates) {
-    const newParams = new URLSearchParams(searchParams);
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === "") {
-        newParams.delete(key);
-      } else {
-        newParams.set(key, String(value));
-      }
-    });
-    setSearchParams(newParams, { replace: true });
-  }
-
-  function toggleSelect(id, type) {
-    setSelectedItems((prev) => {
-      const exists = prev.find((item) => item.id === id);
-      if (exists) {
-        return prev.filter((item) => item.id !== id);
-      }
-      return [...prev, { id, type }];
-    });
-  }
 
   async function handleBulkDownload() {
     if (selectedItems.length === 0) return;
@@ -188,128 +133,43 @@ export default function RecentPage() {
     }
   }
 
-  const clearSelection = useCallback(() => {
-    setSelectedItems([]);
-  }, []);
-
-  const handleClickOutside = useCallback(
-    (e) => {
-      if (
-        e.target.closest(".animate-item") ||
-        e.target.closest(".bulk-actions-bar") ||
-        e.target.closest(".ant-modal-root") ||
-        e.target.closest(".ant-dropdown")
-      )
-        return;
-      clearSelection();
-    },
-    [clearSelection]
-  );
-
-  // useEffect
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
-
-  useEffect(() => {
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  }, [handleClickOutside]);
+  useOutsideClickClear({ clearSelection });
 
   // Render
   return (
     <div className="flex flex-col h-full bg-surface">
-      {/* Premium Header */}
-      <div className="px-8 pt-8 pb-4 flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <HistoryOutlined className="text-xl text-primary" />
-              </div>
-              <h1 className="text-2xl font-black tracking-tight text-label-primary m-0">Recent</h1>
+      <div className="px-8 pt-8 pb-4">
+        <PageHeader
+          title={PageNames.RECENT}
+          icon={
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <HistoryOutlined className="text-xl text-primary" />
             </div>
+          }
+          breadcrumbNode={
             <Breadcrumb
               className="mt-1"
               items={[
                 { title: <span className="text-label-tertiary font-medium">My Files</span> },
-                { title: <span className="text-label-primary font-bold">Recent</span> },
+                { title: <span className="text-label-primary font-bold">{PageNames.RECENT}</span> },
               ]}
             />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <SearchInput
+          }
+          rightContent={
+            <ListControls
+              advancedFilters={advancedFilters}
               placeholder="Search recent..."
-              className="h-10 w-64 md:w-80"
-              suffix={
-                <AdvancedFilterDropdown
-                  initialFilters={advancedFilters}
-                  onFilter={(filters) =>
-                    updateParams({
-                      [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
-                      [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
-                      [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
-                      [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
-                      [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
-                      [QUERY_PARAMS_KEYS.TAG]: filters.tag,
-                      [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-                    })
-                  }
-                  onClear={() =>
-                    updateParams({
-                      [QUERY_PARAMS_KEYS.CATEGORY]: null,
-                      [QUERY_PARAMS_KEYS.START_DATE]: null,
-                      [QUERY_PARAMS_KEYS.END_DATE]: null,
-                      [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
-                      [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
-                      [QUERY_PARAMS_KEYS.TAG]: null,
-                      [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-                    })
-                  }
-                  trigger={
-                    <Tooltip title="Advanced Filters">
-                      <div className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-alt cursor-pointer transition-all group/filter -mr-1">
-                        <FilterOutlined
-                          className={`text-xs ${Object.keys(advancedFilters).length > 0 ? "text-primary" : "text-label-tertiary"} group-hover/filter:text-primary`}
-                        />
-                      </div>
-                    </Tooltip>
-                  }
-                />
-              }
+              searchClassName="h-10 w-64 md:w-80"
+              showSearchContainer={false}
+              updateParams={updateParams}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
+              gridValue={VIEW_MODES.GRID}
+              listValue={VIEW_MODES.LIST}
+              variant="recent"
             />
-
-            <div className="w-px h-4 bg-line mx-1" />
-
-            <div className="flex items-center gap-1 bg-surface-dim p-1 rounded-xl border border-line">
-              <Tooltip title="Grid View">
-                <Button
-                  styleType={viewMode === VIEW_MODES.GRID ? "primary" : "ghost"}
-                  size="small"
-                  className="w-8 h-8 p-0 flex items-center justify-center rounded-lg"
-                  onClick={() => setViewMode(VIEW_MODES.GRID)}
-                >
-                  <AppstoreOutlined />
-                </Button>
-              </Tooltip>
-              <Tooltip title="List View">
-                <Button
-                  styleType={viewMode === VIEW_MODES.LIST ? "primary" : "ghost"}
-                  size="small"
-                  className="w-8 h-8 p-0 flex items-center justify-center rounded-lg"
-                  onClick={() => setViewMode(VIEW_MODES.LIST)}
-                >
-                  <BarsOutlined />
-                </Button>
-              </Tooltip>
-            </div>
-          </div>
-        </div>
+          }
+        />
       </div>
 
       {/* Main Content */}

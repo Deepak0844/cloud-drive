@@ -1,5 +1,5 @@
 // React core & third-party libraries
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Breadcrumb, Empty, Image, Skeleton, Typography } from "antd";
 import { CalendarOutlined, PictureOutlined } from "@ant-design/icons";
@@ -10,21 +10,22 @@ import { motion } from "framer-motion";
 import { useGetFilesQuery } from "@services/api/fileApi";
 
 // Hooks
-import { useInfiniteScroll } from "@shared-hooks/hooks";
+import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
+import { useListPageParams } from "@hooks/files/useListPageParams";
 
 // Constants
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
 
 // Components
+import PageHeader from "@components/layout/PageHeader";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
 
 const { Text } = Typography;
 
 function PhotosPage() {
-  // Local state
-  const [page, setPage] = useState(1);
+  const { page, pageSize, setPage, updateParams } = useListPageParams({ defaultPageSize: 50 });
 
   // RTK Query hooks
   const {
@@ -35,17 +36,19 @@ function PhotosPage() {
     category: "image",
     recursive: true,
     pg: page,
-    ps: 50,
+    ps: pageSize,
   });
 
   // Derived / computed variables (part 1)
   const hasNextPage = filesResponse?.pagination?.hasNext || false;
 
   // Custom & shared hooks
-  const { loaderRef } = useInfiniteScroll({
+  const { loaderRef } = useInfinitePaging({
     hasNext: hasNextPage,
     isLoading: isFetching,
-    onLoadMore: () => setPage((prev) => prev + 1),
+    page,
+    setPage,
+    updateParams,
   });
 
   // Derived / computed variables (part 2)
@@ -119,21 +122,32 @@ function PhotosPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8 pb-32">
-      <div className="px-1">
-        <h1 className="text-3xl font-black text-label-primary tracking-tight mb-2">{PageNames.PHOTOS}</h1>
-        <Breadcrumb
-          items={[
-            {
-              title: (
-                <Link to={PageUrls.DashboardPage} className="text-label-tertiary hover:text-primary transition-colors">
-                  {PageNames.MY_FILES}
-                </Link>
-              ),
-            },
-            { title: <span className="text-label-primary font-bold">{PageNames.PHOTOS}</span> },
-          ]}
-        />
-      </div>
+      <PageHeader
+        title={PageNames.PHOTOS}
+        icon={
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <PictureOutlined className="text-xl text-primary" />
+          </div>
+        }
+        breadcrumbNode={
+          <Breadcrumb
+            className="mt-1"
+            items={[
+              {
+                title: (
+                  <Link
+                    to={PageUrls.DashboardPage}
+                    className="text-label-tertiary hover:text-primary transition-colors"
+                  >
+                    {PageNames.MY_FILES}
+                  </Link>
+                ),
+              },
+              { title: <span className="text-label-primary font-bold">{PageNames.PHOTOS}</span> },
+            ]}
+          />
+        }
+      />
 
       <div className="flex flex-col gap-12">
         {groupedPhotos.map(([group, groupPhotos]) => (

@@ -4,9 +4,11 @@ import baseApi from "./api";
 import ApiUtils from "./apiUtils";
 import HttpClientFactory from "@utils/httpClientFactory";
 import { uploadChunkRaw } from "@utils/chunkUploadUtils";
+import { UrlUtils } from "@shared-utils/utils";
 
 // Constants
 import { TagIds, TagTypes } from "@constants/apiTags";
+import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 
 const CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
 
@@ -18,7 +20,7 @@ const fileApi = baseApi.injectEndpoints({
     // GET /api/v1/files
     getFiles: builder.query({
       query: (params) => ({
-        url: "/files",
+        url: FileServiceUrls.getFileList,
         params,
       }),
       // Only cache based on search/extensions/folder, ignore page 'pg' for cache key
@@ -30,7 +32,7 @@ const fileApi = baseApi.injectEndpoints({
     // GET /api/v1/files/recent
     getRecentFiles: builder.query({
       query: (params) => ({
-        url: "/files/recent",
+        url: FileServiceUrls.getRecentFileList,
         params,
       }),
       serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
@@ -41,7 +43,7 @@ const fileApi = baseApi.injectEndpoints({
     // POST /api/v1/files/upload/init
     initChunkedUpload: builder.mutation({
       query: (body) => ({
-        url: "/files/upload/init",
+        url: FileServiceUrls.initChunkedUpload,
         method: "POST",
         body,
       }),
@@ -50,7 +52,7 @@ const fileApi = baseApi.injectEndpoints({
     // POST /api/v1/files/upload/finalize
     finalizeChunkedUpload: builder.mutation({
       query: (body) => ({
-        url: "/files/upload/finalize",
+        url: FileServiceUrls.finalizeChunkedUpload,
         method: "POST",
         body,
       }),
@@ -69,7 +71,7 @@ const fileApi = baseApi.injectEndpoints({
     // POST /api/v1/files/upload
     uploadFile: builder.mutation({
       query: (formData) => ({
-        url: "/files/upload",
+        url: FileServiceUrls.uploadFile,
         method: "POST",
         body: formData,
         // FormData is handled by browser/axios, but we can specify contentType if needed
@@ -104,7 +106,7 @@ const fileApi = baseApi.injectEndpoints({
             formData.append("file", file);
             if (folderId) formData.append("folderId", folderId);
 
-            await httpClient.post("/api/v1/files/upload", {}, formData, null, {
+            await httpClient.post(`${ApiBasePath}${FileServiceUrls.uploadFile}`, {}, formData, null, {
               signal,
               onUploadProgress: (pe) => {
                 if (pe.lengthComputable) {
@@ -157,7 +159,7 @@ const fileApi = baseApi.injectEndpoints({
           // Finalize
           if (onSpeedEtaUpdate) onSpeedEtaUpdate(0, null);
           const finalizeRes = await fetchWithBQ({
-            url: "/files/upload/finalize",
+            url: FileServiceUrls.finalizeChunkedUpload,
             method: "POST",
             body: {
               uploadId: state.uploadId,
@@ -192,7 +194,7 @@ const fileApi = baseApi.injectEndpoints({
     // DELETE /api/v1/files/:id
     deleteFile: builder.mutation({
       query: ({ id }) => ({
-        url: `/files/${id}`,
+        url: UrlUtils.format(FileServiceUrls.deleteFile, { id }),
         method: "DELETE",
       }),
       invalidatesTags: (result, error, arg) => [
@@ -210,7 +212,7 @@ const fileApi = baseApi.injectEndpoints({
     // PATCH /api/v1/files/:id
     renameFile: builder.mutation({
       query: ({ id, name }) => ({
-        url: `/files/${id}`,
+        url: UrlUtils.format(FileServiceUrls.renameFile, { id }),
         method: "PATCH",
         body: { name },
       }),
@@ -225,7 +227,7 @@ const fileApi = baseApi.injectEndpoints({
     // PATCH /api/v1/files/:id/favorite
     toggleFileFavorite: builder.mutation({
       query: ({ id }) => ({
-        url: `/files/${id}/favorite`,
+        url: UrlUtils.format(FileServiceUrls.toggleFavorite, { id }),
         method: "PATCH",
       }),
       invalidatesTags: (result, error, arg) => [
@@ -239,7 +241,7 @@ const fileApi = baseApi.injectEndpoints({
     // POST /api/v1/files/:id/move
     moveFile: builder.mutation({
       query: ({ id, folderId }) => ({
-        url: `/files/${id}/move`,
+        url: UrlUtils.format(FileServiceUrls.moveFile, { id }),
         method: "POST",
         body: { folderId },
       }),
@@ -254,7 +256,7 @@ const fileApi = baseApi.injectEndpoints({
     // POST /api/v1/files/:id/copy
     copyFile: builder.mutation({
       query: ({ id, folderId }) => ({
-        url: `/files/${id}/copy`,
+        url: UrlUtils.format(FileServiceUrls.copyFile, { id }),
         method: "POST",
         body: { folderId },
       }),
@@ -271,7 +273,7 @@ const fileApi = baseApi.injectEndpoints({
     // PATCH /api/v1/files/:id/tags
     updateFileTags: builder.mutation({
       query: ({ id, tags }) => ({
-        url: `/files/${id}/tags`,
+        url: UrlUtils.format(FileServiceUrls.updateFileTags, { id }),
         method: "PATCH",
         body: { tags },
       }),
@@ -286,7 +288,7 @@ const fileApi = baseApi.injectEndpoints({
     // POST /api/v1/files/:id/touch
     touchFile: builder.mutation({
       query: ({ id }) => ({
-        url: `/files/${id}/touch`,
+        url: UrlUtils.format(FileServiceUrls.touchFile, { id }),
         method: "POST",
       }),
       invalidatesTags: [TagTypes.FILES, TagTypes.RECENT_FILES],
@@ -307,7 +309,6 @@ export const {
   useToggleFileFavoriteMutation,
   useMoveFileMutation,
   useCopyFileMutation,
-
   useUpdateFileTagsMutation,
   useTouchFileMutation,
 } = fileApi;

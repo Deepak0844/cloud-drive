@@ -110,6 +110,34 @@ class HttpClient {
 
     return response.data;
   };
+
+  download = async (
+    url,
+    params = {},
+    data = {},
+    contentType = HttpContentTypes.APP_JSON,
+    options = {},
+    requestMethod = HttpMethods.GET
+  ) => {
+    const headers = {
+      [HttpHeaders.Accept]: HttpContentTypes.APP_JSON,
+      ...(contentType && { [HttpHeaders.ContentType]: contentType }),
+    };
+
+    const response = await axios({
+      method: requestMethod,
+      url,
+      params,
+      data,
+      paramsSerializer: { serialize: ApiUtils.serializeParams },
+      headers,
+      withCredentials: true,
+      responseType: "blob",
+      ...options,
+    });
+
+    return response.data;
+  };
 }
 
 export default HttpClient;

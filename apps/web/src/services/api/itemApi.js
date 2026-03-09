@@ -1,11 +1,12 @@
 import baseApi from "./api";
+import { ItemServiceUrls } from "@constants/serviceUrls";
 
 const itemApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // POST /api/v1/items/bulk-operation
     performBulkOperation: builder.mutation({
       query: (body) => ({
-        url: "/items/bulk-operation",
+        url: ItemServiceUrls.performBulkOperation,
         method: "POST",
         body,
       }),

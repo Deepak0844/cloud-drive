@@ -1,14 +1,13 @@
 // React core & third-party libraries
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import { Input, Modal, Tooltip, Typography, Upload } from "antd";
 import {
-  CloseOutlined,
   CloudServerOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
   DragOutlined,
+  FolderOpenOutlined,
   SendOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
@@ -18,14 +17,16 @@ import { motion } from "framer-motion";
 import { useGetFolderContentsQuery, useGetFolderDetailsQuery } from "@services/api/folderApi";
 
 // Constants
-import { DefaultPagination, QUERY_PARAMS_KEYS, STORAGE } from "@shared-constants/constants";
-
-// Hooks
-import { useInfiniteScroll } from "@shared-hooks/hooks";
+import { QUERY_PARAMS_KEYS, STORAGE } from "@shared-constants/constants";
+import PageNames from "@constants/pageNames";
 
 import { useDragDrop } from "@hooks/files/useDragDrop";
 import { useFileActions } from "@hooks/files/useFileActions";
 import { useFolderCreation } from "@hooks/files/useFolderCreation";
+import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
+import { useListPageParams } from "@hooks/files/useListPageParams";
+import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
+import { useSelectableItems } from "@hooks/files/useSelectableItems";
 import { useUploadHandler } from "@hooks/files/useUploadHandler";
 
 // Contexts
@@ -36,8 +37,10 @@ import BreadcrumbNav from "@components/files/BreadcrumbNav";
 import FileGrid from "@components/files/FileGrid";
 import FilePreviewModal from "@components/files/FilePreviewModal";
 import FileToolbar from "@components/files/FileToolbar";
+import FloatingBulkActionsBar from "@components/files/FloatingBulkActionsBar";
 import FolderPickerModal from "@components/files/FolderPickerModal";
 import InfoDrawer from "@components/files/InfoDrawer";
+import PageHeader from "@components/layout/PageHeader";
 import QuotaRequestModal from "@components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
 
@@ -45,55 +48,21 @@ const { Text } = Typography;
 const { Dragger } = Upload;
 
 function MyFilesView() {
-  // Router hooks & params
-  const [searchParams, setSearchParams] = useSearchParams();
-
   // Local state
   const [infoItem, setInfoItem] = useState(null);
-  const [page, setPage] = useState(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    return p ? Number(p) : DefaultPagination.pageNumber;
-  });
   const [previewFile, setPreviewFile] = useState(null);
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
   const [quotaRequestModalVisible, setQuotaRequestModalVisible] = useState(false);
-  const [selectedItems, setSelectedItems] = useState([]);
   const [viewMode, setViewMode] = useState("grid");
+  const { clearSelection, selectedItems, toggleSelect: toggleSelectBase } = useSelectableItems();
+  const { advancedFilters, debouncedSearch, page, pageSize, searchParams, setSearchParams, setPage, updateParams } =
+    useListPageParams();
 
   // Derived / computed variables
   const currentFolderId = searchParams.get("folder") || "root";
-  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
-  const pageSize = useMemo(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
-    return p ? Number(p) : DefaultPagination.pageSize;
-  }, [searchParams]);
-
-  const advancedFilters = useMemo(() => {
-    const filters = {};
-    const cat = searchParams.get(QUERY_PARAMS_KEYS.CATEGORY);
-    const sd = searchParams.get(QUERY_PARAMS_KEYS.START_DATE);
-    const ed = searchParams.get(QUERY_PARAMS_KEYS.END_DATE);
-    const min = searchParams.get(QUERY_PARAMS_KEYS.MIN_SIZE);
-    const max = searchParams.get(QUERY_PARAMS_KEYS.MAX_SIZE);
-    const tag = searchParams.get(QUERY_PARAMS_KEYS.TAG);
-
-    if (cat) filters.category = cat;
-    if (sd) filters.startDate = sd;
-    if (ed) filters.endDate = ed;
-    if (min) filters.minSize = Number(min);
-    if (max) filters.maxSize = Number(max);
-    if (tag) filters.tag = tag;
-    return filters;
-  }, [searchParams]);
 
   const sortBy = searchParams.get(QUERY_PARAMS_KEYS.SORT_BY) || "updatedAt";
   const sortOrder = searchParams.get(QUERY_PARAMS_KEYS.SORT_ORDER) || "desc";
-
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
 
   // RTK Query hooks
   const {
@@ -134,57 +103,18 @@ function MyFilesView() {
     setSearchParams(newParams);
   }
 
-  const updateParams = useCallback(
-    (updates) => {
-      const newParams = new URLSearchParams(searchParams);
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === "") {
-          newParams.delete(key);
-        } else {
-          newParams.set(key, String(value));
-        }
-      });
-      setSearchParams(newParams, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
-
   // Custom & shared hooks
-  const { loaderRef } = useInfiniteScroll({
+  const { loaderRef } = useInfinitePaging({
     hasNext: paginationData?.hasNext || false,
     isLoading: isContentsFetching,
-    onLoadMore: () => {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
-    },
+    page,
+    setPage,
+    updateParams,
   });
 
   function toggleSelect(id, type) {
-    setSelectedItems((prev) => {
-      const exists = prev.find((item) => String(item.id) === String(id));
-      if (exists) return prev.filter((item) => String(item.id) !== String(id));
-      return [...prev, { id: String(id), type }];
-    });
+    toggleSelectBase(String(id), type);
   }
-
-  const clearSelection = useCallback(() => setSelectedItems([]), []);
-
-  const handleClickOutside = useCallback(
-    (e) => {
-      if (
-        e.target.closest(".animate-item") ||
-        e.target.closest(".glass-bar") ||
-        e.target.closest(".ant-modal-root") ||
-        e.target.closest(".ant-modal-wrap") ||
-        e.target.closest(".ant-modal-mask") ||
-        e.target.closest(".bulk-actions-bar")
-      )
-        return;
-      clearSelection();
-    },
-    [clearSelection]
-  );
 
   function handleRequestQuota() {
     setQuotaModalVisible(false);
@@ -246,109 +176,87 @@ function MyFilesView() {
   });
 
   // useEffect
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
+  useOutsideClickClear({ clearSelection });
 
   useEffect(() => {
-    document.addEventListener("click", handleClickOutside);
     function handleOpenQuota() {
       setQuotaModalVisible(true);
     }
     window.addEventListener("openQuotaModal", handleOpenQuota);
     return () => {
-      document.removeEventListener("click", handleClickOutside);
       window.removeEventListener("openQuotaModal", handleOpenQuota);
     };
-  }, [handleClickOutside]);
+  }, []);
 
   // Render
   return (
     <div className="flex flex-col gap-4 pb-10">
-      <div className="flex flex-row justify-between items-center gap-4 px-1">
-        <div className="shrink-0">
-          <BreadcrumbNav breadcrumbs={breadcrumbs} setCurrentFolderId={setCurrentFolderId} />
-        </div>
-        <FileToolbar
-          advancedFilters={advancedFilters}
-          updateParams={updateParams}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          viewMode={viewMode}
-          setViewMode={setViewMode}
-          handleUploadClick={handleUploadClick}
-          handleCreateFolder={handleCreateFolder}
-        />
-      </div>
+      <PageHeader
+        title={PageNames.MY_FILES}
+        icon={<FolderOpenOutlined className="text-primary opacity-80" />}
+        breadcrumbNode={<BreadcrumbNav breadcrumbs={breadcrumbs} setCurrentFolderId={setCurrentFolderId} />}
+        rightContent={
+          <FileToolbar
+            advancedFilters={advancedFilters}
+            updateParams={updateParams}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+            handleUploadClick={handleUploadClick}
+            handleCreateFolder={handleCreateFolder}
+          />
+        }
+      />
 
       <div className="h-4" />
 
       {selectedItems.length > 0 && (
-        <motion.div
-          initial={{ y: 100, x: "-50%", opacity: 0 }}
-          animate={{ y: 0, x: "-50%", opacity: 1 }}
-          exit={{ y: 100, x: "-50%", opacity: 0 }}
-          className="fixed bottom-10 left-1/2 z-50 pointer-events-auto"
-        >
-          <div className="bg-surface/90 backdrop-blur-xl rounded-full p-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-primary/20 ring-1 ring-white/20 px-6 h-16 min-w-[400px] bulk-actions-bar">
-            <div className="flex items-center gap-3 pr-4 border-r border-line">
+        <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}>
+          <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
+            <Tooltip title="Move selection">
               <Button
                 type="text"
-                shape="circle"
-                icon={<CloseOutlined className="text-xs" />}
-                onClick={clearSelection}
-                className="hover:rotate-90 transition-transform flex items-center justify-center w-8 h-8 bg-surface-alt"
-              />
-              <span className="text-sm font-black text-primary tracking-tight">{selectedItems.length} selected</span>
-            </div>
-
-            <div className="flex gap-2 items-center pl-2">
-              <Tooltip title="Move selection">
-                <Button
-                  type="text"
-                  icon={<DragOutlined />}
-                  onClick={() => handleBulkMoveTrigger(selectedItems)}
-                  className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-                >
-                  <span className="text-[10px] uppercase tracking-tighter">Move</span>
-                </Button>
-              </Tooltip>
-              <Tooltip title="Copy selection">
-                <Button
-                  type="text"
-                  icon={<CopyOutlined />}
-                  onClick={() => handleBulkCopyTrigger(selectedItems)}
-                  className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-                >
-                  <span className="text-[10px] uppercase tracking-tighter">Copy</span>
-                </Button>
-              </Tooltip>
-              <Tooltip title="Download selection (files only)">
-                <Button
-                  type="text"
-                  icon={<DownloadOutlined />}
-                  loading={bulkDownloadLoading}
-                  onClick={() => handleBulkDownload(selectedItems)}
-                  className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-                >
-                  <span className="text-[10px] uppercase tracking-tighter">Download</span>
-                </Button>
-              </Tooltip>
-              <Tooltip title="Delete selection">
-                <Button
-                  type="text"
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => handleBulkDelete(selectedItems)}
-                  className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-danger hover:bg-danger-light border-none justify-center"
-                >
-                  <span className="text-[10px] uppercase tracking-tighter">Delete</span>
-                </Button>
-              </Tooltip>
-            </div>
-          </div>
+                icon={<DragOutlined />}
+                onClick={() => handleBulkMoveTrigger(selectedItems)}
+                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
+              >
+                <span className="text-[10px] uppercase tracking-tighter">Move</span>
+              </Button>
+            </Tooltip>
+            <Tooltip title="Copy selection">
+              <Button
+                type="text"
+                icon={<CopyOutlined />}
+                onClick={() => handleBulkCopyTrigger(selectedItems)}
+                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
+              >
+                <span className="text-[10px] uppercase tracking-tighter">Copy</span>
+              </Button>
+            </Tooltip>
+            <Tooltip title="Download selection (files only)">
+              <Button
+                type="text"
+                icon={<DownloadOutlined />}
+                loading={bulkDownloadLoading}
+                onClick={() => handleBulkDownload(selectedItems)}
+                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
+              >
+                <span className="text-[10px] uppercase tracking-tighter">Download</span>
+              </Button>
+            </Tooltip>
+            <Tooltip title="Delete selection">
+              <Button
+                type="text"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => handleBulkDelete(selectedItems)}
+                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-danger hover:bg-danger-light border-none justify-center"
+              >
+                <span className="text-[10px] uppercase tracking-tighter">Delete</span>
+              </Button>
+            </Tooltip>
+          </FloatingBulkActionsBar>
         </motion.div>
       )}
 

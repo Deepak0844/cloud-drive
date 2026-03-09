@@ -2,15 +2,33 @@
 import React from "react";
 import { Layout } from "antd";
 import { MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import { useLocation } from "react-router-dom";
 
 // Components
 import NotificationDropdown from "./NotificationDropdown";
 import UserProfileDropdown from "./UserProfileDropdown";
 import Button from "@shared-components/components/button";
 
+// Constants
+import PageNames from "@constants/pageNames";
+import PageUrls from "@constants/pageUrls";
+
 const { Header } = Layout;
 
 function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
+  const { pathname } = useLocation();
+
+  function getCurrentPageName() {
+    if (pathname === PageUrls.DashboardPage || pathname === PageUrls.MyFilesPage) return PageNames.MY_FILES;
+    if (pathname.startsWith(PageUrls.PhotosPage)) return PageNames.PHOTOS;
+    if (pathname.startsWith(PageUrls.RecentPage)) return PageNames.RECENT;
+    if (pathname.startsWith(PageUrls.FavoritesPage)) return PageNames.FAVORITES;
+    if (pathname.startsWith(PageUrls.TrashPage)) return PageNames.TRASH;
+    if (pathname.startsWith(PageUrls.SettingsPage)) return PageNames.SETTINGS;
+    if (pathname.startsWith(PageUrls.AdminPage)) return PageNames.ADMIN;
+    return "Cloud Drive";
+  }
+
   // Render
   return (
     <Header
@@ -39,6 +57,7 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
             className="flex items-center justify-center w-10 h-10 hover:bg-surface-alt rounded-xl transition-all border border-transparent"
           />
         )}
+        <span className="text-sm sm:text-base font-bold text-label tracking-tight">{getCurrentPageName()}</span>
       </div>
 
       <div className="flex items-center gap-3 sm:gap-5">

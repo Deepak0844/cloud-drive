@@ -3,6 +3,9 @@ import baseApi from "./api";
 // utils
 import AuthUtils from "@utils/authUtils";
 
+// Constants
+import { AuthServiceUrls } from "@constants/serviceUrls";
+
 // Socket
 import SocketClient from "@services/socketClient";
 
@@ -17,7 +20,7 @@ const authApi = baseApi.injectEndpoints({
     // POST /api/v1/auth/login
     login: builder.mutation({
       query: (credentials) => ({
-        url: "/auth/login",
+        url: AuthServiceUrls.login,
         method: "POST",
         body: credentials,
         onError: { suppressGlobalError: true }, // Let this component handle the error feedback
@@ -35,7 +38,7 @@ const authApi = baseApi.injectEndpoints({
     // POST /api/v1/auth/register
     register: builder.mutation({
       query: (userData) => ({
-        url: "/auth/register",
+        url: AuthServiceUrls.register,
         method: "POST",
         body: userData,
       }),
@@ -44,7 +47,7 @@ const authApi = baseApi.injectEndpoints({
     // POST /api/v1/auth/logout
     logout: builder.mutation({
       query: () => ({
-        url: "/auth/logout",
+        url: AuthServiceUrls.logout,
         method: "POST",
       }),
       async onQueryStarted(_args, { queryFulfilled }) {
@@ -64,7 +67,7 @@ const authApi = baseApi.injectEndpoints({
     // GET /api/v1/auth/me  — used to get/revalidate the current user
     getMe: builder.query({
       query: () => ({
-        url: "/auth/me",
+        url: AuthServiceUrls.getMe,
       }),
       providesTags: ["Auth"],
     }),
@@ -72,7 +75,7 @@ const authApi = baseApi.injectEndpoints({
     // PUT /api/v1/auth/me — used to update the user profile
     updateProfile: builder.mutation({
       query: (body) => ({
-        url: "/auth/me",
+        url: AuthServiceUrls.updateProfile,
         method: "PUT",
         body,
       }),
@@ -89,7 +92,7 @@ const authApi = baseApi.injectEndpoints({
     // PUT /api/v1/auth/password — used to change password
     updatePassword: builder.mutation({
       query: (body) => ({
-        url: "/auth/password",
+        url: AuthServiceUrls.updatePassword,
         method: "PUT",
         body,
         onError: {
@@ -110,7 +113,7 @@ const authApi = baseApi.injectEndpoints({
     // POST /api/v1/auth/forgot-password — send a password reset email
     forgotPassword: builder.mutation({
       query: (body) => ({
-        url: "/auth/forgot-password",
+        url: AuthServiceUrls.forgotPassword,
         method: "POST",
         body,
         onError: { suppressGlobalError: true },
@@ -120,7 +123,7 @@ const authApi = baseApi.injectEndpoints({
     // PUT /api/v1/auth/reset-password — set a new password using the reset token
     resetPassword: builder.mutation({
       query: (body) => ({
-        url: "/auth/reset-password",
+        url: AuthServiceUrls.resetPassword,
         method: "PUT",
         body,
         onError: { suppressGlobalError: true },

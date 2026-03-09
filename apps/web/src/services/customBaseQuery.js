@@ -12,7 +12,18 @@ const customBaseQuery =
   async (rawArgs, api) => {
     // Normalize args: RTK Query allows a string for simple GET requests
     const args = typeof rawArgs === "string" ? { url: rawArgs } : rawArgs;
-    const { url = "", method = "get", params: rawParams, data: rawData, body: rawBody, contentType, onError } = args;
+    const {
+      url = "",
+      method = "get",
+      params: rawParams,
+      data: rawData,
+      body: rawBody,
+      contentType,
+      onError,
+      responseType,
+      responseHandler,
+      downloadMethod,
+    } = args;
 
     const getUiFlags = (obj) => {
       if (!obj || typeof obj !== "object") return {};
@@ -54,33 +65,46 @@ const customBaseQuery =
       const httpClient = HttpClientFactory.getInstance();
       const finalUrl = baseUrl + url;
       const lowerMethod = method.toLowerCase();
+      const resolvedResponseType = responseType || (typeof responseHandler === "string" ? responseHandler : undefined);
 
       const methodMap = {
         get: () =>
           httpClient.get(finalUrl, params, contentType, {
             signal: api.signal,
-            ...(args.responseHandler && { responseType: args.responseHandler }),
+            ...(resolvedResponseType && { responseType: resolvedResponseType }),
           }),
         post: () =>
           httpClient.post(finalUrl, params, data, contentType, {
             signal: api.signal,
-            ...(args.responseHandler && { responseType: args.responseHandler }),
+            ...(resolvedResponseType && { responseType: resolvedResponseType }),
           }),
         put: () =>
           httpClient.put(finalUrl, params, data, contentType, {
             signal: api.signal,
-            ...(args.responseHandler && { responseType: args.responseHandler }),
+            ...(resolvedResponseType && { responseType: resolvedResponseType }),
           }),
         patch: () =>
           httpClient.patch(finalUrl, params, data, contentType, {
             signal: api.signal,
-            ...(args.responseHandler && { responseType: args.responseHandler }),
+            ...(resolvedResponseType && { responseType: resolvedResponseType }),
           }),
         delete: () =>
           httpClient.delete(finalUrl, params, data, contentType, {
             signal: api.signal,
-            ...(args.responseHandler && { responseType: args.responseHandler }),
+            ...(resolvedResponseType && { responseType: resolvedResponseType }),
           }),
+        download: () =>
+          httpClient.download(
+            finalUrl,
+            params,
+            data,
+            contentType,
+            {
+              signal: api.signal,
+              ...(resolvedResponseType && { responseType: resolvedResponseType }),
+            },
+            downloadMethod || "GET"
+          ),
       };
 
       if (!methodMap[lowerMethod]) {

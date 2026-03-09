@@ -72,24 +72,40 @@ function FolderItem({
     onOpen?.(folder);
   }
 
-  const menuItems = isTrashItem
-    ? [{ key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) }]
-    : [
-        { key: "open", label: "Open", icon: <DoubleRightOutlined /> },
-        {
-          key: "favorite",
-          label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
-          icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
-          onClick: () => toggleFavorite({ id: folder.id }),
-          disabled: isFavoriting,
-        },
-        { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) },
-        { key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename?.(folder) },
-        { key: "move", label: "Move to...", icon: <DragOutlined />, onClick: () => onMove?.(folder) },
-        { key: "copy", label: "Copy to...", icon: <CopyOutlined />, onClick: () => onCopy?.(folder) },
-        { type: "divider" },
-        { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => onDelete?.(folder) },
-      ];
+  const menuItems = (() => {
+    if (isTrashItem) {
+      return [{ key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) }];
+    }
+
+    const items = [
+      { key: "open", label: "Open", icon: <DoubleRightOutlined />, onClick: () => onOpen?.(folder) },
+      {
+        key: "favorite",
+        label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
+        icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
+        onClick: () => toggleFavorite({ id: folder.id || folder._id }),
+        disabled: isFavoriting,
+      },
+      { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) },
+    ];
+
+    if (onRename)
+      items.push({ key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename(folder) });
+    if (onMove) items.push({ key: "move", label: "Move to...", icon: <DragOutlined />, onClick: () => onMove(folder) });
+    if (onCopy) items.push({ key: "copy", label: "Copy to...", icon: <CopyOutlined />, onClick: () => onCopy(folder) });
+    if (onDelete) {
+      items.push({ type: "divider" });
+      items.push({
+        key: "delete",
+        label: "Delete",
+        icon: <DeleteOutlined />,
+        danger: true,
+        onClick: () => onDelete(folder),
+      });
+    }
+
+    return items;
+  })();
 
   // Render
   if (viewMode === "list") {

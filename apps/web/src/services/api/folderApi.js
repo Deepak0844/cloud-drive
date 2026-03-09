@@ -1,6 +1,8 @@
 import baseApi from "./api";
 import ApiUtils from "./apiUtils";
 import { TagIds, TagTypes } from "@constants/apiTags";
+import { FolderServiceUrls } from "@constants/serviceUrls";
+import { UrlUtils } from "@shared-utils/utils";
 
 /**
  * Folder API endpoints.
@@ -10,7 +12,7 @@ const folderApi = baseApi.injectEndpoints({
     // GET /api/v1/folders
     getFolders: builder.query({
       query: (params) => ({
-        url: "/folders",
+        url: FolderServiceUrls.getFolderList,
         params,
       }),
       providesTags: ApiUtils.paginatedTags(TagTypes.FOLDERS),
@@ -24,7 +26,10 @@ const folderApi = baseApi.injectEndpoints({
         delete params.folderId;
 
         return {
-          url: id === "root" || !id ? "/folders/root/contents" : `/folders/${id}/contents`,
+          url:
+            id === "root" || !id
+              ? FolderServiceUrls.getRootFolderContents
+              : UrlUtils.format(FolderServiceUrls.getFolderContents, { id }),
           params,
         };
       },
@@ -42,7 +47,7 @@ const folderApi = baseApi.injectEndpoints({
     // GET /api/v1/folders/:id
     getFolderDetails: builder.query({
       query: ({ id }) => ({
-        url: `/folders/${id}`,
+        url: UrlUtils.format(FolderServiceUrls.getFolderDetails, { id }),
       }),
       providesTags: (result, error, arg) => ApiUtils.entityTags(TagTypes.FOLDERS)(result, error, arg),
     }),
@@ -50,7 +55,7 @@ const folderApi = baseApi.injectEndpoints({
     // POST /api/v1/folders
     createFolder: builder.mutation({
       query: (folderData) => ({
-        url: "/folders",
+        url: FolderServiceUrls.createFolder,
         method: "POST",
         body: folderData,
       }),
@@ -63,7 +68,7 @@ const folderApi = baseApi.injectEndpoints({
     // PATCH /api/v1/folders/:id
     renameFolder: builder.mutation({
       query: ({ id, name }) => ({
-        url: `/folders/${id}`,
+        url: UrlUtils.format(FolderServiceUrls.renameFolder, { id }),
         method: "PATCH",
         body: { name },
       }),
@@ -77,7 +82,7 @@ const folderApi = baseApi.injectEndpoints({
     // DELETE /api/v1/folders/:id
     deleteFolder: builder.mutation({
       query: ({ id }) => ({
-        url: `/folders/${id}`,
+        url: UrlUtils.format(FolderServiceUrls.deleteFolder, { id }),
         method: "DELETE",
       }),
       invalidatesTags: (result, error, arg) => [
@@ -92,7 +97,7 @@ const folderApi = baseApi.injectEndpoints({
     // PATCH /api/v1/folders/:id/favorite
     toggleFolderFavorite: builder.mutation({
       query: ({ id }) => ({
-        url: `/folders/${id}/favorite`,
+        url: UrlUtils.format(FolderServiceUrls.toggleFavorite, { id }),
         method: "PATCH",
       }),
       invalidatesTags: (result, error, arg) => [
@@ -105,7 +110,7 @@ const folderApi = baseApi.injectEndpoints({
     // POST /api/v1/folders/:id/move
     moveFolder: builder.mutation({
       query: ({ id, parentId }) => ({
-        url: `/folders/${id}/move`,
+        url: UrlUtils.format(FolderServiceUrls.moveFolder, { id }),
         method: "POST",
         body: { parentId },
       }),
@@ -119,7 +124,7 @@ const folderApi = baseApi.injectEndpoints({
     // POST /api/v1/folders/:id/copy
     copyFolder: builder.mutation({
       query: ({ id, parentId }) => ({
-        url: `/folders/${id}/copy`,
+        url: UrlUtils.format(FolderServiceUrls.copyFolder, { id }),
         method: "POST",
         body: { parentId },
       }),
@@ -132,7 +137,7 @@ const folderApi = baseApi.injectEndpoints({
     // PATCH /api/v1/folders/:id/tags
     updateFolderTags: builder.mutation({
       query: ({ id, tags }) => ({
-        url: `/folders/${id}/tags`,
+        url: UrlUtils.format(FolderServiceUrls.updateFolderTags, { id }),
         method: "PATCH",
         body: { tags },
       }),

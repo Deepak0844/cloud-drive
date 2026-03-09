@@ -1,3 +1,6 @@
+// Utils
+import UrlUtils from "./urlUtils";
+
 /**
  * ------------------------------------------------------------------------------
  * convertBinaryToBlobUrl - Convert binary data to a Base64 string for embedding (PDF example)
@@ -73,6 +76,26 @@ async function convertBinaryToBase64StringImage(binaryString = "") {
   return data;
 }
 
+/**
+ * ------------------------------------------------------------------------------
+ * startFileDownload - Trigger browser download for a file by id
+ * @param {{id?: string, _id?: string, name?: string}} file - File metadata
+ * @param {string} downloadUrlTemplate - URL template including :id
+ * @returns {void}
+ */
+function startFileDownload(file = {}, downloadUrlTemplate = "") {
+  const fileId = file.id || file._id;
+  if (!fileId || !downloadUrlTemplate) return;
+
+  const downloadUrl = UrlUtils.format(downloadUrlTemplate, { id: fileId });
+  const anchor = document.createElement("a");
+  anchor.href = downloadUrl;
+  anchor.download = file.name || "download";
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+}
+
 // Exports
 // --------------------------------------------------------------------
 const FileUtils = {
@@ -80,6 +103,7 @@ const FileUtils = {
   blobToBase64,
   base64ToFile,
   convertBinaryToBase64StringImage,
+  startFileDownload,
 };
 
 export default FileUtils;

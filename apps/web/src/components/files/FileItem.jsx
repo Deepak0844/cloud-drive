@@ -19,25 +19,20 @@ import {
 } from "@ant-design/icons";
 import { motion } from "framer-motion";
 
+// Constants
+import { FileServiceUrls } from "@constants/serviceUrls";
+
 // Services (RTK Query hooks)
 import { useToggleFileFavoriteMutation } from "@services/api/fileApi";
+
+// Utils
+import { FileUtils } from "@shared-utils/utils";
 
 // Components
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
 
 const { Text } = Typography;
-
-// utils
-function triggerFileDownload(fileId, fileName) {
-  const url = `/api/v1/files/${fileId}/download`;
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = fileName;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-}
 
 function getFileInfo(type) {
   switch (type) {
@@ -120,29 +115,48 @@ function FileItem({
     onOpen?.(file);
   }
 
-  const menuItems = isTrashItem
-    ? [{ key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) }]
-    : [
-        {
-          key: "download",
-          label: "Download",
-          icon: <DownloadOutlined />,
-          onClick: () => triggerFileDownload(file.id || file._id, file.name),
-        },
-        {
-          key: "favorite",
-          label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
-          icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
-          onClick: () => toggleFavorite({ id: file.id }),
-          disabled: isFavoriting,
-        },
-        { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) },
-        { key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename?.(file) },
-        { key: "move", label: "Move to...", icon: <DragOutlined />, onClick: () => onMove?.(file) },
-        { key: "copy", label: "Copy to...", icon: <CopyOutlined />, onClick: () => onCopy?.(file) },
-        { type: "divider" },
-        { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => onDelete?.(file) },
-      ];
+  function handleDownload() {
+    FileUtils.startFileDownload(file, FileServiceUrls.downloadFile);
+  }
+
+  const menuItems = (() => {
+    if (isTrashItem) {
+      return [{ key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) }];
+    }
+
+    const items = [
+      {
+        key: "download",
+        label: "Download",
+        icon: <DownloadOutlined />,
+        onClick: handleDownload,
+      },
+      {
+        key: "favorite",
+        label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
+        icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
+        onClick: () => toggleFavorite({ id: file.id || file._id }),
+        disabled: isFavoriting,
+      },
+      { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) },
+    ];
+
+    if (onRename) items.push({ key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename(file) });
+    if (onMove) items.push({ key: "move", label: "Move to...", icon: <DragOutlined />, onClick: () => onMove(file) });
+    if (onCopy) items.push({ key: "copy", label: "Copy to...", icon: <CopyOutlined />, onClick: () => onCopy(file) });
+    if (onDelete) {
+      items.push({ type: "divider" });
+      items.push({
+        key: "delete",
+        label: "Delete",
+        icon: <DeleteOutlined />,
+        danger: true,
+        onClick: () => onDelete(file),
+      });
+    }
+
+    return items;
+  })();
 
   // Render
   if (viewMode === "list") {
