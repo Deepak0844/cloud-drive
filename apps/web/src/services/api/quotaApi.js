@@ -1,34 +1,47 @@
-import baseApi from "./api";
+// Constants
 import { TagTypes } from "@constants/apiTags";
 import { QuotaServiceUrls } from "@constants/serviceUrls";
+import { HttpMethods } from "@shared-constants/constants/httpConstants";
 
-const quotaApi = baseApi.injectEndpoints({
+// Services
+import api from "./api";
+
+// ---------------------------------------------------------------------------
+// Endpoint Definitions
+// ---------------------------------------------------------------------------
+
+const getQuotaUsageQuery = () => ({
+  query: () => ({
+    url: QuotaServiceUrls.getQuotaUsage,
+  }),
+  providesTags: [TagTypes.QUOTA],
+});
+
+const getQuotaBreakdownQuery = () => ({
+  query: () => ({
+    url: QuotaServiceUrls.getQuotaBreakdown,
+  }),
+  providesTags: [TagTypes.QUOTA],
+});
+
+const requestQuotaIncreaseMutation = () => ({
+  query: (body) => ({
+    url: QuotaServiceUrls.requestQuotaIncrease,
+    method: HttpMethods.POST,
+    body,
+  }),
+  invalidatesTags: [TagTypes.QUOTA],
+});
+
+// ---------------------------------------------------------------------------
+// Inject Endpoints
+// ---------------------------------------------------------------------------
+
+export const quotaApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // GET /api/v1/quota/usage
-    getQuotaUsage: builder.query({
-      query: () => ({
-        url: QuotaServiceUrls.getQuotaUsage,
-      }),
-      providesTags: [TagTypes.QUOTA],
-    }),
-
-    // GET /api/v1/quota/breakdown
-    getQuotaBreakdown: builder.query({
-      query: () => ({
-        url: QuotaServiceUrls.getQuotaBreakdown,
-      }),
-      providesTags: [TagTypes.QUOTA],
-    }),
-
-    // POST /api/v1/quota/request
-    requestQuotaIncrease: builder.mutation({
-      query: (body) => ({
-        url: QuotaServiceUrls.requestQuotaIncrease,
-        method: "POST",
-        body,
-      }),
-      invalidatesTags: [TagTypes.QUOTA],
-    }),
+    getQuotaUsage: builder.query(getQuotaUsageQuery()),
+    getQuotaBreakdown: builder.query(getQuotaBreakdownQuery()),
+    requestQuotaIncrease: builder.mutation(requestQuotaIncreaseMutation()),
   }),
   overrideExisting: false,
 });

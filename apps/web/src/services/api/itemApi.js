@@ -1,17 +1,31 @@
-import baseApi from "./api";
+// Constants
+import { TagTypes } from "@constants/apiTags";
 import { ItemServiceUrls } from "@constants/serviceUrls";
+import { HttpMethods } from "@shared-constants/constants/httpConstants";
 
-const itemApi = baseApi.injectEndpoints({
+// Services
+import api from "./api";
+
+// ---------------------------------------------------------------------------
+// Endpoint Definitions
+// ---------------------------------------------------------------------------
+
+const performBulkOperationMutation = () => ({
+  query: (body) => ({
+    url: ItemServiceUrls.performBulkOperation,
+    method: HttpMethods.POST,
+    body,
+  }),
+  invalidatesTags: [TagTypes.FILES, TagTypes.FOLDERS, TagTypes.TRASH, TagTypes.QUOTA],
+});
+
+// ---------------------------------------------------------------------------
+// Inject Endpoints
+// ---------------------------------------------------------------------------
+
+export const itemApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // POST /api/v1/items/bulk-operation
-    performBulkOperation: builder.mutation({
-      query: (body) => ({
-        url: ItemServiceUrls.performBulkOperation,
-        method: "POST",
-        body,
-      }),
-      invalidatesTags: ["File", "Folder", "Trash", "Quota"],
-    }),
+    performBulkOperation: builder.mutation(performBulkOperationMutation()),
   }),
   overrideExisting: false,
 });

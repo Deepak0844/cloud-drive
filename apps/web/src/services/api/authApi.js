@@ -1,134 +1,141 @@
-import baseApi from "./api";
-
-// utils
+// Utils
 import AuthUtils from "@utils/authUtils";
 
 // Constants
+import { TagTypes } from "@constants/apiTags";
 import { AuthServiceUrls } from "@constants/serviceUrls";
+import { HttpMethods } from "@shared-constants/constants/httpConstants";
 
 // Socket
 import SocketClient from "@services/socketClient";
 
-/**
- * Auth API endpoints injected into the base RTK Query API.
- *
- * It uses AuthUtils for session persistence and HttpClientFactory
- * to ensure the API client is reloaded with the new token after login.
- */
-const authApi = baseApi.injectEndpoints({
+// Services
+import api from "./api";
+
+// ---------------------------------------------------------------------------
+// Endpoint Definitions
+// ---------------------------------------------------------------------------
+
+const loginMutation = () => ({
+  query: (credentials) => ({
+    url: AuthServiceUrls.login,
+    method: HttpMethods.POST,
+    body: credentials,
+    onError: { suppressGlobalError: true },
+  }),
+  async onQueryStarted(_args, { queryFulfilled }) {
+    try {
+      const { data } = await queryFulfilled;
+      AuthUtils.storeUserInfoInLocalStorage(data.data);
+    } catch {
+      // Error surfaced via the hook
+    }
+  },
+});
+
+const registerMutation = () => ({
+  query: (userData) => ({
+    url: AuthServiceUrls.register,
+    method: HttpMethods.POST,
+    body: userData,
+  }),
+});
+
+const logoutMutation = () => ({
+  query: () => ({
+    url: AuthServiceUrls.logout,
+    method: HttpMethods.POST,
+  }),
+  async onQueryStarted(_args, { queryFulfilled }) {
+    try {
+      await queryFulfilled;
+    } catch {
+      // Even if the server returns an error (e.g. 401 or network error)
+      // we still progress to logout the client.
+    } finally {
+      // Always clear regardless of server response
+      AuthUtils.clearSession();
+      SocketClient.disconnect();
+    }
+  },
+});
+
+const getMeQuery = () => ({
+  query: () => ({
+    url: AuthServiceUrls.getMe,
+  }),
+  providesTags: [TagTypes.AUTH],
+});
+
+const updateProfileMutation = () => ({
+  query: (body) => ({
+    url: AuthServiceUrls.updateProfile,
+    method: HttpMethods.PUT,
+    body,
+  }),
+  invalidatesTags: [TagTypes.AUTH],
+  async onQueryStarted(_args, { queryFulfilled }) {
+    try {
+      const { data } = await queryFulfilled;
+      AuthUtils.storeUserInfoInLocalStorage(data.data);
+    } catch {
+      // Handled component level
+    }
+  },
+});
+
+const updatePasswordMutation = () => ({
+  query: (body) => ({
+    url: AuthServiceUrls.updatePassword,
+    method: HttpMethods.PUT,
+    body,
+    onError: {
+      suppressGlobalError: true,
+    },
+  }),
+  invalidatesTags: [TagTypes.AUTH],
+  async onQueryStarted(_args, { queryFulfilled }) {
+    try {
+      const { data } = await queryFulfilled;
+      AuthUtils.storeUserInfoInLocalStorage(data.data);
+    } catch {
+      // Handled component level
+    }
+  },
+});
+
+const forgotPasswordMutation = () => ({
+  query: (body) => ({
+    url: AuthServiceUrls.forgotPassword,
+    method: HttpMethods.POST,
+    body,
+    onError: { suppressGlobalError: true },
+  }),
+});
+
+const resetPasswordMutation = () => ({
+  query: (body) => ({
+    url: AuthServiceUrls.resetPassword,
+    method: HttpMethods.PUT,
+    body,
+    onError: { suppressGlobalError: true },
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Inject Endpoints
+// ---------------------------------------------------------------------------
+
+export const authApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // POST /api/v1/auth/login
-    login: builder.mutation({
-      query: (credentials) => ({
-        url: AuthServiceUrls.login,
-        method: "POST",
-        body: credentials,
-        onError: { suppressGlobalError: true }, // Let this component handle the error feedback
-      }),
-      async onQueryStarted(_args, { queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled;
-          AuthUtils.storeUserInfoInLocalStorage(data.data);
-        } catch {
-          // Error surfaced via the hook
-        }
-      },
-    }),
-
-    // POST /api/v1/auth/register
-    register: builder.mutation({
-      query: (userData) => ({
-        url: AuthServiceUrls.register,
-        method: "POST",
-        body: userData,
-      }),
-    }),
-
-    // POST /api/v1/auth/logout
-    logout: builder.mutation({
-      query: () => ({
-        url: AuthServiceUrls.logout,
-        method: "POST",
-      }),
-      async onQueryStarted(_args, { queryFulfilled }) {
-        try {
-          await queryFulfilled;
-        } catch {
-          // Even if the server returns an error (e.g. 401 or network error)
-          // we still progress to logout the client.
-        } finally {
-          // Always clear regardless of server response
-          AuthUtils.clearSession();
-          SocketClient.disconnect(); // Close WebSocket on logout
-        }
-      },
-    }),
-
-    // GET /api/v1/auth/me  — used to get/revalidate the current user
-    getMe: builder.query({
-      query: () => ({
-        url: AuthServiceUrls.getMe,
-      }),
-      providesTags: ["Auth"],
-    }),
-
-    // PUT /api/v1/auth/me — used to update the user profile
-    updateProfile: builder.mutation({
-      query: (body) => ({
-        url: AuthServiceUrls.updateProfile,
-        method: "PUT",
-        body,
-      }),
-      invalidatesTags: ["Auth"],
-      async onQueryStarted(_args, { queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled;
-          AuthUtils.storeUserInfoInLocalStorage(data.data);
-        } catch {
-          // Handled component level
-        }
-      },
-    }),
-    // PUT /api/v1/auth/password — used to change password
-    updatePassword: builder.mutation({
-      query: (body) => ({
-        url: AuthServiceUrls.updatePassword,
-        method: "PUT",
-        body,
-        onError: {
-          suppressGlobalError: true,
-        },
-      }),
-      invalidatesTags: ["Auth"],
-      async onQueryStarted(_args, { queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled;
-          AuthUtils.storeUserInfoInLocalStorage(data.data);
-        } catch {
-          // Handled component level
-        }
-      },
-    }),
-
-    // POST /api/v1/auth/forgot-password — send a password reset email
-    forgotPassword: builder.mutation({
-      query: (body) => ({
-        url: AuthServiceUrls.forgotPassword,
-        method: "POST",
-        body,
-        onError: { suppressGlobalError: true },
-      }),
-    }),
-
-    // PUT /api/v1/auth/reset-password — set a new password using the reset token
-    resetPassword: builder.mutation({
-      query: (body) => ({
-        url: AuthServiceUrls.resetPassword,
-        method: "PUT",
-        body,
-        onError: { suppressGlobalError: true },
-      }),
-    }),
+    login: builder.mutation(loginMutation()),
+    register: builder.mutation(registerMutation()),
+    logout: builder.mutation(logoutMutation()),
+    getMe: builder.query(getMeQuery()),
+    updateProfile: builder.mutation(updateProfileMutation()),
+    updatePassword: builder.mutation(updatePasswordMutation()),
+    forgotPassword: builder.mutation(forgotPasswordMutation()),
+    resetPassword: builder.mutation(resetPasswordMutation()),
   }),
   overrideExisting: false,
 });

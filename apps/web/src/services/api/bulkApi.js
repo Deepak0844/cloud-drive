@@ -1,77 +1,88 @@
-import baseApi from "./api";
+// Constants
+import { TagIds, TagTypes } from "@constants/apiTags";
+import { BulkServiceUrls } from "@constants/serviceUrls";
+import { HttpMethods } from "@shared-constants/constants/httpConstants";
 
 // Utils
 import ApiUtils from "./apiUtils";
 
-// Constants
-import { TagIds, TagTypes } from "@constants/apiTags";
-import { BulkServiceUrls } from "@constants/serviceUrls";
+// Services
+import api from "./api";
 
-export const bulkApi = baseApi.injectEndpoints({
+// ---------------------------------------------------------------------------
+// Endpoint Definitions
+// ---------------------------------------------------------------------------
+
+const bulkDeleteMutation = () => ({
+  query: ({ items }) => ({
+    url: BulkServiceUrls.bulkDelete,
+    method: HttpMethods.POST,
+    body: { items },
+  }),
+  invalidatesTags: [
+    ...ApiUtils.listTags(TagTypes.FILES),
+    ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
+    ...ApiUtils.listTags(TagTypes.FOLDERS),
+    ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+    ...ApiUtils.listTags(TagTypes.TRASH),
+    TagTypes.QUOTA,
+    TagTypes.ADMIN_STATS,
+    TagTypes.ADMIN_USERS,
+  ],
+});
+
+const bulkMoveMutation = () => ({
+  query: ({ items, targetFolderId }) => ({
+    url: BulkServiceUrls.bulkMove,
+    method: HttpMethods.POST,
+    body: { items, targetFolderId },
+  }),
+  invalidatesTags: [
+    ...ApiUtils.listTags(TagTypes.FILES),
+    ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
+    ...ApiUtils.listTags(TagTypes.FOLDERS),
+    ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+  ],
+});
+
+const bulkCopyMutation = () => ({
+  query: ({ items, targetFolderId }) => ({
+    url: BulkServiceUrls.bulkCopy,
+    method: HttpMethods.POST,
+    body: { items, targetFolderId },
+  }),
+  invalidatesTags: [
+    ...ApiUtils.listTags(TagTypes.FILES),
+    ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
+    ...ApiUtils.listTags(TagTypes.FOLDERS),
+    ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
+    TagTypes.QUOTA,
+    TagTypes.ADMIN_STATS,
+    TagTypes.ADMIN_USERS,
+  ],
+});
+
+const bulkDownloadMutation = () => ({
+  query: ({ items }) => ({
+    url: BulkServiceUrls.bulkDownload,
+    method: "DOWNLOAD", // Custom method handled by baseQuery/httpClient
+    downloadMethod: HttpMethods.POST,
+    body: { items },
+    responseType: "blob",
+    cache: "no-cache",
+  }),
+});
+
+// ---------------------------------------------------------------------------
+// Inject Endpoints
+// ---------------------------------------------------------------------------
+
+export const bulkApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // POST /api/v1/files/bulk-delete
-    bulkDelete: builder.mutation({
-      query: ({ items }) => ({
-        url: BulkServiceUrls.bulkDelete,
-        method: "POST",
-        body: { items },
-      }),
-      invalidatesTags: [
-        ...ApiUtils.listTags(TagTypes.FILES),
-        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
-        ...ApiUtils.listTags(TagTypes.FOLDERS),
-        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
-        ...ApiUtils.listTags(TagTypes.TRASH),
-        TagTypes.QUOTA,
-        TagTypes.ADMIN_STATS,
-        TagTypes.ADMIN_USERS,
-      ],
-    }),
-
-    // POST /api/v1/files/bulk-move
-    bulkMove: builder.mutation({
-      query: ({ items, targetFolderId }) => ({
-        url: BulkServiceUrls.bulkMove,
-        method: "POST",
-        body: { items, targetFolderId },
-      }),
-      invalidatesTags: [
-        ...ApiUtils.listTags(TagTypes.FILES),
-        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
-        ...ApiUtils.listTags(TagTypes.FOLDERS),
-        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
-      ],
-    }),
-
-    // POST /api/v1/files/bulk-copy
-    bulkCopy: builder.mutation({
-      query: ({ items, targetFolderId }) => ({
-        url: BulkServiceUrls.bulkCopy,
-        method: "POST",
-        body: { items, targetFolderId },
-      }),
-      invalidatesTags: [
-        ...ApiUtils.listTags(TagTypes.FILES),
-        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
-        ...ApiUtils.listTags(TagTypes.FOLDERS),
-        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
-        TagTypes.QUOTA,
-        TagTypes.ADMIN_STATS,
-        TagTypes.ADMIN_USERS,
-      ],
-    }),
-
-    // POST /api/v1/files/bulk-download
-    bulkDownload: builder.mutation({
-      query: ({ items }) => ({
-        url: BulkServiceUrls.bulkDownload,
-        method: "DOWNLOAD",
-        downloadMethod: "POST",
-        body: { items },
-        responseType: "blob",
-        cache: "no-cache",
-      }),
-    }),
+    bulkDelete: builder.mutation(bulkDeleteMutation()),
+    bulkMove: builder.mutation(bulkMoveMutation()),
+    bulkCopy: builder.mutation(bulkCopyMutation()),
+    bulkDownload: builder.mutation(bulkDownloadMutation()),
   }),
   overrideExisting: false,
 });

@@ -1,39 +1,51 @@
-import baseApi from "./api";
-import { UrlUtils } from "@shared-utils/utils";
+// Constants
 import { TagTypes } from "@constants/apiTags";
 import { NotificationServiceUrls } from "@constants/serviceUrls";
+import { HttpMethods } from "@shared-constants/constants/httpConstants";
 
-/**
- * Notification API endpoints.
- */
-const notificationApi = baseApi.injectEndpoints({
+// Utils
+import { UrlUtils } from "@shared-utils/utils";
+
+// Services
+import api from "./api";
+
+// ---------------------------------------------------------------------------
+// Endpoint Definitions
+// ---------------------------------------------------------------------------
+
+const getNotificationsQuery = () => ({
+  query: (params) => ({
+    url: NotificationServiceUrls.getNotificationList,
+    params,
+  }),
+  providesTags: [TagTypes.NOTIFICATIONS],
+});
+
+const markAsReadMutation = () => ({
+  query: ({ id }) => ({
+    url: UrlUtils.format(NotificationServiceUrls.markAsRead, { id }),
+    method: HttpMethods.PATCH,
+  }),
+  invalidatesTags: [TagTypes.NOTIFICATIONS],
+});
+
+const markAllAsReadMutation = () => ({
+  query: () => ({
+    url: NotificationServiceUrls.markAllAsRead,
+    method: HttpMethods.PATCH,
+  }),
+  invalidatesTags: [TagTypes.NOTIFICATIONS],
+});
+
+// ---------------------------------------------------------------------------
+// Inject Endpoints
+// ---------------------------------------------------------------------------
+
+export const notificationApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // GET /api/v1/notifications
-    getNotifications: builder.query({
-      query: (params) => ({
-        url: NotificationServiceUrls.getNotificationList,
-        params,
-      }),
-      providesTags: [TagTypes.NOTIFICATIONS],
-    }),
-
-    // PATCH /api/v1/notifications/:id/read
-    markAsRead: builder.mutation({
-      query: ({ id }) => ({
-        url: UrlUtils.format(NotificationServiceUrls.markAsRead, { id }),
-        method: "PATCH",
-      }),
-      invalidatesTags: [TagTypes.NOTIFICATIONS],
-    }),
-
-    // PATCH /api/v1/notifications/read-all
-    markAllAsRead: builder.mutation({
-      query: () => ({
-        url: NotificationServiceUrls.markAllAsRead,
-        method: "PATCH",
-      }),
-      invalidatesTags: [TagTypes.NOTIFICATIONS],
-    }),
+    getNotifications: builder.query(getNotificationsQuery()),
+    markAsRead: builder.mutation(markAsReadMutation()),
+    markAllAsRead: builder.mutation(markAllAsReadMutation()),
   }),
   overrideExisting: false,
 });
