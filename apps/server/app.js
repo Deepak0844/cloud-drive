@@ -82,7 +82,7 @@ app.use(
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: Env.NODE_ENV === "production" ? 100 : 2000, // limit each IP to 2000 requests per windowMs in dev/test
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   message: "Too many requests from this IP, please try again after 15 minutes",
@@ -144,6 +144,7 @@ app.use((_req, _res, next) => {
 app.use((err, req, res, _next) => {
   const statusCode =
     err.status ||
+    err.statusCode ||
     (err.message === ErrorMessages.FILE_TYPE_NOT_ALLOWED ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR);
   const message = err.message || ErrorMessages.SERVER_ERROR;
 

@@ -58,6 +58,9 @@ function FavoritesPage() {
   // Router hooks & params
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Redux hooks
+  const { message } = App.useApp();
+
   // Local state
   const [deleteItem, setDeleteItem] = useState(null);
   const [folderPicker, setFolderPicker] = useState({ visible: false, action: "move", item: null, items: [] });
@@ -72,16 +75,68 @@ function FavoritesPage() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [viewMode, setViewMode] = useState("grid");
 
+  // RTK Query hooks
+  const [bulkCopy] = useBulkCopyMutation();
+  const [bulkDelete] = useBulkDeleteMutation();
+  const [bulkMove] = useBulkMoveMutation();
+  const [copyFile] = useCopyFileMutation();
+  const [copyFolder] = useCopyFolderMutation();
+  const [deleteFile] = useDeleteFileMutation();
+  const [deleteFolder] = useDeleteFolderMutation();
+  const [moveFile] = useMoveFileMutation();
+  const [moveFolder] = useMoveFolderMutation();
+  const [renameFile] = useRenameFileMutation();
+  const [renameFolder] = useRenameFolderMutation();
+
+  const { data: foldersData, isLoading: foldersLoading } = useGetFoldersQuery({
+    isFavorite: "true",
+    search: searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || undefined,
+  });
+
+  const {
+    data: filesData,
+    isLoading: filesLoading,
+    isFetching: filesFetching,
+  } = useGetFilesQuery({
+    isFavorite: "true",
+    search: searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || undefined,
+    pg: page,
+    ps: useMemo(() => {
+      const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
+      return p ? Number(p) : DefaultPagination.pageSize;
+    }, [searchParams]),
+  });
+
   // Custom & shared hooks
-  const { message } = App.useApp();
+  const updateParams = useCallback(
+    (updates) => {
+      const newParams = new URLSearchParams(searchParams);
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, String(value));
+        }
+      });
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
-  // Derived / computed variables
+  const { loaderRef } = useInfiniteScroll({
+    hasNext: filesData?.pagination?.hasNext || false,
+    isLoading: filesFetching,
+    onLoadMore: () => {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
+    },
+  });
+
+  // 6. Refs
+
+  // 7. Derived / computed variables
   const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
-  const pageSize = useMemo(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
-    return p ? Number(p) : DefaultPagination.pageSize;
-  }, [searchParams]);
-
   const advancedFilters = useMemo(() => {
     const filters = {};
     const cat = searchParams.get(QUERY_PARAMS_KEYS.CATEGORY);
@@ -100,38 +155,6 @@ function FavoritesPage() {
     return filters;
   }, [searchParams]);
 
-  // RTK Query hooks
-  const [bulkCopy] = useBulkCopyMutation();
-  const [bulkDelete] = useBulkDeleteMutation();
-  const [bulkMove] = useBulkMoveMutation();
-  const [copyFile] = useCopyFileMutation();
-  const [copyFolder] = useCopyFolderMutation();
-  const [deleteFile] = useDeleteFileMutation();
-  const [deleteFolder] = useDeleteFolderMutation();
-  const [moveFile] = useMoveFileMutation();
-  const [moveFolder] = useMoveFolderMutation();
-  const [renameFile] = useRenameFileMutation();
-  const [renameFolder] = useRenameFolderMutation();
-
-  const { data: foldersData, isLoading: foldersLoading } = useGetFoldersQuery({
-    isFavorite: "true",
-    search: debouncedSearch || undefined,
-    ...advancedFilters,
-  });
-
-  const {
-    data: filesData,
-    isLoading: filesLoading,
-    isFetching: filesFetching,
-  } = useGetFilesQuery({
-    isFavorite: "true",
-    search: debouncedSearch || undefined,
-    pg: page,
-    ps: pageSize,
-    ...advancedFilters,
-  });
-
-  // Derived / computed variables
   const paginationData = filesData?.pagination || {};
   const folders = foldersData?.data || [];
   const files = filesData?.data || [];
@@ -151,53 +174,6 @@ function FavoritesPage() {
   ];
 
   // Event handlers
-  const updateParams = useCallback(
-    (updates) => {
-      const newParams = new URLSearchParams(searchParams);
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === "") {
-          newParams.delete(key);
-        } else {
-          newParams.set(key, String(value));
-        }
-      });
-      setSearchParams(newParams, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
-
-  // Custom & shared hooks
-  const { loaderRef } = useInfiniteScroll({
-    hasNext: paginationData?.hasNext || false,
-    isLoading: filesFetching,
-    onLoadMore: () => {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
-    },
-  });
-
-  // useEffect
-  useEffect(() => {
-    // Handled by updateParams, but good for external URL changes
-  }, [debouncedSearch, advancedFilters]);
-
-  // Sync internal page state with URL
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
-
-  useEffect(() => {
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  }, [handleClickOutside]);
-
-  // Render
-
   function toggleSelect(id, type) {
     setSelectedItems((prev) => {
       const exists = prev.find((item) => item.id === id);
@@ -346,6 +322,25 @@ function FavoritesPage() {
     }
   }
 
+  // useEffect
+  useEffect(() => {
+    // Handled by updateParams, but good for external URL changes
+  }, [debouncedSearch, advancedFilters]);
+
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
+
+  useEffect(() => {
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [handleClickOutside]);
+
+  // Render
   return (
     <div className="flex flex-col gap-4 pb-10">
       {/* Header Section */}

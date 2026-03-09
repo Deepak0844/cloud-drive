@@ -22,6 +22,6 @@ export function sendTokenResponse(user, statusCode, res, message) {
     res,
     { token, user: { id: user._id, name: user.name, email: user.email, role: user.role } },
     statusCode,
-    { message }
+    message
   );
 }

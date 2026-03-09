@@ -19,6 +19,7 @@ import config from "#config/env.js";
 import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
+import { AppError } from "#utils/errorUtils.js";
 import ResponseUtils from "#utils/responseUtils.js";
 import logger from "#utils/logger.js";
 import SecurityUtils from "#utils/securityUtils.js";
@@ -69,7 +70,7 @@ export const register = asyncHandler(async (req, res) => {
 
   const userExists = await User.findOne({ email });
   if (userExists) {
-    return ResponseUtils.error(res, ErrorMessages.USER_ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
+    throw new AppError(ErrorMessages.USER_ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
   }
 
   const user = await User.create({
@@ -103,12 +104,12 @@ export const login = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({ email }).select("+password");
   if (!user || !(await user.matchPassword(password))) {
-    return ResponseUtils.error(res, ErrorMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
+    throw new AppError(ErrorMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
   }
 
   // Check if account is active
   if (!user.is_active) {
-    return ResponseUtils.error(res, ErrorMessages.ACCOUNT_DEACTIVATED, HttpStatus.FORBIDDEN);
+    throw new AppError(ErrorMessages.ACCOUNT_DEACTIVATED, HttpStatus.FORBIDDEN);
   }
 
   // Send security email and in-app notification
@@ -159,7 +160,7 @@ export const getMe = asyncHandler(async (req, res) => {
     delete user.used_bytes;
   }
 
-  return ResponseUtils.success(res, user);
+  return ResponseUtils.success(res, user, HttpStatus.OK, SuccessMessages.PROFILE_LOADED);
 });
 
 /**
@@ -199,5 +200,5 @@ export const updateProfile = asyncHandler(async (req, res) => {
     }
   );
 
-  return ResponseUtils.success(res, user);
+  return ResponseUtils.success(res, user, HttpStatus.OK, SuccessMessages.PROFILE_UPDATED);
 });

@@ -21,7 +21,7 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default("1h"),
   FROM_NAME: z.string().default("Cloud Drive"),
   FROM_EMAIL: z.string().default("noreply@cloud-drive.com"),
-  DEFAULT_QUOTA_BYTES: z.string().transform(Number).default("1073741824"),
+  DEFAULT_QUOTA_BYTES: z.string().transform(Number).default("10000000000"),
   NAS_STORAGE_PATH: z.string({
     required_error: "NAS_STORAGE_PATH is required",
   }),

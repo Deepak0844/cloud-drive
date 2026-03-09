@@ -3,7 +3,7 @@ import Folder from "#models/Folder.js";
 import File from "#models/File.js";
 
 // Constants
-import { ErrorMessages } from "#constants/generalConstants.js";
+import { ErrorMessages, SuccessMessages } from "#constants/generalConstants.js";
 import { HttpStatus, ItemTypes } from "@shared-constants/constants";
 
 // Middleware
@@ -54,7 +54,7 @@ export const getFolders = asyncHandler(async (req, res) => {
   }
 
   const folders = await Folder.find(query).sort(sort);
-  return ResponseUtils.success(res, folders);
+  return ResponseUtils.success(res, folders, HttpStatus.OK, SuccessMessages.FOLDERS_LOADED);
 });
 
 // ... existing controllers ...
@@ -72,7 +72,7 @@ export const updateFolderTags = asyncHandler(async (req, res) => {
     throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  return ResponseUtils.success(res, folder);
+  return ResponseUtils.success(res, folder, HttpStatus.OK, SuccessMessages.FOLDER_TAGS_UPDATED);
 });
 
 /**
@@ -168,20 +168,25 @@ export const getFolderContents = asyncHandler(async (req, res) => {
     })
   );
 
-  return ResponseUtils.success(res, {
-    folders: foldersWithCount,
-    files,
-    pagination: {
-      total: totalItems,
-      page: pg,
-      ps,
-      pages: totalPages,
-      hasNext: pg < totalPages,
-      hasPrev: pg > 1,
-      totalFolders,
-      totalFiles,
+  return ResponseUtils.success(
+    res,
+    {
+      folders: foldersWithCount,
+      files,
+      pagination: {
+        total: totalItems,
+        page: pg,
+        ps,
+        pages: totalPages,
+        hasNext: pg < totalPages,
+        hasPrev: pg > 1,
+        totalFolders,
+        totalFiles,
+      },
     },
-  });
+    HttpStatus.OK,
+    SuccessMessages.FOLDER_CONTENTS_LOADED
+  );
 });
 
 /**
@@ -198,7 +203,12 @@ export const getFolderDetails = asyncHandler(async (req, res) => {
   // Get breadcrumbs
   const fullBreadcrumbs = await FolderUtils.generateBreadcrumbs(folder);
 
-  return ResponseUtils.success(res, { ...folder.toObject(), breadcrumbs: fullBreadcrumbs });
+  return ResponseUtils.success(
+    res,
+    { ...folder.toObject(), breadcrumbs: fullBreadcrumbs },
+    HttpStatus.OK,
+    SuccessMessages.FOLDER_LOADED
+  );
 });
 
 /**
@@ -224,7 +234,7 @@ export const createFolder = asyncHandler(async (req, res) => {
     parentId: folder.parent,
   });
 
-  return ResponseUtils.success(res, folder, HttpStatus.CREATED);
+  return ResponseUtils.success(res, folder, HttpStatus.CREATED, SuccessMessages.FOLDER_CREATED);
 });
 
 /**
@@ -237,7 +247,7 @@ export const renameFolder = asyncHandler(async (req, res) => {
   const folder = await Folder.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, { name }, { new: true });
 
   if (!folder) {
-    return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
@@ -246,7 +256,7 @@ export const renameFolder = asyncHandler(async (req, res) => {
     name: folder.name,
   });
 
-  return ResponseUtils.success(res, folder);
+  return ResponseUtils.success(res, folder, HttpStatus.OK, SuccessMessages.FOLDER_RENAMED);
 });
 
 /**
@@ -260,7 +270,7 @@ export const moveFolder = asyncHandler(async (req, res) => {
   const folder = await DbUtils.moveItem(ItemTypes.FOLDER, req.params.id, parentId, req.user.id);
 
   if (!folder) {
-    return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
@@ -269,7 +279,7 @@ export const moveFolder = asyncHandler(async (req, res) => {
     destParentId: parentId,
   });
 
-  return ResponseUtils.success(res, folder);
+  return ResponseUtils.success(res, folder, HttpStatus.OK, SuccessMessages.FOLDER_MOVED);
 });
 
 /**
@@ -288,7 +298,7 @@ export const copyFolder = asyncHandler(async (req, res) => {
 
   // HEAD did not have socket event for copyFolder, so omitting it to confirm exact restoration/behavior
 
-  return ResponseUtils.success(res, newFolder);
+  return ResponseUtils.success(res, newFolder, HttpStatus.OK, SuccessMessages.FOLDER_COPIED);
 });
 
 /**
@@ -300,7 +310,7 @@ export const deleteFolder = asyncHandler(async (req, res) => {
   const folder = await Folder.findOne({ _id: req.params.id, user: req.user.id });
 
   if (!folder) {
-    return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   await DbUtils.softDeleteRecursive(ItemTypes.FOLDER, req.params.id, req.user.id, true);
@@ -310,7 +320,12 @@ export const deleteFolder = asyncHandler(async (req, res) => {
     folderId: req.params.id,
   });
 
-  return ResponseUtils.success(res, { message: "Folder and its contents moved to trash" });
+  return ResponseUtils.success(
+    res,
+    { message: "Folder and its contents moved to trash" },
+    HttpStatus.OK,
+    SuccessMessages.FOLDER_DELETED
+  );
 });
 /**
  * @desc    Toggle favorite status for folder
@@ -321,12 +336,12 @@ export const toggleFavorite = asyncHandler(async (req, res) => {
   const folder = await Folder.findOne({ _id: req.params.id, user: req.user.id });
 
   if (!folder) {
-    return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   folder.is_favorite = !folder.is_favorite;
   folder.favorited_at = folder.is_favorite ? new Date() : null;
   await folder.save();
 
-  return ResponseUtils.success(res, folder);
+  return ResponseUtils.success(res, folder, HttpStatus.OK, SuccessMessages.FAVORITE_TOGGLED);
 });

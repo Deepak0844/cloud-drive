@@ -36,7 +36,11 @@ async function _createNotification(...args) {
 function getUserDir(userId) {
   const userDir = path.join(config.NAS_STORAGE_PATH, "users", userId, "files");
   if (!fs.existsSync(userDir)) {
-    fs.mkdirSync(userDir, { recursive: true });
+    try {
+      fs.mkdirSync(userDir, { recursive: true });
+    } catch (err) {
+      logger.error(`[FileService] Failed to create user directory: ${userDir}. Error: ${err.message}`);
+    }
   }
   return userDir;
 }
@@ -55,7 +59,11 @@ function getPhysicalFilePath(userId, fileId, extension) {
   const bucket = fileId.toString().slice(0, 2);
   const bucketDir = path.join(config.NAS_STORAGE_PATH, "users", userId, "files", bucket);
   if (!fs.existsSync(bucketDir)) {
-    fs.mkdirSync(bucketDir, { recursive: true });
+    try {
+      fs.mkdirSync(bucketDir, { recursive: true });
+    } catch (err) {
+      logger.error(`[FileService] Failed to create bucket directory: ${bucketDir}. Error: ${err.message}`);
+    }
   }
   const ext = extension && !extension.startsWith(".") ? `.${extension}` : extension;
   return path.join(bucketDir, `${fileId}${ext}`);
@@ -70,7 +78,11 @@ function getPhysicalFilePath(userId, fileId, extension) {
 function getChunksDir(userId) {
   const chunksDir = path.join(config.NAS_STORAGE_PATH, "users", userId, ".chunks");
   if (!fs.existsSync(chunksDir)) {
-    fs.mkdirSync(chunksDir, { recursive: true });
+    try {
+      fs.mkdirSync(chunksDir, { recursive: true });
+    } catch (err) {
+      logger.error(`[FileService] Failed to create chunks directory: ${chunksDir}. Error: ${err.message}`);
+    }
   }
   return chunksDir;
 }
@@ -83,7 +95,12 @@ function getChunksDir(userId) {
 function getThumbnailDir(userId) {
   const thumbDir = path.join(config.NAS_STORAGE_PATH, "users", userId, "thumbnails");
   if (!fs.existsSync(thumbDir)) {
-    fs.mkdirSync(thumbDir, { recursive: true });
+    try {
+      fs.mkdirSync(thumbDir, { recursive: true });
+    } catch (err) {
+      logger.error(`[FileService] Failed to create thumbnail directory: ${thumbDir}. Error: ${err.message}`);
+      // Return a temporary or different path if needed, or just let it fail later
+    }
   }
   return thumbDir;
 }
