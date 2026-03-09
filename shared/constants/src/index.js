@@ -21,4 +21,5 @@ export {
   QUERY_PARAMS_KEYS,
   FileCategories,
   BulkActions,
+  UPLOAD_CHUNK_SIZE,
 } from "./generalConstants.js";

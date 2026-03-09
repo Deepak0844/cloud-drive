@@ -20,6 +20,9 @@ import { motion } from "framer-motion";
 // Utils
 import { formatBytes } from "@shared-utils/utils";
 
+// Constants
+import { UPLOAD_CHUNK_SIZE } from "@shared-constants/constants";
+
 // App-local contexts
 import { useUploadDetails } from "@contexts/UploadContext";
 
@@ -127,7 +130,8 @@ function UploadItem({ upload }) {
   const executeUpload = useCallback(async () => {
     try {
       let initData = null;
-      if (!stateRef.current.uploadId && file.size > 10 * 1000 * 1000) {
+      const safeChunkSize = UPLOAD_CHUNK_SIZE || 10 * 1000 * 1000;
+      if (!stateRef.current.uploadId && file.size > safeChunkSize) {
         initData = await initPromise;
       }
 

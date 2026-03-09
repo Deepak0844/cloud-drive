@@ -1,18 +1,17 @@
 // Utils
 import ApiUtils from "./apiUtils";
 import HttpClientFactory from "@utils/httpClientFactory";
-import { uploadChunkRaw } from "@utils/chunkUploadUtils";
+import { uploadSingleFile, uploadFileInChunks } from "@utils/chunkUploadUtils";
 import { UrlUtils } from "@shared-utils/utils";
 
 // Constants
 import { TagIds, TagTypes } from "@constants/apiTags";
-import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
+import { FileServiceUrls } from "@constants/serviceUrls";
 import { HttpMethods } from "@shared-constants/constants/httpConstants";
+import { UPLOAD_CHUNK_SIZE } from "@shared-constants/constants";
 
 // Services
 import api from "./api";
-
-const CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
 
 // ---------------------------------------------------------------------------
 // Endpoint Definitions
@@ -90,75 +89,55 @@ const uploadFileChunkedMutation = () => ({
     const authToken = httpClient.authToken;
 
     try {
-      if (file.size <= CHUNK_SIZE) {
-        const formData = new FormData();
-        formData.append("file", file);
-        if (folderId) formData.append("folderId", folderId);
+      const safeChunkSize = UPLOAD_CHUNK_SIZE || 10 * 1000 * 1000;
 
-        await httpClient.post(`${ApiBasePath}${FileServiceUrls.uploadFile}`, {}, formData, null, {
-          signal,
-          onUploadProgress: (pe) => {
-            if (pe.lengthComputable) {
-              const progress = Math.round((pe.loaded / file.size) * 100);
-              if (onProgressFn) onProgressFn(progress, pe.loaded);
-            }
-          },
-        });
-
-        if (onProgressFn) onProgressFn(100, file.size);
+      if (file.size <= safeChunkSize) {
+        await uploadSingleFile({ httpClient, file, folderId, signal, onProgressFn });
         return { data: { success: true } };
       }
 
-      if (!state.uploadId) {
-        state.uploadId = initData.uploadId;
-        state.totalChunks = initData.totalChunks;
+      if (!state.uploadId && initData) {
+        // Correctly access .data property from server response
+        const { uploadId, totalChunks } = initData.data || {};
+        state.uploadId = uploadId;
+        state.totalChunks = totalChunks;
       }
 
-      while (state.currentChunkIndex < state.totalChunks) {
-        if (signal.aborted) return { error: { message: "canceled" } };
-
-        const start = state.currentChunkIndex * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, file.size);
-        const blob = file.slice(start, end);
-        const buffer = await blob.arrayBuffer();
-
-        const bytesBeforeThisChunk = state.uploadedBytes;
-
-        await uploadChunkRaw({
-          uploadId: state.uploadId,
-          chunkIndex: state.currentChunkIndex,
-          buffer,
-          signal,
-          authToken,
-          onProgress: (loaded) => {
-            const totalSoFar = bytesBeforeThisChunk + loaded;
-            const prog = Math.min(Math.round((totalSoFar / file.size) * 100), 99);
-            if (onProgressFn) onProgressFn(prog, totalSoFar);
-          },
-        });
-
-        state.currentChunkIndex++;
-        state.uploadedBytes += end - start;
-        const overallProg = Math.round((state.uploadedBytes / file.size) * 100);
-        if (onProgressFn) onProgressFn(overallProg, state.uploadedBytes);
+      if (file.size > safeChunkSize && (!state.uploadId || !state.totalChunks)) {
+        throw new Error("Missing upload session metadata. Please retry.");
       }
 
-      if (onSpeedEtaUpdate) onSpeedEtaUpdate(0, null);
+      await uploadFileInChunks({
+        file,
+        state,
+        signal,
+        authToken,
+        onProgressFn,
+        chunkSize: safeChunkSize,
+      });
+
+      if (onSpeedEtaUpdate) {
+        onSpeedEtaUpdate(0, null);
+      }
       const finalizeRes = await fetchWithBQ({
         url: FileServiceUrls.finalizeChunkedUpload,
         method: HttpMethods.POST,
         body: {
           uploadId: state.uploadId,
           fileName: file.name,
-          folderId,
+          folderId: folderId && folderId !== "null" ? folderId : null,
           mimeType: file.type,
           totalSize: file.size,
         },
       });
 
-      if (finalizeRes.error) throw finalizeRes.error;
+      if (finalizeRes.error) {
+        throw finalizeRes.error;
+      }
 
-      if (onProgressFn) onProgressFn(100, file.size);
+      if (onProgressFn) {
+        onProgressFn(100, file.size);
+      }
       return { data: { success: true } };
     } catch (error) {
       if (error.message === "canceled" || signal.aborted) {

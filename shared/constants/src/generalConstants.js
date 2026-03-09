@@ -114,3 +114,7 @@ export const ICON_SIZE = {
   large: 24,
   xlarge: 32,
 };
+/**
+ * File Upload Constants
+ */
+export const UPLOAD_CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
