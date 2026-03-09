@@ -1,4 +1,6 @@
-// external
+// React core & third-party libraries
+import React, { useState } from "react";
+import { Divider, Drawer, Select, Tag, Typography } from "antd";
 import {
   CalendarOutlined,
   CloseOutlined,
@@ -11,18 +13,16 @@ import {
   StarFilled,
   TagsOutlined,
 } from "@ant-design/icons";
-import { Divider, Drawer, Select, Tag, Typography } from "antd";
-import React, { useState } from "react";
 import dayjs from "dayjs";
 
-// api
+// Utils
+import { formatBytes } from "@shared-utils/utils";
+
+// Services (RTK Query hooks)
 import { useUpdateFileTagsMutation } from "@services/api/fileApi";
 import { useUpdateFolderTagsMutation } from "@services/api/folderApi";
 
-// shared utils
-import { formatBytes } from "@shared-utils/utils";
-
-// components
+// Components
 import Button from "@shared-components/components/button";
 
 const { Text, Title } = Typography;
@@ -44,21 +44,26 @@ function getFileInfo(type, isFolder) {
 }
 
 function InfoDrawer({ item, open, onClose }) {
+  // Local state
+  // initialise tags from item; default to empty array when item is null
+  const [tags, setTags] = useState(item?.tags || []);
+
+  // RTK Query hooks
   // ── Hooks must always run — before any conditional return ──────────────────
   const [updateFileTags, { isLoading: savingFileTags }] = useUpdateFileTagsMutation();
   const [updateFolderTags, { isLoading: savingFolderTags }] = useUpdateFolderTagsMutation();
-  // initialise tags from item; default to empty array when item is null
-  const [tags, setTags] = useState(item?.tags || []);
   // ──────────────────────────────────────────────────────────────────────────
 
   if (!item) return null;
 
+  // Derived / computed variables
   const isFolder = "itemCount" in item || item.type === "Folder" || item.type === "FOLDER" || !item.extension;
   const fileType = isFolder ? "folder" : item.category || item.type || "file";
   const fileInfo = getFileInfo(fileType, isFolder);
   const id = item._id || item.id;
   const isSavingTags = savingFileTags || savingFolderTags;
 
+  // Event handlers
   async function handleTagsChange(newTags) {
     const previousTags = tags;
     setTags(newTags);
@@ -211,6 +216,7 @@ function InfoDrawer({ item, open, onClose }) {
     );
   }
 
+  // Render
   return (
     <Drawer
       placement="right"

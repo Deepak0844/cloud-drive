@@ -1,21 +1,30 @@
-import { App as AntdApp, ConfigProvider, Drawer, Grid, Layout } from "antd";
+// React core & third-party libraries
 import React, { useState } from "react";
+import { App as AntdApp, ConfigProvider, Drawer, Grid, Layout } from "antd";
 
+// App-local contexts
+import { UploadProvider } from "@contexts/UploadContext";
+
+// Components
+import UploadManager from "../files/UploadManager";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
-import { UploadProvider } from "@contexts/UploadContext";
-import UploadManager from "../files/UploadManager";
 
 const { Content } = Layout;
 const { useBreakpoint } = Grid;
 
 function MainLayout({ children }) {
+  // Local state
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
+
+  // Custom & shared hooks
   const screens = useBreakpoint();
 
+  // Derived / computed variables
   const isMobile = !screens.md && screens.xs !== undefined;
 
+  // Render
   return (
     <ConfigProvider
       theme={{

@@ -1,59 +1,60 @@
+// React core & third-party libraries
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { App, Breadcrumb, Tooltip, Typography } from "antd";
 import {
   AppstoreOutlined,
   BarsOutlined,
-  FilterOutlined,
   CloseOutlined,
   DownloadOutlined,
+  FilterOutlined,
   HistoryOutlined,
 } from "@ant-design/icons";
-import { Breadcrumb, Typography, Tooltip, App } from "antd";
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect, useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
 
-// api
-import { useGetRecentFilesQuery, useTouchFileMutation, useBulkDownloadMutation } from "@services/api/fileApi";
-
-// constants
-import { ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
-
-// hooks
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 
-// components
-import FileItem from "@components/files/FileItem";
-import InfoDrawer from "@components/files/InfoDrawer";
-import FilePreviewModal from "@components/files/FilePreviewModal";
+// Services (RTK Query hooks)
+import { useGetRecentFilesQuery, useTouchFileMutation } from "@services/api/fileApi";
+import { useBulkDownloadMutation } from "@services/api/bulkApi";
+
+// Constants
+import { DefaultPagination, ItemTypes, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
+
+// Components
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
+import FileItem from "@components/files/FileItem";
+import FilePreviewModal from "@components/files/FilePreviewModal";
+import InfoDrawer from "@components/files/InfoDrawer";
 import Button from "@shared-components/components/button";
-import SearchInput from "@shared-components/components/search-input";
 import Loader from "@shared-components/components/loader";
+import SearchInput from "@shared-components/components/search-input";
 
 const { Text } = Typography;
 
 function RecentPage() {
-  const { message } = App.useApp();
+  // Router hooks & params
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Local state
+  const [infoItem, setInfoItem] = useState(null);
   const [page, setPage] = useState(() => {
     const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
     return p ? Number(p) : DefaultPagination.pageNumber;
   });
+  const [previewFile, setPreviewFile] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [viewMode, setViewMode] = useState("grid");
 
+  // Custom & shared hooks
+  const { message } = App.useApp();
+
+  // Derived / computed variables
+  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
   const pageSize = useMemo(() => {
     const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
     return p ? Number(p) : DefaultPagination.pageSize || 30;
   }, [searchParams]);
-
-  // Sync internal page state with URL
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
-
-  // Derived State from URL
-  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
 
   const advancedFilters = useMemo(() => {
     const filters = {};
@@ -73,34 +74,10 @@ function RecentPage() {
     return filters;
   }, [searchParams]);
 
-  const updateParams = useCallback(
-    (updates) => {
-      const newParams = new URLSearchParams(searchParams);
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === "") {
-          newParams.delete(key);
-        } else {
-          newParams.set(key, String(value));
-        }
-      });
-      setSearchParams(newParams, { replace: true });
-    },
-    [searchParams, setSearchParams]
-  );
+  // RTK Query hooks
+  const [bulkDownload, { isLoading: isDownloading }] = useBulkDownloadMutation();
+  const [touchFile] = useTouchFileMutation();
 
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [viewMode, setViewMode] = useState("grid");
-  const [previewFile, setPreviewFile] = useState(null);
-  const [infoItem, setInfoItem] = useState(null);
-
-  // Reset page when search/filters change
-  useEffect(() => {
-    // This is handled by updateParams normally, but if someone manually edits URL
-    // or if we have other triggers, it's good to have.
-    // However, the user wants to avoid hardcoding setPage(1).
-  }, [debouncedSearch, advancedFilters]);
-
-  // API Queries
   const {
     data: recentData,
     isLoading,
@@ -112,21 +89,8 @@ function RecentPage() {
     ...advancedFilters,
   });
 
+  // Derived / computed variables (part 2)
   const paginationData = recentData?.pagination || {};
-
-  const { loaderRef } = useInfiniteScroll({
-    hasNext: paginationData?.hasNext || false,
-    isLoading: isFetching,
-    onLoadMore: () => {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
-    },
-  });
-
-  const [touchFile] = useTouchFileMutation();
-  const [bulkDownload, { isLoading: isDownloading }] = useBulkDownloadMutation();
-
   const allItems = recentData?.data || [];
   const filteredItems = allItems; // Filtering handled by backend now
 
@@ -159,6 +123,53 @@ function RecentPage() {
 
   const timeGroups = groupItemsByTime(filteredItems);
 
+  // Event handlers
+  const updateParams = useCallback(
+    (updates) => {
+      const newParams = new URLSearchParams(searchParams);
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, String(value));
+        }
+      });
+      setSearchParams(newParams, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  // Custom & shared hooks (part 2)
+  const { loaderRef } = useInfiniteScroll({
+    hasNext: paginationData?.hasNext || false,
+    isLoading: isFetching,
+    onLoadMore: () => {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
+    },
+  });
+
+  // useEffect
+  useEffect(() => {
+    // Handled by updateParams, but good for external URL changes
+  }, [debouncedSearch, advancedFilters]);
+
+  // Sync internal page state with URL
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
+
+  useEffect(() => {
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [handleClickOutside]);
+
+  // Render
   function toggleSelect(id, type) {
     setSelectedItems((prev) => {
       const exists = prev.find((item) => item.id === id);
@@ -207,13 +218,6 @@ function RecentPage() {
     },
     [clearSelection]
   );
-
-  useEffect(() => {
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  }, [handleClickOutside]);
 
   return (
     <div className="flex flex-col h-full bg-surface">

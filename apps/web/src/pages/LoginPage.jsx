@@ -1,27 +1,35 @@
-// external
-import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { App, Card, Checkbox, Form, Input } from "antd";
-import { motion } from "framer-motion";
+// React core & third-party libraries
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import { App, Card, Checkbox, Form, Input } from "antd";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 
-// hooks
-import { useAuth } from "@hooks/useAuth";
-
-// constants
+// Constants
 import PageUrls from "@constants/pageUrls";
 
-// components
+// Hooks
+import { useAuth } from "@hooks/useAuth";
+
+// Components
 import Button from "@shared-components/components/button";
 
 function LoginPage() {
-  const { message } = App.useApp();
+  // Router hooks & params
   const location = useLocation();
-  const { login, isLoginLoading } = useAuth();
+
+  // Local state
   const [form] = Form.useForm();
 
+  // Custom & shared hooks
+  const { message } = App.useApp();
+  const { login, isLoginLoading } = useAuth();
+
+  // Derived / computed variables
   // Redirect back to the page the user came from, or to the dashboard
   const from = location.state?.from?.pathname ?? "/";
+
+  // Event handlers
 
   async function handleFinish(values) {
     try {
@@ -47,6 +55,7 @@ function LoginPage() {
     }
   }
 
+  // Render
   return (
     <div className="min-h-screen bg-surface-dim flex flex-col items-center justify-center p-4">
       <motion.div

@@ -1,26 +1,34 @@
-import { LockOutlined } from "@ant-design/icons";
-import { Alert, App, Card, Form, Input } from "antd";
-import { motion } from "framer-motion";
+// React core & third-party libraries
 import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-
-// RTK Query
-import { useResetPasswordMutation } from "@services/api/authApi";
+import { Alert, App, Card, Form, Input } from "antd";
+import { LockOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 
 // Constants
 import PageUrls from "@constants/pageUrls";
+
+// Services (RTK Query hooks)
+import { useResetPasswordMutation } from "@services/api/authApi";
 
 // Components
 import Button from "@shared-components/components/button";
 
 function ResetPasswordPage() {
-  const { message } = App.useApp();
+  // Router hooks & params
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
 
+  // RTK Query hooks
   const [resetPassword, { isLoading }] = useResetPasswordMutation();
 
+  // Custom & shared hooks
+  const { message } = App.useApp();
+
+  // Derived / computed variables
+  const token = searchParams.get("token");
+
+  // Event handlers
   async function handleFinish(values) {
     try {
       await resetPassword({ token, password: values.password }).unwrap();
@@ -36,6 +44,7 @@ function ResetPasswordPage() {
     }
   }
 
+  // Early returns (loading, error, empty states)
   // Missing or invalid token guard
   if (!token) {
     return (
@@ -72,6 +81,7 @@ function ResetPasswordPage() {
     );
   }
 
+  // Render
   return (
     <div className="min-h-screen bg-surface-dim flex flex-col items-center justify-center p-4">
       <motion.div

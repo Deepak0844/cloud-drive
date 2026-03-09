@@ -1,28 +1,32 @@
-import React, { useMemo } from "react";
+// React core & third-party libraries
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Breadcrumb, Empty, Skeleton, Typography, Image } from "antd";
-import { PictureOutlined, CalendarOutlined } from "@ant-design/icons";
-import { motion } from "framer-motion";
+import { Breadcrumb, Empty, Image, Skeleton, Typography } from "antd";
+import { CalendarOutlined, PictureOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { motion } from "framer-motion";
 
-// api
+// Services (RTK Query hooks)
 import { useGetFilesQuery } from "@services/api/fileApi";
 
-// constants
+// Hooks
+import { useInfiniteScroll } from "@shared-hooks/hooks";
+
+// Constants
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
 
-// components
+// Components
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
 
-import { useInfiniteScroll } from "@shared-hooks/hooks";
-
 const { Text } = Typography;
 
-const PhotosPage = () => {
-  const [page, setPage] = React.useState(1);
+function PhotosPage() {
+  // Local state
+  const [page, setPage] = useState(1);
 
+  // RTK Query hooks
   const {
     data: filesResponse,
     isLoading,
@@ -34,14 +38,17 @@ const PhotosPage = () => {
     ps: 50,
   });
 
+  // Derived / computed variables (part 1)
   const hasNextPage = filesResponse?.pagination?.hasNext || false;
 
+  // Custom & shared hooks
   const { loaderRef } = useInfiniteScroll({
     hasNext: hasNextPage,
     isLoading: isFetching,
     onLoadMore: () => setPage((prev) => prev + 1),
   });
 
+  // Derived / computed variables (part 2)
   const photos = useMemo(() => filesResponse?.data || [], [filesResponse]);
 
   // Group photos by Month/Year
@@ -65,6 +72,7 @@ const PhotosPage = () => {
     ]);
   }, [photos]);
 
+  // Render
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6">
@@ -171,9 +179,9 @@ const PhotosPage = () => {
       </div>
     </motion.div>
   );
-};
+}
 
-const PhotoCard = ({ photo }) => {
+function PhotoCard({ photo }) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -213,6 +221,6 @@ const PhotoCard = ({ photo }) => {
       </div>
     </motion.div>
   );
-};
+}
 
 export default PhotosPage;

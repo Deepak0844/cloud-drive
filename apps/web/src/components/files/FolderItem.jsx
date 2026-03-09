@@ -1,3 +1,6 @@
+// React core & third-party libraries
+import React from "react";
+import { Card, Typography } from "antd";
 import {
   CheckCircleFilled,
   CopyOutlined,
@@ -11,14 +14,12 @@ import {
   StarFilled,
   StarOutlined,
 } from "@ant-design/icons";
-import { Card, Typography } from "antd";
 import { motion } from "framer-motion";
-import React from "react";
 
-// api
+// Services (RTK Query hooks)
 import { useToggleFolderFavoriteMutation } from "@services/api/folderApi";
 
-// components
+// Components
 import Dropdown from "@shared-components/components/dropdown";
 
 const { Text } = Typography;
@@ -37,11 +38,16 @@ function FolderItem({
   isTrashItem = false,
   showParentContext = false,
 }) {
-  const clickTimeoutRef = React.useRef(null);
+  // RTK Query hooks
   const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFolderFavoriteMutation();
 
+  // Custom & shared hooks
+  const clickTimeoutRef = React.useRef(null);
+
+  // Derived / computed variables
   const isFavorite = folder.is_favorite;
 
+  // Event handlers
   function handleClick(e) {
     e.stopPropagation();
 
@@ -85,6 +91,7 @@ function FolderItem({
         { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => onDelete?.(folder) },
       ];
 
+  // Render
   if (viewMode === "list") {
     return (
       <div

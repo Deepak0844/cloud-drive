@@ -1,49 +1,14 @@
 import baseApi from "./api";
+
+// Utils
 import ApiUtils from "./apiUtils";
-import { TagIds, TagTypes } from "@constants/apiTags";
 import HttpClientFactory from "@utils/httpClientFactory";
+import { uploadChunkRaw } from "@utils/chunkUploadUtils";
+
+// Constants
+import { TagIds, TagTypes } from "@constants/apiTags";
 
 const CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
-
-/**
- * Send a single chunk as raw binary using XHR for real onUploadProgress events.
- * Metadata goes in query params — no FormData serialization.
- */
-function uploadChunkRaw({ uploadId, chunkIndex, buffer, signal, onProgress, authToken }) {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) return reject(new Error("canceled"));
-
-    const xhr = new XMLHttpRequest();
-    const url = `/api/v1/files/upload/chunk?uploadId=${encodeURIComponent(uploadId)}&chunkIndex=${chunkIndex}`;
-
-    xhr.open("POST", url);
-    xhr.setRequestHeader("Authorization", `Bearer ${authToken}`);
-    xhr.setRequestHeader("Content-Type", "application/octet-stream");
-
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && onProgress) onProgress(e.loaded, e.total);
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          resolve(JSON.parse(xhr.responseText));
-        } catch {
-          resolve({});
-        }
-      } else {
-        reject(new Error(`Chunk ${chunkIndex} failed: HTTP ${xhr.status} ${xhr.statusText}`));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error(`Network error on chunk ${chunkIndex}`));
-    xhr.onabort = () => reject(new Error("canceled"));
-
-    if (signal) signal.addEventListener("abort", () => xhr.abort(), { once: true });
-
-    xhr.send(buffer);
-  });
-}
 
 /**
  * File API endpoints.
@@ -303,69 +268,6 @@ const fileApi = baseApi.injectEndpoints({
       ],
     }),
 
-    // POST /api/v1/files/bulk-delete
-    bulkDelete: builder.mutation({
-      query: ({ items }) => ({
-        url: "/files/bulk-delete",
-        method: "POST",
-        body: { items },
-      }),
-      invalidatesTags: [
-        ...ApiUtils.listTags(TagTypes.FILES),
-        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
-        ...ApiUtils.listTags(TagTypes.FOLDERS),
-        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
-        ...ApiUtils.listTags(TagTypes.TRASH),
-        TagTypes.QUOTA,
-        TagTypes.ADMIN_STATS,
-        TagTypes.ADMIN_USERS,
-      ],
-    }),
-
-    // POST /api/v1/files/bulk-move
-    bulkMove: builder.mutation({
-      query: ({ items, targetFolderId }) => ({
-        url: "/files/bulk-move",
-        method: "POST",
-        body: { items, targetFolderId },
-      }),
-      invalidatesTags: [
-        ...ApiUtils.listTags(TagTypes.FILES),
-        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
-        ...ApiUtils.listTags(TagTypes.FOLDERS),
-        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
-      ],
-    }),
-
-    // POST /api/v1/files/bulk-copy
-    bulkCopy: builder.mutation({
-      query: ({ items, targetFolderId }) => ({
-        url: "/files/bulk-copy",
-        method: "POST",
-        body: { items, targetFolderId },
-      }),
-      invalidatesTags: [
-        ...ApiUtils.listTags(TagTypes.FILES),
-        ...ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
-        ...ApiUtils.listTags(TagTypes.FOLDERS),
-        ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),
-        TagTypes.QUOTA,
-        TagTypes.ADMIN_STATS,
-        TagTypes.ADMIN_USERS,
-      ],
-    }),
-
-    // POST /api/v1/files/bulk-download
-    bulkDownload: builder.mutation({
-      query: ({ items }) => ({
-        url: "/files/bulk-download",
-        method: "POST",
-        body: { items },
-        responseHandler: "blob",
-        cache: "no-cache",
-      }),
-    }),
-
     // PATCH /api/v1/files/:id/tags
     updateFileTags: builder.mutation({
       query: ({ id, tags }) => ({
@@ -405,10 +307,7 @@ export const {
   useToggleFileFavoriteMutation,
   useMoveFileMutation,
   useCopyFileMutation,
-  useBulkDeleteMutation,
-  useBulkMoveMutation,
-  useBulkCopyMutation,
-  useBulkDownloadMutation,
+
   useUpdateFileTagsMutation,
   useTouchFileMutation,
 } = fileApi;

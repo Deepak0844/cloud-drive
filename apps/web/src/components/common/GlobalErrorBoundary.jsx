@@ -1,7 +1,10 @@
+// React core & third-party libraries
 import React, { Component } from "react";
 import { Typography } from "antd";
+import { ReloadOutlined, WarningOutlined } from "@ant-design/icons";
+
+// Components
 import Button from "@shared-components/components/button";
-import { WarningOutlined, ReloadOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
 

@@ -1,21 +1,31 @@
+// React core & third-party libraries
 import React, { useState } from "react";
-import { useUploadDetails } from "@contexts/UploadContext";
-import UploadItem from "./UploadItem";
-import { motion } from "framer-motion";
 import { Typography } from "antd";
+import { CloudUploadOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
+
+// App-local contexts
+import { useUploadDetails } from "@contexts/UploadContext";
+
+// Components
+import UploadItem from "./UploadItem";
 import Button from "@shared-components/components/button";
-import { UpOutlined, DownOutlined, CloudUploadOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
-const UploadManager = () => {
-  const { uploads } = useUploadDetails();
+function UploadManager() {
+  // Local state
   const [minimized, setMinimized] = useState(false);
+
+  // Custom & shared hooks
+  const { uploads } = useUploadDetails();
 
   if (uploads.length === 0) return null;
 
+  // Derived / computed variables
   const totalUploads = uploads.length;
 
+  // Render
   return (
     <div className="fixed bottom-6 right-6 z-50 w-[360px] shadow-[0_12px_40px_rgba(0,0,0,0.12)] rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700 overflow-hidden flex flex-col">
       {/* Header */}
@@ -72,6 +82,6 @@ const UploadManager = () => {
       </motion.div>
     </div>
   );
-};
+}
 
 export default UploadManager;

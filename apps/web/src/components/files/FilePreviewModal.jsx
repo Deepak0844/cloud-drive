@@ -1,18 +1,27 @@
-import React, { useState, useEffect } from "react";
-import { Modal, Typography, App } from "antd";
-import Loader from "@shared-components/components/loader";
+// React core & third-party libraries
+import React, { useEffect, useState } from "react";
+import { App, Modal, Typography } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
+
+// App-local utilities
 import HttpClientFactory from "@utils/httpClientFactory";
+
+// Components
 import Button from "@shared-components/components/button";
+import Loader from "@shared-components/components/loader";
 
 const { Text } = Typography;
 
 export default function FilePreviewModal({ file, open, onClose }) {
-  const { message } = App.useApp();
-  const [loading, setLoading] = useState(true);
+  // Local state
   const [hasError, setHasError] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [previewSrc, setPreviewSrc] = useState(null);
 
+  // Custom & shared hooks
+  const { message } = App.useApp();
+
+  // useEffect
   // Derive resource endpoints via our authenticated proxy helper
   useEffect(() => {
     if (!open || !file) {
@@ -54,6 +63,7 @@ export default function FilePreviewModal({ file, open, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file, open]);
 
+  // Event handlers
   function handleDownload() {
     if (!file) return;
     const httpClient = HttpClientFactory.getInstance();
@@ -79,6 +89,7 @@ export default function FilePreviewModal({ file, open, onClose }) {
       });
   }
 
+  // Render
   const renderContent = () => {
     if (loading) {
       return (

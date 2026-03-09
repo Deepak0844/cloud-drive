@@ -1,15 +1,21 @@
-// external
-import { Form, Input, message } from "antd";
-import Modal from "@shared-components/components/modal";
+// React core & third-party libraries
 import React from "react";
+import { Form, Input, message } from "antd";
 
-// api
+// Services (RTK Query hooks)
 import { useUpdatePasswordMutation } from "@services/api/authApi";
 
+// Components
+import Modal from "@shared-components/components/modal";
+
 function ChangePasswordModal({ open, onClose }) {
-  const [form] = Form.useForm();
+  // RTK Query hooks
   const [updatePassword, { isLoading }] = useUpdatePasswordMutation();
 
+  // Custom & shared hooks
+  const [form] = Form.useForm();
+
+  // 8. Event handlers
   async function handleOk() {
     try {
       const values = await form.validateFields();
@@ -49,6 +55,7 @@ function ChangePasswordModal({ open, onClose }) {
     onClose();
   }
 
+  // Render
   return (
     <Modal
       modalTitle="Change Password"

@@ -1,3 +1,7 @@
+// React core & third-party libraries
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { App, Breadcrumb, Input, Modal, Tooltip, Typography } from "antd";
 import {
   AppstoreOutlined,
   BarsOutlined,
@@ -10,88 +14,74 @@ import {
   StarFilled,
   WarningOutlined,
 } from "@ant-design/icons";
-import { App, Breadcrumb, Typography, Tooltip, Modal, Input } from "antd";
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect, useState, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
 
-// Hooks
-import { useInfiniteScroll } from "@shared-hooks/hooks";
-
-// api
+// Services (RTK Query hooks)
+import { useBulkCopyMutation, useBulkDeleteMutation, useBulkMoveMutation } from "@services/api/bulkApi";
 import {
-  useDeleteFolderMutation,
-  useGetFoldersQuery,
-  useMoveFolderMutation,
-  useCopyFolderMutation,
-  useRenameFolderMutation,
-} from "@services/api/folderApi";
-import {
-  useBulkCopyMutation,
-  useBulkDeleteMutation,
-  useBulkMoveMutation,
   useCopyFileMutation,
   useDeleteFileMutation,
   useGetFilesQuery,
   useMoveFileMutation,
   useRenameFileMutation,
 } from "@services/api/fileApi";
+import {
+  useCopyFolderMutation,
+  useDeleteFolderMutation,
+  useGetFoldersQuery,
+  useMoveFolderMutation,
+  useRenameFolderMutation,
+} from "@services/api/folderApi";
 
-// constants
-import { ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
+// Constants
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
+import { DefaultPagination, ItemTypes, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
 
-// components
-import FileItem from "@components/files/FileItem";
-import FolderItem from "@components/files/FolderItem";
-import InfoDrawer from "@components/files/InfoDrawer";
-import FilePreviewModal from "@components/files/FilePreviewModal";
-import FolderPickerModal from "@components/files/FolderPickerModal";
+// Hooks
+import { useInfiniteScroll } from "@shared-hooks/hooks";
+
+// Components
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
-import SearchInput from "@shared-components/components/search-input";
+import FileItem from "@components/files/FileItem";
+import FilePreviewModal from "@components/files/FilePreviewModal";
+import FolderItem from "@components/files/FolderItem";
+import FolderPickerModal from "@components/files/FolderPickerModal";
+import InfoDrawer from "@components/files/InfoDrawer";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
+import SearchInput from "@shared-components/components/search-input";
 
 const { Text } = Typography;
 
 function FavoritesPage() {
-  const { message } = App.useApp();
+  // Router hooks & params
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Local state
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [folderPicker, setFolderPicker] = useState({ visible: false, action: "move", item: null, items: [] });
+  const [infoItem, setInfoItem] = useState(null);
+  const [newName, setNewName] = useState("");
   const [page, setPage] = useState(() => {
     const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
     return p ? Number(p) : DefaultPagination.pageNumber;
   });
+  const [previewFile, setPreviewFile] = useState(null);
+  const [renameItem, setRenameItem] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [viewMode, setViewMode] = useState("grid");
 
+  // Custom & shared hooks
+  const { message } = App.useApp();
+
+  // Derived / computed variables
+  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
   const pageSize = useMemo(() => {
     const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
     return p ? Number(p) : DefaultPagination.pageSize;
   }, [searchParams]);
 
-  // Sync internal page state with URL
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [viewMode, setViewMode] = useState("grid");
-  const [infoItem, setInfoItem] = useState(null);
-  const [renameItem, setRenameItem] = useState(null);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [previewFile, setPreviewFile] = useState(null);
-  const [newName, setNewName] = useState("");
-
-  const [folderPicker, setFolderPicker] = useState({
-    visible: false,
-    action: "move",
-    item: null,
-    items: [],
-  });
-
-  // Derived State from URL
-  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
   const advancedFilters = useMemo(() => {
     const filters = {};
     const cat = searchParams.get(QUERY_PARAMS_KEYS.CATEGORY);
@@ -110,6 +100,57 @@ function FavoritesPage() {
     return filters;
   }, [searchParams]);
 
+  // RTK Query hooks
+  const [bulkCopy] = useBulkCopyMutation();
+  const [bulkDelete] = useBulkDeleteMutation();
+  const [bulkMove] = useBulkMoveMutation();
+  const [copyFile] = useCopyFileMutation();
+  const [copyFolder] = useCopyFolderMutation();
+  const [deleteFile] = useDeleteFileMutation();
+  const [deleteFolder] = useDeleteFolderMutation();
+  const [moveFile] = useMoveFileMutation();
+  const [moveFolder] = useMoveFolderMutation();
+  const [renameFile] = useRenameFileMutation();
+  const [renameFolder] = useRenameFolderMutation();
+
+  const { data: foldersData, isLoading: foldersLoading } = useGetFoldersQuery({
+    isFavorite: "true",
+    search: debouncedSearch || undefined,
+    ...advancedFilters,
+  });
+
+  const {
+    data: filesData,
+    isLoading: filesLoading,
+    isFetching: filesFetching,
+  } = useGetFilesQuery({
+    isFavorite: "true",
+    search: debouncedSearch || undefined,
+    pg: page,
+    ps: pageSize,
+    ...advancedFilters,
+  });
+
+  // Derived / computed variables
+  const paginationData = filesData?.pagination || {};
+  const folders = foldersData?.data || [];
+  const files = filesData?.data || [];
+  const isLoading = foldersLoading || filesLoading;
+  const breadcrumbsList = [
+    {
+      title: (
+        <Link
+          to={PageUrls.DashboardPage}
+          className="flex items-center gap-2 text-primary font-semibold text-xs transition-colors"
+        >
+          <HomeOutlined className="text-[10px]" /> <span>{PageNames.MY_FILES}</span>
+        </Link>
+      ),
+    },
+    { title: <span className="font-bold text-xs opacity-60">{PageNames.FAVORITES}</span> },
+  ];
+
+  // Event handlers
   const updateParams = useCallback(
     (updates) => {
       const newParams = new URLSearchParams(searchParams);
@@ -125,33 +166,7 @@ function FavoritesPage() {
     [searchParams, setSearchParams]
   );
 
-  // Reset page on filter change
-  useEffect(() => {
-    // Handled by updateParams, but good for external URL changes
-  }, [debouncedSearch, advancedFilters]);
-
-  // Fetch favorite folders (typically folders aren't many, so we fetch all or just use a large limit)
-  const { data: foldersData, isLoading: foldersLoading } = useGetFoldersQuery({
-    isFavorite: "true",
-    search: debouncedSearch || undefined,
-    ...advancedFilters,
-  });
-
-  // Fetch favorite files with pagination
-  const {
-    data: filesData,
-    isLoading: filesLoading,
-    isFetching: filesFetching,
-  } = useGetFilesQuery({
-    isFavorite: "true",
-    search: debouncedSearch || undefined,
-    pg: page,
-    ps: pageSize,
-    ...advancedFilters,
-  });
-
-  const paginationData = filesData?.pagination || {};
-
+  // Custom & shared hooks
   const { loaderRef } = useInfiniteScroll({
     hasNext: paginationData?.hasNext || false,
     isLoading: filesFetching,
@@ -162,22 +177,26 @@ function FavoritesPage() {
     },
   });
 
-  // API Mutations
-  const [renameFile] = useRenameFileMutation();
-  const [renameFolder] = useRenameFolderMutation();
-  const [deleteFile] = useDeleteFileMutation();
-  const [deleteFolder] = useDeleteFolderMutation();
-  const [moveFile] = useMoveFileMutation();
-  const [copyFile] = useCopyFileMutation();
-  const [moveFolder] = useMoveFolderMutation();
-  const [copyFolder] = useCopyFolderMutation();
-  const [bulkDelete] = useBulkDeleteMutation();
-  const [bulkMove] = useBulkMoveMutation();
-  const [bulkCopy] = useBulkCopyMutation();
+  // useEffect
+  useEffect(() => {
+    // Handled by updateParams, but good for external URL changes
+  }, [debouncedSearch, advancedFilters]);
 
-  const folders = foldersData?.data || [];
-  const files = filesData?.data || [];
-  const isLoading = foldersLoading || filesLoading;
+  // Sync internal page state with URL
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
+
+  useEffect(() => {
+    document.addEventListener("click", handleClickOutside);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [handleClickOutside]);
+
+  // Render
 
   function toggleSelect(id, type) {
     setSelectedItems((prev) => {
@@ -205,19 +224,12 @@ function FavoritesPage() {
     [clearSelection]
   );
 
-  useEffect(() => {
-    document.addEventListener("click", handleClickOutside);
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  }, [handleClickOutside]);
-
-  const handleRenameTrigger = (item) => {
+  function handleRenameTrigger(item) {
     setRenameItem(item);
     setNewName(item.name);
-  };
+  }
 
-  const handleRenameConfirm = async () => {
+  async function handleRenameConfirm() {
     if (!newName || newName === renameItem.name) {
       setRenameItem(null);
       return;
@@ -233,11 +245,13 @@ function FavoritesPage() {
     } catch (_err) {
       message.error(_err.data?.message || "Failed to rename");
     }
-  };
+  }
 
-  const handleDeleteTrigger = (item) => setDeleteItem(item);
+  function handleDeleteTrigger(item) {
+    setDeleteItem(item);
+  }
 
-  const handleDeleteConfirm = async () => {
+  async function handleDeleteConfirm() {
     try {
       const id = deleteItem.id || deleteItem._id;
       const isFolder = "itemCount" in deleteItem;
@@ -249,7 +263,7 @@ function FavoritesPage() {
     } catch (_err) {
       message.error("Failed to delete");
     }
-  };
+  }
 
   function handleBulkDelete(itemsToDelete) {
     if (!itemsToDelete || itemsToDelete.length === 0) return;
@@ -272,18 +286,23 @@ function FavoritesPage() {
     });
   }
 
-  const handleBulkMoveTrigger = (items) => {
+  function handleBulkMoveTrigger(items) {
     if (!items || items.length === 0) return;
     setFolderPicker({ visible: true, action: "bulk-move", item: null, items });
-  };
+  }
 
-  const handleBulkCopyTrigger = (items) => {
+  function handleBulkCopyTrigger(items) {
     if (!items || items.length === 0) return;
     setFolderPicker({ visible: true, action: "bulk-copy", item: null, items });
-  };
+  }
 
-  const handleMoveTrigger = (item) => setFolderPicker({ visible: true, action: "move", item, items: [] });
-  const handleCopyTrigger = (item) => setFolderPicker({ visible: true, action: "copy", item, items: [] });
+  function handleMoveTrigger(item) {
+    setFolderPicker({ visible: true, action: "move", item, items: [] });
+  }
+
+  function handleCopyTrigger(item) {
+    setFolderPicker({ visible: true, action: "copy", item, items: [] });
+  }
 
   async function handleFolderPickerConfirm(targetFolderId) {
     const { action, item, items } = folderPicker;
@@ -319,27 +338,13 @@ function FavoritesPage() {
     }
   }
 
-  const handleOpen = (item) => {
+  function handleOpen(item) {
     if ("itemCount" in item) {
       window.location.href = `${PageUrls.DashboardPage}?folder=${item.id || item._id}`;
     } else {
       setPreviewFile(item);
     }
-  };
-
-  const breadcrumbsList = [
-    {
-      title: (
-        <Link
-          to={PageUrls.DashboardPage}
-          className="flex items-center gap-2 text-primary font-semibold text-xs transition-colors"
-        >
-          <HomeOutlined className="text-[10px]" /> <span>{PageNames.MY_FILES}</span>
-        </Link>
-      ),
-    },
-    { title: <span className="font-bold text-xs opacity-60">{PageNames.FAVORITES}</span> },
-  ];
+  }
 
   return (
     <div className="flex flex-col gap-4 pb-10">

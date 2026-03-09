@@ -1,47 +1,54 @@
+// React core & third-party libraries
+import React from "react";
+import { Layout, Menu } from "antd";
 import {
   ControlOutlined,
   DeleteOutlined,
   FolderOpenOutlined,
   HistoryOutlined,
+  PictureOutlined,
   SettingOutlined,
   StarOutlined,
-  PictureOutlined,
 } from "@ant-design/icons";
-import { Layout, Menu } from "antd";
 import { AnimatePresence, motion } from "framer-motion";
-import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-// constants
-import PageUrls from "@constants/pageUrls";
-import PageNames from "@constants/pageNames";
+// Shared packages (shared/*)
 import { Roles } from "@shared-constants/constants";
+import { formatBytes } from "@shared-utils/utils";
 
-// utils
+// Constants
+import PageNames from "@constants/pageNames";
+import PageUrls from "@constants/pageUrls";
+
+// Utils
 import AuthUtils from "@utils/authUtils";
 
-// hooks
-import { useCurrentUser } from "@hooks/useCurrentUser";
+// Services (RTK Query hooks)
 import { useGetQuotaUsageQuery } from "@services/api/quotaApi";
 
-// shared utils
-import { formatBytes } from "@shared-utils/utils";
+// Hooks
+import { useCurrentUser } from "@hooks/useCurrentUser";
 
 const { Sider } = Layout;
 
 function Sidebar({ collapsed, isMobile }) {
+  // Custom & shared hooks
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { role: serverRole } = useCurrentUser();
 
+  // Derived / computed variables (part 1)
   // Prefer server data; fallback to local storage during initial load
   const userRole = serverRole ?? AuthUtils.getUserRole();
   const isAdmin = userRole === Roles.ADMIN;
 
+  // RTK Query hooks
   const { data: quotaData } = useGetQuotaUsageQuery(undefined, {
     skip: isAdmin,
   });
 
+  // Derived / computed variables (part 2)
   const allMenuItems = [
     {
       key: PageUrls.MyFilesPage,
@@ -92,6 +99,7 @@ function Sidebar({ collapsed, isMobile }) {
     .filter((item) => item.roles.includes(userRole))
     .map(({ roles: _roles, ...rest }) => rest);
 
+  // Render
   return (
     <Sider
       trigger={null}

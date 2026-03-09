@@ -1,102 +1,72 @@
-// external
+// React core & third-party libraries
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Input, Modal, Tooltip, Typography, Upload } from "antd";
 import {
-  AppstoreOutlined,
-  BarsOutlined,
   CloseOutlined,
   CloudServerOutlined,
-  CloudUploadOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
   DragOutlined,
-  FilterOutlined,
-  FolderFilled,
-  HomeOutlined,
-  PlusOutlined,
   SendOutlined,
-  UploadOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { App, Breadcrumb, Input, Modal, Tooltip, Typography, Upload } from "antd";
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
 
-// api
-import {
-  useCreateFolderMutation,
-  useDeleteFolderMutation,
-  useGetFolderContentsQuery,
-  useGetFolderDetailsQuery,
-  useMoveFolderMutation,
-  useCopyFolderMutation,
-  useRenameFolderMutation,
-} from "@services/api/folderApi";
-import {
-  useBulkCopyMutation,
-  useBulkDeleteMutation,
-  useBulkDownloadMutation,
-  useBulkMoveMutation,
-  useCopyFileMutation,
-  useDeleteFileMutation,
-  useMoveFileMutation,
-  useRenameFileMutation,
-} from "@services/api/fileApi";
+// Services (RTK Query hooks)
+import { useGetFolderContentsQuery, useGetFolderDetailsQuery } from "@services/api/folderApi";
 
-// constants
-import { STORAGE, ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
-import PageNames from "@constants/pageNames";
+// Constants
+import { DefaultPagination, QUERY_PARAMS_KEYS, STORAGE } from "@shared-constants/constants";
 
-// hooks
+// Hooks
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 
-// contexts
+import { useDragDrop } from "@hooks/files/useDragDrop";
+import { useFileActions } from "@hooks/files/useFileActions";
+import { useFolderCreation } from "@hooks/files/useFolderCreation";
+import { useUploadHandler } from "@hooks/files/useUploadHandler";
+
+// Contexts
 import { useUploadDetails } from "@contexts/UploadContext";
 
-// components
-import FileItem from "@components/files/FileItem";
-import FolderItem from "@components/files/FolderItem";
-import InfoDrawer from "@components/files/InfoDrawer";
+// Components
+import BreadcrumbNav from "@components/files/BreadcrumbNav";
+import FileGrid from "@components/files/FileGrid";
 import FilePreviewModal from "@components/files/FilePreviewModal";
+import FileToolbar from "@components/files/FileToolbar";
 import FolderPickerModal from "@components/files/FolderPickerModal";
+import InfoDrawer from "@components/files/InfoDrawer";
 import QuotaRequestModal from "@components/settings/QuotaRequestModal";
-import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
 import Button from "@shared-components/components/button";
-import Dropdown from "@shared-components/components/dropdown";
-import SearchInput from "@shared-components/components/search-input";
-import Loader from "@shared-components/components/loader";
 
 const { Text } = Typography;
-
 const { Dragger } = Upload;
 
 function MyFilesView() {
-  const { message } = App.useApp();
+  // Router hooks & params
   const [searchParams, setSearchParams] = useSearchParams();
-  const currentFolderId = searchParams.get("folder") || "root";
 
-  const setCurrentFolderId = (id) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (id === "root" || !id) {
-      newParams.delete("folder");
-    } else {
-      newParams.set("folder", id);
-    }
-    setSearchParams(newParams);
-  };
-
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
+  // Local state
+  const [infoItem, setInfoItem] = useState(null);
+  const [page, setPage] = useState(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    return p ? Number(p) : DefaultPagination.pageNumber;
+  });
+  const [previewFile, setPreviewFile] = useState(null);
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
   const [quotaRequestModalVisible, setQuotaRequestModalVisible] = useState(false);
-  const [infoItem, setInfoItem] = useState(null);
-  const [renameItem, setRenameItem] = useState(null);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [newName, setNewName] = useState("");
-  const [previewFile, setPreviewFile] = useState(null);
-  // Derived State from URL
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [viewMode, setViewMode] = useState("grid");
+
+  // Derived / computed variables
+  const currentFolderId = searchParams.get("folder") || "root";
   const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
+  const pageSize = useMemo(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
+    return p ? Number(p) : DefaultPagination.pageSize;
+  }, [searchParams]);
 
   const advancedFilters = useMemo(() => {
     const filters = {};
@@ -119,6 +89,51 @@ function MyFilesView() {
   const sortBy = searchParams.get(QUERY_PARAMS_KEYS.SORT_BY) || "updatedAt";
   const sortOrder = searchParams.get(QUERY_PARAMS_KEYS.SORT_ORDER) || "desc";
 
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
+
+  // RTK Query hooks
+  const {
+    data: contentsData,
+    isLoading: isContentsLoading,
+    isFetching: isContentsFetching,
+  } = useGetFolderContentsQuery({
+    folderId: currentFolderId,
+    search: debouncedSearch || undefined,
+    sortBy: sortBy,
+    sortOrder: sortOrder,
+    pg: page,
+    ps: pageSize,
+    ...advancedFilters,
+  });
+
+  const { data: detailsData } = useGetFolderDetailsQuery(
+    { id: currentFolderId },
+    {
+      skip: currentFolderId === "root" || !!debouncedSearch,
+    }
+  );
+
+  // Derived / computed variables
+  const folders = contentsData?.data?.folders || [];
+  const files = contentsData?.data?.files || [];
+  const breadcrumbs = currentFolderId === "root" ? [] : detailsData?.data?.breadcrumbs || [];
+  const paginationData = contentsData?.pagination || {};
+
+  // Event handlers
+  function setCurrentFolderId(id) {
+    const newParams = new URLSearchParams(searchParams);
+    if (id === "root" || !id) {
+      newParams.delete("folder");
+    } else {
+      newParams.set("folder", id);
+    }
+    setSearchParams(newParams);
+  }
+
   const updateParams = useCallback(
     (updates) => {
       const newParams = new URLSearchParams(searchParams);
@@ -134,90 +149,22 @@ function MyFilesView() {
     [searchParams, setSearchParams]
   );
 
-  // Folder Picker State
-  const [folderPicker, setFolderPicker] = useState({
-    visible: false,
-    action: "move", // 'move' | 'copy' | 'bulk-move' | 'bulk-copy'
-    item: null, // individual item for move/copy
-    items: [], // selection for bulk move/copy
-  });
-
-  const [page, setPage] = useState(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    return p ? Number(p) : DefaultPagination.pageNumber;
-  });
-
-  const pageSize = useMemo(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
-    return p ? Number(p) : DefaultPagination.pageSize;
-  }, [searchParams]);
-
-  // Sync internal page state with URL (optional but good for consistency)
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
-
-  // API Queries
-  const {
-    data: contentsData,
-    isLoading: isContentsLoading,
-    isFetching: isContentsFetching,
-  } = useGetFolderContentsQuery({
-    folderId: currentFolderId,
-    search: debouncedSearch || undefined,
-    sortBy: sortBy,
-    sortOrder: sortOrder,
-    pg: page,
-    ps: pageSize,
-    ...advancedFilters,
-  });
-
-  const paginationData = contentsData?.pagination || {};
-
+  // Custom & shared hooks
   const { loaderRef } = useInfiniteScroll({
     hasNext: paginationData?.hasNext || false,
     isLoading: isContentsFetching,
     onLoadMore: () => {
       const nextPage = page + 1;
-      setPage(nextPage); // This updates the query param via useEffect/updateParams
+      setPage(nextPage);
       updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
     },
   });
 
-  const { data: detailsData } = useGetFolderDetailsQuery(
-    { id: currentFolderId },
-    {
-      skip: currentFolderId === "root" || !!debouncedSearch, // Skip details if searching (global search)
-    }
-  );
-
-  // API Mutations
-  const { addUpload } = useUploadDetails();
-  const [createFolder] = useCreateFolderMutation();
-  const [renameFile] = useRenameFileMutation();
-  const [renameFolder] = useRenameFolderMutation();
-  const [deleteFile] = useDeleteFileMutation();
-  const [deleteFolder] = useDeleteFolderMutation();
-  const [moveFile, { isLoading: moveFileLoading }] = useMoveFileMutation();
-  const [copyFile, { isLoading: copyFileLoading }] = useCopyFileMutation();
-  const [moveFolder, { isLoading: moveFolderLoading }] = useMoveFolderMutation();
-  const [copyFolder, { isLoading: copyFolderLoading }] = useCopyFolderMutation();
-  const [bulkDelete] = useBulkDeleteMutation();
-  const [bulkMove, { isLoading: bulkMoveLoading }] = useBulkMoveMutation();
-  const [bulkCopy, { isLoading: bulkCopyLoading }] = useBulkCopyMutation();
-  const [bulkDownload, { isLoading: bulkDownloadLoading }] = useBulkDownloadMutation();
-
-  const folders = contentsData?.data?.folders || [];
-  const files = contentsData?.data?.files || [];
-  const breadcrumbs = currentFolderId === "root" ? [] : detailsData?.data?.breadcrumbs || [];
-
   function toggleSelect(id, type) {
     setSelectedItems((prev) => {
-      const exists = prev.find((item) => item.id === id);
-      if (exists) return prev.filter((item) => item.id !== id);
-      return [...prev, { id, type }];
+      const exists = prev.find((item) => String(item.id) === String(id));
+      if (exists) return prev.filter((item) => String(item.id) !== String(id));
+      return [...prev, { id: String(id), type }];
     });
   }
 
@@ -225,7 +172,6 @@ function MyFilesView() {
 
   const handleClickOutside = useCallback(
     (e) => {
-      // Don't clear if clicking an item, the search bar, a modal, or the bulk actions bar
       if (
         e.target.closest(".animate-item") ||
         e.target.closest(".glass-bar") ||
@@ -240,124 +186,12 @@ function MyFilesView() {
     [clearSelection]
   );
 
-  useEffect(() => {
-    document.addEventListener("click", handleClickOutside);
-
-    function handleOpenQuota() {
-      setQuotaModalVisible(true);
-    }
-    window.addEventListener("openQuotaModal", handleOpenQuota);
-
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-      window.removeEventListener("openQuotaModal", handleOpenQuota);
-    };
-  }, [handleClickOutside]);
-
   function handleRequestQuota() {
     setQuotaModalVisible(false);
     setQuotaRequestModalVisible(true);
   }
 
-  function handleBulkDelete(itemsToDelete) {
-    if (!itemsToDelete || itemsToDelete.length === 0) return;
-    Modal.confirm({
-      title: "Confirm Delete",
-      content: `Are you sure you want to move ${itemsToDelete.length} items to the trash?`,
-      okText: "Move to Trash",
-      okType: "danger",
-      onOk: async () => {
-        try {
-          await bulkDelete({ items: itemsToDelete }).unwrap();
-          message.success("Items moved to trash");
-          clearSelection();
-        } catch {
-          message.error("Failed to delete items");
-        }
-      },
-      className: "premium-modal",
-      centered: true,
-    });
-  }
-
-  function handleBulkMoveTrigger(items) {
-    if (!items || items.length === 0) return;
-    setFolderPicker({ visible: true, action: "bulk-move", item: null, items });
-  }
-
-  function handleBulkCopyTrigger(items) {
-    if (!items || items.length === 0) return;
-    setFolderPicker({ visible: true, action: "bulk-copy", item: null, items });
-  }
-
-  async function handleBulkDownload(itemsToDownload) {
-    if (!itemsToDownload || itemsToDownload.length === 0) return;
-    // Only download file-type items (not folders) for now
-    const fileItems = itemsToDownload.filter((i) => i.type === ItemTypes.FILE);
-    if (fileItems.length === 0) {
-      message.warning("Please select at least one file to download");
-      return;
-    }
-    try {
-      const result = await bulkDownload({ items: fileItems }).unwrap();
-      // result is a Blob from the server (zip file)
-      const url = URL.createObjectURL(result);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = "download.zip";
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(url);
-    } catch {
-      message.error("Failed to download files");
-    }
-  }
-
-  function handleMoveTrigger(item) {
-    setFolderPicker({ visible: true, action: "move", item });
-  }
-
-  function handleCopyTrigger(item) {
-    setFolderPicker({ visible: true, action: "copy", item });
-  }
-
-  async function handleFolderPickerConfirm(targetFolderId) {
-    const { action, item, items } = folderPicker;
-    const normalizedTargetId = targetFolderId === "root" ? null : targetFolderId;
-
-    try {
-      if (action === "move" || action === "copy") {
-        const id = item._id || item.id;
-        const isFolder = "itemCount" in item || folders.some((f) => (f._id || f.id) === id);
-
-        if (action === "move") {
-          if (isFolder) await moveFolder({ id, parentId: normalizedTargetId }).unwrap();
-          else await moveFile({ id, folderId: normalizedTargetId }).unwrap();
-          message.success(`${item.name} moved successfully`);
-        } else {
-          if (isFolder) await copyFolder({ id, parentId: normalizedTargetId }).unwrap();
-          else await copyFile({ id, folderId: normalizedTargetId }).unwrap();
-          message.success(`${item.name} copied successfully`);
-        }
-      } else if (action === "bulk-move" || action === "bulk-copy") {
-        if (action === "bulk-move") {
-          await bulkMove({ items, targetFolderId: normalizedTargetId }).unwrap();
-          message.success(`${items.length} items moved successfully`);
-        } else {
-          await bulkCopy({ items, targetFolderId: normalizedTargetId }).unwrap();
-          message.success(`${items.length} items copied successfully`);
-        }
-        clearSelection();
-      }
-      setFolderPicker({ ...folderPicker, visible: false });
-    } catch (err) {
-      message.error(err.data?.message || `Failed to ${action}`);
-    }
-  }
-
   function handleOpen(item) {
-    // If it's a folder, navigate into it
     if ("itemCount" in item) {
       setCurrentFolderId(item._id || item.id);
       clearSelection();
@@ -370,304 +204,83 @@ function MyFilesView() {
     if ("itemCount" in item) {
       setInfoItem(item);
     } else {
-      // It's a file, inject the virtual path based on current breadcrumbs
       const virtualPath =
         breadcrumbs && breadcrumbs.length > 0 ? `My Files / ${breadcrumbs.map((b) => b.name).join(" / ")}` : "My Files";
       setInfoItem({ ...item, virtualPath });
     }
   }
 
-  function handleRenameTrigger(item) {
-    setRenameItem(item);
-    setNewName(item.name);
-  }
+  const {
+    renameItem,
+    setRenameItem,
+    newName,
+    setNewName,
+    deleteItem,
+    setDeleteItem,
+    folderPicker,
+    setFolderPicker,
+    handleRenameTrigger,
+    handleRenameConfirm,
+    handleDeleteTrigger,
+    handleDeleteConfirm,
+    handleBulkDelete,
+    handleMoveTrigger,
+    handleCopyTrigger,
+    handleBulkMoveTrigger,
+    handleBulkCopyTrigger,
+    handleFolderPickerConfirm,
+    handleBulkDownload,
+    isActionLoading,
+    bulkDownloadLoading,
+  } = useFileActions({ folders, clearSelection });
 
-  async function handleRenameConfirm() {
-    if (!renameItem || !newName.trim()) return;
+  const { handleCreateFolder } = useFolderCreation({ currentFolderId });
+  const { addUpload } = useUploadDetails();
+  const { isDragging, handleDragEnter, handleDragLeave, handleDrop } = useDragDrop();
+  const { uploadRef, handleUploadClick, uploadProps } = useUploadHandler({
+    addUpload,
+    currentFolderId,
+    handleDragEnter,
+    handleDragLeave,
+    handleDrop,
+  });
 
-    try {
-      const id = renameItem._id || renameItem.id;
-      const isFolder = "itemCount" in renameItem;
+  // useEffect
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
 
-      if (isFolder) {
-        await renameFolder({ id, name: newName }).unwrap();
-      } else {
-        await renameFile({ id, name: newName }).unwrap();
-      }
-
-      message.success(`Renamed successfully`);
-      setRenameItem(null);
-    } catch (err) {
-      message.error(err.data?.message || "Failed to rename");
+  useEffect(() => {
+    document.addEventListener("click", handleClickOutside);
+    function handleOpenQuota() {
+      setQuotaModalVisible(true);
     }
-  }
+    window.addEventListener("openQuotaModal", handleOpenQuota);
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("openQuotaModal", handleOpenQuota);
+    };
+  }, [handleClickOutside]);
 
-  function handleDeleteTrigger(item) {
-    setDeleteItem(item);
-  }
-
-  async function handleDeleteConfirm() {
-    if (!deleteItem) return;
-
-    try {
-      const id = deleteItem._id || deleteItem.id;
-      const isFolder = "itemCount" in deleteItem;
-
-      if (isFolder) {
-        await deleteFolder({ id }).unwrap();
-      } else {
-        await deleteFile({ id }).unwrap();
-      }
-
-      message.success(`Deleted ${deleteItem.name}`);
-      setDeleteItem(null);
-    } catch (err) {
-      message.error(err.data?.message || "Failed to delete");
-    }
-  }
-
-  const uploadRef = useRef(null);
-  const dragCounter = useRef(0);
-
-  function handleDragEnter(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current += 1;
-
-    const isFile = e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files");
-    if (isFile) {
-      setIsDragging(true);
-    }
-  }
-
-  function handleDragLeave(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounter.current -= 1;
-    if (dragCounter.current === 0) {
-      setIsDragging(false);
-    }
-  }
-
-  function handleDrop() {
-    // Reset our dragging UI
-    setIsDragging(false);
-    dragCounter.current = 0;
-    // We explicitly DO NOT call handleFileUpload(e.dataTransfer.files) here
-    // because Ant Design Dragger natively intercepts drops and converts
-    // them into beforeUpload invocations for each file automatically. calling
-    // our upload iteration here would double-trigger the entire sequence.
-  }
-
-  function handleUploadClick() {
-    if (uploadRef.current) {
-      const uploadInput = uploadRef.current.querySelector('input[type="file"]');
-      if (uploadInput) uploadInput.click();
-    }
-  }
-
-  function handleCreateFolder() {
-    Modal.confirm({
-      title: "New Folder",
-      content: (
-        <Input
-          id="new-folder-name"
-          placeholder="Folder name"
-          className="rounded-xl h-10 mt-2"
-          onPressEnter={() => {}}
-        />
-      ),
-      onOk: async () => {
-        const input = document.getElementById("new-folder-name");
-        const name = input?.value?.trim();
-        if (!name) return;
-
-        try {
-          await createFolder({
-            name,
-            parent: currentFolderId === "root" ? null : currentFolderId,
-          }).unwrap();
-          message.success("Folder created");
-        } catch (err) {
-          message.error(err.data?.message || "Failed to create folder");
-        }
-      },
-      className: "premium-modal",
-      centered: true,
-      okText: "Create",
-    });
-  }
-
-  const uploadProps = {
-    name: ItemTypes.FILE,
-    multiple: true,
-    showUploadList: false,
-    beforeUpload: (file) => {
-      // By returning false, we completely disable Antd's default XHR POST
-      // and natively pipe the individual file directly into our Custom Upload Context
-      addUpload(file, currentFolderId === "root" ? null : currentFolderId);
-      return false;
-    },
-    openFileDialogOnClick: false,
-    onDragEnter: handleDragEnter,
-    onDragLeave: handleDragLeave,
-    onDrop: handleDrop,
-  };
-
-  const breadcrumbsList = [
-    {
-      title: (
-        <span
-          onClick={() => setCurrentFolderId("root")}
-          onKeyDown={(e) => e.key === "Enter" && setCurrentFolderId("root")}
-          role="button"
-          tabIndex={0}
-          className="flex items-center gap-2 text-primary font-semibold text-xs cursor-pointer"
-        >
-          <HomeOutlined className="text-[10px]" /> <span>{PageNames.MY_FILES}</span>
-        </span>
-      ),
-    },
-    ...breadcrumbs.map((bc) => ({
-      title: (
-        <span
-          onClick={() => setCurrentFolderId(bc.id)}
-          onKeyDown={(e) => e.key === "Enter" && setCurrentFolderId(bc.id)}
-          role="button"
-          tabIndex={0}
-          className="flex items-center gap-2 text-label font-medium text-xs cursor-pointer hover:text-primary transition-colors"
-        >
-          <span>{bc.name}</span>
-        </span>
-      ),
-    })),
-  ];
-
+  // Render
   return (
     <div className="flex flex-col gap-4 pb-10">
-      {/* Header Section */}
       <div className="flex flex-row justify-between items-center gap-4 px-1">
         <div className="shrink-0">
-          <Breadcrumb separator={<span className="text-label-tertiary">/</span>} items={breadcrumbsList} />
+          <BreadcrumbNav breadcrumbs={breadcrumbs} setCurrentFolderId={setCurrentFolderId} />
         </div>
-
-        <div className="flex gap-2 grow justify-end items-center">
-          <div className="w-56 flex-none">
-            <SearchInput
-              id="search-input"
-              name="search"
-              placeholder="Search in My Files..."
-              suffix={
-                <AdvancedFilterDropdown
-                  initialFilters={advancedFilters}
-                  onFilter={(filters) =>
-                    updateParams({
-                      [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
-                      [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
-                      [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
-                      [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
-                      [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
-                      [QUERY_PARAMS_KEYS.TAG]: filters.tag,
-                      [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber, // Reset page on filter change
-                    })
-                  }
-                  onClear={() =>
-                    updateParams({
-                      [QUERY_PARAMS_KEYS.CATEGORY]: null,
-                      [QUERY_PARAMS_KEYS.START_DATE]: null,
-                      [QUERY_PARAMS_KEYS.END_DATE]: null,
-                      [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
-                      [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
-                      [QUERY_PARAMS_KEYS.TAG]: null,
-                      [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-                    })
-                  }
-                  trigger={
-                    <Tooltip title="Advanced Filters">
-                      <div className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-alt cursor-pointer transition-all group/filter -mr-1">
-                        <FilterOutlined
-                          className={`text-xs ${Object.keys(advancedFilters).length > 0 ? "text-primary" : "text-label-tertiary"} group-hover/filter:text-primary`}
-                        />
-                      </div>
-                    </Tooltip>
-                  }
-                />
-              }
-              className="h-10 rounded-xl border-line bg-surface shadow-sm focus:shadow-md transition-all text-sm w-full premium-nav-search"
-              allowClear
-            />
-          </div>
-
-          <div className="bg-surface-alt p-1 rounded-xl flex items-center gap-1">
-            <Dropdown
-              menu={{
-                items: [
-                  { key: "updatedAt-desc", label: "Newest First" },
-                  { key: "updatedAt-asc", label: "Oldest First" },
-                  { key: "name-asc", label: "Name (A-Z)" },
-                  { key: "name-desc", label: "Name (Z-A)" },
-                  { key: "size-desc", label: "Largest First" },
-                  { key: "size-asc", label: "Smallest First" },
-                ],
-                onClick: ({ key }) => {
-                  const [f, o] = key.split("-");
-                  updateParams({
-                    [QUERY_PARAMS_KEYS.SORT_BY]: f,
-                    [QUERY_PARAMS_KEYS.SORT_ORDER]: o,
-                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber, // Reset page on sort change
-                  });
-                },
-                selectable: true,
-                defaultSelectedKeys: [`${sortBy}-${sortOrder}`],
-              }}
-              trigger={["click"]}
-            >
-              <Button type="text" className="rounded-lg text-xs font-bold text-label-secondary">
-                Sort
-              </Button>
-            </Dropdown>
-          </div>
-
-          <div className="bg-surface-alt p-1 rounded-xl flex items-center gap-1">
-            <Button
-              type={viewMode === "grid" ? "default" : "text"}
-              size="small"
-              icon={<AppstoreOutlined />}
-              onClick={() => setViewMode("grid")}
-              className={`rounded-lg w-8 h-7 flex items-center justify-center border-none ${viewMode === "grid" ? "bg-surface shadow-sm text-primary" : "text-label-secondary hover:bg-surface-alt"}`}
-            />
-            <Button
-              type={viewMode === "list" ? "default" : "text"}
-              size="small"
-              icon={<BarsOutlined />}
-              onClick={() => setViewMode("list")}
-              className={`rounded-lg w-8 h-7 flex items-center justify-center border-none ${viewMode === "list" ? "bg-surface shadow-sm text-primary" : "text-label-secondary hover:bg-surface-alt"}`}
-            />
-          </div>
-
-          <Dropdown
-            menu={{
-              items: [
-                { key: "upload", label: "Upload File", icon: <UploadOutlined /> },
-                { key: ItemTypes.FOLDER, label: "New Folder", icon: <PlusOutlined /> },
-              ],
-              onClick: ({ key }) => {
-                if (key === "upload") handleUploadClick();
-                else if (key === ItemTypes.FOLDER) handleCreateFolder();
-              },
-            }}
-            placement="bottomRight"
-            trigger={["click"]}
-          >
-            <Button
-              type="primary"
-              className="rounded-xl h-10 px-4 font-bold shadow-primary text-sm flex items-center gap-2"
-            >
-              <PlusOutlined />
-              <span>New</span>
-            </Button>
-          </Dropdown>
-        </div>
+        <FileToolbar
+          advancedFilters={advancedFilters}
+          updateParams={updateParams}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          handleUploadClick={handleUploadClick}
+          handleCreateFolder={handleCreateFolder}
+        />
       </div>
 
       <div className="h-4" />
@@ -741,137 +354,24 @@ function MyFilesView() {
 
       <div ref={uploadRef}>
         <Dragger {...uploadProps} className="bg-transparent! border-none! cursor-default group relative">
-          <div className="space-y-6 text-left">
-            {/* Folders Section */}
-            {(folders.length > 0 || isContentsLoading) && (
-              <div>
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary mb-3 px-1 opacity-80">
-                  Folders
-                </h2>
-                {isContentsLoading ? (
-                  <div className="py-10 flex justify-center w-full">
-                    <Loader size={32} />
-                  </div>
-                ) : (
-                  <div
-                    className={
-                      viewMode === "grid"
-                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                        : "flex flex-col gap-2"
-                    }
-                  >
-                    {folders.map((folder) => {
-                      const id = String(folder._id || folder.id);
-                      return (
-                        <div key={id}>
-                          <FolderItem
-                            folder={{ ...folder, id }} // normalize id for the component
-                            viewMode={viewMode}
-                            isSelected={selectedItems.some((i) => String(i.id) === id)}
-                            onToggleSelect={(id) => toggleSelect(String(id), ItemTypes.FOLDER)}
-                            onOpen={handleOpen}
-                            onShowInfo={handleShowInfo}
-                            onRename={handleRenameTrigger}
-                            onDelete={handleDeleteTrigger}
-                            onMove={handleMoveTrigger}
-                            onCopy={handleCopyTrigger}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Files Section */}
-            {(files.length > 0 || isContentsLoading) && (
-              <div>
-                <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary mb-3 px-1 opacity-80">
-                  Files
-                </h2>
-                {isContentsLoading ? (
-                  <div className="py-10 flex justify-center w-full">
-                    <Loader size={32} />
-                  </div>
-                ) : (
-                  <div
-                    className={
-                      viewMode === "grid"
-                        ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
-                        : "flex flex-col gap-2"
-                    }
-                  >
-                    {files.map((file) => {
-                      const id = String(file._id || file.id);
-                      return (
-                        <div key={id}>
-                          <FileItem
-                            file={{ ...file, id }} // normalize id for the component
-                            viewMode={viewMode}
-                            isSelected={selectedItems.some((i) => String(i.id) === id)}
-                            onToggleSelect={(id) => toggleSelect(String(id), ItemTypes.FILE)}
-                            onOpen={handleOpen}
-                            onShowInfo={handleShowInfo}
-                            onRename={handleRenameTrigger}
-                            onDelete={handleDeleteTrigger}
-                            onMove={handleMoveTrigger}
-                            onCopy={handleCopyTrigger}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Infinite Scroll Loader */}
-                <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
-                  {isContentsFetching ? (
-                    <>
-                      <Loader size={24} />
-                      <Text className="text-label-tertiary text-sm">Loading more files...</Text>
-                    </>
-                  ) : paginationData?.hasNext ? (
-                    <Text className="text-label-tertiary text-sm italic">Scroll for more</Text>
-                  ) : (
-                    <Text className="text-label-tertiary text-sm italic">No more files</Text>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!isContentsLoading && folders.length === 0 && files.length === 0 && (
-              <div className="py-20 flex flex-col items-center justify-center text-center w-full opacity-60">
-                <div className="w-24 h-24 mb-6 rounded-full bg-surface-dim flex items-center justify-center border-4 border-dashed border-line">
-                  <FolderFilled className="text-4xl text-label-tertiary" />
-                </div>
-                <Text className="text-xl font-bold text-label mb-2">This folder is empty</Text>
-                <Text className="text-label-secondary block max-w-sm">
-                  Drag and drop files here to upload, or use the &quot;New&quot; button to create folders and add files.
-                </Text>
-              </div>
-            )}
-          </div>
-
-          {/* Premium Drop Hint Overlay */}
-          <div
-            className={`pointer-events-none absolute inset-0 z-40 transition-all duration-300 backdrop-blur-md bg-white/40 flex items-center justify-center p-8 rounded-2xl overflow-hidden ${isDragging ? "opacity-100" : "opacity-0 invisible"}`}
-          >
-            <div
-              className={`relative w-full max-w-md bg-white/90 backdrop-blur-xl p-10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-white/50 flex flex-col items-center gap-6 transition-all duration-300 ${isDragging ? "scale-100" : "scale-95"}`}
-            >
-              <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                <CloudUploadOutlined className="text-6xl text-primary" />
-              </div>
-              <div className="text-center space-y-2">
-                <h3 className="text-2xl font-black text-label tracking-tight">Ready to Upload</h3>
-                <p className="text-label-secondary font-medium px-4">
-                  Drop your files here to instantly add them to your NAS storage
-                </p>
-              </div>
-            </div>
-          </div>
+          <FileGrid
+            folders={folders}
+            files={files}
+            isContentsLoading={isContentsLoading}
+            isContentsFetching={isContentsFetching}
+            paginationData={paginationData}
+            loaderRef={loaderRef}
+            viewMode={viewMode}
+            selectedItems={selectedItems}
+            toggleSelect={toggleSelect}
+            handleOpen={handleOpen}
+            handleShowInfo={handleShowInfo}
+            handleRenameTrigger={handleRenameTrigger}
+            handleDeleteTrigger={handleDeleteTrigger}
+            handleMoveTrigger={handleMoveTrigger}
+            handleCopyTrigger={handleCopyTrigger}
+            isDragging={isDragging}
+          />
         </Dragger>
 
         <Modal
@@ -948,14 +448,7 @@ function MyFilesView() {
             : selectedItems.map((i) => String(i.id))
         }
         currentParentId={folderPicker.item ? folderPicker.item.parent || folderPicker.item.folder : currentFolderId}
-        loading={
-          bulkMoveLoading ||
-          bulkCopyLoading ||
-          moveFolderLoading ||
-          moveFileLoading ||
-          copyFolderLoading ||
-          copyFileLoading
-        }
+        loading={isActionLoading}
       />
 
       {/* Rename Modal */}

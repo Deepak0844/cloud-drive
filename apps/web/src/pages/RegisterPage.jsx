@@ -1,21 +1,25 @@
-import { LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
-import { App, Card, Form, Input } from "antd";
-import { motion } from "framer-motion";
+// React core & third-party libraries
 import React from "react";
 import { Link } from "react-router-dom";
+import { App, Card, Form, Input } from "antd";
+import { LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 
-// components
-import Button from "@shared-components/components/button";
-
-// hooks
-import { useAuth } from "@hooks/useAuth";
-
-// constants
+// Constants
 import PageUrls from "@constants/pageUrls";
 
+// Hooks
+import { useAuth } from "@hooks/useAuth";
+
+// Components
+import Button from "@shared-components/components/button";
+
 function RegisterPage() {
+  // Custom & shared hooks
   const { message } = App.useApp();
   const { register, isRegisterLoading } = useAuth();
+
+  // Event handlers
 
   async function handleFinish(values) {
     try {
@@ -26,6 +30,7 @@ function RegisterPage() {
     }
   }
 
+  // Render
   return (
     <div className="min-h-screen bg-surface-dim flex flex-col items-center justify-center p-4">
       <motion.div

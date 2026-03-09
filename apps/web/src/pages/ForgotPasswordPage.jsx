@@ -1,10 +1,11 @@
-import { MailOutlined } from "@ant-design/icons";
-import { Alert, Card, Form, Input } from "antd";
-import { motion } from "framer-motion";
+// React core & third-party libraries
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { Alert, Card, Form, Input } from "antd";
+import { MailOutlined } from "@ant-design/icons";
+import { motion } from "framer-motion";
 
-// RTK Query
+// Services (RTK Query hooks)
 import { useForgotPasswordMutation } from "@services/api/authApi";
 
 // Constants
@@ -14,8 +15,13 @@ import PageUrls from "@constants/pageUrls";
 import Button from "@shared-components/components/button";
 
 function ForgotPasswordPage() {
-  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
+  // Local state
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // RTK Query hooks
+  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
+
+  // Event handlers
 
   async function handleFinish(values) {
     try {
@@ -28,6 +34,7 @@ function ForgotPasswordPage() {
     }
   }
 
+  // Render
   return (
     <div className="min-h-screen bg-surface-dim flex flex-col items-center justify-center p-4">
       <motion.div

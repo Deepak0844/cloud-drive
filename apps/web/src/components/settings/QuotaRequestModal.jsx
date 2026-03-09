@@ -1,15 +1,24 @@
-// external
-import { Form, Input, InputNumber, message } from "antd";
-import Modal from "@shared-components/components/modal";
+// React core & third-party libraries
 import React from "react";
+import { Form, Input, InputNumber, message } from "antd";
 
+// Services (RTK Query hooks)
 import { useRequestQuotaIncreaseMutation } from "@services/api/quotaApi";
 
+// Components
+import Modal from "@shared-components/components/modal";
+
 function QuotaRequestModal({ open, onClose }) {
-  const [form] = Form.useForm();
-  const [requestQuota] = useRequestQuotaIncreaseMutation();
+  // Local state
   const [loading, setLoading] = React.useState(false);
 
+  // RTK Query hooks
+  const [requestQuota] = useRequestQuotaIncreaseMutation();
+
+  // Custom & shared hooks
+  const [form] = Form.useForm();
+
+  // Event handlers
   async function handleOk() {
     try {
       const values = await form.validateFields();
@@ -26,6 +35,7 @@ function QuotaRequestModal({ open, onClose }) {
     }
   }
 
+  // Render
   return (
     <Modal
       modalTitle="Request Quota Increase"

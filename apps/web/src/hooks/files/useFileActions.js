@@ -1,0 +1,223 @@
+import { App, Modal } from "antd";
+import { useState } from "react";
+
+// RTK Query hooks
+import {
+  useDeleteFolderMutation,
+  useMoveFolderMutation,
+  useCopyFolderMutation,
+  useRenameFolderMutation,
+} from "@services/api/folderApi";
+import {
+  useCopyFileMutation,
+  useDeleteFileMutation,
+  useMoveFileMutation,
+  useRenameFileMutation,
+} from "@services/api/fileApi";
+import {
+  useBulkCopyMutation,
+  useBulkDeleteMutation,
+  useBulkDownloadMutation,
+  useBulkMoveMutation,
+} from "@services/api/bulkApi";
+
+// Constants
+import { ItemTypes } from "@shared-constants/constants";
+
+export function useFileActions({ folders, clearSelection }) {
+  const { message } = App.useApp();
+
+  // Dialog states
+  const [renameItem, setRenameItem] = useState(null);
+  const [newName, setNewName] = useState("");
+  const [deleteItem, setDeleteItem] = useState(null);
+  const [folderPicker, setFolderPicker] = useState({
+    visible: false,
+    action: "move", // 'move' | 'copy' | 'bulk-move' | 'bulk-copy'
+    item: null, // individual item
+    items: [], // bulk items
+  });
+
+  // API Mutations
+  const [renameFile] = useRenameFileMutation();
+  const [renameFolder] = useRenameFolderMutation();
+  const [deleteFile] = useDeleteFileMutation();
+  const [deleteFolder] = useDeleteFolderMutation();
+  const [moveFile, { isLoading: moveFileLoading }] = useMoveFileMutation();
+  const [copyFile, { isLoading: copyFileLoading }] = useCopyFileMutation();
+  const [moveFolder, { isLoading: moveFolderLoading }] = useMoveFolderMutation();
+  const [copyFolder, { isLoading: copyFolderLoading }] = useCopyFolderMutation();
+  const [bulkDelete] = useBulkDeleteMutation();
+  const [bulkMove, { isLoading: bulkMoveLoading }] = useBulkMoveMutation();
+  const [bulkCopy, { isLoading: bulkCopyLoading }] = useBulkCopyMutation();
+  const [bulkDownload, { isLoading: bulkDownloadLoading }] = useBulkDownloadMutation();
+
+  const isActionLoading =
+    moveFileLoading || copyFileLoading || moveFolderLoading || copyFolderLoading || bulkMoveLoading || bulkCopyLoading;
+
+  // Rename Actions
+  function handleRenameTrigger(item) {
+    setRenameItem(item);
+    setNewName(item.name);
+  }
+
+  async function handleRenameConfirm() {
+    if (!renameItem || !newName.trim()) return;
+    try {
+      const id = renameItem._id || renameItem.id;
+      const isFolder = "itemCount" in renameItem;
+
+      if (isFolder) await renameFolder({ id, name: newName }).unwrap();
+      else await renameFile({ id, name: newName }).unwrap();
+
+      message.success(`Renamed successfully`);
+      setRenameItem(null);
+    } catch (err) {
+      message.error(err.data?.message || "Failed to rename");
+    }
+  }
+
+  // Delete Actions
+  function handleDeleteTrigger(item) {
+    setDeleteItem(item);
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteItem) return;
+    try {
+      const id = deleteItem._id || deleteItem.id;
+      const isFolder = "itemCount" in deleteItem;
+
+      if (isFolder) await deleteFolder({ id }).unwrap();
+      else await deleteFile({ id }).unwrap();
+
+      message.success(`Deleted ${deleteItem.name}`);
+      setDeleteItem(null);
+    } catch (err) {
+      message.error(err.data?.message || "Failed to delete");
+    }
+  }
+
+  function handleBulkDelete(itemsToDelete) {
+    if (!itemsToDelete || itemsToDelete.length === 0) return;
+    Modal.confirm({
+      title: "Confirm Delete",
+      content: `Are you sure you want to move ${itemsToDelete.length} items to the trash?`,
+      okText: "Move to Trash",
+      okType: "danger",
+      onOk: async () => {
+        try {
+          await bulkDelete({ items: itemsToDelete }).unwrap();
+          message.success("Items moved to trash");
+          clearSelection();
+        } catch {
+          message.error("Failed to delete items");
+        }
+      },
+      className: "premium-modal",
+      centered: true,
+    });
+  }
+
+  // Move & Copy Actions
+  function handleMoveTrigger(item) {
+    setFolderPicker({ visible: true, action: "move", item, items: [] });
+  }
+
+  function handleCopyTrigger(item) {
+    setFolderPicker({ visible: true, action: "copy", item, items: [] });
+  }
+
+  function handleBulkMoveTrigger(items) {
+    if (!items || items.length === 0) return;
+    setFolderPicker({ visible: true, action: "bulk-move", item: null, items });
+  }
+
+  function handleBulkCopyTrigger(items) {
+    if (!items || items.length === 0) return;
+    setFolderPicker({ visible: true, action: "bulk-copy", item: null, items });
+  }
+
+  async function handleFolderPickerConfirm(targetFolderId) {
+    const { action, item, items } = folderPicker;
+    const normalizedTargetId = targetFolderId === "root" ? null : targetFolderId;
+
+    try {
+      if (action === "move" || action === "copy") {
+        const id = item._id || item.id;
+        const isFolder = "itemCount" in item || folders?.some((f) => (f._id || f.id) === id);
+
+        if (action === "move") {
+          if (isFolder) await moveFolder({ id, parentId: normalizedTargetId }).unwrap();
+          else await moveFile({ id, folderId: normalizedTargetId }).unwrap();
+          message.success(`${item.name} moved successfully`);
+        } else {
+          if (isFolder) await copyFolder({ id, parentId: normalizedTargetId }).unwrap();
+          else await copyFile({ id, folderId: normalizedTargetId }).unwrap();
+          message.success(`${item.name} copied successfully`);
+        }
+      } else if (action === "bulk-move" || action === "bulk-copy") {
+        if (action === "bulk-move") {
+          await bulkMove({ items, targetFolderId: normalizedTargetId }).unwrap();
+          message.success(`${items.length} items moved successfully`);
+        } else {
+          await bulkCopy({ items, targetFolderId: normalizedTargetId }).unwrap();
+          message.success(`${items.length} items copied successfully`);
+        }
+        clearSelection();
+      }
+      setFolderPicker({ ...folderPicker, visible: false });
+    } catch (err) {
+      message.error(err.data?.message || `Failed to ${action}`);
+    }
+  }
+
+  // Download Actions
+  async function handleBulkDownload(itemsToDownload) {
+    if (!itemsToDownload || itemsToDownload.length === 0) return;
+    const fileItems = itemsToDownload.filter((i) => i.type === ItemTypes.FILE);
+    if (fileItems.length === 0) {
+      message.warning("Please select at least one file to download");
+      return;
+    }
+    try {
+      const result = await bulkDownload({ items: fileItems }).unwrap();
+      const url = URL.createObjectURL(result);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "download.zip";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+    } catch {
+      message.error("Failed to download files");
+    }
+  }
+
+  return {
+    renameItem,
+    setRenameItem,
+    newName,
+    setNewName,
+    deleteItem,
+    setDeleteItem,
+    folderPicker,
+    setFolderPicker,
+
+    handleRenameTrigger,
+    handleRenameConfirm,
+    handleDeleteTrigger,
+    handleDeleteConfirm,
+    handleBulkDelete,
+    handleMoveTrigger,
+    handleCopyTrigger,
+    handleBulkMoveTrigger,
+    handleBulkCopyTrigger,
+    handleFolderPickerConfirm,
+    handleBulkDownload,
+
+    isActionLoading,
+    bulkDownloadLoading,
+  };
+}

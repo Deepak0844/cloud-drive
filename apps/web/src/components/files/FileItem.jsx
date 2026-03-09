@@ -1,4 +1,6 @@
-// external
+// React core & third-party libraries
+import React, { useEffect, useState } from "react";
+import { Card, Tooltip, Typography } from "antd";
 import {
   CheckCircleFilled,
   CopyOutlined,
@@ -15,12 +17,16 @@ import {
   StarFilled,
   StarOutlined,
 } from "@ant-design/icons";
-import { Card, Tooltip, Typography } from "antd";
 import { motion } from "framer-motion";
-import React, { useEffect, useState } from "react";
 
-// api
+// Services (RTK Query hooks)
 import { useToggleFileFavoriteMutation } from "@services/api/fileApi";
+
+// Components
+import Button from "@shared-components/components/button";
+import Dropdown from "@shared-components/components/dropdown";
+
+const { Text } = Typography;
 
 // utils
 function triggerFileDownload(fileId, fileName) {
@@ -32,12 +38,6 @@ function triggerFileDownload(fileId, fileName) {
   anchor.click();
   document.body.removeChild(anchor);
 }
-
-// components
-import Button from "@shared-components/components/button";
-import Dropdown from "@shared-components/components/dropdown";
-
-const { Text } = Typography;
 
 function getFileInfo(type) {
   switch (type) {
@@ -66,10 +66,16 @@ function FileItem({
   isTrashItem = false,
   showParentContext = false,
 }) {
-  const clickTimeoutRef = React.useRef(null);
+  // Local state
   const [thumbnailSrc, setThumbnailSrc] = useState(null);
+
+  // RTK Query hooks
   const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFileFavoriteMutation();
 
+  // Custom & shared hooks
+  const clickTimeoutRef = React.useRef(null);
+
+  // Derived / computed variables
   const isFavorite = file.is_favorite;
 
   const hasThumbnail =
@@ -89,6 +95,7 @@ function FileItem({
     }
   }, [file, hasThumbnail]);
 
+  // Event handlers
   function handleClick(e) {
     e.stopPropagation();
 
@@ -137,6 +144,7 @@ function FileItem({
         { key: "delete", label: "Delete", icon: <DeleteOutlined />, danger: true, onClick: () => onDelete?.(file) },
       ];
 
+  // Render
   if (viewMode === "list") {
     return (
       <div

@@ -1,9 +1,14 @@
-import { ArrowLeftOutlined, FolderFilled, FolderOpenFilled, HomeFilled } from "@ant-design/icons";
-import { Breadcrumb, List, Modal, Typography } from "antd";
-import Loader from "@shared-components/components/loader";
+// React core & third-party libraries
 import React, { useState } from "react";
+import { Breadcrumb, List, Modal, Typography } from "antd";
+import { ArrowLeftOutlined, FolderFilled, FolderOpenFilled, HomeFilled } from "@ant-design/icons";
+
+// Services (RTK Query hooks)
 import { useGetFoldersQuery } from "@services/api/folderApi";
+
+// Components
 import Button from "@shared-components/components/button";
+import Loader from "@shared-components/components/loader";
 
 const { Text } = Typography;
 
@@ -20,11 +25,15 @@ function FolderPickerModal({
   excludeIds = [], // IDs to exclude (e.g., current folder or items being moved to prevent circular moves)
   currentParentId = null, // The current parent of the item(s) to prevent moving to same place
 }) {
+  // Local state
   // Navigation history to avoid calling folder details API
   const [history, setHistory] = useState([{ id: "root", name: "My Files" }]);
+
+  // Derived / computed variables
   const currentFolder = history[history.length - 1];
   const currentFolderId = currentFolder.id;
 
+  // RTK Query hooks
   // Fetch only folders in the current directory (optimized)
   const { data: foldersData, isLoading: isFoldersLoading } = useGetFoldersQuery(
     {
@@ -33,36 +42,39 @@ function FolderPickerModal({
     { skip: !open }
   );
 
+  // Derived / computed variables
   const folders = foldersData?.data || [];
-
   // Filter out excluded IDs
   const visibleFolders = folders.filter((f) => !excludeIds.includes(String(f._id || f.id)));
 
-  const handleNavigate = (id, name) => {
+  // Event handlers
+  function handleNavigate(id, name) {
     if (id === "root") {
       setHistory([{ id: "root", name: "My Files" }]);
     } else {
       setHistory((prev) => [...prev, { id, name }]);
     }
-  };
+  }
 
-  const handleBreadcrumbClick = (index) => {
+  function handleBreadcrumbClick(index) {
     setHistory((prev) => prev.slice(0, index + 1));
-  };
+  }
 
-  const handleBack = () => {
+  function handleBack() {
     if (history.length <= 1) return;
     setHistory((prev) => prev.slice(0, -1));
-  };
+  }
 
-  const handleConfirm = () => {
+  function handleConfirm() {
     onConfirm(currentFolderId === "root" ? "root" : currentFolderId);
-  };
+  }
 
+  // Derived / computed variables
   const isSameFolder =
     (currentFolderId === "root" && (currentParentId === null || currentParentId === "root")) ||
     currentFolderId === currentParentId;
 
+  // Render
   return (
     <Modal
       title={title}

@@ -1,12 +1,13 @@
-import { Result } from "antd";
-import { motion } from "framer-motion";
+// React core & third-party libraries
 import React from "react";
 import { useLocation, useNavigate, useRouteError } from "react-router-dom";
+import { Result } from "antd";
+import { motion } from "framer-motion";
 
-// constants
+// Constants
 import PageUrls from "@constants/pageUrls";
 
-// components
+// Components
 import Button from "@shared-components/components/button";
 
 /**
@@ -16,10 +17,12 @@ import Button from "@shared-components/components/button";
  * Provides a way to return to the home page or login page.
  */
 function ErrorPage({ forcedStatus, forcedMessage }) {
+  // Router hooks & params
   const location = useLocation();
   const navigate = useNavigate();
   const routeError = useRouteError();
 
+  // Derived / computed variables
   // Resolution priority:
   // 1. Forced props (from wildcard routes)
   // 2. location.state (from manual redirects/middleware)
@@ -34,17 +37,19 @@ function ErrorPage({ forcedStatus, forcedMessage }) {
     routeError?.message ||
     "An unexpected error occurred. Please try again later.";
 
-  const handleBack = () => {
+  // Event handlers
+  function handleBack() {
     navigate(PageUrls.DashboardPage, { replace: true });
-  };
+  }
 
-  const getStatusType = (code) => {
+  function getStatusType(code) {
     if (code === 404) return "404";
     if (code === 403) return "403";
-    if (code === 500 || code >= 500) return "500";
+    if (code >= 500) return "500";
     return "error";
-  };
+  }
 
+  // Render
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-secondary p-4">
       <motion.div

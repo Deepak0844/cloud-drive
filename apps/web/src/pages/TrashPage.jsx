@@ -1,3 +1,7 @@
+// React core & third-party libraries
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { App, Breadcrumb, Tooltip } from "antd";
 import {
   AppstoreOutlined,
   BarsOutlined,
@@ -8,12 +12,9 @@ import {
   RestOutlined,
   UndoOutlined,
 } from "@ant-design/icons";
-import { App, Breadcrumb, Tooltip } from "antd";
 import { motion } from "framer-motion";
-import React, { useCallback, useEffect, useState, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
 
-// api
+// Services (RTK Query hooks)
 import {
   useEmptyTrashMutation,
   useGetTrashItemsQuery,
@@ -21,50 +22,45 @@ import {
   useRestoreItemsMutation,
 } from "@services/api/trashApi";
 
-// constants
-import { ItemTypes, QUERY_PARAMS_KEYS, DefaultPagination } from "@shared-constants/constants";
+// Constants
+import { DefaultPagination, ItemTypes, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
 
-// hooks
+// Hooks
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 
-// components
+// Components
+import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
 import FileItem from "@components/files/FileItem";
 import FolderItem from "@components/files/FolderItem";
 import InfoDrawer from "@components/files/InfoDrawer";
-import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
 import Button from "@shared-components/components/button";
-import SearchInput from "@shared-components/components/search-input";
 import Loader from "@shared-components/components/loader";
+import SearchInput from "@shared-components/components/search-input";
 
 function TrashView() {
-  const { message, modal } = App.useApp();
+  // Router hooks & params
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Local state
+  const [infoItem, setInfoItem] = useState(null);
   const [page, setPage] = useState(() => {
     const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
     return p ? Number(p) : DefaultPagination.pageNumber;
   });
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
 
+  // Custom & shared hooks
+  const { message, modal } = App.useApp();
+
+  // Derived / computed variables
+  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
   const pageSize = useMemo(() => {
     const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_SIZE);
     return p ? Number(p) : DefaultPagination.pageSize;
   }, [searchParams]);
-
-  // Sync internal page state with URL
-  useEffect(() => {
-    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
-    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
-    if (newPage !== page) setPage(newPage);
-  }, [searchParams, page]);
-
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
-  const [infoItem, setInfoItem] = useState(null);
-
-  // Derived State from URL
-  const debouncedSearch = searchParams.get(QUERY_PARAMS_KEYS.SEARCH) || "";
 
   const advancedFilters = useMemo(() => {
     const filters = {};
@@ -84,6 +80,28 @@ function TrashView() {
     return filters;
   }, [searchParams]);
 
+  // RTK Query hooks
+  const [emptyTrash, { isLoading: isEmptying }] = useEmptyTrashMutation();
+  const [permanentlyDeleteItems, { isLoading: isDeleting }] = usePermanentlyDeleteItemsMutation();
+  const [restoreItems, { isLoading: isRestoring }] = useRestoreItemsMutation();
+
+  const {
+    data: trashData,
+    isLoading,
+    isFetching,
+  } = useGetTrashItemsQuery({
+    search: debouncedSearch || undefined,
+    pg: page,
+    ps: pageSize,
+    ...advancedFilters,
+  });
+
+  // Derived / computed variables
+  const paginationData = trashData?.pagination || {};
+  const folders = trashData?.data?.folders || [];
+  const files = trashData?.data?.files || [];
+
+  // Event handlers
   const updateParams = useCallback(
     (updates) => {
       const newParams = new URLSearchParams(searchParams);
@@ -98,53 +116,6 @@ function TrashView() {
     },
     [searchParams, setSearchParams]
   );
-
-  // Reset page relative to search/filters
-  useEffect(() => {
-    // Handled by updateParams, but good for external URL changes
-  }, [debouncedSearch, advancedFilters]);
-
-  // API Queries
-  const {
-    data: trashData,
-    isLoading,
-    isFetching,
-  } = useGetTrashItemsQuery({
-    search: debouncedSearch || undefined,
-    pg: page,
-    ps: pageSize,
-    ...advancedFilters,
-  });
-
-  const paginationData = trashData?.pagination || {};
-
-  const { loaderRef } = useInfiniteScroll({
-    hasNext: paginationData?.hasNext || false,
-    isLoading: isFetching,
-    onLoadMore: () => {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
-    },
-  });
-
-  // API Mutations
-  const [emptyTrash, { isLoading: isEmptying }] = useEmptyTrashMutation();
-  const [restoreItems, { isLoading: isRestoring }] = useRestoreItemsMutation();
-  const [permanentlyDeleteItems, { isLoading: isDeleting }] = usePermanentlyDeleteItemsMutation();
-
-  const folders = trashData?.data?.folders || [];
-  const files = trashData?.data?.files || [];
-
-  function toggleSelect(id, type) {
-    setSelectedItems((prev) => {
-      const exists = prev.find((item) => item.id === id);
-      if (exists) {
-        return prev.filter((item) => item.id !== id);
-      }
-      return [...prev, { id, type }];
-    });
-  }
 
   const clearSelection = useCallback(() => setSelectedItems([]), []);
 
@@ -162,6 +133,29 @@ function TrashView() {
     [clearSelection]
   );
 
+  // Custom & shared hooks
+  const { loaderRef } = useInfiniteScroll({
+    hasNext: paginationData?.hasNext || false,
+    isLoading: isFetching,
+    onLoadMore: () => {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      updateParams({ [QUERY_PARAMS_KEYS.PAGE_NO]: nextPage });
+    },
+  });
+
+  // useEffect
+  useEffect(() => {
+    // Handled by updateParams, but good for external URL changes
+  }, [debouncedSearch, advancedFilters]);
+
+  // Sync internal page state with URL
+  useEffect(() => {
+    const p = searchParams.get(QUERY_PARAMS_KEYS.PAGE_NO);
+    const newPage = p ? Number(p) : DefaultPagination.pageNumber;
+    if (newPage !== page) setPage(newPage);
+  }, [searchParams, page]);
+
   useEffect(() => {
     document.addEventListener("click", handleClickOutside);
     return () => {
@@ -169,7 +163,17 @@ function TrashView() {
     };
   }, [handleClickOutside]);
 
-  const handleEmptyTrash = () => {
+  function toggleSelect(id, type) {
+    setSelectedItems((prev) => {
+      const exists = prev.find((item) => item.id === id);
+      if (exists) {
+        return prev.filter((item) => item.id !== id);
+      }
+      return [...prev, { id, type }];
+    });
+  }
+
+  function handleEmptyTrash() {
     modal.confirm({
       title: "Empty Trash",
       icon: <RestOutlined className="text-danger" />,
@@ -189,9 +193,9 @@ function TrashView() {
         }
       },
     });
-  };
+  }
 
-  const handleBulkRestore = async () => {
+  async function handleBulkRestore() {
     if (selectedItems.length === 0) return;
     try {
       await restoreItems({ items: selectedItems }).unwrap();
@@ -200,9 +204,9 @@ function TrashView() {
     } catch (_error) {
       message.error("Failed to restore items");
     }
-  };
+  }
 
-  const handleBulkDelete = () => {
+  function handleBulkDelete() {
     if (selectedItems.length === 0) return;
     modal.confirm({
       title: "Delete Forever",
@@ -223,9 +227,11 @@ function TrashView() {
         }
       },
     });
-  };
+  }
 
-  const isSelected = (id) => selectedItems.some((item) => item.id === id);
+  function isSelected(id) {
+    return selectedItems.some((item) => item.id === id);
+  }
 
   return (
     <div className="flex flex-col gap-6 pb-24">

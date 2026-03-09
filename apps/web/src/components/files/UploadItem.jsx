@@ -1,23 +1,30 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useUploadFileChunkedMutation } from "@services/api/fileApi";
-import { useUploadDetails } from "@contexts/UploadContext";
+// React core & third-party libraries
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Progress, Tooltip } from "antd";
 import {
-  PauseCircleFilled,
-  PlayCircleFilled,
-  CloseCircleFilled,
   CheckCircleFilled,
+  CloseCircleFilled,
   ExclamationCircleFilled,
-  ReloadOutlined,
   FileImageOutlined,
+  FileOutlined,
   FilePdfOutlined,
   FileTextOutlined,
-  FileZipOutlined,
-  FileOutlined,
   FileUnknownOutlined,
+  FileZipOutlined,
+  PauseCircleFilled,
+  PlayCircleFilled,
+  ReloadOutlined,
 } from "@ant-design/icons";
-import { formatBytes } from "@shared-utils/utils";
 import { motion } from "framer-motion";
+
+// Utils
+import { formatBytes } from "@shared-utils/utils";
+
+// App-local contexts
+import { useUploadDetails } from "@contexts/UploadContext";
+
+// Services (RTK Query hooks)
+import { useUploadFileChunkedMutation } from "@services/api/fileApi";
 
 /* ─── helpers ─────────────────────────────────────────────────────────── */
 
@@ -66,20 +73,24 @@ const UploadStatus = {
   CANCELLED: "cancelled",
 };
 
-const UploadItem = ({ upload }) => {
+function UploadItem({ upload }) {
+  // Local state
+  const [error, setError] = useState(null);
+  const [eta, setEta] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [speed, setSpeed] = useState(0);
+  const [status, setStatus] = useState(UploadStatus.IDLE);
+
+  // RTK Query hooks
+  const [uploadFileChunked] = useUploadFileChunkedMutation();
+
+  // Custom & shared hooks
   const { id, file, folderId, initPromise } = upload;
   const { removeUpload } = useUploadDetails();
 
-  const [uploadFileChunked] = useUploadFileChunkedMutation();
-
-  const [status, setStatus] = useState(UploadStatus.IDLE);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState(null);
-  const [speed, setSpeed] = useState(0);
-  const [eta, setEta] = useState(null);
-
-  const uploadPromiseRef = useRef(null);
+  const hasStartedRef = useRef(false);
   const speedWindowRef = useRef([]);
+  const uploadPromiseRef = useRef(null);
 
   const stateRef = useRef({
     uploadId: null,
@@ -88,6 +99,7 @@ const UploadItem = ({ upload }) => {
     uploadedBytes: 0,
   });
 
+  // Event handlers
   const updateSpeed = useCallback(
     (totalBytesUploadedSoFar) => {
       const now = Date.now();
@@ -191,8 +203,12 @@ const UploadItem = ({ upload }) => {
     setEta(null);
   }, []);
 
-  const hasStartedRef = useRef(false);
+  function handleCancel() {
+    cancel();
+    removeUpload(id);
+  }
 
+  // useEffect
   useEffect(() => {
     if (!hasStartedRef.current) {
       hasStartedRef.current = true;
@@ -201,11 +217,7 @@ const UploadItem = ({ upload }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCancel = () => {
-    cancel();
-    removeUpload(id);
-  };
-
+  // Derived / computed variables
   const fileIcon = useMemo(() => getFileIcon(file.type), [file.type]);
 
   const isUploading = status === UploadStatus.UPLOADING;
@@ -217,6 +229,7 @@ const UploadItem = ({ upload }) => {
   const speedLabel = formatSpeed(speed);
   const etaLabel = formatEta(eta);
 
+  // Render
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.97 }}
@@ -346,6 +359,6 @@ const UploadItem = ({ upload }) => {
       </div>
     </motion.div>
   );
-};
+}
 
 export default UploadItem;

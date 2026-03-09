@@ -1,32 +1,35 @@
-// external
+// React core & third-party libraries
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Breadcrumb, Card, Divider, Form, Input, Progress, Skeleton, Switch, Typography } from "antd";
 import {
+  AudioOutlined,
   BellOutlined,
   CloudServerOutlined,
-  LockOutlined,
-  SendOutlined,
   FileImageOutlined,
-  PlayCircleOutlined,
-  AudioOutlined,
+  FileOutlined,
   FileTextOutlined,
   FileZipOutlined,
-  FileOutlined,
+  LockOutlined,
+  PlayCircleOutlined,
+  SendOutlined,
 } from "@ant-design/icons";
-import { Breadcrumb, Card, Divider, Form, Input, Switch, Progress, Skeleton, Typography } from "antd";
 import { motion } from "framer-motion";
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
 
-// api
-import { useGetQuotaUsageQuery, useGetQuotaBreakdownQuery } from "@services/api/quotaApi";
+// Services (RTK Query hooks)
 import { useGetMeQuery, useUpdateProfileMutation } from "@services/api/authApi";
+import { useGetQuotaBreakdownQuery, useGetQuotaUsageQuery } from "@services/api/quotaApi";
 
-// constants
+// Utils
+import { formatBytes } from "@shared-utils/utils";
+
+// Constants
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
 
-// components
-import QuotaRequestModal from "@components/settings/QuotaRequestModal";
+// Components
 import ChangePasswordModal from "@components/settings/ChangePasswordModal";
+import QuotaRequestModal from "@components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
 
 const { Text } = Typography;
@@ -40,24 +43,32 @@ const CATEGORY_CONFIG = {
   other: { color: "#64748b", icon: <FileOutlined />, label: "Other" },
 };
 
-import { formatBytes } from "@shared-utils/utils";
-
 function SettingsPage() {
-  const [quotaModalVisible, setQuotaModalVisible] = useState(false);
-  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  // Local state
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [quotaModalVisible, setQuotaModalVisible] = useState(false);
 
+  // RTK Query hooks
+  const [updateProfile] = useUpdateProfileMutation();
   const { data: userResponse } = useGetMeQuery();
+
+  // Derived / computed variables
   const user = userResponse?.data;
   const isAdmin = user?.role === "ADMIN";
 
-  const { data: usage, isLoading: usageLoading } = useGetQuotaUsageQuery(undefined, { skip: isAdmin });
+  // RTK Query hooks
   const { data: breakdown, isLoading: breakdownLoading } = useGetQuotaBreakdownQuery(undefined, { skip: isAdmin });
-  const [updateProfile] = useUpdateProfileMutation();
+  const { data: usage, isLoading: usageLoading } = useGetQuotaUsageQuery(undefined, { skip: isAdmin });
 
+  // Custom & shared hooks
   const [form] = Form.useForm();
 
-  React.useEffect(() => {
+  // Derived / computed variables
+  const sortedBreakdown = [...(breakdown?.data || [])].sort((a, b) => b.total_size_bytes - a.total_size_bytes);
+
+  // useEffect
+  useEffect(() => {
     if (user) {
       form.setFieldsValue({
         name: user.name,
@@ -69,6 +80,7 @@ function SettingsPage() {
     }
   }, [user, form]);
 
+  // Event handlers
   async function handleUpdateProfile(isFormSubmit = true) {
     try {
       if (isFormSubmit) setIsSavingProfile(true);
@@ -94,8 +106,7 @@ function SettingsPage() {
     setQuotaModalVisible(true);
   }
 
-  const sortedBreakdown = [...(breakdown?.data || [])].sort((a, b) => b.total_size_bytes - a.total_size_bytes);
-
+  // Render
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8 pb-32">
       <div className="px-1">

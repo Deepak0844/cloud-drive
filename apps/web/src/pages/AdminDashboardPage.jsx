@@ -1,3 +1,6 @@
+// React core & third-party libraries
+import React, { useState } from "react";
+import { Form, InputNumber, Modal, Skeleton, Space, Tabs, Tag, Typography, message as antdMessage } from "antd";
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -6,31 +9,29 @@ import {
   ReloadOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Tabs, Tag, Typography, message as antdMessage, Modal, Form, InputNumber, Space, Skeleton } from "antd";
 import { motion } from "framer-motion";
-import React, { useState } from "react";
 
-// api
+// Services (RTK Query hooks)
 import {
-  useGetUsersQuery,
-  useUpdateUserQuotaMutation,
-  useUpdateUserStatusMutation,
   useGetAllQuotaRequestsQuery,
+  useGetUsersQuery,
   useHandleQuotaRequestMutation,
   useRunStorageReanalysisMutation,
+  useUpdateUserQuotaMutation,
+  useUpdateUserStatusMutation,
 } from "@services/api/adminApi";
 
-// constants
-import { UI_COLORS } from "@constants/uiConstants";
-import PageNames from "@constants/pageNames";
-
-// utils
+// Utils
 import { formatBytes } from "@shared-utils/utils";
 
-// components
+// Constants
+import PageNames from "@constants/pageNames";
+import { UI_COLORS } from "@constants/uiConstants";
+
+// Components
+import Button from "@shared-components/components/button";
 import Table from "@shared-components/components/table";
 import TableActionButton from "@shared-components/components/table-action-button";
-import Button from "@shared-components/components/button";
 
 const { Text, Title } = Typography;
 
@@ -46,15 +47,18 @@ function calculatePercentage(used, total) {
 }
 
 export default function AdminDashboardPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  // Local state
   const [activeTab, setActiveTab] = useState("1");
+  const [editingUser, setEditingUser] = useState(null);
   const [form] = Form.useForm();
-  const [userPage, setUserPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [requestPage, setRequestPage] = useState(1);
+  const [userPage, setUserPage] = useState(1);
+
+  // Derived / computed variables
   const pageSize = 10;
 
-  // API Queries
+  // RTK Query hooks
   const {
     data: usersData,
     isLoading: usersLoading,
@@ -63,6 +67,7 @@ export default function AdminDashboardPage() {
     pg: userPage,
     ps: pageSize,
   });
+
   const {
     data: requestsData,
     isLoading: requestsLoading,
@@ -72,19 +77,18 @@ export default function AdminDashboardPage() {
     ps: pageSize,
   });
 
-  // API Mutations
   const [updateUserQuota] = useUpdateUserQuotaMutation();
   const [updateUserStatus] = useUpdateUserStatusMutation();
   const [handleQuotaRequest] = useHandleQuotaRequestMutation();
   const [runReanalysis, { isLoading: reanalyzing }] = useRunStorageReanalysisMutation();
 
-  // Note: Filter out current user if returned in same page, but usually backend handles this or admin is fine to see themselves
+  // Derived / computed variables
   const users = usersData?.data || [];
   const requests = requestsData?.data || [];
-
   const userPagination = usersData?.pagination;
   const requestPagination = requestsData?.pagination;
 
+  // Event handlers
   function handleEdit(user) {
     setEditingUser(user);
     const quotaGB = bytesToGB(user.quota_bytes);

@@ -2,11 +2,14 @@
 /* eslint-disable jsx-a11y/click-events-have-key-events */
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 
-import { CloseOutlined, FilterOutlined } from "@ant-design/icons";
-import { DatePicker, InputNumber, Select } from "antd";
-import Button from "@shared-components/components/button";
-import { motion, AnimatePresence } from "framer-motion";
+// React core & third-party libraries
 import React, { useState } from "react";
+import { DatePicker, InputNumber, Select } from "antd";
+import { CloseOutlined, FilterOutlined } from "@ant-design/icons";
+import { AnimatePresence, motion } from "framer-motion";
+
+// Components
+import Button from "@shared-components/components/button";
 
 const { RangePicker } = DatePicker;
 
@@ -20,24 +23,27 @@ const CATEGORIES = [
 ];
 
 function AdvancedFilterDropdown({ onFilter, onClear, initialFilters = {}, trigger, align = "right" }) {
-  const [isOpen, setIsOpen] = useState(false);
+  // Local state
   const [filters, setFilters] = useState(initialFilters);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const handleApply = () => {
+  // Event handlers
+  function handleApply() {
     onFilter(filters);
     setIsOpen(false);
-  };
+  }
 
-  const handleClear = () => {
+  function handleClear() {
     setFilters({});
     onClear();
     setIsOpen(false);
-  };
+  }
 
-  const updateFilter = (key, value) => {
+  function updateFilter(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }));
-  };
+  }
 
+  // 11. Render
   return (
     <div className="relative">
       {trigger ? (
