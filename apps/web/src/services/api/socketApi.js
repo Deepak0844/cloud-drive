@@ -1,7 +1,7 @@
 import { notification } from "antd";
-import baseApi from "./baseApi";
-import { TagTypes } from "@/constants/apiTags";
-import SocketClient from "@/services/socketClient";
+import baseApi from "./api";
+import { TagTypes } from "@constants/apiTags";
+import SocketClient from "@services/socketClient";
 
 // Socket event → RTK Query cache tag mapping
 const EVENT_TAG_MAP = {

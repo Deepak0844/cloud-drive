@@ -1,5 +1,5 @@
-import baseApi from "./baseApi";
-import { TagTypes, TagIds } from "@/constants/apiTags";
+import baseApi from "./api";
+import { TagTypes, TagIds } from "@constants/apiTags";
 import ApiUtils from "./apiUtils";
 
 export const trashApi = baseApi.injectEndpoints({

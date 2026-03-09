@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useUploadDetails } from "@/contexts/UploadContext";
+import { useUploadDetails } from "@contexts/UploadContext";
 import UploadItem from "./UploadItem";
 import { motion } from "framer-motion";
 import { Button, Typography } from "antd";

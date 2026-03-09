@@ -11,7 +11,7 @@ import { store } from "./store";
 import Router from "./routes/Routes";
 
 // error boundary
-import GlobalErrorBoundary from "@/components/common/GlobalErrorBoundary";
+import GlobalErrorBoundary from "@components/common/GlobalErrorBoundary";
 
 // styles
 import "./styles/globals.css";

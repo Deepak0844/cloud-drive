@@ -2,7 +2,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 
 // api
-import baseApi from "./api/baseApi";
+import baseApi from "@services/api/api";
 
 // middleware
 import rtkQueryErrorMiddleware from "./middleware/errorMiddleware";

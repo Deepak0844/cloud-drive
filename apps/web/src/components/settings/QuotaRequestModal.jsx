@@ -2,7 +2,7 @@
 import { Form, Input, InputNumber, Modal, message } from "antd";
 import React from "react";
 
-import { useRequestQuotaIncreaseMutation } from "../../store/api/quotaApi";
+import { useRequestQuotaIncreaseMutation } from "@services/api/quotaApi";
 
 function QuotaRequestModal({ open, onClose }) {
   const [form] = Form.useForm();

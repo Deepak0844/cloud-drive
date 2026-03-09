@@ -1,5 +1,5 @@
-import baseApi from "./baseApi";
-import { TagTypes } from "@/constants/apiTags";
+import baseApi from "./api";
+import { TagTypes } from "@constants/apiTags";
 
 const quotaApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

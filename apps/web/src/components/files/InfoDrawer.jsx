@@ -16,8 +16,8 @@ import React, { useState } from "react";
 import dayjs from "dayjs";
 
 // api
-import { useUpdateFileTagsMutation } from "@/store/api/fileApi";
-import { useUpdateFolderTagsMutation } from "@/store/api/folderApi";
+import { useUpdateFileTagsMutation } from "@services/api/fileApi";
+import { useUpdateFolderTagsMutation } from "@services/api/folderApi";
 
 // shared utils
 import { formatBytes } from "@shared-utils/utils";

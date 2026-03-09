@@ -1,7 +1,7 @@
 /**
  * API Utilities for parameter serialization and RTK Query cache tagging.
  */
-import { TagIds } from "@/constants/apiTags";
+import { TagIds } from "@constants/apiTags";
 
 function convertFalseToString(params, key) {
   if (params[key] === false) {

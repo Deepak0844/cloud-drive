@@ -5,10 +5,10 @@ import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 // RTK Query
-import { useResetPasswordMutation } from "@/store/api/authApi";
+import { useResetPasswordMutation } from "@services/api/authApi";
 
 // Constants
-import PageUrls from "@/constants/pageUrls";
+import PageUrls from "@constants/pageUrls";
 
 // Components
 import Button from "@shared-components/components/button";

@@ -32,7 +32,7 @@ import {
   useMoveFolderMutation,
   useCopyFolderMutation,
   useRenameFolderMutation,
-} from "../../store/api/folderApi";
+} from "@services/api/folderApi";
 import {
   useBulkCopyMutation,
   useBulkDeleteMutation,
@@ -42,24 +42,24 @@ import {
   useDeleteFileMutation,
   useMoveFileMutation,
   useRenameFileMutation,
-} from "../../store/api/fileApi";
+} from "@services/api/fileApi";
 
 // constants
 import { STORAGE } from "@shared-constants/constants";
-import PageNames from "@/constants/pageNames";
+import PageNames from "@constants/pageNames";
 
 // components
-import FileItem from "@/components/files/FileItem";
-import FolderItem from "@/components/files/FolderItem";
-import InfoDrawer from "@/components/files/InfoDrawer";
-import FilePreviewModal from "@/components/files/FilePreviewModal";
-import FolderPickerModal from "@/components/files/FolderPickerModal";
-import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
+import FileItem from "@components/files/FileItem";
+import FolderItem from "@components/files/FolderItem";
+import InfoDrawer from "@components/files/InfoDrawer";
+import FilePreviewModal from "@components/files/FilePreviewModal";
+import FolderPickerModal from "@components/files/FolderPickerModal";
+import QuotaRequestModal from "@components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
-import AdvancedFilterDropdown from "@/components/search/AdvancedFilterDropdown";
-import { useUploadDetails } from "@/contexts/UploadContext";
-import useDebounce from "@/hooks/useDebounce";
+import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
+import { useUploadDetails } from "@contexts/UploadContext";
+import useDebounce from "@hooks/useDebounce";
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 
 const { Text } = Typography;

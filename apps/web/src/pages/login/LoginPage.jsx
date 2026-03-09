@@ -6,10 +6,10 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
 // hooks
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@hooks/useAuth";
 
 // constants
-import PageUrls from "@/constants/pageUrls";
+import PageUrls from "@constants/pageUrls";
 
 // components
 import Button from "@shared-components/components/button";

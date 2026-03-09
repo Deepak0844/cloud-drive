@@ -1,7 +1,7 @@
-import baseApi from "./baseApi";
+import baseApi from "./api";
 import ApiUtils from "./apiUtils";
-import { TagIds, TagTypes } from "@/constants/apiTags";
-import HttpClientFactory from "@/utils/httpClientFactory";
+import { TagIds, TagTypes } from "@constants/apiTags";
+import HttpClientFactory from "@utils/httpClientFactory";
 
 const CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
 

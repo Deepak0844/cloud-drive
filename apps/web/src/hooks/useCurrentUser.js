@@ -1,4 +1,4 @@
-import { useGetMeQuery } from "../store/api/authApi";
+import { useGetMeQuery } from "@services/api/authApi";
 import { Roles } from "../constants/generalConstants";
 
 /**

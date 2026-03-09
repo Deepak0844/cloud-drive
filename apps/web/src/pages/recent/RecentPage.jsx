@@ -12,16 +12,16 @@ import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useState } from "react";
 
 // api
-import { useGetRecentFilesQuery, useTouchFileMutation, useBulkDownloadMutation } from "../../store/api/fileApi";
+import { useGetRecentFilesQuery, useTouchFileMutation, useBulkDownloadMutation } from "@services/api/fileApi";
 
 // components
-import FileItem from "@/components/files/FileItem";
+import FileItem from "@components/files/FileItem";
 
-import InfoDrawer from "@/components/files/InfoDrawer";
-import FilePreviewModal from "@/components/files/FilePreviewModal";
+import InfoDrawer from "@components/files/InfoDrawer";
+import FilePreviewModal from "@components/files/FilePreviewModal";
 import Button from "@shared-components/components/button";
-import AdvancedFilterDropdown from "@/components/search/AdvancedFilterDropdown";
-import useDebounce from "@/hooks/useDebounce";
+import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
+import useDebounce from "@hooks/useDebounce";
 
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 

@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
 // api
-import { useLoginMutation, useLogoutMutation, useRegisterMutation } from "../store/api/authApi";
+import { useLoginMutation, useLogoutMutation, useRegisterMutation } from "@services/api/authApi";
 
 // utils
 import AuthUtils from "../utils/authUtils";

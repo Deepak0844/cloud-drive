@@ -20,7 +20,7 @@ import { motion } from "framer-motion";
 import React, { useEffect, useState } from "react";
 
 // api
-import { useToggleFileFavoriteMutation } from "@/store/api/fileApi";
+import { useToggleFileFavoriteMutation } from "@services/api/fileApi";
 
 // utils
 function triggerFileDownload(fileId, fileName) {

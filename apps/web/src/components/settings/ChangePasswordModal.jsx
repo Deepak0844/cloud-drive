@@ -3,7 +3,7 @@ import { Form, Input, Modal, message } from "antd";
 import React from "react";
 
 // api
-import { useUpdatePasswordMutation } from "../../store/api/authApi";
+import { useUpdatePasswordMutation } from "@services/api/authApi";
 
 function ChangePasswordModal({ open, onClose }) {
   const [form] = Form.useForm();

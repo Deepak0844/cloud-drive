@@ -2,10 +2,10 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 
 // utils
-import AuthUtils from "@/utils/authUtils";
+import AuthUtils from "@utils/authUtils";
 
 // constants
-import PageUrls from "@/constants/pageUrls";
+import PageUrls from "@constants/pageUrls";
 
 /**
  * Routes which needs the USER Unauthenticated (e.g. Login).

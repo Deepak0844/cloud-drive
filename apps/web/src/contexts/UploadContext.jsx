@@ -11,7 +11,7 @@ export const useUploadDetails = () => {
   return context;
 };
 
-import HttpClientFactory from "@/utils/httpClientFactory";
+import HttpClientFactory from "@utils/httpClientFactory";
 
 /**
  * Fire the init API immediately — before React even renders UploadItem.

@@ -29,11 +29,11 @@ import {
   useGetAllQuotaRequestsQuery,
   useHandleQuotaRequestMutation,
   useRunStorageReanalysisMutation,
-} from "@/store/api/adminApi";
+} from "@services/api/adminApi";
 
 // constants
-import { UI_COLORS } from "@/constants/uiConstants";
-import PageNames from "@/constants/pageNames";
+import { UI_COLORS } from "@constants/uiConstants";
+import PageNames from "@constants/pageNames";
 
 // utils
 import { formatBytes } from "@shared-utils/utils";

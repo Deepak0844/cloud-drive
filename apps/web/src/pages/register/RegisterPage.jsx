@@ -8,10 +8,10 @@ import { Link } from "react-router-dom";
 import Button from "@shared-components/components/button";
 
 // hooks
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@hooks/useAuth";
 
 // constants
-import PageUrls from "@/constants/pageUrls";
+import PageUrls from "@constants/pageUrls";
 
 function RegisterPage() {
   const { message } = App.useApp();

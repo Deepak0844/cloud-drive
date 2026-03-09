@@ -3,8 +3,8 @@ import { Outlet } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import MainLayout from "./MainLayout";
 
-import baseApi from "../../store/api/baseApi";
-import { useSubscribeToSocketEventsQuery } from "@/store/api/socketApi";
+import baseApi from "@services/api/api";
+import { useSubscribeToSocketEventsQuery } from "@services/api/socketApi";
 
 /**
  * Layout wrapper for protected routes.

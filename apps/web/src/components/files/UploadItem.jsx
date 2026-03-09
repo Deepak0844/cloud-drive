@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useUploadFileChunkedMutation } from "@/store/api/fileApi";
-import { useUploadDetails } from "@/contexts/UploadContext";
+import { useUploadFileChunkedMutation } from "@services/api/fileApi";
+import { useUploadDetails } from "@contexts/UploadContext";
 import { Progress, Tooltip } from "antd";
 import {
   PauseCircleFilled,

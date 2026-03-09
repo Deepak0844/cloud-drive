@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
 // Utils
-import AuthUtils from "@/utils/authUtils";
+import AuthUtils from "@utils/authUtils";
 
 /**
  * Socket.io client singleton.

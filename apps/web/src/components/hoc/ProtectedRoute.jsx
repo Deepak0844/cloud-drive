@@ -2,10 +2,10 @@ import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
 // utils
-import AuthUtils from "@/utils/authUtils";
+import AuthUtils from "@utils/authUtils";
 
 // constants
-import PageUrls from "@/constants/pageUrls";
+import PageUrls from "@constants/pageUrls";
 
 /**
  * Route guard that:

@@ -20,19 +20,19 @@ import {
   useGetTrashItemsQuery,
   usePermanentlyDeleteItemsMutation,
   useRestoreItemsMutation,
-} from "@/store/api/trashApi";
+} from "@services/api/trashApi";
 
 // constants
-import PageNames from "@/constants/pageNames";
-import PageUrls from "@/constants/pageUrls";
+import PageNames from "@constants/pageNames";
+import PageUrls from "@constants/pageUrls";
 
 // components
-import FileItem from "@/components/files/FileItem";
-import FolderItem from "@/components/files/FolderItem";
-import InfoDrawer from "@/components/files/InfoDrawer";
+import FileItem from "@components/files/FileItem";
+import FolderItem from "@components/files/FolderItem";
+import InfoDrawer from "@components/files/InfoDrawer";
 import Button from "@shared-components/components/button";
-import AdvancedFilterDropdown from "@/components/search/AdvancedFilterDropdown";
-import useDebounce from "@/hooks/useDebounce";
+import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
+import useDebounce from "@hooks/useDebounce";
 
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 

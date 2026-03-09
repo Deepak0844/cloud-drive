@@ -1,10 +1,10 @@
-import baseApi from "./baseApi";
+import baseApi from "./api";
 
 // utils
-import AuthUtils from "@/utils/authUtils";
+import AuthUtils from "@utils/authUtils";
 
 // Socket
-import SocketClient from "@/services/socketClient";
+import SocketClient from "@services/socketClient";
 
 /**
  * Auth API endpoints injected into the base RTK Query API.

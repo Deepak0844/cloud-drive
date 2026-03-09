@@ -23,7 +23,7 @@ import {
   useMoveFolderMutation,
   useCopyFolderMutation,
   useRenameFolderMutation,
-} from "@/store/api/folderApi";
+} from "@services/api/folderApi";
 import {
   useBulkCopyMutation,
   useBulkDeleteMutation,
@@ -33,21 +33,21 @@ import {
   useGetFilesQuery,
   useMoveFileMutation,
   useRenameFileMutation,
-} from "@/store/api/fileApi";
+} from "@services/api/fileApi";
 
 // constants
-import PageNames from "@/constants/pageNames";
-import PageUrls from "@/constants/pageUrls";
+import PageNames from "@constants/pageNames";
+import PageUrls from "@constants/pageUrls";
 
 // components
-import FileItem from "@/components/files/FileItem";
-import FolderItem from "@/components/files/FolderItem";
-import InfoDrawer from "@/components/files/InfoDrawer";
-import FilePreviewModal from "@/components/files/FilePreviewModal";
-import FolderPickerModal from "@/components/files/FolderPickerModal";
+import FileItem from "@components/files/FileItem";
+import FolderItem from "@components/files/FolderItem";
+import InfoDrawer from "@components/files/InfoDrawer";
+import FilePreviewModal from "@components/files/FilePreviewModal";
+import FolderPickerModal from "@components/files/FolderPickerModal";
 import Button from "@shared-components/components/button";
-import AdvancedFilterDropdown from "@/components/search/AdvancedFilterDropdown";
-import useDebounce from "@/hooks/useDebounce";
+import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
+import useDebounce from "@hooks/useDebounce";
 
 import { useInfiniteScroll } from "@shared-hooks/hooks";
 

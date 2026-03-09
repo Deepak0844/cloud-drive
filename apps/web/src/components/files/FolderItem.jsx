@@ -16,7 +16,7 @@ import { motion } from "framer-motion";
 import React from "react";
 
 // api
-import { useToggleFolderFavoriteMutation } from "@/store/api/folderApi";
+import { useToggleFolderFavoriteMutation } from "@services/api/folderApi";
 
 // components
 import Dropdown from "@shared-components/components/dropdown";

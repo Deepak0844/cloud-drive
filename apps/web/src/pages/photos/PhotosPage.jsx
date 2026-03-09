@@ -6,11 +6,11 @@ import { motion } from "framer-motion";
 import dayjs from "dayjs";
 
 // api
-import { useGetFilesQuery } from "../../store/api/fileApi";
+import { useGetFilesQuery } from "@services/api/fileApi";
 
 // constants
-import PageNames from "@/constants/pageNames";
-import PageUrls from "@/constants/pageUrls";
+import PageNames from "@constants/pageNames";
+import PageUrls from "@constants/pageUrls";
 
 // components
 import Button from "@shared-components/components/button";

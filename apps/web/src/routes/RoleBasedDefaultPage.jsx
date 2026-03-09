@@ -2,11 +2,11 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 
 // Utils
-import AuthUtils from "@/utils/authUtils";
+import AuthUtils from "@utils/authUtils";
 
 // Constants
-import PageUrls from "@/constants/pageUrls";
-import { Roles } from "@/constants/generalConstants";
+import PageUrls from "@constants/pageUrls";
+import { Roles } from "@constants/generalConstants";
 
 // Pages (not needed anymore — we Navigate instead of render)
 

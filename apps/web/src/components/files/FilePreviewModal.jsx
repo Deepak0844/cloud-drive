@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Typography, Spin, App } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
-import HttpClientFactory from "@/utils/httpClientFactory";
+import HttpClientFactory from "@utils/httpClientFactory";
 import Button from "@shared-components/components/button";
 
 const { Text } = Typography;

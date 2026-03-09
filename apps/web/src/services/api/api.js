@@ -1,9 +1,9 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 
 // custom base query
-import customBaseQuery from "@/services/customBaseQuery";
+import customBaseQuery from "@services/customBaseQuery";
 
-import { TagTypes } from "@/constants/apiTags";
+import { TagTypes } from "@constants/apiTags";
 
 /**
  * Base RTK Query API

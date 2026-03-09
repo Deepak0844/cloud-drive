@@ -4,7 +4,7 @@ import React from "react";
 import { useLocation, useNavigate, useRouteError } from "react-router-dom";
 
 // constants
-import PageUrls from "@/constants/pageUrls";
+import PageUrls from "@constants/pageUrls";
 
 // components
 import Button from "@shared-components/components/button";

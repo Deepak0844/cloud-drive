@@ -1,10 +1,10 @@
 import axios from "axios";
 
 // Constants
-import { HttpContentTypes, HttpHeaders, HttpMethods } from "../constants/httpConstants";
+import { HttpContentTypes, HttpHeaders, HttpMethods } from "@shared-constants/constants";
 
 // Utils
-import ApiUtils from "@/store/api/apiUtils";
+import ApiUtils from "@services/api/apiUtils";
 
 /**
  * HttpClient wrapper around Axios.

@@ -3,7 +3,7 @@ import React, { useState } from "react";
 
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
-import { UploadProvider } from "@/contexts/UploadContext";
+import { UploadProvider } from "@contexts/UploadContext";
 import UploadManager from "../files/UploadManager";
 
 const { Content } = Layout;

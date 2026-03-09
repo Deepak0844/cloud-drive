@@ -1,23 +1,24 @@
 import React from "react";
 
 // HOC
-import ProtectedRoute from "@/components/hoc/ProtectedRoute";
+import ProtectedRoute from "@components/hoc/ProtectedRoute";
 
 // Constants
-import PageUrls from "@/constants/pageUrls";
-import { Roles } from "@/constants/generalConstants";
+import PageUrls from "@constants/pageUrls";
+import { Roles } from "@constants/generalConstants";
 
 // Pages
 import RoleBasedDefaultPage from "./RoleBasedDefaultPage";
-import MyFilesPage from "@/pages/my-files/MyFilesPage";
-import PhotosPage from "@/pages/photos/PhotosPage";
-import FavoritesPage from "@/pages/favorites/FavoritesPage";
-import RecentPage from "@/pages/recent/RecentPage";
-import TrashPage from "@/pages/trash/TrashPage";
-import SettingsPage from "@/pages/settings/SettingsPage";
-import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
+import MyFilesPage from "@pages/my-files/MyFilesPage";
+import PhotosPage from "@pages/photos/PhotosPage";
+import FavoritesPage from "@pages/favorites/FavoritesPage";
+import RecentPage from "@pages/recent/RecentPage";
+import TrashPage from "@pages/trash/TrashPage";
+import SettingsPage from "@pages/settings/SettingsPage";
+import AdminDashboardPage from "@pages/admin/AdminDashboardPage";
+
 // Layout
-import AppLayout from "@/components/layout/AppLayout";
+import AppLayout from "@components/layout/AppLayout";
 
 const USER_ONLY = [Roles.USER];
 const ADMIN_ONLY = [Roles.ADMIN];

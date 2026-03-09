@@ -17,16 +17,16 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
 // api
-import { useGetQuotaUsageQuery, useGetQuotaBreakdownQuery } from "../../store/api/quotaApi";
-import { useGetMeQuery, useUpdateProfileMutation } from "../../store/api/authApi";
+import { useGetQuotaUsageQuery, useGetQuotaBreakdownQuery } from "@services/api/quotaApi";
+import { useGetMeQuery, useUpdateProfileMutation } from "@services/api/authApi";
 
 // constants
-import PageNames from "@/constants/pageNames";
-import PageUrls from "@/constants/pageUrls";
+import PageNames from "@constants/pageNames";
+import PageUrls from "@constants/pageUrls";
 
 // components
-import QuotaRequestModal from "@/components/settings/QuotaRequestModal";
-import ChangePasswordModal from "@/components/settings/ChangePasswordModal";
+import QuotaRequestModal from "@components/settings/QuotaRequestModal";
+import ChangePasswordModal from "@components/settings/ChangePasswordModal";
 import Button from "@shared-components/components/button";
 
 const { Text } = Typography;

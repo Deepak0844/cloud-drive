@@ -13,16 +13,16 @@ import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 // constants
-import PageUrls from "@/constants/pageUrls";
-import PageNames from "@/constants/pageNames";
-import { Roles } from "@/constants/generalConstants";
+import PageUrls from "@constants/pageUrls";
+import PageNames from "@constants/pageNames";
+import { Roles } from "@constants/generalConstants";
 
 // utils
-import AuthUtils from "@/utils/authUtils";
+import AuthUtils from "@utils/authUtils";
 
 // hooks
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useGetQuotaUsageQuery } from "@/store/api/quotaApi";
+import { useCurrentUser } from "@hooks/useCurrentUser";
+import { useGetQuotaUsageQuery } from "@services/api/quotaApi";
 
 // shared utils
 import { formatBytes } from "@shared-utils/utils";

@@ -19,17 +19,21 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
 // hooks
-import { useAuth } from "@/hooks/useAuth";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAuth } from "@hooks/useAuth";
+import { useCurrentUser } from "@hooks/useCurrentUser";
 
 // constants
-import { STORAGE_KEYS } from "@/constants/generalConstants";
+import { STORAGE_KEYS } from "@constants/generalConstants";
 
 // utils
-import LocalStorage from "@/utils/localStorageUtils";
+import LocalStorage from "@utils/localStorageUtils";
 
 // api
-import { useGetNotificationsQuery, useMarkAsReadMutation, useMarkAllAsReadMutation } from "@/store/api/notificationApi";
+import {
+  useGetNotificationsQuery,
+  useMarkAsReadMutation,
+  useMarkAllAsReadMutation,
+} from "@services/api/notificationApi";
 
 // components
 import Button from "@shared-components/components/button";

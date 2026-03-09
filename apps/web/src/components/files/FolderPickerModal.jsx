@@ -1,7 +1,7 @@
 import { ArrowLeftOutlined, FolderFilled, FolderOpenFilled, HomeFilled } from "@ant-design/icons";
 import { Breadcrumb, List, Modal, Spin, Typography } from "antd";
 import React, { useState } from "react";
-import { useGetFoldersQuery } from "@/store/api/folderApi";
+import { useGetFoldersQuery } from "@services/api/folderApi";
 import Button from "@shared-components/components/button";
 
 const { Text } = Typography;

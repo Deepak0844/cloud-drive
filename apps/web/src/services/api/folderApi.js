@@ -1,6 +1,6 @@
-import baseApi from "./baseApi";
+import baseApi from "./api";
 import ApiUtils from "./apiUtils";
-import { TagIds, TagTypes } from "@/constants/apiTags";
+import { TagIds, TagTypes } from "@constants/apiTags";
 
 /**
  * Folder API endpoints.

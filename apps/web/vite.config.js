@@ -8,7 +8,16 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src"),
+      "@components": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/components"),
+      "@constants": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/constants"),
+      "@contexts": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/contexts"),
+      "@hooks": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/hooks"),
+      "@pages": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/pages"),
+      "@routes": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/routes"),
+      "@services": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/services"),
+      "@store": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/store"),
+      "@styles": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/styles"),
+      "@utils": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/utils"),
     },
     dedupe: ["react", "react-dom"],
   },
