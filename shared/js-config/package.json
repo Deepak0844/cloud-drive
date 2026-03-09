@@ -6,6 +6,9 @@
     "jsconfig-base.json",
     "jsconfig-react.json"
   ],
+  "scripts": {
+    "type-check": "echo 'No type-check for js-config'"
+  },
   "license": "MIT",
   "publishConfig": {
     "access": "public"

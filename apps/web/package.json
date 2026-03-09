@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint"
+    "lint": "eslint",
+    "type-check": "npm run lint"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",

@@ -8,7 +8,8 @@
     "./useMediaQuery": "./src/useMediaQuery.js"
   },
   "scripts": {
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "type-check": "npm run lint"
   },
   "devDependencies": {
     "@shared-eslint/config": "*",
