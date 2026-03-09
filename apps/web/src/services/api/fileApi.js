@@ -57,18 +57,8 @@ const fileApi = baseApi.injectEndpoints({
         params,
       }),
       // Only cache based on search/extensions/folder, ignore page 'pg' for cache key
-      serializeQueryArgs: ({ endpointName, queryArgs }) => {
-        const { pg: _pg, ...rest } = queryArgs || {};
-        return `${endpointName}-${JSON.stringify(rest)}`;
-      },
-      // Merge incoming paginated data
-      merge: (currentCache, newItems, { arg }) => {
-        if (!arg?.pg || arg.pg === 1) return newItems;
-        return {
-          ...newItems,
-          data: [...currentCache.data, ...newItems.data],
-        };
-      },
+      serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
+      merge: ApiUtils.mergePaginatedArrays(),
       providesTags: ApiUtils.paginatedTags(TagTypes.FILES),
     }),
 
@@ -78,23 +68,8 @@ const fileApi = baseApi.injectEndpoints({
         url: "/files/recent",
         params,
       }),
-      serializeQueryArgs: ({ endpointName, queryArgs }) => {
-        const { pg: _pg, ...rest } = queryArgs || {};
-        return `${endpointName}-${JSON.stringify(rest)}`;
-      },
-      merge: (currentCache, newItems, { arg }) => {
-        if (!arg?.pg || arg.pg === 1) return newItems;
-        // Backend returns array if no pg, or {data, pagination} if pg is provided
-        const newData = Array.isArray(newItems) ? newItems : newItems.data;
-        const currentData = Array.isArray(currentCache) ? currentCache : currentCache.data;
-
-        if (Array.isArray(newItems)) return newItems; // fallback for non-paginated
-
-        return {
-          ...newItems,
-          data: [...currentData, ...newData],
-        };
-      },
+      serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
+      merge: ApiUtils.mergePaginatedArrays(),
       providesTags: ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
     }),
 

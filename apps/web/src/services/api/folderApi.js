@@ -28,20 +28,8 @@ const folderApi = baseApi.injectEndpoints({
           params,
         };
       },
-      serializeQueryArgs: ({ endpointName, queryArgs }) => {
-        const id = typeof queryArgs === "string" ? queryArgs : queryArgs?.folderId || "root";
-        const { pg: _pg, ...rest } = typeof queryArgs === "object" ? queryArgs : {};
-        delete rest.folderId;
-        return `${endpointName}-${id}-${JSON.stringify(rest)}`;
-      },
-      merge: (currentCache, newItems, { arg }) => {
-        if (!arg?.pg || arg.pg === 1) return newItems;
-        return {
-          ...newItems,
-          folders: [...currentCache.folders, ...newItems.folders],
-          files: [...currentCache.files, ...newItems.files],
-        };
-      },
+      serializeQueryArgs: ApiUtils.serializeFolderContentsQueryArgs,
+      merge: ApiUtils.mergePaginatedArrays(),
       providesTags: (result, error, arg) => {
         const id = typeof arg === "string" ? arg : arg?.folderId || "root";
         return [

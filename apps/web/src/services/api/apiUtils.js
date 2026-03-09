@@ -85,11 +85,61 @@ const entityTags = (type) => (_result, _error, args) => {
  */
 const listTags = (type, id = TagIds.LIST) => [{ type, id }];
 
+/**
+ * Shared sequence for paginated queries: strips 'pg' from the cache key
+ * so all pages of the same query update the same cache entry.
+ */
+const serializePaginatedQueryArgs = ({ endpointName, queryArgs }) => {
+  const { pg: _pg, ...rest } = queryArgs || {};
+  return `${endpointName}-${JSON.stringify(rest)}`;
+};
+
+/**
+ * Specifically for folder contents where folderId is the primary parameter.
+ */
+const serializeFolderContentsQueryArgs = ({ endpointName, queryArgs }) => {
+  const id = typeof queryArgs === "string" ? queryArgs : queryArgs?.folderId || "root";
+  const { pg: _pg, ...rest } = typeof queryArgs === "object" && queryArgs ? queryArgs : {};
+  delete rest.folderId;
+  return `${endpointName}-${id}-${JSON.stringify(rest)}`;
+};
+
+/**
+ * Shared caching merge algorithm for infinite scrolling.
+ * Automatically discovers any arrays on the new item and merges them with the corresponding arrays in the cache.
+ */
+const mergePaginatedArrays =
+  () =>
+  (currentCache, newItems, { arg }) => {
+    if (!arg?.pg || arg.pg === 1) return newItems;
+
+    // Array fallback (root level is an array)
+    if (Array.isArray(newItems)) {
+      const currentData = Array.isArray(currentCache) ? currentCache : [];
+      return [...currentData, ...newItems];
+    }
+
+    // Object fallback: auto-detect arrays to merge
+    const merged = { ...newItems };
+    const cacheObj = currentCache || {};
+
+    Object.keys(newItems).forEach((key) => {
+      if (Array.isArray(newItems[key])) {
+        merged[key] = [...(cacheObj[key] || []), ...newItems[key]];
+      }
+    });
+
+    return merged;
+  };
+
 const ApiUtils = {
   paginatedTags,
   entityTags,
   listTags,
   serializeParams,
+  serializePaginatedQueryArgs,
+  serializeFolderContentsQueryArgs,
+  mergePaginatedArrays,
 };
 
 export default ApiUtils;
