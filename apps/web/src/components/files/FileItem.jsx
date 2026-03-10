@@ -79,7 +79,10 @@ function FileItem({
     file?.mime_type?.startsWith("image/") ||
     file.type === "video" ||
     file.category === "video" ||
-    file?.mime_type?.startsWith("video/");
+    file?.mime_type?.startsWith("video/") ||
+    file.type === "audio" ||
+    file.category === "audio" ||
+    file?.mime_type?.startsWith("audio/");
 
   useEffect(() => {
     if (hasThumbnail) {
