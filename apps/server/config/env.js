@@ -14,6 +14,11 @@ const envSchema = z.object({
   JWT_SECRET: z.string({
     required_error: "JWT_SECRET is required",
   }),
+  STORAGE_ENCRYPTION_KEY: z
+    .string({
+      required_error: "STORAGE_ENCRYPTION_KEY is required for file encryption",
+    })
+    .length(64, "STORAGE_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)"),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.string().optional(),
   SMTP_EMAIL: z.string().optional(),

@@ -58,6 +58,10 @@ const userSchema = new mongoose.Schema(
       security_alerts: { type: Boolean, default: true },
     },
     preferences: {},
+    encryption_key_wrapped: {
+      type: String,
+      select: false,
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

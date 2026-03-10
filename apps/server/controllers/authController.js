@@ -24,6 +24,7 @@ import ResponseUtils from "#utils/responseUtils.js";
 import logger from "#utils/logger.js";
 import SecurityUtils from "#utils/securityUtils.js";
 import { sendTokenResponse } from "#utils/authUtils.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
 
 // ─── Local Helpers ────────────────────────────────────────────────────────────
 
@@ -73,10 +74,14 @@ export const register = asyncHandler(async (req, res) => {
     throw new AppError(ErrorMessages.USER_ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
   }
 
+  // Generate AES-256-GCM wrapped User Data Encryption Key
+  const { wrappedKey } = CryptoUtils.generateAndWrapUserKey();
+
   const user = await User.create({
     name,
     email,
     password,
+    encryption_key_wrapped: wrappedKey,
   });
 
   // Welcome email

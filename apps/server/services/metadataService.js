@@ -22,13 +22,13 @@ function getCategory(mimeType, filename) {
   const videoExts = ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts", "3gp"];
   const audioExts = ["mp3", "wav", "flac", "aac", "m4a", "ogg", "opus", "wma"];
 
-  if (mimeType.startsWith("image/") || imageExts.includes(ext)) {
+  if (mimeType?.startsWith("image/") || imageExts.includes(ext)) {
     return FileCategories.IMAGE;
   }
-  if (mimeType.startsWith("video/") || videoExts.includes(ext)) {
+  if (mimeType?.startsWith("video/") || videoExts.includes(ext)) {
     return FileCategories.VIDEO;
   }
-  if (mimeType.startsWith("audio/") || audioExts.includes(ext)) {
+  if (mimeType?.startsWith("audio/") || audioExts.includes(ext)) {
     return FileCategories.AUDIO;
   }
 

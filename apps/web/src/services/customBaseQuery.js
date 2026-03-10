@@ -116,7 +116,13 @@ const customBaseQuery =
       return { data: result };
     } catch (error) {
       if (axios.isCancel?.(error) || error.code === "ERR_CANCELED") {
-        throw error;
+        return {
+          error: {
+            status: "CANCELED",
+            data: error.message,
+            ...uiFlags,
+          },
+        };
       }
 
       return {

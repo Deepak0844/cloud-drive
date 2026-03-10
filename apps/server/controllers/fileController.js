@@ -14,7 +14,7 @@ import FileService from "#services/fileService.js";
 import SocketService from "#services/socketService.js";
 
 // Constants
-import { ErrorMessages, FileCategories } from "#constants/generalConstants.js";
+import { ErrorMessages, FileCategories, VideoMimeTypes } from "#constants/generalConstants.js";
 import { HttpStatus, ItemTypes } from "@shared-constants/constants";
 
 // Middleware
@@ -28,6 +28,7 @@ import { applyAdvancedFilters } from "#utils/filterUtils.js";
 import logger from "#utils/logger.js";
 import { paginateQuery } from "#utils/paginationUtils.js";
 import StreamingUtils from "#utils/streamingUtils.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 
@@ -132,12 +133,42 @@ export const downloadFile = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
+  const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
+  if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
+    return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
   // Update last opened timestamp
   file.last_opened_at = new Date();
   await file.save();
 
-  // Force download with the original display name
-  res.download(file.storage_path, file.original_name || file.name);
+  const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+  const iv = Buffer.from(file.encryption_iv, "hex");
+  const decipherStream = CryptoUtils.getDecipherStream(plaintextKey, iv);
+
+  // Set appropriate headers to force download
+  const encodedName = encodeURIComponent(file.original_name || file.name);
+  res.setHeader("Content-Type", file.mime_type || "application/octet-stream");
+  res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodedName}`);
+  res.setHeader("Content-Length", file.size_bytes);
+
+  const readStream = fs.createReadStream(file.storage_path);
+
+  readStream.on("error", (err) => {
+    logger.error(`[Download] Read stream error for ${file._id}: ${err.message}`);
+    if (!res.headersSent) {
+      res.status(500).end();
+    }
+  });
+
+  decipherStream.on("error", (err) => {
+    logger.error(`[Download] Decipher error for ${file._id}: ${err.message}`);
+    if (!res.headersSent) {
+      res.status(500).end();
+    }
+  });
+
+  readStream.pipe(decipherStream).pipe(res);
 });
 
 /**
@@ -176,19 +207,40 @@ export const getFilePreview = asyncHandler(async (req, res) => {
         return res.status(HttpStatus.ACCEPTED).send(""); // original missing, no thumb possible
       }
       try {
-        if (file.category === FileCategories.IMAGE || file.mime_type.startsWith("image/")) {
-          await MediaUtils.generateImageThumbnail(file.storage_path, thumbPath);
-        } else if (file.category === FileCategories.VIDEO || file.mime_type.startsWith("video/")) {
-          await MediaUtils.generateVideoThumbnail(file.storage_path, thumbDir, `${fileId}.jpg`);
-        } else if (file.category === FileCategories.AUDIO || file.mime_type.startsWith("audio/")) {
-          await MediaUtils.extractAudioAlbumArt(file.storage_path, thumbPath);
+        const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
+        if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
+          throw new Error("Encryption keys missing");
+        }
+        const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+        const iv = Buffer.from(file.encryption_iv, "hex");
+        const thumbIv = CryptoUtils.generateFileIv();
+
+        const tempThumbPath = `${thumbPath}.tmp`;
+
+        if (file.category === FileCategories.IMAGE || file.mime_type?.startsWith("image/")) {
+          await MediaUtils.generateImageThumbnail(file.storage_path, tempThumbPath, plaintextKey, iv);
+        } else if (file.category === FileCategories.VIDEO || file.mime_type?.startsWith("video/")) {
+          await MediaUtils.generateVideoThumbnail(file.storage_path, thumbDir, `${fileId}.jpg.tmp`, plaintextKey, iv);
+        } else if (file.category === FileCategories.AUDIO || file.mime_type?.startsWith("audio/")) {
+          await MediaUtils.extractAudioAlbumArt(file.storage_path, tempThumbPath, plaintextKey, iv);
         } else {
           return res.status(HttpStatus.ACCEPTED).send("");
         }
 
-        // Verify file was actually created before saving path to DB
-        if (fs.existsSync(thumbPath)) {
+        // Verify temp file was actually created
+        if (fs.existsSync(tempThumbPath)) {
+          // Encrypt temp thumb to final path
+          const cipher = CryptoUtils.getCipherStream(plaintextKey, thumbIv);
+          await new Promise((resolve, reject) => {
+            const readStream = fs.createReadStream(tempThumbPath);
+            const writeStream = fs.createWriteStream(thumbPath);
+            readStream.pipe(cipher).pipe(writeStream).on("finish", resolve).on("error", reject);
+          });
+
+          await fs.promises.unlink(tempThumbPath).catch(() => {});
+
           file.thumbnail_path = thumbPath;
+          file.thumbnail_iv = thumbIv.toString("hex");
           await file.save();
         } else {
           logger.warn(`[Preview] Thumbnail generation returned but file missing for ${fileId}`);
@@ -201,9 +253,31 @@ export const getFilePreview = asyncHandler(async (req, res) => {
       }
     }
 
-    res.set("Content-Type", "image/jpeg");
-    res.set("Cache-Control", "private, max-age=86400");
-    return res.sendFile(path.resolve(thumbPath));
+    if (file.thumbnail_iv) {
+      const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
+      if (!user || !user.encryption_key_wrapped) {
+        return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send("Encryption key missing");
+      }
+      const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+      const thumbIv = Buffer.from(file.thumbnail_iv, "hex");
+      const decipherStream = CryptoUtils.getDecipherStream(plaintextKey, thumbIv);
+
+      const stats = fs.statSync(thumbPath);
+      res.set("Content-Type", "image/jpeg");
+      res.set("Cache-Control", "private, max-age=86400");
+      res.set("Content-Length", stats.size);
+
+      const readStream = fs.createReadStream(thumbPath);
+      readStream.on("error", () => res.end());
+      decipherStream.on("error", () => res.end());
+
+      return readStream.pipe(decipherStream).pipe(res);
+    } else {
+      // Backwards compat for old unencrypted thumbnails if any
+      res.set("Content-Type", "image/jpeg");
+      res.set("Cache-Control", "private, max-age=86400");
+      return res.sendFile(path.resolve(thumbPath));
+    }
   }
 
   // ── Video preview — direct Range stream (all formats) ───────────────────────
@@ -212,10 +286,19 @@ export const getFilePreview = asyncHandler(async (req, res) => {
       return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    // Serve the original file directly via HTTP Range.
+    const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
+    if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
+      return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+    const iv = Buffer.from(file.encryption_iv, "hex");
+
+    // Serve the original file directly via HTTP Range to support seeking.
     // Use video/mp4 for non-native containers (.mov, .avi, .mkv) to help browser compatibility.
-    const mimeType = MediaUtils.needsVideoPreview(file.storage_path, file.mime_type) ? "video/mp4" : file.mime_type;
-    return StreamingUtils.serveWithRange(res, file.storage_path, mimeType, req.headers.range);
+    const mimeType = MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)
+      ? VideoMimeTypes.MP4
+      : file.mime_type;
+    return StreamingUtils.serveWithRange(res, file.storage_path, mimeType, req.headers.range, plaintextKey, iv);
   }
 
   // ── Audio preview/stream — HTTP Range ────────────────────────────────────────
@@ -223,11 +306,19 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     if (!fs.existsSync(file.storage_path)) {
       return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
-    return StreamingUtils.serveWithRange(res, file.storage_path, file.mime_type, req.headers.range);
+
+    const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
+    if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
+      return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+    const iv = Buffer.from(file.encryption_iv, "hex");
+
+    return StreamingUtils.serveWithRange(res, file.storage_path, file.mime_type, req.headers.range, plaintextKey, iv);
   }
 
   // ── Image preview — inline serve ─────────────────────────────────────────────
-  if (file.mime_type.startsWith("image/")) {
+  if (file.mime_type?.startsWith("image/")) {
     if (!fs.existsSync(file.storage_path)) {
       return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
@@ -249,10 +340,25 @@ export const getFilePreview = asyncHandler(async (req, res) => {
       }
     }
 
+    const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
+    if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
+      return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+    const iv = Buffer.from(file.encryption_iv, "hex");
+
     res.set("Content-Type", file.mime_type);
     res.set("Cache-Control", "private, max-age=3600");
     res.set("Content-Disposition", "inline");
-    return res.sendFile(path.resolve(file.storage_path));
+    res.set("Content-Length", file.size_bytes);
+
+    const readStream = fs.createReadStream(file.storage_path);
+    const decipherStream = CryptoUtils.getDecipherStream(plaintextKey, iv);
+
+    readStream.on("error", () => res.end());
+    decipherStream.on("error", () => res.end());
+
+    return readStream.pipe(decipherStream).pipe(res);
   }
 
   // ── Other file types: not previewable ────────────────────────────────────────
@@ -281,6 +387,14 @@ export const streamFile = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
+  const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
+  if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
+    return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
+  const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+  const iv = Buffer.from(file.encryption_iv, "hex");
+
   // Non-native video: on-the-fly transcode via ffmpeg pipe (zero disk usage)
   if (file.category === FileCategories.VIDEO && MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)) {
     logger.info(`[Stream] On-the-fly transcode ${file.mime_type} → MP4 pipe for file ${file._id}`);
@@ -289,11 +403,16 @@ export const streamFile = asyncHandler(async (req, res) => {
       "Content-Disposition": "inline",
       "Cache-Control": "private, no-store",
     });
-    return MediaUtils.pipeTranscode(file.storage_path, res);
+
+    // We create a decrypted stream to pipe to MediaUtils (which connects it to ffmpeg)
+    const decipherStream = CryptoUtils.getDecipherStream(plaintextKey, iv);
+    const sourceStream = fs.createReadStream(file.storage_path).pipe(decipherStream);
+
+    return MediaUtils.pipeTranscodeStream(sourceStream, res);
   }
 
   // Native format (MP4, WebM) or audio: serve directly via Range
-  return StreamingUtils.serveWithRange(res, file.storage_path, file.mime_type, req.headers.range);
+  return StreamingUtils.serveWithRange(res, file.storage_path, file.mime_type, req.headers.range, plaintextKey, iv);
 });
 
 /**

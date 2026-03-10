@@ -3,6 +3,7 @@ import { execFile } from "child_process";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
+import os from "os";
 
 // Third-party modules
 import archiver from "archiver";
@@ -14,6 +15,7 @@ import sharp from "sharp";
 
 // Utils
 import logger from "#utils/logger.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
 
 // Set ffmpeg and ffprobe paths
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -97,6 +99,34 @@ function ensureDirectoryExists(dirPath) {
 }
 
 /**
+ * Helper to decrypt a file to a temporary location for external processing (e.g. ffmpeg/sharp).
+ * Remember to fs.promises.unlink() the returned path when done.
+ */
+async function decryptToTemp(sourcePath, userKey, iv) {
+  const tempPath = path.join(os.tmpdir(), `cloud-drive-decrypt-${Date.now()}-${path.basename(sourcePath)}.tmp`);
+  const decipher = CryptoUtils.getDecipherStream(userKey, iv);
+
+  await new Promise((resolve, reject) => {
+    const readStream = fs.createReadStream(sourcePath);
+    const writeStream = fs.createWriteStream(tempPath);
+
+    readStream
+      .pipe(decipher)
+      .pipe(writeStream)
+      .on("finish", resolve)
+      .on("error", (err) => {
+        logger.error(`[Crypto] Decrypt to temp failed: ${err.message}`);
+        reject(err);
+      });
+
+    readStream.on("error", reject);
+    decipher.on("error", reject);
+  });
+
+  return tempPath;
+}
+
+/**
  * Promise wrapper for ffprobe metadata
  */
 function probeVideo(filePath) {
@@ -154,17 +184,23 @@ function extractRawImageFrame(sourcePath, destPath) {
  * Generates a thumbnail for any image format
  * Supports: JPEG, PNG, GIF, WebP, AVIF, TIFF, BMP, SVG, HEIC/HEIF, RAW (CR2, NEF, ARW, DNG, etc.)
  *
- * @param {string} sourcePath - Path to the source image
+ * @param {string} sourcePath - Path to the encrypted source image
  * @param {string} destPath - Path to save the thumbnail
+ * @param {Buffer} userKey - Unwrapped DEK
+ * @param {Buffer} iv - File IV
  * @returns {Promise<string>} - Path to the generated thumbnail
  */
-async function generateImageThumbnail(sourcePath, destPath) {
+async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
   const destDir = path.dirname(destPath);
   ensureDirectoryExists(destDir);
 
   const ext = path.extname(sourcePath).toLowerCase();
 
+  let unencryptedSource = null;
+
   try {
+    // Decrypt the physical file to a temp location first
+    unencryptedSource = await decryptToTemp(sourcePath, userKey, iv);
     // ── HEIC/HEIF: convert to JPEG buffer first ──
     if (HEIC_FORMATS.has(ext)) {
       logger.debug(`[Thumbnail] HEIC/HEIF detected: ${sourcePath}`);
@@ -285,11 +321,18 @@ async function generateImageThumbnail(sourcePath, destPath) {
 
     // ── Unknown format: attempt sharp anyway ──
     logger.warn(`[Thumbnail] Unknown image format (${ext}), attempting sharp fallback`);
-    await sharp(sourcePath).resize(300, 300, { fit: "cover" }).toFormat("jpeg", { quality: 85 }).toFile(destPath);
+    await sharp(unencryptedSource)
+      .resize(300, 300, { fit: "cover" })
+      .toFormat("jpeg", { quality: 85 })
+      .toFile(destPath);
     return destPath;
   } catch (error) {
     logger.error(`[Thumbnail] Image thumbnail failed for ${sourcePath}: ${error.message}`);
     throw error;
+  } finally {
+    if (unencryptedSource && fs.existsSync(unencryptedSource)) {
+      await fsPromises.unlink(unencryptedSource).catch(() => {});
+    }
   }
 }
 
@@ -298,20 +341,21 @@ async function generateImageThumbnail(sourcePath, destPath) {
 /**
  * Run a single ffmpeg thumbnail attempt
  */
-function runVideoThumbnailAttempt(sourcePath, destPath, seekSeconds, withScale) {
+function runVideoThumbnailAttempt(unencryptedPath, destPath, seekSeconds, withScale) {
   return new Promise((resolve, reject) => {
     const outputOptions = ["-vframes 1", "-q:v 2"];
     if (withScale) {
       outputOptions.push("-vf scale=300:300:force_original_aspect_ratio=increase,crop=300:300");
     }
 
-    const cmd = ffmpeg(sourcePath);
+    const cmd = ffmpeg(unencryptedPath);
     if (seekSeconds > 0) {
       cmd.inputOptions([`-ss ${seekSeconds}`]);
     }
 
     cmd
       .outputOptions(outputOptions)
+      .toFormat("mjpeg")
       .on("end", () => resolve(destPath))
       .on("error", (err) => reject(err))
       .save(destPath);
@@ -322,48 +366,59 @@ function runVideoThumbnailAttempt(sourcePath, destPath, seekSeconds, withScale) 
  * Generates a thumbnail for any video format with duration-aware seeking and fallback chain.
  * Supports: MP4, MKV, AVI, MOV, WMV, FLV, TS, WebM, M4V, 3GP, OGV, and more.
  *
- * @param {string} sourcePath - Path to the source video
+ * @param {string} sourcePath - Path to the encrypted source video
  * @param {string} destFolder - Folder to save the thumbnail
  * @param {string} filename - Thumbnail filename
+ * @param {Buffer} userKey - Unwrapped DEK
+ * @param {Buffer} iv - File IV
  * @returns {Promise<string>} - Path to the generated thumbnail
  */
-async function generateVideoThumbnail(sourcePath, destFolder, filename) {
+async function generateVideoThumbnail(sourcePath, destFolder, filename, userKey, iv) {
   ensureDirectoryExists(destFolder);
   const destPath = path.join(destFolder, filename);
 
   logger.debug(`[Thumbnail] Generating video thumbnail: ${sourcePath}`);
 
-  // Check for video stream first
-  const videoStreamExists = await hasVideoStream(sourcePath);
-  if (!videoStreamExists) {
-    logger.warn(`[Thumbnail] No video stream found in: ${sourcePath}`);
-    throw new Error("No video stream found in file");
-  }
+  let unencryptedSource = null;
+  try {
+    unencryptedSource = await decryptToTemp(sourcePath, userKey, iv);
 
-  // Duration-aware seek: 10% of video length, capped between 0.5s and 30s
-  const duration = await getVideoDuration(sourcePath);
-  const seekTime = duration > 0 ? Math.min(Math.max(duration * 0.1, 0.5), 30) : 0.5;
-  logger.debug(`[Thumbnail] Video duration: ${duration}s, seeking to: ${seekTime}s`);
+    // Check for video stream first
+    const videoStreamExists = await hasVideoStream(unencryptedSource);
+    if (!videoStreamExists) {
+      logger.warn(`[Thumbnail] No video stream found in: ${sourcePath}`);
+      throw new Error("No video stream found in file");
+    }
 
-  // Attempt chain: seek+scale → seek only → start+scale → start only
-  const attempts = [
-    { seek: seekTime, scale: true, label: `seek ${seekTime.toFixed(1)}s + scale` },
-    { seek: seekTime, scale: false, label: `seek ${seekTime.toFixed(1)}s no scale` },
-    { seek: 0, scale: true, label: "start + scale" },
-    { seek: 0, scale: false, label: "start no scale" },
-  ];
+    // Duration-aware seek: 10% of video length, capped between 0.5s and 30s
+    const duration = await getVideoDuration(unencryptedSource);
+    const seekTime = duration > 0 ? Math.min(Math.max(duration * 0.1, 0.5), 30) : 0.5;
+    logger.debug(`[Thumbnail] Video duration: ${duration}s, seeking to: ${seekTime}s`);
 
-  for (const attempt of attempts) {
-    try {
-      await runVideoThumbnailAttempt(sourcePath, destPath, attempt.seek, attempt.scale);
-      logger.info(`[Thumbnail] Video thumbnail generated (${attempt.label}): ${destPath}`);
-      return destPath;
-    } catch (err) {
-      logger.warn(`[Thumbnail] Attempt failed (${attempt.label}): ${err.message}`);
+    // Attempt chain: seek+scale → seek only → start+scale → start only
+    const attempts = [
+      { seek: seekTime, scale: true, label: `seek ${seekTime.toFixed(1)}s + scale` },
+      { seek: seekTime, scale: false, label: `seek ${seekTime.toFixed(1)}s no scale` },
+      { seek: 0, scale: true, label: "start + scale" },
+      { seek: 0, scale: false, label: "start no scale" },
+    ];
+
+    for (const attempt of attempts) {
+      try {
+        await runVideoThumbnailAttempt(unencryptedSource, destPath, attempt.seek, attempt.scale);
+        logger.info(`[Thumbnail] Video thumbnail generated (${attempt.label}): ${destPath}`);
+        return destPath;
+      } catch (err) {
+        logger.warn(`[Thumbnail] Attempt failed (${attempt.label}): ${err.message}`);
+      }
+    }
+
+    throw new Error(`Video thumbnail generation failed for: ${sourcePath}`);
+  } finally {
+    if (unencryptedSource && fs.existsSync(unencryptedSource)) {
+      await fsPromises.unlink(unencryptedSource).catch(() => {});
     }
   }
-
-  throw new Error(`Video thumbnail generation failed for: ${sourcePath}`);
 }
 
 // ─── On-the-fly Pipe Transcode ────────────────────────────────────────────────
@@ -416,17 +471,63 @@ function pipeTranscode(sourcePath, res) {
 }
 
 /**
+ * On-the-fly transcode using a stream as input instead of a file path.
+ * Invaluable for transcoder setups where the input is a decipher stream.
+ *
+ * @param {stream.Readable} sourceStream
+ * @param {import('express').Response} res
+ * @returns {Promise<void>}
+ */
+function pipeTranscodeStream(sourceStream, res) {
+  return new Promise((resolve, reject) => {
+    const command = ffmpeg(sourceStream)
+      .outputOptions([
+        "-c:v libx264",
+        "-crf 23",
+        "-preset fast",
+        "-c:a aac",
+        "-b:a 128k",
+        "-pix_fmt yuv420p",
+        "-vf scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        "-movflags frag_keyframe+empty_moov+default_base_moof",
+      ])
+      .toFormat("mp4")
+      .on("start", (cmd) => logger.debug("[FFMPEG] Pipe transcode from stream:", cmd))
+      .on("end", () => {
+        logger.info("[FFMPEG] Pipe stream transcode complete");
+        resolve();
+      })
+      .on("error", (err) => {
+        if (err.message && err.message.includes("Output stream closed")) {
+          logger.debug("[FFMPEG] Client disconnected during pipe stream transcode");
+          resolve();
+        } else {
+          logger.error("[FFMPEG] Pipe stream transcode error:", err.message);
+          reject(err);
+        }
+      });
+
+    command.pipe(res, { end: true });
+  });
+}
+
+/**
  * Determines if a video file needs transcoding (i.e., not browser-native)
  */
 function needsVideoPreview(filePath, mimeType) {
+  // If we have a native MIME type, no preview/transcode needed
+  if (mimeType === "video/mp4" || mimeType === "video/webm" || mimeType === "video/x-m4v") {
+    return false;
+  }
+
+  // Fallback to extension check if MIME is generic or missing
   const ext = path.extname(filePath).toLowerCase();
-  if (!BROWSER_NATIVE_VIDEO_FORMATS.has(ext)) {
-    return true;
+  if (ext === ".mp4" || ext === ".webm" || ext === ".m4v") {
+    return false;
   }
-  if (mimeType === "video/quicktime") {
-    return true;
-  }
-  return false;
+
+  // All other formats (MOV, MKV, AVI, etc.) need preview/transcode for broad browser support
+  return true;
 }
 
 /**
@@ -439,6 +540,7 @@ function generateAudioWaveform(sourcePath, destPath) {
     ffmpeg(sourcePath)
       .complexFilter(["showwavespic=s=800x200:colors=0088FF"])
       .outputOptions(["-frames:v 1"])
+      .toFormat("mjpeg")
       .on("start", (cmd) => logger.debug("[FFMPEG] Waveform command:", cmd))
       .on("end", () => {
         logger.info("[FFMPEG] Waveform generated:", destPath);
@@ -458,34 +560,44 @@ function generateAudioWaveform(sourcePath, destPath) {
  * Extracts album art from an audio file and saves it as a JPEG.
  * Falls back to generating a waveform image if no album art is found.
  */
-async function extractAudioAlbumArt(sourcePath, destPath) {
+async function extractAudioAlbumArt(sourcePath, destPath, userKey, iv) {
   const destDir = path.dirname(destPath);
   ensureDirectoryExists(destDir);
 
-  // Step 1: Try to extract embedded album art
-  try {
-    const { parseFile } = await import("music-metadata");
-    const metadata = await parseFile(sourcePath);
+  let unencryptedSource = null;
 
-    if (metadata.common.picture && metadata.common.picture.length > 0) {
-      const picture = metadata.common.picture[0];
-      await sharp(picture.data).resize(300, 300, { fit: "cover" }).toFormat("jpeg", { quality: 85 }).toFile(destPath);
-      logger.info("[Thumbnail] Audio album art extracted:", destPath);
-      return destPath;
+  try {
+    unencryptedSource = await decryptToTemp(sourcePath, userKey, iv);
+
+    // Step 1: Try to extract embedded album art
+    try {
+      const { parseFile } = await import("music-metadata");
+      const metadata = await parseFile(unencryptedSource);
+
+      if (metadata.common.picture && metadata.common.picture.length > 0) {
+        const picture = metadata.common.picture[0];
+        await sharp(picture.data).resize(300, 300, { fit: "cover" }).toFormat("jpeg", { quality: 85 }).toFile(destPath);
+        logger.info("[Thumbnail] Audio album art extracted:", destPath);
+        return destPath;
+      }
+    } catch (err) {
+      logger.warn(`[Thumbnail] Album art extraction failed for ${sourcePath}: ${err.message}`);
     }
-  } catch (err) {
-    logger.warn(`[Thumbnail] Album art extraction failed for ${sourcePath}: ${err.message}`);
-  }
 
-  // Step 2: Fallback — generate a waveform image
-  try {
-    await generateAudioWaveform(sourcePath, destPath);
-    return destPath;
-  } catch (waveErr) {
-    logger.warn(`[Thumbnail] Waveform fallback also failed for ${sourcePath}: ${waveErr.message}`);
-  }
+    // Step 2: Fallback — generate a waveform image
+    try {
+      await generateAudioWaveform(unencryptedSource, destPath);
+      return destPath;
+    } catch (waveErr) {
+      logger.warn(`[Thumbnail] Waveform fallback also failed for ${sourcePath}: ${waveErr.message}`);
+    }
 
-  return null;
+    return null;
+  } finally {
+    if (unencryptedSource && fs.existsSync(unencryptedSource)) {
+      await fsPromises.unlink(unencryptedSource).catch(() => {});
+    }
+  }
 }
 
 // ─── ZIP Streaming ────────────────────────────────────────────────────────────
@@ -515,7 +627,18 @@ function createZipStream(items, outputStream) {
     for (const item of items) {
       if (item.type === "file") {
         if (fs.existsSync(item.path)) {
-          archive.file(item.path, { name: item.name });
+          if (item.userKey && item.iv) {
+            // Decrypt on the fly into the archive
+            const decipher = CryptoUtils.getDecipherStream(item.userKey, item.iv);
+            const sourceStream = fs.createReadStream(item.path);
+
+            // Decipher streams don't have all the stat metadata archiver needs,
+            // so we must provide the name explicitly
+            archive.append(sourceStream.pipe(decipher), { name: item.name });
+          } else {
+            // Fallback for unencrypted files (if any still existed)
+            archive.file(item.path, { name: item.name });
+          }
         } else {
           logger.warn(`[ZIP] File not found, skipping: ${item.path}`);
         }
@@ -537,16 +660,40 @@ function createZipStream(items, outputStream) {
   });
 }
 
+/**
+ * Relocates the 'moov' atom to the front of the file (Fast Start) for web optimization.
+ */
+function relocateMoovAtom(sourcePath, destPath) {
+  return new Promise((resolve, reject) => {
+    logger.info(`[FFMPEG] Starting moov relocation: ${path.basename(sourcePath)} -> ${path.basename(destPath)}`);
+    execFile(
+      ffmpegPath,
+      ["-y", "-i", sourcePath, "-c", "copy", "-map", "0:v?", "-map", "0:a?", "-movflags", "+faststart", destPath],
+      { timeout: 300000 },
+      (err, stdout, stderr) => {
+        if (err) {
+          logger.error(`[FFMPEG] Moov relocation failed: ${stderr || err.message}`);
+          return reject(err);
+        }
+        logger.info(`[FFMPEG] Moov relocation successful: ${path.basename(destPath)}`);
+        resolve(destPath);
+      }
+    );
+  });
+}
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 const MediaUtils = {
   generateImageThumbnail,
   generateVideoThumbnail,
   pipeTranscode,
+  pipeTranscodeStream,
   extractAudioAlbumArt,
   generateAudioWaveform,
   createZipStream,
   needsVideoPreview,
+  relocateMoovAtom,
   BROWSER_NATIVE_VIDEO_FORMATS,
   AUDIO_FORMATS_WITH_ART,
   SHARP_NATIVE_FORMATS,

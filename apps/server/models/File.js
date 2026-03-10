@@ -45,7 +45,15 @@ const fileSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    encryption_iv: {
+      type: String,
+      required: true,
+    },
     thumbnail_path: {
+      type: String,
+      default: null,
+    },
+    thumbnail_iv: {
       type: String,
       default: null,
     },

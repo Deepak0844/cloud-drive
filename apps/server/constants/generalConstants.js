@@ -98,6 +98,23 @@ export const FileCategories = {
 };
 
 /**
+ * Video Constants
+ */
+export const VideoMimeTypes = {
+  MP4: "video/mp4",
+  WEBM: "video/webm",
+  QUICKTIME: "video/quicktime",
+  M4V: "video/x-m4v",
+};
+
+export const VideoExtensions = {
+  MP4: "mp4",
+  MOV: "mov",
+  WEBM: "webm",
+  M4V: "m4v",
+};
+
+/**
  * Bulk Actions
  */
 export const BulkActions = {
