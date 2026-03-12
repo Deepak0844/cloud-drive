@@ -12,58 +12,66 @@ import { UrlUtils } from "@shared-utils/utils";
 // Components
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
+import VideoPlayer from "@components/media/VideoPlayer";
+import AudioPlayer from "@components/media/AudioPlayer";
+
+// Services
+import { useGetPlaybackInfoQuery } from "@services/api/fileApi";
 
 const { Text } = Typography;
 
 export default function FilePreviewModal({ file, open, onClose, handleDownload }) {
   // Local state
   const [hasError, setHasError] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [previewSrc, setPreviewSrc] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(true);
+
+  const type = file?.type || file?.category;
+  const fileId = file?.id || file?._id;
+  const isMediaFile = type === "video" || type === "audio";
 
   // Custom & shared hooks
 
+  // Fetch HLS/native playback strategy for video and audio files
+  const {
+    data: playbackInfoResponse,
+    isLoading: isPlaybackInfoLoading,
+    isError: isPlaybackInfoError,
+  } = useGetPlaybackInfoQuery(fileId, {
+    skip: !fileId || !isMediaFile || !open,
+  });
+
+  const playbackInfo = playbackInfoResponse?.data;
+
   // useEffect
-  // Derive resource endpoints via our authenticated proxy helper
+  // Derive preview URL for images and PDFs (not used for video/audio)
   useEffect(() => {
-    if (!open || !file) {
+    if (!open || !file || isMediaFile) {
       setPreviewSrc(null);
-      setLoading(true);
-      setHasError(false);
+      setPreviewLoading(true);
       return;
     }
 
     try {
-      setHasError(false);
-      const fileId = file.id || file._id;
-      const type = file.category || file.type;
-
-      let url = "";
-
-      if (type === "audio") {
-        url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.stream}`, { id: fileId });
-        url += `${url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
-      } else {
-        // Video and Images natively stream through the Express preview handler
-        url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.preview}`, { id: fileId });
-        url += `${url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
-      }
-
-      setPreviewSrc(url);
-      setLoading(false); // Let native HTML tags handle progressive load indication
+      const id = file.id || file._id;
+      const url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.preview}`, { id });
+      setPreviewSrc(`${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`);
+      setPreviewLoading(false);
     } catch (_err) {
       setHasError(true);
-      setLoading(false);
+      setPreviewLoading(false);
     }
 
-    // Cleanup blob URLs to prevent memory leaks (if any are still around from other features)
     return () => {
-      if (previewSrc && previewSrc.startsWith("blob:")) {
-        URL.revokeObjectURL(previewSrc);
-      }
+      if (previewSrc?.startsWith("blob:")) URL.revokeObjectURL(previewSrc);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, open]);
+  }, [file, open, isMediaFile]);
+
+  // Reset error state when the opened file changes
+  useEffect(() => {
+    setHasError(false);
+  }, [fileId]);
 
   // Event handlers
   function onDownload() {
@@ -71,18 +79,14 @@ export default function FilePreviewModal({ file, open, onClose, handleDownload }
     handleDownload?.(file);
   }
 
-  // Render
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70">
-          <Loader size={32} />
-          <Text className="text-label-tertiary">Loading preview...</Text>
-        </div>
-      );
-    }
+  function onPlayerError() {
+    setHasError(true);
+  }
 
-    if (hasError) {
+  // Render
+  function renderContent() {
+    // ── Error state ──────────────────────────────────────────────────────────
+    if (hasError || isPlaybackInfoError) {
       return (
         <div className="flex flex-col items-center justify-center p-20 gap-4">
           <Text className="text-xl font-bold text-label">Preview Unavailable</Text>
@@ -96,54 +100,50 @@ export default function FilePreviewModal({ file, open, onClose, handleDownload }
       );
     }
 
-    const type = file?.type || file?.category;
-
+    // ── Video ────────────────────────────────────────────────────────────────
     if (type === "video") {
-      return (
-        <div className="relative w-full rounded-2xl overflow-hidden bg-black/5 flex items-center justify-center">
-          <video
-            controls
-            autoPlay
-            src={previewSrc}
-            className="w-full h-auto max-h-[70vh] object-contain"
-            onError={() => {
-              // If direct /preview fails (non-native format), retry via /stream (on-the-fly transcode)
-              if (previewSrc && !previewSrc.includes("/stream")) {
-                const fileId = file.id || file._id;
-                let streamUrl = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.stream}`, { id: fileId });
-                streamUrl += `${streamUrl.includes("?") ? "&" : "?"}_t=${Date.now()}`;
-                setPreviewSrc(streamUrl);
-              } else {
-                setHasError(true);
-              }
-            }}
-          >
-            <track kind="captions" srcLang="en" label="English" />
-          </video>
-        </div>
-      );
-    }
-
-    if (type === "audio") {
-      return (
-        <div className="flex flex-col items-center justify-center p-10 bg-surface-dim rounded-2xl gap-8">
-          <div className="w-32 h-32 bg-primary/10 rounded-full flex items-center justify-center animate-pulse">
-            <svg
-              className="w-16 h-16 text-primary"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-            </svg>
+      if (isPlaybackInfoLoading || !playbackInfo) {
+        return (
+          <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70">
+            <Loader size={32} />
+            <Text className="text-label-tertiary">Preparing video...</Text>
           </div>
-          <audio controls autoPlay src={previewSrc} className="w-full max-w-md" onError={() => setHasError(true)}>
-            <track kind="captions" srcLang="en" label="English" />
-          </audio>
+        );
+      }
+      return <VideoPlayer playbackInfo={playbackInfo} onError={onPlayerError} />;
+    }
+
+    // ── Audio ────────────────────────────────────────────────────────────────
+    if (type === "audio") {
+      if (isPlaybackInfoLoading || !playbackInfo) {
+        return (
+          <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70">
+            <Loader size={32} />
+            <Text className="text-label-tertiary">Preparing audio...</Text>
+          </div>
+        );
+      }
+      return (
+        <AudioPlayer
+          playbackInfo={playbackInfo}
+          audioMetadata={file?.audio_metadata}
+          fileId={fileId}
+          onError={onPlayerError}
+        />
+      );
+    }
+
+    // ── Loading state (images / PDFs) ────────────────────────────────────────
+    if (previewLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70">
+          <Loader size={32} />
+          <Text className="text-label-tertiary">Loading preview...</Text>
         </div>
       );
     }
 
+    // ── Image ────────────────────────────────────────────────────────────────
     if (type === "image" || file?.mime_type?.startsWith("image/")) {
       return (
         <div className="relative w-full rounded-2xl overflow-hidden bg-checkered flex items-center justify-center">
@@ -157,7 +157,7 @@ export default function FilePreviewModal({ file, open, onClose, handleDownload }
       );
     }
 
-    // PDF Fallback
+    // ── PDF ──────────────────────────────────────────────────────────────────
     if (type === "pdf" || file?.mime_type === "application/pdf") {
       return (
         <div className="w-full h-[75vh] rounded-2xl overflow-hidden shadow-inner border border-line">
@@ -178,7 +178,7 @@ export default function FilePreviewModal({ file, open, onClose, handleDownload }
       );
     }
 
-    // Default Fallback
+    // ── Default fallback ─────────────────────────────────────────────────────
     return (
       <div className="flex flex-col items-center justify-center p-20 gap-4">
         <Text className="text-xl font-bold text-label">No Preview Available</Text>
@@ -193,7 +193,7 @@ export default function FilePreviewModal({ file, open, onClose, handleDownload }
         </Button>
       </div>
     );
-  };
+  }
 
   return (
     <Modal

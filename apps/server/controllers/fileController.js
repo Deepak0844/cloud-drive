@@ -22,7 +22,11 @@ import {
   SocketEvents,
   SocketActions,
   CacheDurations,
+  HlsConfig,
 } from "#constants/generalConstants.js";
+
+// Config
+import config from "#config/env.js";
 import { HttpStatus, ItemTypes, DefaultPagination } from "@shared-constants/constants";
 
 // Middleware
@@ -37,6 +41,7 @@ import logger from "#utils/logger.js";
 import { paginateQuery } from "#utils/paginationUtils.js";
 import StreamingUtils from "#utils/streamingUtils.js";
 import CryptoUtils from "#utils/cryptoUtils.js";
+import HlsCacheUtils from "#utils/hlsCacheUtils.js";
 
 // ─── Controllers ──────────────────────────────────────────────────────────────
 
@@ -675,6 +680,201 @@ export const bulkMove = asyncHandler(async (req, res) => {
     targetFolderId,
   });
   return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_MOVED });
+});
+
+/**
+ * @desc    Return playback strategy info (native Range-stream vs HLS) for a video/audio file
+ * @route   GET /api/v1/files/:id/playback-info
+ * @access  Private
+ */
+export const getPlaybackInfo = asyncHandler(async (req, res) => {
+  const file = await File.findOne({ _id: req.params.id, user: req.user.id });
+  if (!file) {
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  const isVideo = file.category === FileCategories.VIDEO;
+  const isAudio = file.category === FileCategories.AUDIO;
+
+  if (!isVideo && !isAudio) {
+    return ResponseUtils.error(
+      res,
+      "Playback info is only available for video and audio files",
+      HttpStatus.BAD_REQUEST
+    );
+  }
+
+  const fileId = file._id.toString();
+
+  // Determine if the browser can play this format natively (no HLS needed)
+  const nativePlayback = isVideo
+    ? !MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)
+    : MediaUtils.BROWSER_NATIVE_AUDIO_MIMES.has(file.mime_type);
+
+  const playbackUrl = nativePlayback ? `/api/v1/files/${fileId}/preview` : `/api/v1/files/${fileId}/hls/master.m3u8`;
+
+  return ResponseUtils.success(res, {
+    fileId,
+    mimeType: file.mime_type,
+    category: file.category,
+    nativePlayback,
+    playbackUrl,
+    audioMetadata: file.audio_metadata || null,
+  });
+});
+
+/**
+ * @desc    Generate HLS master playlist (.m3u8) for a non-native video/audio file
+ * @route   GET /api/v1/files/:id/hls/master.m3u8
+ * @access  Private
+ */
+export const getHlsPlaylist = asyncHandler(async (req, res) => {
+  const file = await File.findOne({ _id: req.params.id, user: req.user.id });
+  if (!file) {
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  if (file.category !== FileCategories.VIDEO && file.category !== FileCategories.AUDIO) {
+    return ResponseUtils.error(res, ErrorMessages.STREAMING_NOT_SUPPORTED, HttpStatus.BAD_REQUEST);
+  }
+
+  if (!fs.existsSync(file.storage_path)) {
+    return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
+  if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
+    return ResponseUtils.error(res, ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
+  const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+  const iv = Buffer.from(file.encryption_iv, "hex");
+  const fileId = file._id.toString();
+  const baseStoragePath = config.NAS_STORAGE_PATH;
+  const outputDir = HlsCacheUtils.getCacheDir(baseStoragePath, fileId);
+  const isAudioOnly = file.category === FileCategories.AUDIO;
+
+  // ── Probe to know duration (fast — just reads container headers) ──────────
+  let mediaInfo;
+  try {
+    mediaInfo = await MediaUtils.probeEncryptedMedia(file.storage_path, plaintextKey, iv);
+  } catch (err) {
+    logger.error(`[HLS Playlist] Probe failed for ${fileId}: ${err.message}`);
+    return ResponseUtils.error(res, "Could not read media file metadata", HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
+  // ── Fire background transcode (no-op if already in flight or done) ────────
+  const alreadyTranscoded = await HlsCacheUtils.isPlaylistCached(baseStoragePath, fileId);
+  if (!alreadyTranscoded) {
+    logger.info(`[HLS Playlist] Starting background transcode for file ${fileId}`);
+    MediaUtils.transcodeToHls(
+      file.storage_path,
+      plaintextKey,
+      iv,
+      outputDir,
+      HlsConfig.SEGMENT_DURATION,
+      isAudioOnly
+    ).catch((err) => logger.error(`[HLS Playlist] Background transcode failed for ${fileId}: ${err.message}`));
+  }
+
+  // ── Build and return playlist immediately from probe data ─────────────────
+  const { duration } = mediaInfo;
+  const segDur = HlsConfig.SEGMENT_DURATION;
+  const segmentCount = Math.ceil(duration / segDur);
+
+  const lines = ["#EXTM3U", "#EXT-X-VERSION:3", `#EXT-X-TARGETDURATION:${segDur}`, "#EXT-X-MEDIA-SEQUENCE:0"];
+  for (let i = 0; i < segmentCount; i++) {
+    const isLast = i === segmentCount - 1;
+    const segActualDuration = isLast ? (duration - i * segDur).toFixed(3) : segDur.toFixed(3);
+    lines.push(`#EXTINF:${segActualDuration},`, `/api/v1/files/${fileId}/hls/seg-${i}.ts`);
+  }
+  lines.push("#EXT-X-ENDLIST");
+
+  res.set("Content-Type", "application/vnd.apple.mpegurl");
+  res.set("Cache-Control", "no-cache");
+  return res.send(lines.join("\n") + "\n");
+});
+
+/**
+ * @desc    Serve a pre-transcoded HLS segment (.ts) from disk cache
+ * @route   GET /api/v1/files/:id/hls/:segment  (e.g., seg-0.ts)
+ * @access  Private
+ */
+export const getHlsSegment = asyncHandler(async (req, res) => {
+  const file = await File.findOne({ _id: req.params.id, user: req.user.id });
+  if (!file) {
+    return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  if (file.category !== FileCategories.VIDEO && file.category !== FileCategories.AUDIO) {
+    return ResponseUtils.error(res, ErrorMessages.STREAMING_NOT_SUPPORTED, HttpStatus.BAD_REQUEST);
+  }
+
+  if (!fs.existsSync(file.storage_path)) {
+    return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  // Parse segment index from the URL parameter (e.g. "seg-0.ts" → 0)
+  const match = req.params.segment?.match(/^seg-(\d+)\.ts$/);
+  if (!match) {
+    return ResponseUtils.error(res, "Invalid segment identifier", HttpStatus.BAD_REQUEST);
+  }
+
+  const segmentIndex = parseInt(match[1], 10);
+  const fileId = file._id.toString();
+  const baseStoragePath = config.NAS_STORAGE_PATH;
+
+  // ── Fast path: segment already on disk ────────────────────────────────────
+  const alreadyCached = await HlsCacheUtils.isSegmentCached(baseStoragePath, fileId, segmentIndex);
+  if (alreadyCached) {
+    const buffer = await HlsCacheUtils.readSegment(baseStoragePath, fileId, segmentIndex);
+    res.set("Content-Type", "video/mp2t");
+    res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
+    return res.send(buffer);
+  }
+
+  // ── Segment not yet written — ensure transcode is running, then poll ──────
+  // The background transcode started by getHlsPlaylist writes segments
+  // progressively to disk. Poll for the specific file rather than waiting for
+  // the whole transcode to finish, so seg-0 is served as soon as ffmpeg writes it.
+  const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
+  if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
+    return ResponseUtils.error(res, ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
+  const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+  const iv = Buffer.from(file.encryption_iv, "hex");
+  const isAudioOnly = file.category === FileCategories.AUDIO;
+  const outputDir = HlsCacheUtils.getCacheDir(baseStoragePath, fileId);
+
+  // Ensure a transcode is in flight (no-op if lock already held; starts one if not)
+  MediaUtils.transcodeToHls(
+    file.storage_path,
+    plaintextKey,
+    iv,
+    outputDir,
+    HlsConfig.SEGMENT_DURATION,
+    isAudioOnly
+  ).catch((err) => logger.error(`[HLS Segment] Transcode error for ${fileId}: ${err.message}`));
+
+  // Poll until the segment file appears or timeout
+  const POLL_INTERVAL_MS = 300;
+  const POLL_TIMEOUT_MS = 120_000;
+  const deadline = Date.now() + POLL_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    const ready = await HlsCacheUtils.isSegmentCached(baseStoragePath, fileId, segmentIndex);
+    if (ready) {
+      const segmentBuffer = await HlsCacheUtils.readSegment(baseStoragePath, fileId, segmentIndex);
+      res.set("Content-Type", "video/mp2t");
+      res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
+      return res.send(segmentBuffer);
+    }
+  }
+
+  logger.error(`[HLS Segment] Timed out waiting for seg-${segmentIndex}.ts for file ${fileId}`);
+  return ResponseUtils.error(res, "HLS segment timed out", HttpStatus.INTERNAL_SERVER_ERROR);
 });
 
 /**

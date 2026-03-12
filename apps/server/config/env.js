@@ -43,8 +43,7 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  const logger = (await import("../utils/logger.js")).default;
-  logger.error("❌ Invalid environment variables:", parsed.error.format());
+  console.error("❌ Invalid environment variables:", parsed.error.format());
   process.exit(1);
 }
 

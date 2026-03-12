@@ -7,8 +7,8 @@ import os from "os";
 
 // Third-party modules
 import archiver from "archiver";
-import { path as ffmpegPath } from "@ffmpeg-installer/ffmpeg";
-import { path as ffprobePath } from "@ffprobe-installer/ffprobe";
+import { path as installerFfmpegPath } from "@ffmpeg-installer/ffmpeg";
+import { path as installerFfprobePath } from "@ffprobe-installer/ffprobe";
 import ffmpeg from "fluent-ffmpeg";
 import heicConvert from "heic-convert";
 import sharp from "sharp";
@@ -17,9 +17,17 @@ import sharp from "sharp";
 import logger from "#utils/logger.js";
 import CryptoUtils from "#utils/cryptoUtils.js";
 
+// Prefer system ffmpeg/ffprobe over npm-bundled binaries (better codec support, e.g. Vorbis in MKV)
+const systemFfmpeg = fs.existsSync("/usr/bin/ffmpeg") ? "/usr/bin/ffmpeg" : null;
+const systemFfprobe = fs.existsSync("/usr/bin/ffprobe") ? "/usr/bin/ffprobe" : null;
+const resolvedFfmpegPath = systemFfmpeg || installerFfmpegPath;
+const resolvedFfprobePath = systemFfprobe || installerFfprobePath;
+
 // Set ffmpeg and ffprobe paths
-ffmpeg.setFfmpegPath(ffmpegPath);
-ffmpeg.setFfprobePath(ffprobePath);
+ffmpeg.setFfmpegPath(resolvedFfmpegPath);
+ffmpeg.setFfprobePath(resolvedFfprobePath);
+logger.info(`[Media] Using ffmpeg: ${resolvedFfmpegPath}`);
+logger.info(`[Media] Using ffprobe: ${resolvedFfprobePath}`);
 
 // ─── Format Registries ────────────────────────────────────────────────────────
 
@@ -68,6 +76,21 @@ const HEIC_FORMATS = new Set([".heic", ".heif"]);
  * Video formats that browsers can play natively (no MP4 preview needed)
  */
 const BROWSER_NATIVE_VIDEO_FORMATS = new Set([".mp4", ".m4v", ".webm"]);
+
+/**
+ * Audio MIME types that all modern browsers can play natively (no HLS transcode needed)
+ */
+const BROWSER_NATIVE_AUDIO_MIMES = new Set([
+  "audio/mpeg", // MP3
+  "audio/ogg", // OGG Vorbis / Opus-in-OGG
+  "audio/wav", // WAV / PCM
+  "audio/aac", // AAC
+  "audio/mp4", // AAC/ALAC in MP4 container
+  "audio/x-m4a", // M4A
+  "audio/opus", // Opus
+  "audio/webm", // WebM audio
+  "audio/flac", // FLAC (Chromium 56+, Firefox 51+)
+]);
 
 /**
  * Audio formats supported by music-metadata for album art extraction
@@ -162,6 +185,42 @@ async function getVideoDuration(filePath) {
     return parseFloat(data.format.duration) || 0;
   } catch {
     return 0;
+  }
+}
+
+// ─── Media Probe (Encrypted) ─────────────────────────────────────────────────
+
+/**
+ * Probes an encrypted media file and returns its metadata.
+ * Decrypts to a temp file first so ffprobe can seek freely.
+ *
+ * @param {string} storagePath  - Encrypted file path on disk
+ * @param {Buffer} userKey      - Unwrapped DEK
+ * @param {Buffer} iv           - File IV
+ * @returns {Promise<{ duration: number, hasVideo: boolean, hasAudio: boolean, width: number, height: number }>}
+ */
+async function probeEncryptedMedia(storagePath, userKey, iv) {
+  let tempPath = null;
+  try {
+    tempPath = await decryptToTemp(storagePath, userKey, iv);
+    const data = await probeVideo(tempPath);
+
+    const hasVideo = data.streams.some((s) => s.codec_type === "video");
+    const hasAudio = data.streams.some((s) => s.codec_type === "audio");
+    const duration = parseFloat(data.format.duration) || 0;
+    const videoStream = data.streams.find((s) => s.codec_type === "video");
+
+    return {
+      duration,
+      hasVideo,
+      hasAudio,
+      width: videoStream?.width || 0,
+      height: videoStream?.height || 0,
+    };
+  } finally {
+    if (tempPath) {
+      await fsPromises.unlink(tempPath).catch(() => {});
+    }
   }
 }
 
@@ -554,6 +613,135 @@ function generateAudioWaveform(sourcePath, destPath) {
   });
 }
 
+// ─── HLS Full Transcode ───────────────────────────────────────────────────────
+
+// In-memory lock: prevents concurrent full-file transcodes for the same fileId
+const hlsTranscodeLocks = new Map();
+
+/**
+ * Transcodes an entire encrypted media file to HLS format using ffmpeg's native
+ * HLS muxer. Produces a continuous segment timeline so timestamps are correct
+ * across all segments — no per-segment seeking issues or audio discontinuities.
+ *
+ * @param {string} storagePath    - Encrypted file path on disk
+ * @param {Buffer} userKey        - Unwrapped DEK
+ * @param {Buffer} iv             - File IV
+ * @param {string} outputDir      - Directory where segments + playlist are written
+ * @param {number} segmentDuration - Target segment length in seconds
+ * @param {boolean} isAudioOnly   - If true, skip video codec options
+ * @returns {Promise<void>}
+ */
+async function transcodeToHls(storagePath, userKey, iv, outputDir, segmentDuration, isAudioOnly) {
+  // If another request is already transcoding this exact output dir, wait for it
+  if (hlsTranscodeLocks.has(outputDir)) {
+    await hlsTranscodeLocks.get(outputDir);
+    return;
+  }
+
+  let resolveLock;
+  const lockPromise = new Promise((r) => {
+    resolveLock = r;
+  });
+  hlsTranscodeLocks.set(outputDir, lockPromise);
+
+  let tempPath = null;
+  try {
+    await fsPromises.mkdir(outputDir, { recursive: true });
+    tempPath = await decryptToTemp(storagePath, userKey, iv);
+
+    const segmentPattern = path.join(outputDir, "seg-%d.ts");
+    const playlistPath = path.join(outputDir, "playlist.m3u8");
+
+    // Use execFile with precise arg ordering — fluent-ffmpeg reorders -map/-vf/-af
+    // flags in ways that break filter_complex stream association.
+    //
+    // filter_complex with setpts=PTS-STARTPTS/asetpts=PTS-STARTPTS is the only
+    // reliable way to force both streams to start at PTS=0, regardless of the
+    // MKV container clock offset (~1.4s for Vorbis MKVs).
+    const args = isAudioOnly
+      ? [
+          "-i",
+          tempPath,
+          "-filter_complex",
+          "[0:a]asetpts=PTS-STARTPTS[a]",
+          "-map",
+          "[a]",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "128k",
+          "-f",
+          "hls",
+          "-hls_time",
+          String(segmentDuration),
+          "-hls_list_size",
+          "0",
+          "-hls_flags",
+          "independent_segments",
+          "-hls_segment_filename",
+          segmentPattern,
+          "-max_muxing_queue_size",
+          "9999",
+          playlistPath,
+        ]
+      : [
+          "-i",
+          tempPath,
+          "-filter_complex",
+          "[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setpts=PTS-STARTPTS[v];[0:a]asetpts=PTS-STARTPTS[a]",
+          "-map",
+          "[v]",
+          "-map",
+          "[a]",
+          "-c:v",
+          "libx264",
+          "-crf",
+          "23",
+          "-preset",
+          "fast",
+          "-pix_fmt",
+          "yuv420p",
+          "-c:a",
+          "aac",
+          "-b:a",
+          "128k",
+          "-f",
+          "hls",
+          "-hls_time",
+          String(segmentDuration),
+          "-hls_list_size",
+          "0",
+          "-hls_flags",
+          "independent_segments",
+          "-hls_segment_filename",
+          segmentPattern,
+          "-max_muxing_queue_size",
+          "9999",
+          playlistPath,
+        ];
+
+    logger.info(`[HLS] Full transcode started: ${resolvedFfmpegPath} ${args.join(" ")}`);
+
+    await new Promise((resolve, reject) => {
+      execFile(resolvedFfmpegPath, args, { maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
+        if (err) {
+          logger.error(`[HLS] Transcode failed:\n${stderr}`);
+          reject(new Error(`HLS full transcode failed: ${err.message}`));
+        } else {
+          logger.info(`[HLS] Full transcode complete: ${outputDir}`);
+          resolve();
+        }
+      });
+    });
+  } finally {
+    if (tempPath) {
+      await fsPromises.unlink(tempPath).catch(() => {});
+    }
+    hlsTranscodeLocks.delete(outputDir);
+    resolveLock();
+  }
+}
+
 // ─── Audio Album Art ──────────────────────────────────────────────────────────
 
 /**
@@ -667,7 +855,7 @@ function relocateMoovAtom(sourcePath, destPath) {
   return new Promise((resolve, reject) => {
     logger.info(`[FFMPEG] Starting moov relocation: ${path.basename(sourcePath)} -> ${path.basename(destPath)}`);
     execFile(
-      ffmpegPath,
+      resolvedFfmpegPath,
       ["-y", "-i", sourcePath, "-c", "copy", "-map", "0:v?", "-map", "0:a?", "-movflags", "+faststart", destPath],
       { timeout: 300000 },
       (err, stdout, stderr) => {
@@ -694,7 +882,10 @@ const MediaUtils = {
   createZipStream,
   needsVideoPreview,
   relocateMoovAtom,
+  probeEncryptedMedia,
+  transcodeToHls,
   BROWSER_NATIVE_VIDEO_FORMATS,
+  BROWSER_NATIVE_AUDIO_MIMES,
   AUDIO_FORMATS_WITH_ART,
   SHARP_NATIVE_FORMATS,
   RAW_IMAGE_FORMATS,

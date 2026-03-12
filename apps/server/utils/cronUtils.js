@@ -12,7 +12,11 @@ import TrashService from "#services/trashService.js";
 // Config
 import config from "#config/env.js";
 
+// Constants
+import { HlsConfig } from "#constants/generalConstants.js";
+
 // Utils
+import HlsCacheUtils from "#utils/hlsCacheUtils.js";
 import logger from "#utils/logger.js";
 
 /**
@@ -70,6 +74,21 @@ function initCronJobs() {
     logger.info("🔍 Running daily duplicate finder...");
     await DuplicateService.findAndNotifyDuplicates();
     logger.info("✅ Duplicate finder completed.");
+  });
+
+  // 4. Every 30 minutes: HLS segment cache cleanup (TTL eviction + LRU)
+  cron.schedule(`*/${HlsConfig.CLEANUP_INTERVAL_MINUTES} * * * *`, async () => {
+    logger.info("🎬 Running HLS segment cache cleanup...");
+    try {
+      await HlsCacheUtils.cleanupExpiredSegments(
+        config.NAS_STORAGE_PATH,
+        HlsConfig.CACHE_TTL_MS,
+        HlsConfig.MAX_CACHE_SIZE_BYTES
+      );
+      logger.info("✅ HLS cache cleanup completed.");
+    } catch (err) {
+      logger.error("❌ HLS cache cleanup error:", err);
+    }
   });
 
   // Trigger Duplicate Finder on server start

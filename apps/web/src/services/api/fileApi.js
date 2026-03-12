@@ -252,6 +252,14 @@ const touchFileMutation = () => ({
   invalidatesTags: [TagTypes.FILES],
 });
 
+const getPlaybackInfoQuery = () => ({
+  query: (fileId) => ({
+    url: UrlUtils.format(FileServiceUrls.playbackInfo, { id: fileId }),
+  }),
+  // Cache playback info for 5 minutes; it rarely changes
+  keepUnusedDataFor: 300,
+});
+
 // ---------------------------------------------------------------------------
 // Inject Endpoints
 // ---------------------------------------------------------------------------
@@ -271,6 +279,7 @@ export const fileApi = api.injectEndpoints({
     copyFile: builder.mutation(copyFileMutation()),
     updateFileTags: builder.mutation(updateFileTagsMutation()),
     touchFile: builder.mutation(touchFileMutation()),
+    getPlaybackInfo: builder.query(getPlaybackInfoQuery()),
   }),
   overrideExisting: false,
 });
@@ -289,6 +298,7 @@ export const {
   useCopyFileMutation,
   useUpdateFileTagsMutation,
   useTouchFileMutation,
+  useGetPlaybackInfoQuery,
 } = fileApi;
 
 export default fileApi;

@@ -17,7 +17,6 @@ import {
   NotificationTypes,
   ErrorMessages,
   FileCategories,
-  VideoMimeTypes,
   VideoExtensions,
   SocketEvents,
   SocketActions,
@@ -442,8 +441,8 @@ async function finalizeUploadedFile({
   extra = {},
 }) {
   let finalSize = size;
-  let finalMimeType = mimeType;
-  let finalExtension = extension;
+  const finalMimeType = mimeType;
+  const finalExtension = extension;
   let finalUploadPath = tempFilePath;
 
   // 1. Optimize video (Fast Start) before encryption if needed
@@ -460,9 +459,7 @@ async function finalizeUploadedFile({
         await fs.promises.unlink(tempFilePath).catch(() => {});
         finalUploadPath = optimizedPath;
         finalSize = fs.statSync(finalUploadPath).size;
-        finalMimeType = VideoMimeTypes.MP4;
-        finalExtension = VideoExtensions.MP4;
-        logger.info(`[Upload] Web-optimized video to MP4: ${originalName} (Size: ${finalSize})`);
+        logger.info(`[Upload] Web-optimized video (Fast Start): ${originalName} (Size: ${finalSize})`);
       } catch (err) {
         logger.warn(
           `[Upload] Fast-start optimization failed for ${originalName}, continuing with original: ${err.message}`

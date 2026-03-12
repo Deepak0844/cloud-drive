@@ -20,6 +20,9 @@ import {
   downloadAsZip,
   bulkMove,
   bulkCopy,
+  getPlaybackInfo,
+  getHlsPlaylist,
+  getHlsSegment,
 } from "#controllers/fileController.js";
 
 // Middleware
@@ -38,6 +41,7 @@ import {
   getFilesSchema,
   getRecentFilesSchema,
   idParamSchema,
+  hlsSegmentSchema,
   favoriteFileSchema,
   updateTagsSchema,
   bulkMoveSchema,
@@ -69,6 +73,9 @@ router.patch("/:id/favorite", validate(favoriteFileSchema), toggleFavorite);
 router.post("/:id/touch", validate(idParamSchema), touchFile);
 router.patch("/:id/tags", validate(updateTagsSchema), updateFileTags);
 router.get("/:id/stream", validate(idParamSchema), streamFile);
+router.get("/:id/playback-info", validate(idParamSchema), getPlaybackInfo);
+router.get("/:id/hls/master.m3u8", validate(idParamSchema), getHlsPlaylist);
+router.get("/:id/hls/:segment", validate(hlsSegmentSchema), getHlsSegment);
 router.post("/:id/move", validate(moveFileSchema), moveFile);
 router.post("/:id/copy", validate(copyFileSchema), copyFile);
 router.post("/bulk-delete", validate(bulkDeleteSchema), bulkDelete);

@@ -34,6 +34,13 @@ export const idParamSchema = z.object({
   }),
 });
 
+export const hlsSegmentSchema = z.object({
+  params: z.object({
+    id: z.string().min(1, "ID is required"),
+    segment: z.string().min(1, "Segment is required"),
+  }),
+});
+
 export const getFilesSchema = z.object({
   query: z.object({
     folderId: z

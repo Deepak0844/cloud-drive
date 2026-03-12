@@ -9,6 +9,10 @@ import User from "#models/User.js";
 // Services
 import FileService from "#services/fileService.js";
 import CryptoUtils from "#utils/cryptoUtils.js";
+import HlsCacheUtils from "#utils/hlsCacheUtils.js";
+
+// Config
+import config from "#config/env.js";
 
 // Constants
 import { ErrorMessages } from "#constants/generalConstants.js";
@@ -153,6 +157,9 @@ async function permanentDeleteRecursive(type, id, userId) {
       // Remove all physical files associated with this record
       safeUnlink(file.storage_path);
       safeUnlink(file.thumbnail_path);
+
+      // Purge any cached HLS segments for this file
+      await HlsCacheUtils.purgeFileCache(config.NAS_STORAGE_PATH, file._id.toString());
 
       // Update user quota atomically
       await User.findByIdAndUpdate(userId, {

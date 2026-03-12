@@ -26,6 +26,8 @@ export const FileServiceUrls = {
   preview: `${FilesBasePath}/:id/preview`,
   stream: `${FilesBasePath}/:id/stream`,
   thumbnail: `${FilesBasePath}/:id/preview?thumbnail=true`,
+  playbackInfo: `${FilesBasePath}/:id/playback-info`,
+  hlsPlaylist: `${FilesBasePath}/:id/hls/master.m3u8`,
   initUpload: `${FilesBasePath}/upload/init`,
   uploadChunk: `${FilesBasePath}/upload/chunk`,
 };

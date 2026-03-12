@@ -178,6 +178,17 @@ export const CacheDurations = {
 };
 
 /**
+ * HLS streaming configuration
+ */
+export const HlsConfig = {
+  SEGMENT_DURATION: 6, // seconds per HLS segment
+  CACHE_TTL_MS: 2 * 60 * 60 * 1000, // 2 hours TTL for cached segments
+  MAX_CACHE_SIZE_BYTES: 2 * 1024 * 1024 * 1024, // 2 GB max cache
+  CLEANUP_INTERVAL_MINUTES: 30, // background cleanup interval
+  CACHE_SUBDIR: "hls-cache", // subdirectory under NAS_STORAGE_PATH
+};
+
+/**
  * Byte conversion multipliers
  */
 export const ByteMultipliers = {
