@@ -46,7 +46,7 @@ export const handleBulkOperation = asyncHandler(async (req, res) => {
   }
 
   // Emit socket event for real-time updates
-  SocketService.emitToUser(String(req.user.id), SocketEvents.ITEM_BULK_CHANGE || "ITEM_BULK_CHANGE", {
+  SocketService.emitToUser(String(req.user.id), SocketEvents.ITEM_BULK_CHANGE, {
     action,
     items,
     destination_folder_id,

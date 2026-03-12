@@ -51,8 +51,7 @@ export default function FilePreviewModal({ file, open, onClose, handleDownload }
 
       setPreviewSrc(url);
       setLoading(false); // Let native HTML tags handle progressive load indication
-    } catch (err) {
-      console.error("Failed to construct preview URL:", err);
+    } catch (_err) {
       setHasError(true);
       setLoading(false);
     }

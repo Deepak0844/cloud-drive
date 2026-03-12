@@ -5,6 +5,9 @@ import { Form, Input, InputNumber, message } from "antd";
 // Services (RTK Query hooks)
 import { useRequestQuotaIncreaseMutation } from "@services/api/quotaApi";
 
+// Constants
+import { ByteMultipliers } from "@shared-constants/constants";
+
 // Components
 import Modal from "@shared-components/components/modal";
 
@@ -24,7 +27,7 @@ function QuotaRequestModal({ open, onClose }) {
       const values = await form.validateFields();
       setLoading(true);
 
-      await requestQuota({ reason: values.reason, requested_bytes: values.amount * 1000 * 1000 * 1000 }).unwrap();
+      await requestQuota({ reason: values.reason, requested_bytes: values.amount * ByteMultipliers.GB }).unwrap();
 
       message.success("Quota request submitted successfully!");
       form.resetFields();

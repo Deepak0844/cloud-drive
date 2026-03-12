@@ -14,8 +14,16 @@ import FileService from "#services/fileService.js";
 import SocketService from "#services/socketService.js";
 
 // Constants
-import { ErrorMessages, FileCategories, VideoMimeTypes } from "#constants/generalConstants.js";
-import { HttpStatus, ItemTypes } from "@shared-constants/constants";
+import {
+  ErrorMessages,
+  SuccessMessages,
+  FileCategories,
+  VideoMimeTypes,
+  SocketEvents,
+  SocketActions,
+  CacheDurations,
+} from "#constants/generalConstants.js";
+import { HttpStatus, ItemTypes, DefaultPagination } from "@shared-constants/constants";
 
 // Middleware
 import asyncHandler from "#middlewares/asyncHandler.js";
@@ -98,13 +106,13 @@ export const uploadFile = asyncHandler(async (req, res) => {
     const file = await FileService.processUpload(req.user.id, folderId, req.file);
 
     const updatedUser = await User.findById(req.user.id);
-    SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", {
+    SocketService.emitToUser(req.user.id, SocketEvents.QUOTA_UPDATE, {
       quota_bytes: updatedUser.quota_bytes,
       used_bytes: updatedUser.used_bytes,
     });
 
-    SocketService.emitToUser(req.user.id, "FILE_CHANGE", {
-      action: "UPLOAD",
+    SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, {
+      action: SocketActions.UPLOAD,
       fileId: file._id,
       folderId,
     });
@@ -135,7 +143,7 @@ export const downloadFile = asyncHandler(async (req, res) => {
 
   const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
   if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
-    return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+    return ResponseUtils.error(res, ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   // Update last opened timestamp
@@ -209,7 +217,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
       try {
         const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
         if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
-          throw new Error("Encryption keys missing");
+          throw new Error(ErrorMessages.ENCRYPTION_KEYS_MISSING);
         }
         const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
         const iv = Buffer.from(file.encryption_iv, "hex");
@@ -264,7 +272,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
 
       const stats = fs.statSync(thumbPath);
       res.set("Content-Type", "image/jpeg");
-      res.set("Cache-Control", "private, max-age=86400");
+      res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_DAY}`);
       res.set("Content-Length", stats.size);
 
       const readStream = fs.createReadStream(thumbPath);
@@ -275,7 +283,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     } else {
       // Backwards compat for old unencrypted thumbnails if any
       res.set("Content-Type", "image/jpeg");
-      res.set("Cache-Control", "private, max-age=86400");
+      res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_DAY}`);
       return res.sendFile(path.resolve(thumbPath));
     }
   }
@@ -288,7 +296,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
 
     const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
     if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
-      return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+      return ResponseUtils.error(res, ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
     }
     const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
     const iv = Buffer.from(file.encryption_iv, "hex");
@@ -309,7 +317,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
 
     const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
     if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
-      return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+      return ResponseUtils.error(res, ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
     }
     const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
     const iv = Buffer.from(file.encryption_iv, "hex");
@@ -332,7 +340,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
         const heicConvert = (await import("heic-convert")).default;
         const outputBuffer = await heicConvert({ buffer: inputBuffer, format: "JPEG", quality: 0.8 });
         res.set("Content-Type", "image/jpeg");
-        res.set("Cache-Control", "private, max-age=3600");
+        res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
         return res.send(Buffer.from(outputBuffer));
       } catch (err) {
         logger.error(`[Preview] HEIC conversion failed for ${fileId}: ${err.message}`);
@@ -342,13 +350,13 @@ export const getFilePreview = asyncHandler(async (req, res) => {
 
     const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
     if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
-      return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+      return ResponseUtils.error(res, ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
     }
     const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
     const iv = Buffer.from(file.encryption_iv, "hex");
 
     res.set("Content-Type", file.mime_type);
-    res.set("Cache-Control", "private, max-age=3600");
+    res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
     res.set("Content-Disposition", "inline");
     res.set("Content-Length", file.size_bytes);
 
@@ -362,7 +370,7 @@ export const getFilePreview = asyncHandler(async (req, res) => {
   }
 
   // ── Other file types: not previewable ────────────────────────────────────────
-  return ResponseUtils.error(res, "Preview not supported for this file type", HttpStatus.BAD_REQUEST);
+  return ResponseUtils.error(res, ErrorMessages.PREVIEW_NOT_SUPPORTED, HttpStatus.BAD_REQUEST);
 });
 
 /**
@@ -380,7 +388,7 @@ export const streamFile = asyncHandler(async (req, res) => {
   }
 
   if (file.category !== FileCategories.VIDEO && file.category !== FileCategories.AUDIO) {
-    return ResponseUtils.error(res, "Streaming not supported for this file type", HttpStatus.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.STREAMING_NOT_SUPPORTED, HttpStatus.BAD_REQUEST);
   }
 
   if (!fs.existsSync(file.storage_path)) {
@@ -389,7 +397,7 @@ export const streamFile = asyncHandler(async (req, res) => {
 
   const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
   if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
-    return ResponseUtils.error(res, "Encryption keys missing", HttpStatus.INTERNAL_SERVER_ERROR);
+    return ResponseUtils.error(res, ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
@@ -398,7 +406,7 @@ export const streamFile = asyncHandler(async (req, res) => {
   // Non-native video: on-the-fly transcode via ffmpeg pipe (zero disk usage)
   if (file.category === FileCategories.VIDEO && MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)) {
     logger.info(`[Stream] On-the-fly transcode ${file.mime_type} → MP4 pipe for file ${file._id}`);
-    res.writeHead(200, {
+    res.writeHead(HttpStatus.OK, {
       "Content-Type": "video/mp4",
       "Content-Disposition": "inline",
       "Cache-Control": "private, no-store",
@@ -428,7 +436,11 @@ export const renameFile = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "RENAME", fileId: file._id, name });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, {
+    action: SocketActions.RENAME,
+    fileId: file._id,
+    name,
+  });
 
   return ResponseUtils.success(res, file);
 });
@@ -453,7 +465,11 @@ export const moveFile = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "MOVE", fileId: file._id, destFolderId: folderId });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, {
+    action: SocketActions.MOVE,
+    fileId: file._id,
+    destFolderId: folderId,
+  });
 
   return ResponseUtils.success(res, file);
 });
@@ -471,8 +487,11 @@ export const copyFile = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findById(req.user.id);
-  SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", { quota_bytes: user.quota_bytes, used_bytes: user.used_bytes });
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "COPY", folderId });
+  SocketService.emitToUser(req.user.id, SocketEvents.QUOTA_UPDATE, {
+    quota_bytes: user.quota_bytes,
+    used_bytes: user.used_bytes,
+  });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.COPY, folderId });
 
   return ResponseUtils.success(res, file);
 });
@@ -490,9 +509,12 @@ export const deleteFile = asyncHandler(async (req, res) => {
 
   await DbUtils.softDeleteRecursive(ItemTypes.FILE, req.params.id, req.user.id, true);
 
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "DELETE", fileId: req.params.id });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, {
+    action: SocketActions.DELETE,
+    fileId: req.params.id,
+  });
 
-  return ResponseUtils.success(res, { message: "File moved to trash" });
+  return ResponseUtils.success(res, { message: SuccessMessages.FILE_TRASHED });
 });
 
 /**
@@ -505,8 +527,8 @@ export const bulkDelete = asyncHandler(async (req, res) => {
   for (const item of items) {
     await DbUtils.softDeleteRecursive(item.type, item.id, req.user.id, true);
   }
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "BULK_DELETE", items });
-  return ResponseUtils.success(res, { message: "Items moved to trash" });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.BULK_DELETE, items });
+  return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_TRASHED });
 });
 
 /**
@@ -533,7 +555,7 @@ export const getRecentFiles = asyncHandler(async (req, res) => {
   const pg = req.query.pg || req.query.pn;
   const ps = req.query.ps;
   // Fallback to limit if provided (backward compatibility)
-  const pageSize = ps || limit || 50;
+  const pageSize = ps || limit || DefaultPagination.pageSize;
 
   const result = await paginateQuery(File, query, {
     pg,
@@ -647,8 +669,12 @@ export const bulkMove = asyncHandler(async (req, res) => {
   }
 
   await FileService.bulkMove(req.user.id, items, targetFolderId);
-  SocketService.emitToUser(req.user.id, "ITEM_BULK_CHANGE", { action: "MOVE", items, targetFolderId });
-  return ResponseUtils.success(res, { message: "Items moved successfully" });
+  SocketService.emitToUser(req.user.id, SocketEvents.ITEM_BULK_CHANGE, {
+    action: SocketActions.MOVE,
+    items,
+    targetFolderId,
+  });
+  return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_MOVED });
 });
 
 /**
@@ -668,7 +694,10 @@ export const bulkCopy = asyncHandler(async (req, res) => {
   await FileService.bulkCopy(req.user.id, items, targetFolderId);
   const user = await User.findById(req.user.id);
 
-  SocketService.emitToUser(req.user.id, "QUOTA_UPDATE", { quota_bytes: user.quota_bytes, used_bytes: user.used_bytes });
-  SocketService.emitToUser(req.user.id, "ITEM_BULK_CHANGE", { action: "COPY", targetFolderId });
-  return ResponseUtils.success(res, { message: "Items copied successfully" });
+  SocketService.emitToUser(req.user.id, SocketEvents.QUOTA_UPDATE, {
+    quota_bytes: user.quota_bytes,
+    used_bytes: user.used_bytes,
+  });
+  SocketService.emitToUser(req.user.id, SocketEvents.ITEM_BULK_CHANGE, { action: SocketActions.COPY, targetFolderId });
+  return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_COPIED });
 });

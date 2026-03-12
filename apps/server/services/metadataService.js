@@ -92,7 +92,7 @@ async function extractMetadata(filePath, category) {
           }
         }
       } catch (exifErr) {
-        console.warn("EXIF extraction failed:", exifErr.message);
+        logger.warn("EXIF extraction failed:", exifErr.message);
       }
     } else if (category === FileCategories.VIDEO) {
       const probeData = await probeFile(filePath);

@@ -11,7 +11,13 @@ import EmailService from "#services/emailService.js";
 import config from "#config/env.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, SocketEvents, NotificationTypes } from "#constants/generalConstants.js";
+import {
+  ErrorMessages,
+  SuccessMessages,
+  SocketEvents,
+  NotificationTypes,
+  NotificationDefaults,
+} from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
@@ -163,8 +169,8 @@ export async function createNotification(userId, type, title, message, data = {}
           userName: user.name,
           alertTitle: title,
           alertMessage: message,
-          usedPercentage: data.usedPercentage || "80",
-          totalQuota: data.totalQuota || "10GB",
+          usedPercentage: data.usedPercentage || NotificationDefaults.USED_PERCENTAGE,
+          totalQuota: data.totalQuota || NotificationDefaults.TOTAL_QUOTA,
           actionUrl: `${config.APP_BASE_URL}/quota`,
         },
       }).catch((err) => logger.error(`[StorageAlert Email] Failed:`, err));

@@ -9,8 +9,14 @@ import FileService from "#services/fileService.js";
 import { createNotification } from "#controllers/notificationController.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, NotificationTypes } from "#constants/generalConstants.js";
-import { HttpStatus } from "@shared-constants/constants";
+import {
+  ErrorMessages,
+  SuccessMessages,
+  NotificationTypes,
+  AUTH_COOKIE_NAME,
+  CookieConfig,
+} from "#constants/generalConstants.js";
+import { HttpStatus, Roles } from "@shared-constants/constants";
 
 // Config
 import config from "#config/env.js";
@@ -142,7 +148,7 @@ export const login = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const logout = (req, res) => {
-  res.clearCookie("token", { httpOnly: true, sameSite: "strict" });
+  res.clearCookie(AUTH_COOKIE_NAME, { httpOnly: CookieConfig.HTTP_ONLY, sameSite: CookieConfig.SAME_SITE });
   return ResponseUtils.success(res, {}, HttpStatus.OK, { message: SuccessMessages.LOGOUT_SUCCESS });
 };
 
@@ -153,14 +159,14 @@ export const logout = (req, res) => {
  */
 export const getMe = asyncHandler(async (req, res) => {
   // Sync storage quota only for standard users
-  if (req.user.role !== "ADMIN") {
+  if (req.user.role !== Roles.ADMIN) {
     await FileService.recalculateUsedBytes(req.user.id);
   }
 
   const userDoc = await User.findById(req.user.id);
   const user = userDoc.toObject();
 
-  if (user.role === "ADMIN") {
+  if (user.role === Roles.ADMIN) {
     delete user.quota_bytes;
     delete user.used_bytes;
   }

@@ -11,6 +11,9 @@ import { AnimatePresence, motion } from "framer-motion";
 // Components
 import Button from "@shared-components/components/button";
 
+// Constants
+import { ByteMultipliers } from "@shared-constants/constants";
+
 const { RangePicker } = DatePicker;
 
 const CATEGORIES = [
@@ -121,14 +124,14 @@ function AdvancedFilterDropdown({ onFilter, onClear, initialFilters = {}, trigge
                         placeholder="Min"
                         className="flex-1 premium-input-number"
                         min={0}
-                        onChange={(val) => updateFilter("minSize", val ? val * 1000 * 1000 : undefined)}
+                        onChange={(val) => updateFilter("minSize", val ? val * ByteMultipliers.MB : undefined)}
                       />
                       <span className="text-label-tertiary font-bold">to</span>
                       <InputNumber
                         placeholder="Max"
                         className="flex-1 premium-input-number"
                         min={0}
-                        onChange={(val) => updateFilter("maxSize", val ? val * 1000 * 1000 : undefined)}
+                        onChange={(val) => updateFilter("maxSize", val ? val * ByteMultipliers.MB : undefined)}
                       />
                     </div>
                   </div>

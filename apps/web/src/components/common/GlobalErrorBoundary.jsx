@@ -6,6 +6,9 @@ import { ReloadOutlined, WarningOutlined } from "@ant-design/icons";
 // Components
 import Button from "@shared-components/components/button";
 
+// Constants
+import PageUrls from "@constants/pageUrls";
+
 const { Title, Text } = Typography;
 
 class GlobalErrorBoundary extends Component {
@@ -19,7 +22,6 @@ class GlobalErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("Uncaught JS Error caught by GlobalErrorBoundary:", error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -28,7 +30,7 @@ class GlobalErrorBoundary extends Component {
   };
 
   handleGoHome = () => {
-    window.location.href = "/";
+    window.location.href = PageUrls.DashboardPage;
   };
 
   render() {

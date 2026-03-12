@@ -118,3 +118,35 @@ export const ICON_SIZE = {
  * File Upload Constants
  */
 export const UPLOAD_CHUNK_SIZE = 10 * 1000 * 1000; // 10 MB
+
+/**
+ * Byte conversion multipliers
+ */
+export const ByteMultipliers = {
+  KB: 1000,
+  MB: 1000 * 1000,
+  GB: 1000 * 1000 * 1000,
+};
+
+/**
+ * Speed calculation window for upload progress (ms)
+ */
+export const SPEED_WINDOW_MS = 5000;
+
+/**
+ * Delay before removing completed upload items (ms)
+ */
+export const UPLOAD_COMPLETE_DELAY_MS = 3000;
+
+/**
+ * Percentage multiplier
+ */
+export const PERCENTAGE_MULTIPLIER = 100;
+
+/**
+ * Default sort configuration
+ */
+export const DefaultSort = {
+  FIELD: "updatedAt",
+  ORDER: "desc",
+};

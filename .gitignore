@@ -28,6 +28,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# User storage
+apps/server/storage/*
+
 # Misc
 .DS_Store
 *.pem
@@ -39,5 +42,4 @@ package-lock.json
 
 .agent
 
-# Test Storage
-test-storage
+.github

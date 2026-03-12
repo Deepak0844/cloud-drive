@@ -4,6 +4,7 @@ import Folder from "#models/Folder.js";
 
 // Constants
 import { HttpStatus, ItemTypes } from "@shared-constants/constants";
+import { ErrorMessages, SuccessMessages, SocketEvents, SocketActions } from "#constants/generalConstants.js";
 
 // Utils
 import ResponseUtils from "#utils/responseUtils.js";
@@ -75,7 +76,7 @@ export const restoreItems = asyncHandler(async (req, res) => {
   const { items } = req.body; // Expects array of { id, type }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
-    return ResponseUtils.error(res, "No items provided for restoration", HttpStatus.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.BAD_REQUEST, HttpStatus.BAD_REQUEST);
   }
 
   for (const item of items) {
@@ -88,8 +89,8 @@ export const restoreItems = asyncHandler(async (req, res) => {
     await DbUtils.restoreRecursive(item.type, item.id, req.user.id);
   }
 
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "RESTORE", items });
-  return ResponseUtils.success(res, { message: "Items restored successfully" });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.RESTORE, items });
+  return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_RESTORED });
 });
 
 /**
@@ -101,7 +102,7 @@ export const deleteItemsPermanently = asyncHandler(async (req, res) => {
   const { items } = req.body; // Expects array of { id, type }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
-    return ResponseUtils.error(res, "No items provided for deletion", HttpStatus.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.BAD_REQUEST, HttpStatus.BAD_REQUEST);
   }
 
   for (const item of items) {
@@ -113,8 +114,8 @@ export const deleteItemsPermanently = asyncHandler(async (req, res) => {
     await DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id);
   }
 
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "PERMANENT_DELETE", items });
-  return ResponseUtils.success(res, { message: "Items permanently deleted" });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.PERMANENT_DELETE, items });
+  return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_PERMANENTLY_DELETED });
 });
 
 /**
@@ -133,13 +134,13 @@ export const emptyTrash = asyncHandler(async (req, res) => {
   ];
 
   if (itemsToDelete.length === 0) {
-    return ResponseUtils.success(res, { message: "Trash is already empty" });
+    return ResponseUtils.success(res, { message: SuccessMessages.TRASH_ALREADY_EMPTY });
   }
 
   for (const item of itemsToDelete) {
     await DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id);
   }
 
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "EMPTY_TRASH" });
-  return ResponseUtils.success(res, { message: "Trash emptied successfully" });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.EMPTY_TRASH });
+  return ResponseUtils.success(res, { message: SuccessMessages.TRASH_EMPTIED });
 });

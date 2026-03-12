@@ -17,7 +17,7 @@ import { motion } from "framer-motion";
 import { useGetFolderContentsQuery, useGetFolderDetailsQuery } from "@services/api/folderApi";
 
 // Constants
-import { QUERY_PARAMS_KEYS, STORAGE } from "@shared-constants/constants";
+import { QUERY_PARAMS_KEYS, STORAGE, DefaultSort } from "@shared-constants/constants";
 import PageNames from "@constants/pageNames";
 
 import { useDragDrop } from "@hooks/files/useDragDrop";
@@ -61,8 +61,8 @@ function MyFilesView() {
   // Derived / computed variables
   const currentFolderId = searchParams.get("folder") || "root";
 
-  const sortBy = searchParams.get(QUERY_PARAMS_KEYS.SORT_BY) || "updatedAt";
-  const sortOrder = searchParams.get(QUERY_PARAMS_KEYS.SORT_ORDER) || "desc";
+  const sortBy = searchParams.get(QUERY_PARAMS_KEYS.SORT_BY) || DefaultSort.FIELD;
+  const sortOrder = searchParams.get(QUERY_PARAMS_KEYS.SORT_ORDER) || DefaultSort.ORDER;
 
   // RTK Query hooks
   const {

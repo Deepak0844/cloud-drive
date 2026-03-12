@@ -21,7 +21,7 @@ import { motion } from "framer-motion";
 import { formatBytes } from "@shared-utils/utils";
 
 // Constants
-import { UPLOAD_CHUNK_SIZE } from "@shared-constants/constants";
+import { UPLOAD_CHUNK_SIZE, SPEED_WINDOW_MS, UPLOAD_COMPLETE_DELAY_MS } from "@shared-constants/constants";
 
 // App-local contexts
 import { useUploadDetails } from "@contexts/UploadContext";
@@ -109,7 +109,7 @@ function UploadItem({ upload }) {
       const window = speedWindowRef.current;
       window.push({ t: now, b: totalBytesUploadedSoFar });
 
-      const cutoff = now - 5000;
+      const cutoff = now - SPEED_WINDOW_MS;
       while (window.length > 1 && window[0].t < cutoff) window.shift();
 
       if (window.length >= 2) {
@@ -158,7 +158,7 @@ function UploadItem({ upload }) {
         setProgress(100);
         setSpeed(0);
         setEta(null);
-        setTimeout(() => removeUpload(id), 3000);
+        setTimeout(() => removeUpload(id), UPLOAD_COMPLETE_DELAY_MS);
       }
     } catch (err) {
       if (err.name === "AbortError" || err.message === "canceled" || err.message === "Aborted") {

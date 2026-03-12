@@ -22,4 +22,9 @@ export {
   FileCategories,
   BulkActions,
   UPLOAD_CHUNK_SIZE,
+  ByteMultipliers,
+  SPEED_WINDOW_MS,
+  UPLOAD_COMPLETE_DELAY_MS,
+  PERCENTAGE_MULTIPLIER,
+  DefaultSort,
 } from "./generalConstants.js";

@@ -19,6 +19,8 @@ import {
   FileCategories,
   VideoMimeTypes,
   VideoExtensions,
+  SocketEvents,
+  SocketActions,
 } from "#constants/generalConstants.js";
 
 // Utils
@@ -516,7 +518,7 @@ async function finalizeUploadedFile({
 
   // 6. Housekeeping
   await User.findByIdAndUpdate(userId, { $inc: { used_bytes: finalSize } });
-  SocketService.emitToUser(userId, "FILE_CHANGE", { action: "UPLOAD", file });
+  SocketService.emitToUser(userId, SocketEvents.FILE_CHANGE, { action: SocketActions.UPLOAD, file });
 
   return file;
 }
