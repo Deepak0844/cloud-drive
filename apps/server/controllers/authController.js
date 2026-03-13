@@ -3,7 +3,6 @@ import User from "#models/User.js";
 
 // Services
 import EmailService from "#services/emailService.js";
-import FileService from "#services/fileService.js";
 
 // Controllers
 import { createNotification } from "#controllers/notificationController.js";
@@ -158,11 +157,8 @@ export const logout = (req, res) => {
  * @access  Private
  */
 export const getMe = asyncHandler(async (req, res) => {
-  // Sync storage quota only for standard users
-  if (req.user.role !== Roles.ADMIN) {
-    await FileService.recalculateUsedBytes(req.user.id);
-  }
-
+  // used_bytes is kept in sync after every upload/delete/copy/trash operation;
+  // running a full DB aggregation on every profile load is unnecessary overhead.
   const userDoc = await User.findById(req.user.id);
   const user = userDoc.toObject();
 

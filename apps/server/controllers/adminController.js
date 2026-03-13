@@ -29,8 +29,14 @@ import FormatUtils from "#utils/formatUtils.js";
  * @access  Private/Admin
  */
 export const getUsers = asyncHandler(async (req, res) => {
-  const { pg, ps } = req.query;
+  const { pg, ps, search } = req.query;
   const queryFilter = { _id: { $ne: req.user.id } };
+
+  if (search) {
+    const regex = { $regex: search, $options: "i" };
+    queryFilter.$or = [{ name: regex }, { email: regex }];
+  }
+
   const result = await paginateQuery(User, queryFilter, { pg, ps, sort: "name", select: "-password" });
   return ResponseUtils.success(res, result);
 });

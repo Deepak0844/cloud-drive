@@ -533,9 +533,7 @@ export const deleteFile = asyncHandler(async (req, res) => {
  */
 export const bulkDelete = asyncHandler(async (req, res) => {
   const { items } = req.body;
-  for (const item of items) {
-    await DbUtils.softDeleteRecursive(item.type, item.id, req.user.id, true);
-  }
+  await Promise.all(items.map((item) => DbUtils.softDeleteRecursive(item.type, item.id, req.user.id, true)));
   SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.BULK_DELETE, items });
   return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_TRASHED });
 });
@@ -677,7 +675,9 @@ export const bulkMove = asyncHandler(async (req, res) => {
     }
   }
 
-  await FileService.bulkMove(req.user.id, items, targetFolderId);
+  // Use DbUtils.moveItem per item (same path as single moveFile and handleBulkOperation)
+  // so ancestor-cycle validation is applied uniformly.
+  await Promise.all(items.map((item) => DbUtils.moveItem(item.type, item.id, targetFolderId, req.user.id)));
   SocketService.emitToUser(req.user.id, SocketEvents.ITEM_BULK_CHANGE, {
     action: SocketActions.MOVE,
     items,
@@ -895,7 +895,8 @@ export const bulkCopy = asyncHandler(async (req, res) => {
     }
   }
 
-  await FileService.bulkCopy(req.user.id, items, targetFolderId);
+  // Use DbUtils.copyRecursive per item (same path as single copyFile and handleBulkOperation).
+  await Promise.all(items.map((item) => DbUtils.copyRecursive(item.type, item.id, targetFolderId, req.user.id)));
   const user = await User.findById(req.user.id);
 
   SocketService.emitToUser(req.user.id, SocketEvents.QUOTA_UPDATE, {

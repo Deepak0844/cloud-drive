@@ -333,6 +333,12 @@ async function copyFileInternal(userId, fileId, targetFolderId) {
     return;
   }
 
+  // Enforce quota before duplicating — a copy consumes as much space as the original.
+  const hasQuota = await checkQuota(userId, sourceFile.size_bytes);
+  if (!hasQuota) {
+    throw new Error(ErrorMessages.QUOTA_EXCEEDED);
+  }
+
   const uniqueName = await getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
   const ext = path.extname(sourceFile.original_name);
 

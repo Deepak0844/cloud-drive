@@ -79,15 +79,12 @@ export const restoreItems = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.BAD_REQUEST, HttpStatus.BAD_REQUEST);
   }
 
-  for (const item of items) {
-    if (!item.id || !item.type) {
-      continue;
-    }
-
-    // DbUtils.restoreRecursive handles moving items back to original_parent (if it exists and is not deleted),
-    // otherwise restores to root. It also restores all children.
-    await DbUtils.restoreRecursive(item.type, item.id, req.user.id);
-  }
+  // Each restore is fully independent — run them in parallel for better throughput.
+  await Promise.all(
+    items
+      .filter((item) => item.id && item.type)
+      .map((item) => DbUtils.restoreRecursive(item.type, item.id, req.user.id))
+  );
 
   SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.RESTORE, items });
   return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_RESTORED });
@@ -105,14 +102,12 @@ export const deleteItemsPermanently = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.BAD_REQUEST, HttpStatus.BAD_REQUEST);
   }
 
-  for (const item of items) {
-    if (!item.id || !item.type) {
-      continue;
-    }
-
-    // DbUtils.permanentDeleteRecursive deletes records from MongoDB and unlinks physical storage files
-    await DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id);
-  }
+  // Independent operations — run in parallel.
+  await Promise.all(
+    items
+      .filter((item) => item.id && item.type)
+      .map((item) => DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id))
+  );
 
   SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.PERMANENT_DELETE, items });
   return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_PERMANENTLY_DELETED });
@@ -137,9 +132,7 @@ export const emptyTrash = asyncHandler(async (req, res) => {
     return ResponseUtils.success(res, { message: SuccessMessages.TRASH_ALREADY_EMPTY });
   }
 
-  for (const item of itemsToDelete) {
-    await DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id);
-  }
+  await Promise.all(itemsToDelete.map((item) => DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id)));
 
   SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.EMPTY_TRASH });
   return ResponseUtils.success(res, { message: SuccessMessages.TRASH_EMPTIED });

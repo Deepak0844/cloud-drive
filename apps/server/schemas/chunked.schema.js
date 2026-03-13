@@ -23,5 +23,7 @@ export const finalizeChunkedUploadSchema = z.object({
     uploadId: z.string().min(1, "Upload ID is required"),
     fileName: z.string().min(1, "File name is required"),
     folderId: z.string().nullable().optional(),
+    mimeType: z.string().optional(),
+    totalSize: z.number().int().positive().optional(),
   }),
 });

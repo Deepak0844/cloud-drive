@@ -24,10 +24,10 @@ export const handleBulkOperation = asyncHandler(async (req, res) => {
     errors: [],
   };
 
-  for (const item of items) {
-    const { id, type } = item;
-
-    try {
+  // Run all item operations in parallel; use allSettled so a single failure
+  // doesn't abort the entire batch — partial success is recorded per item.
+  const settled = await Promise.allSettled(
+    items.map(async ({ id, type }) => {
       if (action === BulkActions.DELETE) {
         await DbUtils.softDeleteRecursive(type, id, req.user.id, true);
       } else if (action === BulkActions.RESTORE) {
@@ -39,11 +39,17 @@ export const handleBulkOperation = asyncHandler(async (req, res) => {
       } else if (action === BulkActions.COPY) {
         await DbUtils.copyRecursive(type, id, destination_folder_id, req.user.id);
       }
-      results.success.push(id);
-    } catch (err) {
-      results.errors.push({ id, error: err.message });
+      return id;
+    })
+  );
+
+  settled.forEach((outcome, idx) => {
+    if (outcome.status === "fulfilled") {
+      results.success.push(outcome.value);
+    } else {
+      results.errors.push({ id: items[idx].id, error: outcome.reason?.message ?? "Unknown error" });
     }
-  }
+  });
 
   // Emit socket event for real-time updates
   SocketService.emitToUser(String(req.user.id), SocketEvents.ITEM_BULK_CHANGE, {

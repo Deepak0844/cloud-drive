@@ -1,7 +1,14 @@
 import express from "express";
 
 // Controllers
-import { getNotifications, markAllAsRead, markAsRead, registerPushToken } from "#controllers/notificationController.js";
+import {
+  deleteAllNotifications,
+  deleteNotification,
+  getNotifications,
+  markAllAsRead,
+  markAsRead,
+  registerPushToken,
+} from "#controllers/notificationController.js";
 
 // Middleware
 import { protect } from "#middlewares/auth.js";
@@ -16,8 +23,10 @@ const router = express.Router();
 router.use(protect);
 
 router.get("/", getNotifications);
+router.delete("/", deleteAllNotifications);
 router.patch("/read-all", markAllAsRead);
 router.patch("/:id/read", validate(notificationIdParamSchema), markAsRead);
+router.delete("/:id", validate(notificationIdParamSchema), deleteNotification);
 router.post("/push-token", validate(registerPushTokenSchema), registerPushToken);
 
 export default router;

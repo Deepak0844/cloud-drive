@@ -21,9 +21,11 @@ export function sendTokenResponse(user, statusCode, res, message) {
 
   res.cookie(AUTH_COOKIE_NAME, token, cookieOptions);
 
+  // Token is already set in the HttpOnly cookie above — do NOT include it in
+  // the response body to avoid leaking it into JS memory, logs, or localStorage.
   return ResponseUtils.success(
     res,
-    { token, user: { id: user._id, name: user.name, email: user.email, role: user.role } },
+    { user: { id: user._id, name: user.name, email: user.email, role: user.role } },
     statusCode,
     message
   );
