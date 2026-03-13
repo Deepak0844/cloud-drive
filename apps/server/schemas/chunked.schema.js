@@ -9,8 +9,10 @@ export const initChunkedUploadSchema = z.object({
   }),
 });
 
+// Chunk metadata arrives as query params (?uploadId=<id>&chunkIndex=<n>)
+// because the request body is occupied by raw binary chunk data.
 export const uploadChunkSchema = z.object({
-  body: z.object({
+  query: z.object({
     uploadId: z.string().min(1, "Upload ID is required"),
     chunkIndex: z.coerce.number().int().nonnegative("Chunk index must be a non-negative integer"),
   }),

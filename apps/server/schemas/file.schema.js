@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { objectIdSchema } from "#schemas/common.schema.js";
 
 export const renameFileSchema = z.object({
   body: z.object({
@@ -30,13 +31,13 @@ export const uploadFileSchema = z.object({
 
 export const idParamSchema = z.object({
   params: z.object({
-    id: z.string().min(1, "ID is required"),
+    id: objectIdSchema,
   }),
 });
 
 export const hlsSegmentSchema = z.object({
   params: z.object({
-    id: z.string().min(1, "ID is required"),
+    id: objectIdSchema,
     segment: z.string().min(1, "Segment is required"),
   }),
 });

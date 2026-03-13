@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { objectIdSchema } from "#schemas/common.schema.js";
 
 export const createFolderSchema = z.object({
   body: z.object({
@@ -31,7 +32,7 @@ export const copyFolderSchema = moveFolderSchema;
 
 export const folderIdParamSchema = z.object({
   params: z.object({
-    id: z.string().min(1, "Folder ID is required"),
+    id: objectIdSchema,
   }),
 });
 
