@@ -202,11 +202,14 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  // Update last opened timestamp
-  file.last_opened_at = new Date();
-  await file.save();
-
   const isThumbnail = req.query.thumbnail === "true";
+
+  // Update last opened timestamp — skip for thumbnail requests (grid/list view
+  // would otherwise continuously reset the "recent" sort order)
+  if (!isThumbnail) {
+    file.last_opened_at = new Date();
+    await file.save();
+  }
   const userId = file.user.toString();
   const fileId = file._id.toString();
 

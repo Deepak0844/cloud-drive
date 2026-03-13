@@ -263,7 +263,7 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
     // ── HEIC/HEIF: convert to JPEG buffer first ──
     if (HEIC_FORMATS.has(ext)) {
       logger.debug(`[Thumbnail] HEIC/HEIF detected: ${sourcePath}`);
-      const inputBuffer = await fsPromises.readFile(sourcePath);
+      const inputBuffer = await fsPromises.readFile(unencryptedSource);
       const jpegBuffer = await heicConvert({ buffer: inputBuffer, format: "JPEG", quality: 0.85 });
       await sharp(jpegBuffer)
         .resize(300, 300, { fit: "cover", withoutEnlargement: false })
@@ -278,7 +278,7 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
       logger.debug(`[Thumbnail] RAW format detected (${ext}): ${sourcePath}`);
       const tempJpeg = destPath.replace(".jpg", "_raw_temp.jpg");
       try {
-        await extractRawImageFrame(sourcePath, tempJpeg);
+        await extractRawImageFrame(unencryptedSource, tempJpeg);
         await sharp(tempJpeg)
           .resize(300, 300, { fit: "cover", withoutEnlargement: false })
           .toFormat("jpeg", { quality: 85 })
@@ -298,7 +298,7 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
     // ── SVG: rasterize with explicit density ──
     if (ext === ".svg") {
       logger.debug(`[Thumbnail] SVG detected: ${sourcePath}`);
-      await sharp(sourcePath, { density: 150 })
+      await sharp(unencryptedSource, { density: 150 })
         .resize(300, 300, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
         .toFormat("jpeg", { quality: 85 })
         .toFile(destPath);
@@ -312,7 +312,7 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
 
       // Attempt 1: sharp (works for 8-bit AVIF)
       try {
-        await sharp(sourcePath)
+        await sharp(unencryptedSource)
           .resize(300, 300, { fit: "cover", withoutEnlargement: false })
           .toFormat("jpeg", { quality: 85 })
           .toFile(destPath);
@@ -328,7 +328,19 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
         await new Promise((resolve, reject) => {
           execFile(
             "sips",
-            ["-s", "format", "jpeg", "-s", "formatOptions", "85", "-Z", "300", sourcePath, "--out", sipsTempJpeg],
+            [
+              "-s",
+              "format",
+              "jpeg",
+              "-s",
+              "formatOptions",
+              "85",
+              "-Z",
+              "300",
+              unencryptedSource,
+              "--out",
+              sipsTempJpeg,
+            ],
             { timeout: 15000 },
             (err) => (err ? reject(err) : resolve())
           );
@@ -351,7 +363,7 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
       // Attempt 3: ffmpeg (last resort)
       const ffmpegTempJpeg = destPath.replace(".jpg", "_avif_temp.jpg");
       try {
-        await extractRawImageFrame(sourcePath, ffmpegTempJpeg);
+        await extractRawImageFrame(unencryptedSource, ffmpegTempJpeg);
         await sharp(ffmpegTempJpeg)
           .resize(300, 300, { fit: "cover", withoutEnlargement: false })
           .toFormat("jpeg", { quality: 85 })
@@ -370,7 +382,7 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
 
     // ── All other sharp-native formats (JPEG, PNG, WebP, TIFF, BMP, GIF) ──
     if (SHARP_NATIVE_FORMATS.has(ext) || ext === "") {
-      await sharp(sourcePath)
+      await sharp(unencryptedSource)
         .resize(300, 300, { fit: "cover", withoutEnlargement: false })
         .toFormat("jpeg", { quality: 85 })
         .toFile(destPath);
@@ -780,7 +792,7 @@ async function extractAudioAlbumArt(sourcePath, destPath, userKey, iv) {
       logger.warn(`[Thumbnail] Waveform fallback also failed for ${sourcePath}: ${waveErr.message}`);
     }
 
-    return null;
+    throw new Error(`No album art or waveform could be generated for: ${sourcePath}`);
   } finally {
     if (unencryptedSource && fs.existsSync(unencryptedSource)) {
       await fsPromises.unlink(unencryptedSource).catch(() => {});
