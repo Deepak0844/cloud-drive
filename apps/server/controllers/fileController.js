@@ -336,29 +336,33 @@ export const getFilePreview = asyncHandler(async (req, res) => {
       return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const ext = path.extname(file.storage_path).toLowerCase();
-    const isHeic = ext === ".heic" || ext === ".heif";
-
-    if (isHeic) {
-      try {
-        const inputBuffer = await fs.promises.readFile(file.storage_path);
-        const heicConvert = (await import("heic-convert")).default;
-        const outputBuffer = await heicConvert({ buffer: inputBuffer, format: "JPEG", quality: 0.8 });
-        res.set("Content-Type", "image/jpeg");
-        res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
-        return res.send(Buffer.from(outputBuffer));
-      } catch (err) {
-        logger.error(`[Preview] HEIC conversion failed for ${fileId}: ${err.message}`);
-        // Fall through to direct serve
-      }
-    }
-
+    // Fetch the user key once; used by both the HEIC branch and the generic image path.
     const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
     if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
       return ResponseUtils.error(res, ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
     }
     const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
     const iv = Buffer.from(file.encryption_iv, "hex");
+
+    const ext = path.extname(file.storage_path).toLowerCase();
+    const isHeic = ext === ".heic" || ext === ".heif";
+
+    if (isHeic) {
+      try {
+        // Decrypt the stored ciphertext into a plain buffer before HEIC conversion.
+        const encryptedBuffer = await fs.promises.readFile(file.storage_path);
+        const decipher = CryptoUtils.getDecipherStream(plaintextKey, iv);
+        const decryptedBuffer = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+        const heicConvert = (await import("heic-convert")).default;
+        const outputBuffer = await heicConvert({ buffer: decryptedBuffer, format: "JPEG", quality: 0.8 });
+        res.set("Content-Type", "image/jpeg");
+        res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
+        return res.send(Buffer.from(outputBuffer));
+      } catch (err) {
+        logger.error(`[Preview] HEIC conversion failed for ${fileId}: ${err.message}`);
+        // Fall through to direct decrypted stream serve
+      }
+    }
 
     res.set("Content-Type", file.mime_type);
     res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);

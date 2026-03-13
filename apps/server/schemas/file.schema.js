@@ -84,7 +84,7 @@ export const updateTagsSchema = z.object({
     id: z.string().min(1, "ID is required"),
   }),
   body: z.object({
-    tags: z.array(z.string()).min(1, "At least one tag is required"),
+    tags: z.array(z.string()).min(0),
   }),
 });
 
