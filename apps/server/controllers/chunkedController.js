@@ -90,6 +90,12 @@ export const uploadChunk = asyncHandler(async (req, res) => {
  */
 export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
   const { uploadId, fileName: name, folderId, mimeType, totalSize } = req.body;
+
+  // Ownership guard — same pattern as uploadChunk
+  if (!uploadId.startsWith(`${req.user.id}_`)) {
+    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
   const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
 
   if (!fs.existsSync(chunkDir)) {
@@ -142,7 +148,16 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
       return ResponseUtils.error(res, "File assembly failed: Size mismatch", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    // Re-check quota at finalize time — the user may have consumed more space
+    // via concurrent uploads since init was called.
     const totalSizeFinal = stats.size;
+    const hasQuota = await FileService.checkQuota(req.user.id, totalSizeFinal);
+    if (!hasQuota) {
+      if (fs.existsSync(tempCombinedPath)) {
+        await fs.promises.unlink(tempCombinedPath).catch(() => {});
+      }
+      return ResponseUtils.error(res, ErrorMessages.QUOTA_EXCEEDED, HttpStatus.FORBIDDEN);
+    }
     const extension = path.extname(name).replace(".", "");
     const effectiveMimeType = mimeType || MimeUtils.getMimeType(name);
     const category = MetadataService.getCategory(effectiveMimeType, name);
