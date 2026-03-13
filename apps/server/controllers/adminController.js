@@ -201,7 +201,7 @@ export const runStorageReanalysis = asyncHandler(async (req, res) => {
   const summary = await FileService.deepSyncStorage(userId);
 
   // Notify all admins via socket that sync is done (optional)
-  SocketService.emitToAdmins("STORAGE_SYNC_COMPLETE", { ...summary, targetUserId: userId });
+  SocketService.emitToAdmins(SocketEvents.STORAGE_SYNC_COMPLETE, { ...summary, targetUserId: userId });
 
   return ResponseUtils.success(res, summary, HttpStatus.OK, {
     message: userId
