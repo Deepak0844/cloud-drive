@@ -36,7 +36,7 @@ import asyncHandler from "#middlewares/asyncHandler.js";
 import ResponseUtils from "#utils/responseUtils.js";
 import DbUtils from "#utils/dbUtils.js";
 import MediaUtils from "#utils/mediaUtils.js";
-import { applyAdvancedFilters } from "#utils/filterUtils.js";
+import { applyAdvancedFilters, escapeRegex } from "#utils/filterUtils.js";
 import logger from "#utils/logger.js";
 import { paginateQuery } from "#utils/paginationUtils.js";
 import StreamingUtils from "#utils/streamingUtils.js";
@@ -56,7 +56,7 @@ export const getFiles = asyncHandler(async (req, res) => {
   let query = { user: req.user.id, is_deleted: false };
 
   if (search && search !== "null" && search !== "undefined") {
-    query.name = { $regex: search, $options: "i" };
+    query.name = { $regex: escapeRegex(search), $options: "i" };
   }
 
   const isRecursive = recursive === "true" || recursive === true;
@@ -557,7 +557,7 @@ export const getRecentFiles = asyncHandler(async (req, res) => {
   let query = { user: req.user.id, is_deleted: false };
 
   if (search && search !== "null" && search !== "undefined") {
-    query.name = { $regex: search, $options: "i" };
+    query.name = { $regex: escapeRegex(search), $options: "i" };
   }
 
   query = applyAdvancedFilters(query, req.query, false);

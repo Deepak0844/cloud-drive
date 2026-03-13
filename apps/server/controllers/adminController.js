@@ -33,7 +33,8 @@ export const getUsers = asyncHandler(async (req, res) => {
   const queryFilter = { _id: { $ne: req.user.id } };
 
   if (search) {
-    const regex = { $regex: search, $options: "i" };
+    const escaped = search.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    const regex = { $regex: escaped, $options: "i" };
     queryFilter.$or = [{ name: regex }, { email: regex }];
   }
 

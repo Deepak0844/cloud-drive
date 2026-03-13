@@ -12,7 +12,7 @@ import asyncHandler from "#middlewares/asyncHandler.js";
 // Utils
 import { AppError } from "#utils/errorUtils.js";
 import ResponseUtils from "#utils/responseUtils.js";
-import { applyAdvancedFilters } from "#utils/filterUtils.js";
+import { applyAdvancedFilters, escapeRegex } from "#utils/filterUtils.js";
 import DbUtils from "#utils/dbUtils.js";
 import FolderUtils from "#utils/folderUtils.js";
 
@@ -30,7 +30,7 @@ export const getFolders = asyncHandler(async (req, res) => {
   let query = { user: req.user.id, is_deleted: false };
 
   if (search && search !== "null" && search !== "undefined") {
-    query.name = { $regex: search, $options: "i" };
+    query.name = { $regex: escapeRegex(search), $options: "i" };
   }
 
   const isFav = isFavorite === "true" || isFavorite === true;
@@ -87,7 +87,7 @@ export const getFolderContents = asyncHandler(async (req, res) => {
   // Build folder query
   let folderQuery = { user: req.user.id, is_deleted: false };
   if (search && search !== "null" && search !== "undefined") {
-    folderQuery.name = { $regex: search, $options: "i" };
+    folderQuery.name = { $regex: escapeRegex(search), $options: "i" };
   } else {
     folderQuery.parent = folderId;
   }
@@ -96,7 +96,7 @@ export const getFolderContents = asyncHandler(async (req, res) => {
   // Build file query
   let fileQuery = { user: req.user.id, is_deleted: false };
   if (search && search !== "null" && search !== "undefined") {
-    fileQuery.name = { $regex: search, $options: "i" };
+    fileQuery.name = { $regex: escapeRegex(search), $options: "i" };
   } else {
     fileQuery.folder = folderId;
   }
@@ -218,6 +218,14 @@ export const getFolderDetails = asyncHandler(async (req, res) => {
  */
 export const createFolder = asyncHandler(async (req, res) => {
   const { name, parent } = req.body;
+
+  // Verify the parent folder belongs to this user before creating a child inside it
+  if (parent) {
+    const parentFolder = await Folder.findOne({ _id: parent, user: req.user.id, is_deleted: false });
+    if (!parentFolder) {
+      return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+  }
 
   const folderPath = await FolderUtils.calculateFolderPath(parent);
 

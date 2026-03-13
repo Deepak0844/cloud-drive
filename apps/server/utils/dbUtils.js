@@ -161,12 +161,10 @@ async function permanentDeleteRecursive(type, id, userId) {
       // Purge any cached HLS segments for this file
       await HlsCacheUtils.purgeFileCache(config.NAS_STORAGE_PATH, file._id.toString());
 
-      // Update user quota atomically
-      await User.findByIdAndUpdate(userId, {
-        $inc: { used_bytes: -file.size_bytes },
-      });
-      // Safety check: ensure used_bytes doesn't go below 0
-      await User.findOneAndUpdate({ _id: userId, used_bytes: { $lt: 0 } }, { used_bytes: 0 });
+      // Atomically decrement quota — $max:0 prevents going negative in a single operation
+      await User.findByIdAndUpdate(userId, [
+        { $set: { used_bytes: { $max: [{ $subtract: ["$used_bytes", file.size_bytes] }, 0] } } },
+      ]);
 
       await file.deleteOne();
     }

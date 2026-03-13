@@ -9,7 +9,7 @@ import { ErrorMessages, SuccessMessages, SocketEvents, SocketActions } from "#co
 // Utils
 import ResponseUtils from "#utils/responseUtils.js";
 import DbUtils from "#utils/dbUtils.js";
-import { applyAdvancedFilters } from "#utils/filterUtils.js";
+import { applyAdvancedFilters, escapeRegex } from "#utils/filterUtils.js";
 import { paginateQuery } from "#utils/paginationUtils.js";
 
 // Services
@@ -28,13 +28,13 @@ export const getTrashItems = asyncHandler(async (req, res) => {
 
   let folderQuery = { user: req.user.id, is_deleted: true, deleted_directly: true };
   if (search && search !== "null" && search !== "undefined") {
-    folderQuery.name = { $regex: search, $options: "i" };
+    folderQuery.name = { $regex: escapeRegex(search), $options: "i" };
   }
   folderQuery = applyAdvancedFilters(folderQuery, req.query, true);
 
   const fileQuery = { user: req.user.id, is_deleted: true, deleted_directly: true };
   if (search && search !== "null" && search !== "undefined") {
-    fileQuery.name = { $regex: search, $options: "i" };
+    fileQuery.name = { $regex: escapeRegex(search), $options: "i" };
   }
   // We only fetch items that were `deleted_directly` by the user.
   // Items deleted because their parent folder was deleted will NOT be shown at the root of the trash.
