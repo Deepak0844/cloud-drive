@@ -32,7 +32,7 @@ export const copyFolderSchema = moveFolderSchema;
 
 export const folderIdParamSchema = z.object({
   params: z.object({
-    id: objectIdSchema,
+    id: z.union([objectIdSchema, z.literal("root")]),
   }),
 });
 
