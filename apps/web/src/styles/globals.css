@@ -1,191 +1,390 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   AURORA DESIGN SYSTEM — "Vibrant Aurora & Clean Glass"
+   RULE: all raw color values live ONLY in :root.
+         Everything else references var(--token).
+   ============================================================ */
 
 :root {
-  /* Semantic Brand Colors */
-  --primary: #3b82f6;
-  --primary-light: #eff6ff;
-  --primary-dark: #1d4ed8;
+  /* ── Core palette raw values ─────────────────────────────── */
+  --_slate-950:       #0f172a;
+  --_slate-800:       #1e293b;
+  --_slate-700:       #334155;
+  --_slate-600:       #475569;
+  --_slate-400:       #94a3b8;
+  --_slate-500:       #64748b;
+  --_white:           #ffffff;
+  --_white-0:         rgba(255, 255, 255, 0);
+  --_white-04:        rgba(255, 255, 255, 0.04);
+  --_white-05:        rgba(255, 255, 255, 0.05);
+  --_white-06:        rgba(255, 255, 255, 0.06);
+  --_white-08:        rgba(255, 255, 255, 0.08);
+  --_white-12:        rgba(255, 255, 255, 0.12);
+  --_white-15:        rgba(255, 255, 255, 0.15);
+  --_white-20:        rgba(255, 255, 255, 0.20);
+  --_black-40:        rgba(0, 0, 0, 0.40);
+  --_black-50:        rgba(0, 0, 0, 0.50);
+  --_black-60:        rgba(0, 0, 0, 0.60);
+  --_violet-600:      #7c3aed;
+  --_violet-500:      #8b5cf6;
+  --_violet-400:      #a78bfa;
+  --_violet-700:      #6d28d9;
+  --_violet-12:       rgba(124, 58, 237, 0.12);
+  --_violet-15:       rgba(124, 58, 237, 0.15);
+  --_violet-20:       rgba(124, 58, 237, 0.20);
+  --_violet-25:       rgba(124, 58, 237, 0.25);
+  --_violet-30:       rgba(124, 58, 237, 0.30);
+  --_violet-35:       rgba(124, 58, 237, 0.35);
+  --_cyan-400:        #06b6d4;
+  --_cyan-15:         rgba(6, 182, 212, 0.15);
+  --_pink-500:        #ec4899;
+  --_purple-500:      #a855f7;
+  --_green-500:       #22c55e;
+  --_green-600:       #16a34a;
+  --_amber-400:       #f59e0b;
+  --_amber-500:       #d97706;
+  --_red-500:         #ef4444;
+  --_red-35:          rgba(239, 68, 68, 0.35);
+  --_red-600:         #dc2626;
+  --_sky-500:         #0ea5e9;
+  --_crisp-white:     #f8fafc;
 
-  --secondary: #6366f1;
-  --secondary-light: #eef2ff;
-  --secondary-dark: #4338ca;
+  /* ── Shadcn core tokens (Aurora dark palette) ─────────────── */
+  --background:           var(--_slate-950);
+  --foreground:           var(--_crisp-white);
 
-  --alt: #8b5cf6;
-  --alt-light: #f5f3ff;
-  --alt-dark: #6d28d9;
+  --card:                 var(--_slate-800);
+  --card-foreground:      var(--_crisp-white);
 
-  /* Status Colors */
-  --success: #10b981;
-  --success-light: #ecfdf5;
-  --success-dark: #047857;
+  --popover:              var(--_slate-800);
+  --popover-foreground:   var(--_crisp-white);
 
-  --danger: #ef4444;
-  --danger-light: #fef2f2;
-  --danger-dark: #b91c1c;
+  --primary:              var(--_violet-600);
+  --primary-foreground:   var(--_white);
 
-  --warning: #f59e0b;
-  --warning-light: #fffbeb;
-  --warning-dark: #b45309;
+  --secondary:            var(--_slate-800);
+  --secondary-foreground: var(--_slate-400);
 
-  --info: #0ea5e9;
-  --info-light: #f0f9ff;
-  --info-dark: #0369a1;
+  --muted:                var(--_slate-700);
+  --muted-foreground:     var(--_slate-400);
 
-  /* Surfaces & Backgrounds */
-  --bg-main: #ffffff;
-  --bg-surface: #f9fafb;
-  --bg-surface-alt: #f3f4f6;
-  --bg-glass: rgba(255, 255, 255, 0.85);
+  --accent:               var(--_slate-800);
+  --accent-foreground:    var(--_crisp-white);
 
-  /* Interaction & Borders */
-  --border-subtle: #f3f4f6;
-  --border-base: #e5e7eb;
-  --border-strong: #d1d5db;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --destructive:          var(--_red-500);
+  --border:               var(--_white-08);
+  --input:                var(--_white-06);
+  --ring:                 var(--_violet-600);
 
-  /* Text Colors */
-  --text-main: #111827;
-  --text-secondary: #4b5563;
-  --text-tertiary: #9ca3af;
-  --text-on-primary: #ffffff;
+  /* ── Radius ──────────────────────────────────────────────── */
+  --radius: 0.75rem;
 
-  /* Special Surfaces */
-  --bg-glass: rgba(255, 255, 255, 0.85);
-  --primary-hover: rgba(59, 130, 246, 0.06);
-  --tooltip-bg: #1e293b;
+  /* ── Sidebar ─────────────────────────────────────────────── */
+  --sidebar:                    var(--_slate-950);
+  --sidebar-foreground:         var(--_crisp-white);
+  --sidebar-primary:            var(--_violet-600);
+  --sidebar-primary-foreground: var(--_white);
+  --sidebar-accent:             var(--_violet-12);
+  --sidebar-accent-foreground:  var(--_crisp-white);
+  --sidebar-border:             var(--_white-06);
+  --sidebar-ring:               var(--_violet-600);
+
+  /* ── Chart / Data colours ────────────────────────────────── */
+  --chart-1: var(--_violet-600);   /* violet  — images   */
+  --chart-2: var(--_pink-500);     /* pink    — video    */
+  --chart-3: var(--_purple-500);   /* purple  — audio    */
+  --chart-4: var(--_green-500);    /* green   — docs     */
+  --chart-5: var(--_amber-400);    /* amber   — archives */
+
+  /* ── Aurora brand ────────────────────────────────────────── */
+  --aurora-violet:   var(--_violet-600);
+  --aurora-cyan:     var(--_cyan-400);
+  --aurora-gradient: linear-gradient(135deg, var(--_violet-600) 0%, var(--_cyan-400) 100%);
+
+  /* ── Semantic status ─────────────────────────────────────── */
+  --success:      var(--_green-500);
+  --success-dark: var(--_green-600);
+  --warning:      var(--_amber-400);
+  --warning-dark: var(--_amber-500);
+  --danger:       var(--_red-500);
+  --danger-dark:  var(--_red-600);
+  --info:         var(--_sky-500);
+
+  /* ── Surfaces ────────────────────────────────────────────── */
+  --bg-main:        var(--_slate-950);
+  --bg-surface:     var(--_slate-800);
+  --bg-surface-alt: var(--_slate-700);
+  --bg-glass:       var(--_white-05);
+
+  /* ── Text ────────────────────────────────────────────────── */
+  --text-main:       var(--_crisp-white);
+  --text-secondary:  var(--_slate-400);
+  --text-tertiary:   var(--_slate-500);
+  --text-on-primary: var(--_white);
+
+  /* ── Borders ─────────────────────────────────────────────── */
+  --border-subtle: var(--_white-04);
+  --border-base:   var(--_white-08);
+  --border-strong: var(--_white-15);
+
+  /* ── Shadows ─────────────────────────────────────────────── */
+  --shadow-sm:          0 2px 8px var(--_black-40);
+  --shadow-md:          0 8px 24px var(--_black-50);
+  --shadow-glow:        0 0 20px var(--_violet-25);
+  --shadow-glow-sm:     0 0 15px var(--_violet-20);
+  --shadow-glow-danger: 0 0 20px var(--_red-35);
+
+  /* ── Misc ────────────────────────────────────────────────── */
+  --primary-hover:  var(--_violet-12);
+  --primary-light:  var(--_violet-12);
+  --primary-dark:   var(--_violet-700);
+  --tooltip-bg:     var(--_slate-800);
+
+  /* ── Sidebar nav specific ────────────────────────────────── */
+  --sidebar-nav-active-bg:    var(--_violet-15);
+  --sidebar-nav-active-color: var(--_violet-400);
+  --sidebar-nav-hover-bg:     var(--_white-05);
+  --sidebar-nav-hover-color:  var(--_crisp-white);
+
+  /* ── Glass surfaces ──────────────────────────────────────── */
+  --glass-surface-bg:     var(--_white-04);
+  --glass-surface-border: var(--_white-08);
+  --glass-bar-bg:         rgba(15, 23, 42, 0.80);  /* --_slate-950 at 80% — cannot use var() inside rgba() */
+  --glass-bar-border:     var(--_white-06);
+
+  /* ── Scrollbar ───────────────────────────────────────────── */
+  --scrollbar-thumb:       var(--_white-12);
+  --scrollbar-thumb-hover: var(--_white-20);
+
+  /* ── Aurora page background glow stops ──────────────────── */
+  --aurora-glow-violet: var(--_violet-25);
+  --aurora-glow-cyan:   var(--_cyan-15);
+
+  /* ── Premium shadow ──────────────────────────────────────── */
+  --shadow-premium-dark:   var(--_black-40);
+  --shadow-premium-border: var(--_white-04);
 }
 
-@theme {
-  --color-primary: var(--primary);
-  --color-primary-light: var(--primary-light);
-  --color-primary-dark: var(--primary-dark);
+/* ── Tailwind @theme mapping ─────────────────────────────────── */
+@theme inline {
+  --font-sans:                  'Outfit', sans-serif;
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-popover:              var(--popover);
+  --color-popover-foreground:   var(--popover-foreground);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-destructive:          var(--destructive);
+  --color-border:               var(--border);
+  --color-input:                var(--input);
+  --color-ring:                 var(--ring);
 
-  --color-secondary: var(--secondary);
-  --color-secondary-light: var(--secondary-light);
-  --color-secondary-dark: var(--secondary-dark);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 
-  --color-alt: var(--alt);
-  --color-alt-light: var(--alt-light);
-  --color-alt-dark: var(--alt-dark);
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
 
-  --color-success: var(--success);
-  --color-success-light: var(--success-light);
+  /* Radius scale */
+  --radius-sm:  calc(var(--radius) * 0.6);
+  --radius-md:  calc(var(--radius) * 0.8);
+  --radius-lg:  var(--radius);
+  --radius-xl:  calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+
+  /* Aurora brand */
+  --color-aurora-violet: var(--aurora-violet);
+  --color-aurora-cyan:   var(--aurora-cyan);
+
+  /* Status */
+  --color-success:      var(--success);
   --color-success-dark: var(--success-dark);
-
-  --color-danger: var(--danger);
-  --color-danger-light: var(--danger-light);
-  --color-danger-dark: var(--danger-dark);
-
-  --color-warning: var(--warning);
-  --color-warning-light: var(--warning-light);
+  --color-warning:      var(--warning);
   --color-warning-dark: var(--warning-dark);
+  --color-danger:       var(--danger);
+  --color-danger-dark:  var(--danger-dark);
+  --color-info:         var(--info);
 
-  --color-info: var(--info);
-  --color-info-light: var(--info-light);
-  --color-info-dark: var(--info-dark);
-
-  /* Surfaces — use as bg-surface, bg-surface-dim, bg-surface-alt, bg-glass */
-  --color-surface: var(--bg-main);
+  /* Surfaces */
+  --color-surface:     var(--bg-main);
   --color-surface-dim: var(--bg-surface);
   --color-surface-alt: var(--bg-surface-alt);
-  --color-glass: var(--bg-glass);
+  --color-glass:       var(--bg-glass);
 
-  /* Text labels — use as text-label, text-label-secondary, text-label-tertiary */
-  --color-label: var(--text-main);
+  /* Text labels */
+  --color-label:           var(--text-main);
   --color-label-secondary: var(--text-secondary);
-  --color-label-tertiary: var(--text-tertiary);
+  --color-label-tertiary:  var(--text-tertiary);
 
-  /* Borders / lines — use as border-line, border-line-base, border-line-strong */
-  --color-line: var(--border-subtle);
-  --color-line-base: var(--border-base);
+  /* Borders */
+  --color-line:        var(--border-subtle);
+  --color-line-base:   var(--border-base);
   --color-line-strong: var(--border-strong);
 
-  /* Special */
-  --color-tooltip: var(--tooltip-bg);
+  /* Misc */
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark:  var(--primary-dark);
+  --color-tooltip:       var(--tooltip-bg);
 }
 
-body {
-  background-color: var(--bg-surface);
-  color: var(--text-main);
+/* ── Base layer ───────────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
 }
 
+/* ── DRY Aurora Utility Classes ───────────────────────────────── */
 @layer utilities {
+  /* Gradient text */
   .text-gradient-primary {
-    @apply bg-linear-to-r from-primary to-primary-dark bg-clip-text text-transparent;
+    background: var(--aurora-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 
-  .bg-gradient-primary {
-    @apply bg-linear-to-br from-primary-light to-primary-dark;
+  /* Gradient background */
+  .bg-gradient-aurora {
+    background: var(--aurora-gradient);
   }
 
+  /* Shadows — all use variables from :root */
   .shadow-primary {
-    box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.15);
+    box-shadow: 0 4px 20px var(--_violet-30);
+  }
+
+  .shadow-aurora {
+    box-shadow: 0 8px 32px var(--_violet-25);
+  }
+
+  .shadow-premium {
+    box-shadow:
+      0 20px 40px var(--shadow-premium-dark),
+      0 0 0 1px var(--shadow-premium-border);
+  }
+
+  /* Glass card effect */
+  .glass-card {
+    background: var(--glass-surface-bg);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid var(--glass-surface-border);
+  }
+
+  /* Auth page layout */
+  .auth-page-layout {
+    @apply min-h-screen flex flex-col items-center justify-center p-4;
+    background: var(--background);
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -10%, var(--aurora-glow-violet) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 20%, var(--aurora-glow-cyan) 0%, transparent 50%);
+  }
+
+  /* Glass navbar/header */
+  .glass-bar {
+    background: var(--glass-bar-bg) !important;
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-bottom: 1px solid var(--glass-bar-border);
+  }
+
+  /* Aurora glow for active elements */
+  .active-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Crimson glow — Trash page */
+  .danger-glow {
+    box-shadow: var(--shadow-glow-danger);
+  }
+
+  /* Premium shadow */
+  .premium-shadow {
+    box-shadow:
+      0 20px 40px var(--shadow-premium-dark),
+      0 0 0 1px var(--shadow-premium-border);
   }
 }
 
-.sidebar-menu.ant-menu {
-  background: transparent;
+/* ── Sidebar navigation (custom, replacing Ant Design Menu) ─── */
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 12px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
 }
 
-.sidebar-menu .ant-menu-item {
-  height: 50px !important;
-  line-height: 50px !important;
-  border-radius: 14px !important;
-  margin-bottom: 8px !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+.sidebar-nav-item:hover {
+  background: var(--sidebar-nav-hover-bg);
+  color: var(--sidebar-nav-hover-color);
+  transform: translateX(2px);
 }
 
-.sidebar-menu .ant-menu-item-selected {
-  background: var(--primary-light) !important;
-  color: var(--primary) !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+.sidebar-nav-item.active {
+  background: var(--sidebar-nav-active-bg);
+  color: var(--sidebar-nav-active-color);
+  box-shadow: var(--shadow-glow-sm);
 }
 
-.sidebar-menu .ant-menu-item:hover {
-  background: var(--bg-surface-alt) !important;
-  transform: translateX(4px);
-}
-
-.glass-bar {
-  background: var(--bg-glass) !important;
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.premium-shadow {
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.05),
-    0 10px 10px -5px rgba(0, 0, 0, 0.02);
-}
-
-.active-glow {
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
-}
-
-/* Global Custom Scrollbar Styling */
+/* ── Custom Scrollbar ─────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
-  border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
+  background: var(--scrollbar-thumb);
   border-radius: 8px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-tertiary);
+  background: var(--scrollbar-thumb-hover);
 }
 
-/* Firefox scrollbar support */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }

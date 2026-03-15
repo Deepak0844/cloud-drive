@@ -1,6 +1,5 @@
 // React core & third-party libraries
-import React, { useState } from "react";
-import { App as AntdApp, ConfigProvider, Drawer, Grid, Layout } from "antd";
+import React, { useState, useEffect } from "react";
 
 // App-local contexts
 import { UploadProvider } from "@contexts/UploadContext";
@@ -10,65 +9,71 @@ import UploadManager from "../files/UploadManager";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 
-const { Content } = Layout;
-const { useBreakpoint } = Grid;
+// ---------------------------------------------------------------------------
+// Hook — replaces Ant Design Grid.useBreakpoint
+// ---------------------------------------------------------------------------
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
 
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mql.matches);
+    const handler = (e) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
+  return isMobile;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 function MainLayout({ children }) {
   // Local state
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
 
   // Custom & shared hooks
-  const screens = useBreakpoint();
-
-  // Derived / computed variables
-  const isMobile = !screens.md && screens.xs !== undefined;
+  const isMobile = useIsMobile();
 
   // Render
   return (
-    <ConfigProvider
-      theme={{
-        token: {
-          colorPrimary: "#3b82f6",
-          borderRadius: 8,
-          fontFamily: "inherit",
-        },
-      }}
-    >
-      <AntdApp>
-        <Layout className="h-screen overflow-hidden bg-secondary">
-          {isMobile ? (
-            <Drawer
-              placement="left"
-              onClose={() => setDrawerVisible(false)}
-              open={drawerVisible}
-              size={260}
-              styles={{ body: { padding: 0 } }}
-              closable={false}
-            >
-              <Sidebar collapsed={false} setCollapsed={() => {}} isMobile={true} />
-            </Drawer>
-          ) : (
-            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} isMobile={false} />
-          )}
+    <div className="flex h-screen overflow-hidden bg-surface">
+      {/* Mobile sidebar overlay */}
+      {isMobile && drawerVisible && (
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setDrawerVisible(false)} />
+      )}
 
-          <Layout className="transition-all duration-300 ease-in-out h-screen">
-            <Navbar
-              collapsed={collapsed}
-              setCollapsed={setCollapsed}
-              isMobile={isMobile}
-              setDrawerVisible={setDrawerVisible}
-            />
-            <Content className="px-4 py-5 h-[calc(100vh-64px)] overflow-y-auto focus:outline-none">
-              <UploadProvider>
-                <div className="w-full max-w-7xl mx-auto">{children}</div>
-                <UploadManager />
-              </UploadProvider>
-            </Content>
-          </Layout>
-        </Layout>
-      </AntdApp>
-    </ConfigProvider>
+      {/* Mobile slide-in drawer */}
+      {isMobile ? (
+        <div
+          className={`fixed inset-y-0 left-0 z-50 w-[260px] transition-transform duration-300 ease-in-out ${
+            drawerVisible ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <Sidebar collapsed={false} setCollapsed={() => {}} isMobile={true} onClose={() => setDrawerVisible(false)} />
+        </div>
+      ) : (
+        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} isMobile={false} />
+      )}
+
+      {/* Main content column */}
+      <div className="flex flex-col flex-1 h-screen overflow-hidden transition-all duration-300">
+        <Navbar
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          isMobile={isMobile}
+          setDrawerVisible={setDrawerVisible}
+        />
+        <main className="flex-1 overflow-y-auto px-4 py-5 focus:outline-none">
+          <UploadProvider>
+            <div className="w-full max-w-7xl mx-auto">{children}</div>
+            <UploadManager />
+          </UploadProvider>
+        </main>
+      </div>
+    </div>
   );
 }
 
