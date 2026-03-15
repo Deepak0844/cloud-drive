@@ -1,5 +1,5 @@
 // Native modules
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
@@ -9,7 +9,6 @@ import os from "os";
 import archiver from "archiver";
 import { path as installerFfmpegPath } from "@ffmpeg-installer/ffmpeg";
 import { path as installerFfprobePath } from "@ffprobe-installer/ffprobe";
-import ffmpeg from "fluent-ffmpeg";
 import heicConvert from "heic-convert";
 import sharp from "sharp";
 
@@ -23,9 +22,6 @@ const systemFfprobe = fs.existsSync("/usr/bin/ffprobe") ? "/usr/bin/ffprobe" : n
 const resolvedFfmpegPath = systemFfmpeg || installerFfmpegPath;
 const resolvedFfprobePath = systemFfprobe || installerFfprobePath;
 
-// Set ffmpeg and ffprobe paths
-ffmpeg.setFfmpegPath(resolvedFfmpegPath);
-ffmpeg.setFfprobePath(resolvedFfprobePath);
 logger.info(`[Media] Using ffmpeg: ${resolvedFfmpegPath}`);
 logger.info(`[Media] Using ffprobe: ${resolvedFfprobePath}`);
 
@@ -126,7 +122,12 @@ function ensureDirectoryExists(dirPath) {
  * Remember to fs.promises.unlink() the returned path when done.
  */
 async function decryptToTemp(sourcePath, userKey, iv) {
-  const tempPath = path.join(os.tmpdir(), `cloud-drive-decrypt-${Date.now()}-${path.basename(sourcePath)}.tmp`);
+  // Preserve the original file extension so ffprobe/ffmpeg can use it as a
+  // format hint.  Raw container formats (e.g. Annex-B HEVC bitstream, .hevc)
+  // have a very low auto-detection score — keeping the extension makes
+  // probing and thumbnail extraction reliable.
+  const origExt = path.extname(path.basename(sourcePath)); // e.g. ".hevc", ".mp4"
+  const tempPath = path.join(os.tmpdir(), `cloud-drive-decrypt-${Date.now()}${origExt || ".tmp"}`);
   const decipher = CryptoUtils.getDecipherStream(userKey, iv);
 
   await new Promise((resolve, reject) => {
@@ -150,17 +151,28 @@ async function decryptToTemp(sourcePath, userKey, iv) {
 }
 
 /**
- * Promise wrapper for ffprobe metadata
+ * Promise wrapper for ffprobe metadata.
+ * Uses execFile directly — no fluent-ffmpeg abstraction layer that can swallow
+ * error details or reorder flags.
  */
 function probeVideo(filePath) {
   return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err, data) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(data);
+    execFile(
+      resolvedFfprobePath,
+      ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", filePath],
+      { maxBuffer: 10 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        if (err) {
+          reject(new Error(`ffprobe failed for ${filePath}: ${err.message}\n${stderr}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(stdout));
+        } catch (parseErr) {
+          reject(new Error(`ffprobe JSON parse failed for ${filePath}: ${parseErr.message}`));
+        }
       }
-    });
+    );
   });
 }
 
@@ -227,15 +239,23 @@ async function probeEncryptedMedia(storagePath, userKey, iv) {
 // ─── Image Thumbnails ─────────────────────────────────────────────────────────
 
 /**
- * Extract a JPEG from a RAW camera file using ffmpeg
+ * Extract a JPEG from a RAW camera file using ffmpeg.
+ * Uses execFile directly for reliable error reporting.
  */
 function extractRawImageFrame(sourcePath, destPath) {
   return new Promise((resolve, reject) => {
-    ffmpeg(sourcePath)
-      .outputOptions(["-vframes 1", "-q:v 2"])
-      .on("end", () => resolve(destPath))
-      .on("error", (err) => reject(new Error(`RAW extraction failed: ${err.message}`)))
-      .save(destPath);
+    execFile(
+      resolvedFfmpegPath,
+      ["-y", "-i", sourcePath, "-vframes", "1", "-q:v", "2", "-f", "mjpeg", destPath],
+      { maxBuffer: 10 * 1024 * 1024 },
+      (err, _stdout, stderr) => {
+        if (err) {
+          reject(new Error(`RAW extraction failed: ${err.message}\n${stderr}`));
+        } else {
+          resolve(destPath);
+        }
+      }
+    );
   });
 }
 
@@ -412,24 +432,56 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
 /**
  * Run a single ffmpeg thumbnail attempt
  */
-function runVideoThumbnailAttempt(unencryptedPath, destPath, seekSeconds, withScale) {
+function runVideoThumbnailAttempt(unencryptedPath, destPath, seekSeconds, withScale, frameOffset = 0) {
   return new Promise((resolve, reject) => {
-    const outputOptions = ["-vframes 1", "-q:v 2"];
-    if (withScale) {
-      outputOptions.push("-vf scale=300:300:force_original_aspect_ratio=increase,crop=300:300");
-    }
+    // Build the -vf filtergraph string.
+    // ffmpeg's filtergraph parser uses commas as filter separators. Commas inside
+    // a filter's argument list must be escaped as \, so ffmpeg treats them as
+    // literals. Because we use execFile (no shell), this backslash arrives at
+    // ffmpeg unmodified. JS "\\," → string "\," → ffmpeg sees \, → literal comma.
+    const selectPrefix = frameOffset > 0 ? `select=gte(n\\,${frameOffset}),setpts=PTS-STARTPTS,` : "";
+    const vf = withScale
+      ? `${selectPrefix}scale=300:300:force_original_aspect_ratio=increase,crop=300:300,format=yuv420p`
+      : `${selectPrefix}format=yuv420p`;
 
-    const cmd = ffmpeg(unencryptedPath);
+    // -ss before -i is a fast input seek; ffmpeg still decodes from the nearest
+    // key-frame before the timestamp, so the output is accurate.
+    const args = ["-y"];
     if (seekSeconds > 0) {
-      cmd.inputOptions([`-ss ${seekSeconds}`]);
+      args.push("-ss", String(seekSeconds));
     }
+    args.push("-i", unencryptedPath, "-vframes", "1", "-q:v", "2", "-vf", vf, "-f", "mjpeg", destPath);
 
-    cmd
-      .outputOptions(outputOptions)
-      .toFormat("mjpeg")
-      .on("end", () => resolve(destPath))
-      .on("error", (err) => reject(err))
-      .save(destPath);
+    execFile(resolvedFfmpegPath, args, { maxBuffer: 10 * 1024 * 1024 }, (err, _stdout, stderr) => {
+      if (err) {
+        // ffmpeg exits non-zero when it can't seek/find a frame — surface the
+        // full stderr so the caller knows exactly why it failed.
+        reject(
+          new Error(
+            `ffmpeg thumbnail failed (seek=${seekSeconds}s, frame=${frameOffset}): ${err.message}\n${stderr.slice(-500)}`
+          )
+        );
+        return;
+      }
+      // Raw container formats (e.g. Annex-B HEVC) silently produce 0-byte output
+      // with exit code 0 when a seek overshoots — check the file size explicitly.
+      // Also reject suspiciously small output (< 2 KB): this is the signature of
+      // a solid-black frame that HEVC Annex-B files produce for leading IDR
+      // frames before the actual content begins.  Treat anything below the same
+      // MIN_THUMB_BYTES threshold used in the controller as a failed attempt so
+      // the caller can try a higher frame offset.
+      const MIN_VALID_JPEG_BYTES = 2000;
+      const size = fs.existsSync(destPath) ? fs.statSync(destPath).size : 0;
+      if (size < MIN_VALID_JPEG_BYTES) {
+        reject(
+          new Error(
+            `ffmpeg produced ${size === 0 ? "empty" : "suspiciously-small (black frame)"} output (${size}B, seek=${seekSeconds}s, frame=${frameOffset})`
+          )
+        );
+      } else {
+        resolve(destPath);
+      }
+    });
   });
 }
 
@@ -463,20 +515,59 @@ async function generateVideoThumbnail(sourcePath, destFolder, filename, userKey,
 
     // Duration-aware seek: 10% of video length, capped between 0.5s and 30s
     const duration = await getVideoDuration(unencryptedSource);
-    const seekTime = duration > 0 ? Math.min(Math.max(duration * 0.1, 0.5), 30) : 0.5;
-    logger.debug(`[Thumbnail] Video duration: ${duration}s, seeking to: ${seekTime}s`);
+    logger.debug(`[Thumbnail] Video duration: ${duration}s`);
 
-    // Attempt chain: seek+scale → seek only → start+scale → start only
-    const attempts = [
-      { seek: seekTime, scale: true, label: `seek ${seekTime.toFixed(1)}s + scale` },
-      { seek: seekTime, scale: false, label: `seek ${seekTime.toFixed(1)}s no scale` },
-      { seek: 0, scale: true, label: "start + scale" },
-      { seek: 0, scale: false, label: "start no scale" },
-    ];
+    // Attempt chain varies by whether the container supports seeking.
+    //
+    // duration > 0  → container has timeline metadata; standard time-based seeks work.
+    //   1. Time seek + scale + frame-5 offset (skip potential black intro frames)
+    //   2. Time seek + scale
+    //   3. Time seek, no scale
+    //   4. Start (seek=0) + scale + frame-5 offset
+    //   5. Start (seek=0) + scale
+    //   6. Start (seek=0), no scale
+    //
+    // duration === 0 → raw bitstream (e.g. HEVC Annex-B); time seeks produce 0-byte
+    //   output silently, so skip them.  Instead use the select filter to jump to a
+    //   non-black frame.
+    //   1. Frame-5 offset + scale
+    //   2. Frame-5 offset, no scale
+    //   3. Start (frame 0) + scale
+    //   4. Start (frame 0), no scale
+    let attempts;
+    if (duration > 0) {
+      const seekTime = Math.min(Math.max(duration * 0.1, 0.5), 30);
+      logger.debug(`[Thumbnail] Seek-capable file, target: ${seekTime.toFixed(1)}s`);
+      attempts = [
+        { seek: seekTime, scale: true, frameOffset: 5, label: `seek ${seekTime.toFixed(1)}s + frame5 + scale` },
+        { seek: seekTime, scale: true, frameOffset: 0, label: `seek ${seekTime.toFixed(1)}s + scale` },
+        { seek: seekTime, scale: false, frameOffset: 0, label: `seek ${seekTime.toFixed(1)}s no scale` },
+        { seek: 0, scale: true, frameOffset: 5, label: "start + frame5 + scale" },
+        { seek: 0, scale: true, frameOffset: 0, label: "start + scale" },
+        { seek: 0, scale: false, frameOffset: 0, label: "start no scale" },
+      ];
+    } else {
+      logger.debug(`[Thumbnail] No seekable duration — using frame-select approach`);
+      // HEVC Annex-B and similar raw bitstreams often have multiple leading
+      // black IDR frames before actual content begins.  We expand the attempt
+      // chain to progressively skip more frames until we get a non-black result.
+      // runVideoThumbnailAttempt rejects outputs < 2 KB (black frames), so each
+      // "failed" attempt naturally advances to the next higher offset.
+      attempts = [
+        { seek: 0, scale: true, frameOffset: 5, label: "frame5 + scale" },
+        { seek: 0, scale: true, frameOffset: 30, label: "frame30 + scale" },
+        { seek: 0, scale: true, frameOffset: 60, label: "frame60 + scale" },
+        { seek: 0, scale: true, frameOffset: 100, label: "frame100 + scale" },
+        { seek: 0, scale: false, frameOffset: 30, label: "frame30 no scale" },
+        { seek: 0, scale: false, frameOffset: 5, label: "frame5 no scale" },
+        { seek: 0, scale: false, frameOffset: 0, label: "frame0 no scale" },
+        { seek: 0, scale: true, frameOffset: 0, label: "frame0 + scale" },
+      ];
+    }
 
     for (const attempt of attempts) {
       try {
-        await runVideoThumbnailAttempt(unencryptedSource, destPath, attempt.seek, attempt.scale);
+        await runVideoThumbnailAttempt(unencryptedSource, destPath, attempt.seek, attempt.scale, attempt.frameOffset);
         logger.info(`[Thumbnail] Video thumbnail generated (${attempt.label}): ${destPath}`);
         return destPath;
       } catch (err) {
@@ -507,37 +598,71 @@ async function generateVideoThumbnail(sourcePath, destFolder, filename, userKey,
  */
 function pipeTranscode(sourcePath, res) {
   return new Promise((resolve, reject) => {
-    const command = ffmpeg(sourcePath)
-      .outputOptions([
-        "-c:v libx264",
-        "-crf 23",
-        "-preset fast",
-        "-c:a aac",
-        "-b:a 128k",
-        "-pix_fmt yuv420p",
-        "-vf scale=trunc(iw/2)*2:trunc(ih/2)*2",
-        // Fragmented MP4 — enables streaming without seek/faststart
-        "-movflags frag_keyframe+empty_moov+default_base_moof",
-      ])
-      .toFormat("mp4")
-      .on("start", (cmd) => logger.debug("[FFMPEG] Pipe transcode:", cmd))
-      .on("end", () => {
+    const args = [
+      "-y",
+      "-i",
+      sourcePath,
+      // Map video unconditionally; map audio only if it exists (? = optional).
+      // Without this, ffmpeg errors when the source has no audio (e.g. raw HEVC).
+      "-map",
+      "0:v:0",
+      "-map",
+      "0:a:0?",
+      "-c:v",
+      "libx264",
+      "-crf",
+      "23",
+      "-preset",
+      "fast",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      "-pix_fmt",
+      "yuv420p",
+      "-vf",
+      "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+      // Fragmented MP4 — enables streaming without seek/faststart
+      "-movflags",
+      "frag_keyframe+empty_moov+default_base_moof",
+      "-f",
+      "mp4",
+      "pipe:1",
+    ];
+
+    logger.debug(`[FFMPEG] Pipe transcode: ${resolvedFfmpegPath} ${args.join(" ")}`);
+    const proc = spawn(resolvedFfmpegPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+
+    proc.stdout.pipe(res, { end: true });
+
+    let stderrBuf = "";
+    proc.stderr.on("data", (d) => {
+      stderrBuf += d.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (code !== 0 && code !== null) {
+        logger.error(`[FFMPEG] Pipe transcode exited ${code}:\n${stderrBuf.slice(-500)}`);
+        reject(new Error(`ffmpeg pipe transcode failed with code ${code}`));
+      } else {
         logger.info("[FFMPEG] Pipe transcode complete for:", sourcePath);
         resolve();
-      })
-      .on("error", (err) => {
-        // "Output stream closed" is expected when the client disconnects mid-stream
-        if (err.message && err.message.includes("Output stream closed")) {
-          logger.debug("[FFMPEG] Client disconnected during pipe transcode");
-          resolve();
-        } else {
-          logger.error("[FFMPEG] Pipe transcode error:", err.message);
-          reject(err);
-        }
-      });
+      }
+    });
 
-    // Pipe ffmpeg output directly to the HTTP response
-    command.pipe(res, { end: true });
+    proc.on("error", (err) => {
+      logger.error("[FFMPEG] Pipe transcode spawn error:", err.message);
+      reject(err);
+    });
+
+    // Client disconnected — stop the transcode gracefully
+    res.on("close", () => {
+      if (!proc.killed) {
+        proc.kill("SIGTERM");
+        logger.debug("[FFMPEG] Client disconnected — pipe transcode killed");
+        resolve();
+      }
+    });
   });
 }
 
@@ -551,53 +676,136 @@ function pipeTranscode(sourcePath, res) {
  */
 function pipeTranscodeStream(sourceStream, res) {
   return new Promise((resolve, reject) => {
-    const command = ffmpeg(sourceStream)
-      .outputOptions([
-        "-c:v libx264",
-        "-crf 23",
-        "-preset fast",
-        "-c:a aac",
-        "-b:a 128k",
-        "-pix_fmt yuv420p",
-        "-vf scale=trunc(iw/2)*2:trunc(ih/2)*2",
-        "-movflags frag_keyframe+empty_moov+default_base_moof",
-      ])
-      .toFormat("mp4")
-      .on("start", (cmd) => logger.debug("[FFMPEG] Pipe transcode from stream:", cmd))
-      .on("end", () => {
+    const args = [
+      "-y",
+      "-i",
+      "pipe:0",
+      "-map",
+      "0:v:0",
+      "-map",
+      "0:a:0?",
+      "-c:v",
+      "libx264",
+      "-crf",
+      "23",
+      "-preset",
+      "fast",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      "-pix_fmt",
+      "yuv420p",
+      "-vf",
+      "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+      "-movflags",
+      "frag_keyframe+empty_moov+default_base_moof",
+      "-f",
+      "mp4",
+      "pipe:1",
+    ];
+
+    logger.debug(`[FFMPEG] Pipe transcode stream: ${resolvedFfmpegPath} ${args.join(" ")}`);
+    const proc = spawn(resolvedFfmpegPath, args, { stdio: ["pipe", "pipe", "pipe"] });
+
+    // Feed encrypted-decrypted source into ffmpeg's stdin
+    sourceStream.pipe(proc.stdin);
+    proc.stdout.pipe(res, { end: true });
+
+    let stderrBuf = "";
+    proc.stderr.on("data", (d) => {
+      stderrBuf += d.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (code !== 0 && code !== null) {
+        logger.error(`[FFMPEG] Pipe stream transcode exited ${code}:\n${stderrBuf.slice(-500)}`);
+        reject(new Error(`ffmpeg pipe stream transcode failed with code ${code}`));
+      } else {
         logger.info("[FFMPEG] Pipe stream transcode complete");
         resolve();
-      })
-      .on("error", (err) => {
-        if (err.message && err.message.includes("Output stream closed")) {
-          logger.debug("[FFMPEG] Client disconnected during pipe stream transcode");
-          resolve();
-        } else {
-          logger.error("[FFMPEG] Pipe stream transcode error:", err.message);
-          reject(err);
-        }
-      });
+      }
+    });
 
-    command.pipe(res, { end: true });
+    proc.on("error", (err) => {
+      logger.error("[FFMPEG] Pipe stream transcode spawn error:", err.message);
+      reject(err);
+    });
+
+    // Client disconnected — stop the transcode and close stdin gracefully
+    res.on("close", () => {
+      if (!proc.killed) {
+        proc.kill("SIGTERM");
+        logger.debug("[FFMPEG] Client disconnected — pipe stream transcode killed");
+        resolve();
+      }
+    });
+
+    sourceStream.on("error", (err) => {
+      if (!proc.killed) {
+        proc.kill("SIGTERM");
+      }
+      reject(err);
+    });
   });
 }
 
 /**
- * Determines if a video file needs transcoding (i.e., not browser-native)
+ * HEVC/H.265 codec identifiers reported by ffprobe
  */
-function needsVideoPreview(filePath, mimeType) {
-  // If we have a native MIME type, no preview/transcode needed
+const HEVC_CODECS = new Set(["hevc", "h265", "h.265", "hvc1", "hev1"]);
+
+/**
+ * HEVC/H.265 MIME types that browsers cannot decode natively
+ */
+const HEVC_MIMES = new Set(["video/hevc", "video/x-hevc", "video/h265", "video/x-h265"]);
+
+/**
+ * File extensions that are always HEVC (regardless of MIME or metadata)
+ */
+const HEVC_EXTENSIONS = new Set([".hevc", ".h265", ".265"]);
+
+/**
+ * Determines if a video file needs server-side transcoding before the browser can play it.
+ *
+ * Checks in priority order:
+ *   1. Explicit codec from ffprobe metadata (most accurate — catches HEVC-in-MP4)
+ *   2. HEVC-specific MIME types
+ *   3. HEVC-specific file extensions
+ *   4. Container-level check (MP4/WebM are natively supported; everything else is not)
+ *
+ * @param {string} filePath  - Storage path (used for extension fallback)
+ * @param {string} mimeType  - File MIME type
+ * @param {string} [codec]   - Video codec from file metadata (e.g. file.metadata?.codec)
+ *                             Pass this to correctly detect HEVC-in-MP4 which browsers cannot play.
+ * @returns {boolean}        - true = needs transcoding, false = browser-native
+ */
+function needsVideoPreview(filePath, mimeType, codec) {
+  // 1. Codec check — most reliable, detects HEVC-in-MP4/MOV regardless of container
+  if (codec && HEVC_CODECS.has(codec.toLowerCase())) {
+    return true;
+  }
+
+  // 2. MIME type check for explicit HEVC mime strings
+  if (mimeType && HEVC_MIMES.has(mimeType.toLowerCase())) {
+    return true;
+  }
+
+  // 3. Extension check — covers .hevc / .h265 bare files
+  const ext = path.extname(filePath).toLowerCase();
+  if (HEVC_EXTENSIONS.has(ext)) {
+    return true;
+  }
+
+  // 4. Container check — MP4/WebM/M4V are browser-native (assuming H.264/VP9 codec)
   if (mimeType === "video/mp4" || mimeType === "video/webm" || mimeType === "video/x-m4v") {
     return false;
   }
-
-  // Fallback to extension check if MIME is generic or missing
-  const ext = path.extname(filePath).toLowerCase();
   if (ext === ".mp4" || ext === ".webm" || ext === ".m4v") {
     return false;
   }
 
-  // All other formats (MOV, MKV, AVI, etc.) need preview/transcode for broad browser support
+  // All other formats (MOV, MKV, AVI, etc.) need transcoding for broad browser support
   return true;
 }
 
@@ -608,20 +816,29 @@ function generateAudioWaveform(sourcePath, destPath) {
   ensureDirectoryExists(path.dirname(destPath));
 
   return new Promise((resolve, reject) => {
-    ffmpeg(sourcePath)
-      .complexFilter(["showwavespic=s=800x200:colors=0088FF"])
-      .outputOptions(["-frames:v 1"])
-      .toFormat("mjpeg")
-      .on("start", (cmd) => logger.debug("[FFMPEG] Waveform command:", cmd))
-      .on("end", () => {
+    const args = [
+      "-y",
+      "-i",
+      sourcePath,
+      "-filter_complex",
+      "showwavespic=s=800x200:colors=0088FF",
+      "-frames:v",
+      "1",
+      "-f",
+      "mjpeg",
+      destPath,
+    ];
+
+    logger.debug(`[FFMPEG] Waveform command: ${resolvedFfmpegPath} ${args.join(" ")}`);
+    execFile(resolvedFfmpegPath, args, { maxBuffer: 10 * 1024 * 1024 }, (err, _stdout, stderr) => {
+      if (err) {
+        logger.error(`[FFMPEG] Waveform error: ${err.message}\n${stderr.slice(-300)}`);
+        reject(new Error(`Waveform generation failed: ${err.message}`));
+      } else {
         logger.info("[FFMPEG] Waveform generated:", destPath);
         resolve(destPath);
-      })
-      .on("error", (err) => {
-        logger.error("[FFMPEG] Waveform error:", err.message);
-        reject(err);
-      })
-      .save(destPath);
+      }
+    });
   });
 }
 
@@ -661,6 +878,18 @@ async function transcodeToHls(storagePath, userKey, iv, outputDir, segmentDurati
     await fsPromises.mkdir(outputDir, { recursive: true });
     tempPath = await decryptToTemp(storagePath, userKey, iv);
 
+    // Probe whether the decoded file has an audio stream.
+    // Raw container formats (e.g. Annex-B HEVC bitstream) never carry audio;
+    // including [0:a] in the filter_complex when there is no audio stream makes
+    // ffmpeg error and write zero segments.
+    let inputHasAudio = false;
+    try {
+      const probeData = await probeVideo(tempPath);
+      inputHasAudio = probeData.streams.some((s) => s.codec_type === "audio");
+    } catch {
+      inputHasAudio = false;
+    }
+
     const segmentPattern = path.join(outputDir, "seg-%d.ts");
     const playlistPath = path.join(outputDir, "playlist.m3u8");
 
@@ -672,6 +901,7 @@ async function transcodeToHls(storagePath, userKey, iv, outputDir, segmentDurati
     // MKV container clock offset (~1.4s for Vorbis MKVs).
     const args = isAudioOnly
       ? [
+          "-y",
           "-i",
           tempPath,
           "-filter_complex",
@@ -696,41 +926,76 @@ async function transcodeToHls(storagePath, userKey, iv, outputDir, segmentDurati
           "9999",
           playlistPath,
         ]
-      : [
-          "-i",
-          tempPath,
-          "-filter_complex",
-          "[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setpts=PTS-STARTPTS[v];[0:a]asetpts=PTS-STARTPTS[a]",
-          "-map",
-          "[v]",
-          "-map",
-          "[a]",
-          "-c:v",
-          "libx264",
-          "-crf",
-          "23",
-          "-preset",
-          "fast",
-          "-pix_fmt",
-          "yuv420p",
-          "-c:a",
-          "aac",
-          "-b:a",
-          "128k",
-          "-f",
-          "hls",
-          "-hls_time",
-          String(segmentDuration),
-          "-hls_list_size",
-          "0",
-          "-hls_flags",
-          "independent_segments",
-          "-hls_segment_filename",
-          segmentPattern,
-          "-max_muxing_queue_size",
-          "9999",
-          playlistPath,
-        ];
+      : inputHasAudio
+        ? [
+            // Video + audio: use filter_complex to reset both PTS streams to 0
+            // (required for MKV/Vorbis containers with non-zero start offsets).
+            // format=yuv420p inside the video chain handles 10-bit HEVC input
+            // which libx264 cannot encode natively.
+            "-y",
+            "-i",
+            tempPath,
+            "-filter_complex",
+            "[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p,setpts=PTS-STARTPTS[v];[0:a]asetpts=PTS-STARTPTS[a]",
+            "-map",
+            "[v]",
+            "-map",
+            "[a]",
+            "-c:v",
+            "libx264",
+            "-crf",
+            "23",
+            "-preset",
+            "fast",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-f",
+            "hls",
+            "-hls_time",
+            String(segmentDuration),
+            "-hls_list_size",
+            "0",
+            "-hls_flags",
+            "independent_segments",
+            "-hls_segment_filename",
+            segmentPattern,
+            "-max_muxing_queue_size",
+            "9999",
+            playlistPath,
+          ]
+        : [
+            // Video-only (e.g. raw HEVC/H.265 Annex-B bitstream — no audio track).
+            // format=yuv420p converts 10-bit HDR input to 8-bit for libx264.
+            "-y",
+            "-i",
+            tempPath,
+            "-filter_complex",
+            "[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p,setpts=PTS-STARTPTS[v]",
+            "-map",
+            "[v]",
+            "-c:v",
+            "libx264",
+            "-crf",
+            "23",
+            "-preset",
+            "fast",
+            "-an",
+            "-f",
+            "hls",
+            "-hls_time",
+            String(segmentDuration),
+            "-hls_list_size",
+            "0",
+            "-hls_flags",
+            "independent_segments",
+            "-hls_segment_filename",
+            segmentPattern,
+            "-max_muxing_queue_size",
+            "9999",
+            playlistPath,
+          ];
 
     logger.info(`[HLS] Full transcode started: ${resolvedFfmpegPath} ${args.join(" ")}`);
 

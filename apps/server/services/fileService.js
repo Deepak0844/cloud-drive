@@ -474,6 +474,25 @@ async function finalizeUploadedFile({
     }
   }
 
+  // 1a. Extract metadata if caller did not supply any (e.g. chunked uploads skip this step).
+  //     This guarantees file.metadata.codec is populated for ALL uploads, which is crucial
+  //     for detecting HEVC-in-MP4 when needsVideoPreview is called later.
+  if (!metadata || Object.keys(metadata).length === 0) {
+    try {
+      const { metadata: extracted, extra: extractedExtra } = await MetadataService.extractMetadata(
+        finalUploadPath,
+        category
+      );
+      metadata = extracted;
+      // Merge extra fields (e.g. audio_metadata, gps, taken_at) so chunked uploads
+      // also benefit from these enrichments.
+      extra = { ...extractedExtra, ...extra };
+      logger.debug(`[Upload] Metadata extracted on-demand for ${originalName}: codec=${metadata?.codec ?? "n/a"}`);
+    } catch (metaErr) {
+      logger.warn(`[Upload] On-demand metadata extraction failed for ${originalName}: ${metaErr.message}`);
+    }
+  }
+
   // 2. Setup encryption & storage
   const user = await User.findById(userId).select("+encryption_key_wrapped");
   if (!user || !user.encryption_key_wrapped) {
