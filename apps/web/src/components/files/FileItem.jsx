@@ -1,50 +1,26 @@
 // React core & third-party libraries
 import React, { useEffect, useState } from "react";
-import { Card, Tooltip, Typography } from "antd";
-import {
-  CheckCircleFilled,
-  CopyOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
-  DragOutlined,
-  EditOutlined,
-  FileImageOutlined,
-  FileOutlined,
-  FilePdfOutlined,
-  FileTextOutlined,
-  InfoCircleOutlined,
-  MoreOutlined,
-  StarFilled,
-  StarOutlined,
-} from "@ant-design/icons";
+import { Card, Typography } from "antd";
+import { CheckCircleFilled, MoreOutlined, StarFilled } from "@ant-design/icons";
 import { motion } from "framer-motion";
 
 // Constants
 import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
+
 // Services (RTK Query hooks)
 import { useToggleFileFavoriteMutation } from "@services/api/fileApi";
 
 // Utils
 import { UrlUtils } from "@shared-utils/utils";
+import { getFileInfo } from "@utils/fileDisplayUtils";
+import { buildItemMenuItems } from "@utils/menuUtils";
 
 // Components
 import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@components/ui/tooltip";
 
 const { Text } = Typography;
-
-function getFileInfo(type) {
-  switch (type) {
-    case "image":
-      return { icon: <FileImageOutlined />, color: "text-primary", bg: "bg-primary-light" };
-    case "pdf":
-      return { icon: <FilePdfOutlined />, color: "text-danger", bg: "bg-danger-light" };
-    case "text":
-      return { icon: <FileTextOutlined />, color: "text-success", bg: "bg-success-light" };
-    default:
-      return { icon: <FileOutlined />, color: "text-label-secondary", bg: "bg-surface-alt" };
-  }
-}
 
 function FileItem({
   file,
@@ -123,44 +99,21 @@ function FileItem({
     handleDownload?.(file);
   }
 
-  const menuItems = (() => {
-    if (isTrashItem) {
-      return [{ key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) }];
-    }
-
-    const items = [
-      {
-        key: "download",
-        label: "Download",
-        icon: <DownloadOutlined />,
-        onClick: onDownload,
-      },
-      {
-        key: "favorite",
-        label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
-        icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
-        onClick: () => toggleFavorite({ id: file.id || file._id }),
-        disabled: isFavoriting,
-      },
-      { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(file) },
-    ];
-
-    if (onRename) items.push({ key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename(file) });
-    if (onMove) items.push({ key: "move", label: "Move to...", icon: <DragOutlined />, onClick: () => onMove(file) });
-    if (onCopy) items.push({ key: "copy", label: "Copy to...", icon: <CopyOutlined />, onClick: () => onCopy(file) });
-    if (onDelete) {
-      items.push({ type: "divider" });
-      items.push({
-        key: "delete",
-        label: "Delete",
-        icon: <DeleteOutlined />,
-        danger: true,
-        onClick: () => onDelete(file),
-      });
-    }
-
-    return items;
-  })();
+  const menuItems = buildItemMenuItems({
+    item: file,
+    isFolder: false,
+    isTrashItem,
+    isFavorite,
+    isFavoriting,
+    onOpen,
+    onDownload,
+    onShowInfo,
+    onRename,
+    onMove,
+    onCopy,
+    onDelete,
+    toggleFavorite,
+  });
 
   // Render
   if (viewMode === "list") {
@@ -292,11 +245,18 @@ function FileItem({
 
         <div className="flex items-start justify-between gap-1 px-1 pb-1">
           <div className="flex-1 min-w-0">
-            <Tooltip title={file.name}>
-              <Text strong className="block truncate text-[12px] leading-tight mb-0.5">
-                {file.name}
-              </Text>
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Text strong className="block truncate text-[12px] leading-tight mb-0.5 cursor-default">
+                    {file.name}
+                  </Text>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[200px] break-words">
+                  {file.name}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             {showParentContext && file.folder?.name && (
               <Text className="block truncate text-[9px] text-label-tertiary leading-none mb-1">
                 in <span className="font-black text-primary/70">{file.folder.name}</span>

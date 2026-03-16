@@ -12,6 +12,7 @@ export default defineConfig({
       "@constants": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/constants"),
       "@contexts": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/contexts"),
       "@hooks": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/hooks"),
+      "@lib": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/lib"),
       "@pages": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/pages"),
       "@routes": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/routes"),
       "@services": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/services"),

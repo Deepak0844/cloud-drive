@@ -1,62 +1,58 @@
-import { Modal as AntDModal } from "antd";
-
-// Components
-import ModalFooter from "./ModalFooter";
-import ModalHeader from "./ModalHeader";
+import React from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../../../../apps/web/src/components/ui/dialog";
+import { Button as ShadcnButton } from "../../../../apps/web/src/components/ui/button";
 
 /**
- * Modal Component
- * @param {*} forceRender : Boolean
- * @param {*} open : Boolean
- * @param {*} modalTitle : String
- * @param {*} modalWidth : Integer
- * @param {*} modalStyle : Object
- * @param {*} btnText : String
- * @param {*} btnLoading : Boolean
- * @param {*} handleReset : Function
- * @param {*} handleSubmit : Function
- * @param {*} handleCloseModal : Function
- * @param {*} children
- * @returns
+ * Bridge wrapper for Modal to shadcn Dialog.
  */
 export default function Modal({
-  forceRender = false,
   open = false,
   modalTitle = "",
   modalWidth = 600,
-  modalStyle = {},
   btnText = "Submit",
   btnLoading = false,
   cancelText = "Cancel",
-  handleReset = () => {}, // Re-using handleReset for onAfterClose if needed, but primarily onCancel
   handleSubmit = () => {},
   handleCloseModal = () => {},
   children,
 }) {
   return (
-    <AntDModal
-      open={open}
-      title={null}
-      width={modalWidth}
-      style={modalStyle}
-      afterClose={handleReset}
-      forceRender={forceRender}
-      closable={false}
-      footer={() => (
-        <ModalFooter
-          onCancel={handleCloseModal}
-          onOk={handleSubmit}
-          okText={btnText}
-          okLoading={btnLoading}
-          cancelText={cancelText}
-        />
-      )}
-      className="premium-modal"
-      centered
-    >
-      {modalTitle && <ModalHeader title={modalTitle} onClose={handleCloseModal} />}
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleCloseModal()}>
+      <DialogContent
+        onInteractOutside={(e) => e.preventDefault()}
+        style={{ maxWidth: modalWidth }}
+        className="glass-card border-white/10 shadow-premium sm:rounded-2xl"
+      >
+        {modalTitle && (
+          <DialogHeader className="border-b border-white/5 pb-4 mb-4">
+            <DialogTitle className="text-xl font-bold tracking-tight">{modalTitle}</DialogTitle>
+          </DialogHeader>
+        )}
 
-      <div className="modal-content-wrapper min-h-[100px]">{children}</div>
-    </AntDModal>
+        <div className="min-h-[100px]">{children}</div>
+
+        <DialogFooter className="border-t border-white/5 pt-4 mt-4">
+          <div className="flex justify-end gap-3 w-full">
+            <ShadcnButton variant="ghost" onClick={handleCloseModal}>
+              {cancelText}
+            </ShadcnButton>
+            <ShadcnButton
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={btnLoading}
+              className="shadow-primary px-6"
+            >
+              {btnText}
+            </ShadcnButton>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

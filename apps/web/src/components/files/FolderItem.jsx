@@ -1,23 +1,14 @@
 // React core & third-party libraries
 import React from "react";
 import { Card, Typography } from "antd";
-import {
-  CheckCircleFilled,
-  CopyOutlined,
-  DeleteOutlined,
-  DoubleRightOutlined,
-  DragOutlined,
-  EditOutlined,
-  FolderFilled,
-  InfoCircleOutlined,
-  MoreOutlined,
-  StarFilled,
-  StarOutlined,
-} from "@ant-design/icons";
+import { CheckCircleFilled, FolderFilled, MoreOutlined, StarFilled } from "@ant-design/icons";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
 import { useToggleFolderFavoriteMutation } from "@services/api/folderApi";
+
+// Utils
+import { buildItemMenuItems } from "@utils/menuUtils";
 
 // Components
 import Dropdown from "@shared-components/components/dropdown";
@@ -72,40 +63,20 @@ function FolderItem({
     onOpen?.(folder);
   }
 
-  const menuItems = (() => {
-    if (isTrashItem) {
-      return [{ key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) }];
-    }
-
-    const items = [
-      { key: "open", label: "Open", icon: <DoubleRightOutlined />, onClick: () => onOpen?.(folder) },
-      {
-        key: "favorite",
-        label: isFavorite ? "Remove from Favorites" : "Add to Favorites",
-        icon: isFavorite ? <StarFilled className="text-warning" /> : <StarOutlined />,
-        onClick: () => toggleFavorite({ id: folder.id || folder._id }),
-        disabled: isFavoriting,
-      },
-      { key: "info", label: "Details", icon: <InfoCircleOutlined />, onClick: () => onShowInfo?.(folder) },
-    ];
-
-    if (onRename)
-      items.push({ key: "rename", label: "Rename", icon: <EditOutlined />, onClick: () => onRename(folder) });
-    if (onMove) items.push({ key: "move", label: "Move to...", icon: <DragOutlined />, onClick: () => onMove(folder) });
-    if (onCopy) items.push({ key: "copy", label: "Copy to...", icon: <CopyOutlined />, onClick: () => onCopy(folder) });
-    if (onDelete) {
-      items.push({ type: "divider" });
-      items.push({
-        key: "delete",
-        label: "Delete",
-        icon: <DeleteOutlined />,
-        danger: true,
-        onClick: () => onDelete(folder),
-      });
-    }
-
-    return items;
-  })();
+  const menuItems = buildItemMenuItems({
+    item: folder,
+    isFolder: true,
+    isTrashItem,
+    isFavorite,
+    isFavoriting,
+    onOpen,
+    onShowInfo,
+    onRename,
+    onMove,
+    onCopy,
+    onDelete,
+    toggleFavorite,
+  });
 
   // Render
   if (viewMode === "list") {
