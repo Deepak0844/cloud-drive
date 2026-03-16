@@ -1,9 +1,17 @@
 // React core & third-party libraries
 import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Alert, App, Card, Form, Input } from "antd";
-import { LockOutlined } from "@ant-design/icons";
+import { App } from "antd"; // Retained for global message/toast until P8 sonner swap
+import { Lock, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+import { Card } from "@components/ui/card";
+import { Input } from "@components/ui/input";
+import { Button } from "@components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
 
 // Constants
 import PageUrls from "@constants/pageUrls";
@@ -12,7 +20,16 @@ import PageUrls from "@constants/pageUrls";
 import { useResetPasswordMutation } from "@services/api/authApi";
 
 // Components
-import Button from "@shared-components/components/button";
+
+const resetSchema = z
+  .object({
+    password: z.string().min(6, { message: "Password must be at least 6 characters." }),
+    confirmPassword: z.string().min(1, { message: "Please confirm your new password." }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+  });
 
 function ResetPasswordPage() {
   // Router hooks & params
@@ -21,6 +38,15 @@ function ResetPasswordPage() {
 
   // RTK Query hooks
   const [resetPassword, { isLoading }] = useResetPasswordMutation();
+
+  // Form setup
+  const form = useForm({
+    resolver: zodResolver(resetSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
   // Custom & shared hooks
   const { message } = App.useApp();
@@ -62,14 +88,16 @@ function ResetPasswordPage() {
         </motion.div>
 
         <div className="w-full max-w-md">
-          <Card className="rounded-3xl shadow-xl border-gray-100 p-4">
-            <Alert
-              type="error"
-              showIcon
-              message="Invalid or missing reset link"
-              description="This password reset link is invalid or has already been used. Please request a new one."
-              className="rounded-xl mb-6"
-            />
+          <Card className="rounded-3xl shadow-xl p-4 border-white/10 glass-card">
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-xl mb-6 flex items-start gap-3">
+              <AlertCircle className="shrink-0 mt-0.5" size={20} />
+              <div>
+                <h4 className="font-bold mb-1">Invalid or missing reset link</h4>
+                <p className="text-sm opacity-90">
+                  This password reset link is invalid or has already been used. Please request a new one.
+                </p>
+              </div>
+            </div>
             <div className="text-center">
               <Link to={PageUrls.ForgotPasswordPage} className="font-bold text-primary hover:text-primary-dark">
                 Request a new reset link
@@ -97,58 +125,64 @@ function ResetPasswordPage() {
       </motion.div>
 
       <div className="w-full max-w-md">
-        <Card className="rounded-3xl shadow-xl border-gray-100 p-4">
+        <Card className="rounded-3xl shadow-xl p-4 border-white/10 glass-card">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold">Set New Password</h2>
             <p className="text-label-secondary">Choose a strong password for your account.</p>
           </div>
 
-          <Form layout="vertical" className="space-y-4" onFinish={handleFinish}>
-            <Form.Item
-              label="New Password"
-              name="password"
-              rules={[{ required: true, min: 6, message: "Password must be at least 6 characters." }]}
-            >
-              <Input.Password
-                prefix={<LockOutlined className="text-label-tertiary" />}
-                placeholder="••••••••"
-                className="h-12 rounded-xl"
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleFinish)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        prefix={<Lock size={18} className="text-label-tertiary" />}
+                        placeholder="••••••••"
+                        className="h-12 rounded-xl"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Form.Item>
 
-            <Form.Item
-              label="Confirm New Password"
-              name="confirmPassword"
-              dependencies={["password"]}
-              rules={[
-                { required: true, message: "Please confirm your new password." },
-                ({ getFieldValue }) => ({
-                  validator(_, value) {
-                    if (!value || getFieldValue("password") === value) {
-                      return Promise.resolve();
-                    }
-                    return Promise.reject(new Error("Passwords do not match."));
-                  },
-                }),
-              ]}
-            >
-              <Input.Password
-                prefix={<LockOutlined className="text-label-tertiary" />}
-                placeholder="••••••••"
-                className="h-12 rounded-xl"
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm New Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        prefix={<Lock size={18} className="text-label-tertiary" />}
+                        placeholder="••••••••"
+                        className="h-12 rounded-xl"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Form.Item>
 
-            <Form.Item>
               <Button
-                type="primary"
-                htmlType="submit"
-                loading={isLoading}
-                className="w-full h-12 rounded-xl font-bold shadow-primary text-lg"
+                variant="aurora"
+                size="pill"
+                type="submit"
+                disabled={isLoading}
+                className="w-full text-lg mt-6 font-bold"
               >
-                Reset Password
+                {isLoading ? "Resetting..." : "Reset Password"}
               </Button>
-            </Form.Item>
+            </form>
           </Form>
 
           <div className="text-center mt-6">

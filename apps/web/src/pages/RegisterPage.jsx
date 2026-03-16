@@ -1,9 +1,17 @@
 // React core & third-party libraries
 import React from "react";
 import { Link } from "react-router-dom";
-import { App, Card, Form, Input } from "antd";
-import { LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
+import { App } from "antd"; // Retained for global message/toast until P8 sonner swap
+import { Lock, Mail, User } from "lucide-react";
 import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+import { Card } from "@components/ui/card";
+import { Input } from "@components/ui/input";
+import { Button } from "@components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
 
 // Constants
 import PageUrls from "@constants/pageUrls";
@@ -12,12 +20,27 @@ import PageUrls from "@constants/pageUrls";
 import { useAuth } from "@hooks/useAuth";
 
 // Components
-import Button from "@shared-components/components/button";
+
+const registerSchema = z.object({
+  name: z.string().min(1, { message: "Please input your name!" }),
+  email: z.string().min(1, { message: "Please input your email!" }).email({ message: "Invalid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters!" }),
+});
 
 function RegisterPage() {
   // Custom & shared hooks
   const { message } = App.useApp();
   const { register, isRegisterLoading } = useAuth();
+
+  // Form setup
+  const form = useForm({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+    },
+  });
 
   // Event handlers
 
@@ -46,55 +69,82 @@ function RegisterPage() {
       </motion.div>
 
       <div className="w-full max-w-md">
-        <Card className="rounded-3xl shadow-xl border-gray-100 p-4">
+        <Card className="rounded-3xl shadow-xl p-4 border-white/10 glass-card">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold">Create Account</h2>
             <p className="text-label-secondary">Join us and start managing your files securely.</p>
           </div>
 
-          <Form layout="vertical" className="space-y-4" onFinish={handleFinish}>
-            <Form.Item label="Full Name" name="name" rules={[{ required: true, message: "Please input your name!" }]}>
-              <Input
-                prefix={<UserOutlined className="text-label-tertiary" />}
-                placeholder="Full Name"
-                className="h-12 rounded-xl"
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleFinish)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        prefix={<User size={18} className="text-label-tertiary" />}
+                        placeholder="Full Name"
+                        className="h-12 rounded-xl"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Form.Item>
 
-            <Form.Item
-              label="Email"
-              name="email"
-              rules={[{ required: true, type: "email", message: "Please input a valid email!" }]}
-            >
-              <Input
-                prefix={<MailOutlined className="text-label-tertiary" />}
-                placeholder="email@example.com"
-                className="h-12 rounded-xl"
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        prefix={<Mail size={18} className="text-label-tertiary" />}
+                        placeholder="email@example.com"
+                        className="h-12 rounded-xl"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Form.Item>
 
-            <Form.Item
-              label="Password"
-              name="password"
-              rules={[{ required: true, min: 6, message: "Password must be at least 6 characters!" }]}
-            >
-              <Input.Password
-                prefix={<LockOutlined className="text-label-tertiary" />}
-                placeholder="••••••••"
-                className="h-12 rounded-xl"
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        prefix={<Lock size={18} className="text-label-tertiary" />}
+                        placeholder="••••••••"
+                        className="h-12 rounded-xl"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </Form.Item>
 
-            <Form.Item>
               <Button
-                type="primary"
-                htmlType="submit"
-                loading={isRegisterLoading}
-                className="w-full h-12 rounded-xl font-bold shadow-primary text-lg"
+                variant="aurora"
+                size="pill"
+                type="submit"
+                disabled={isRegisterLoading}
+                className="w-full text-lg mt-6 font-bold"
               >
-                Create Account
+                {isRegisterLoading ? "Creating Account..." : "Create Account"}
               </Button>
-            </Form.Item>
+            </form>
           </Form>
 
           <div className="text-center mt-6">

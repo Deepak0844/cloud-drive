@@ -1,4 +1,4 @@
-import { Input } from "antd";
+import { Input } from "@components/ui/input";
 import { Search } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -56,13 +56,12 @@ export default function SearchInput({
 
   return (
     <Input
-      size={size}
+      size={size === "middle" ? "default" : size}
       placeholder={placeholder}
       value={localValue}
       onChange={(e) => setLocalValue(e.target.value)}
       prefix={<Icon icon={Search} className="text-label-tertiary" size="small" />}
-      className={`premium-nav-search ${className}`}
-      allowClear={true}
+      className={`h-10 sm:w-64 w-full bg-surface-alt border-transparent focus-visible:ring-primary ${className}`}
       {...rest}
     />
   );

@@ -1,9 +1,16 @@
 // React core & third-party libraries
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Alert, Card, Form, Input } from "antd";
-import { MailOutlined } from "@ant-design/icons";
+import { Mail, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+import { Card } from "@components/ui/card";
+import { Input } from "@components/ui/input";
+import { Button } from "@components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
 
 // Services (RTK Query hooks)
 import { useForgotPasswordMutation } from "@services/api/authApi";
@@ -12,7 +19,10 @@ import { useForgotPasswordMutation } from "@services/api/authApi";
 import PageUrls from "@constants/pageUrls";
 
 // Components
-import Button from "@shared-components/components/button";
+
+const forgotSchema = z.object({
+  email: z.string().min(1, { message: "Please enter a valid email address." }).email({ message: "Invalid email" }),
+});
 
 function ForgotPasswordPage() {
   // Local state
@@ -20,6 +30,14 @@ function ForgotPasswordPage() {
 
   // RTK Query hooks
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
+
+  // Form setup
+  const form = useForm({
+    resolver: zodResolver(forgotSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
 
   // Event handlers
 
@@ -50,7 +68,7 @@ function ForgotPasswordPage() {
       </motion.div>
 
       <div className="w-full max-w-md">
-        <Card className="rounded-3xl shadow-xl border-gray-100 p-4">
+        <Card className="rounded-3xl shadow-xl p-4 border-white/10 glass-card">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold">Forgot Password</h2>
             <p className="text-label-secondary">
@@ -60,13 +78,16 @@ function ForgotPasswordPage() {
 
           {isSubmitted ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <Alert
-                type="success"
-                showIcon
-                message="Check your inbox"
-                description="If this email is registered, you will receive a password reset link shortly. Please also check your spam folder."
-                className="rounded-xl mb-6"
-              />
+              <div className="bg-success/10 border border-success/20 text-success p-4 rounded-xl mb-6 flex items-start gap-3">
+                <CheckCircle2 className="shrink-0 mt-0.5" size={20} />
+                <div>
+                  <h4 className="font-bold mb-1">Check your inbox</h4>
+                  <p className="text-sm opacity-90">
+                    If this email is registered, you will receive a password reset link shortly. Please also check your
+                    spam folder.
+                  </p>
+                </div>
+              </div>
               <div className="text-center">
                 <Link to={PageUrls.LoginPage} className="font-bold text-primary hover:text-primary-dark">
                   Back to Sign In
@@ -74,29 +95,37 @@ function ForgotPasswordPage() {
               </div>
             </motion.div>
           ) : (
-            <Form layout="vertical" className="space-y-4" onFinish={handleFinish}>
-              <Form.Item
-                label="Email"
-                name="email"
-                rules={[{ required: true, type: "email", message: "Please enter a valid email address." }]}
-              >
-                <Input
-                  prefix={<MailOutlined className="text-label-tertiary" />}
-                  placeholder="email@example.com"
-                  className="h-12 rounded-xl"
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleFinish)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          prefix={<Mail size={18} className="text-label-tertiary" />}
+                          placeholder="email@example.com"
+                          className="h-12 rounded-xl"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </Form.Item>
 
-              <Form.Item>
                 <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={isLoading}
-                  className="w-full h-12 rounded-xl font-bold shadow-primary text-lg"
+                  variant="aurora"
+                  size="pill"
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full text-lg mt-6 font-bold"
                 >
-                  Send Reset Link
+                  {isLoading ? "Sending Link..." : "Send Reset Link"}
                 </Button>
-              </Form.Item>
+              </form>
             </Form>
           )}
 

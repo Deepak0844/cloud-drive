@@ -30,7 +30,7 @@ dayjs.extend(relativeTime);
 
 const { Text } = Typography;
 
-export function getNotificationIcon(type) {
+function getNotificationIcon(type) {
   switch (type) {
     case NotificationTypes.STORAGE_ALERT:
       return <CloudServerOutlined className="text-warning" />;

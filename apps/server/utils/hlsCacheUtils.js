@@ -42,7 +42,7 @@ async function isSegmentCached(baseStoragePath, fileId, segmentIndex) {
 /**
  * Reads a cached segment and returns its Buffer.
  */
-async function readSegment(baseStoragePath, fileId, segmentIndex) {
+function readSegment(baseStoragePath, fileId, segmentIndex) {
   const segPath = getSegmentPath(baseStoragePath, fileId, segmentIndex);
   return fsPromises.readFile(segPath);
 }
