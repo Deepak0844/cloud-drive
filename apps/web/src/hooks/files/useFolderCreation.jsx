@@ -1,40 +1,39 @@
-import { message, Input, Modal } from "antd";
+import { useState } from "react";
+import { toast } from "sonner";
 import { useCreateFolderMutation } from "@services/api/folderApi";
 
 export function useFolderCreation({ currentFolderId }) {
   const [createFolder] = useCreateFolderMutation();
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
 
-  function handleCreateFolder() {
-    Modal.confirm({
-      title: "New Folder",
-      content: (
-        <Input
-          id="new-folder-name"
-          placeholder="Folder name"
-          className="rounded-xl h-10 mt-2"
-          onPressEnter={() => {}}
-        />
-      ),
-      onOk: async () => {
-        const input = document.getElementById("new-folder-name");
-        const name = input?.value?.trim();
-        if (!name) return;
-
-        try {
-          await createFolder({
-            name,
-            parent: currentFolderId === "root" ? null : currentFolderId,
-          }).unwrap();
-          message.success("Folder created");
-        } catch (err) {
-          message.error(err.data?.message || "Failed to create folder");
-        }
-      },
-      className: "premium-modal",
-      centered: true,
-      okText: "Create",
-    });
+  function handleCreateFolderClick() {
+    setNewFolderName("");
+    setIsFolderModalOpen(true);
   }
 
-  return { handleCreateFolder };
+  async function handleCreateFolderConfirm() {
+    const name = newFolderName.trim();
+    if (!name) return;
+
+    try {
+      await createFolder({
+        name,
+        parent: currentFolderId === "root" ? null : currentFolderId,
+      }).unwrap();
+      toast.success("Folder created");
+      setIsFolderModalOpen(false);
+    } catch (err) {
+      toast.error(err.data?.message || "Failed to create folder");
+    }
+  }
+
+  return {
+    isFolderModalOpen,
+    setIsFolderModalOpen,
+    newFolderName,
+    setNewFolderName,
+    handleCreateFolderClick,
+    handleCreateFolderConfirm,
+  };
 }

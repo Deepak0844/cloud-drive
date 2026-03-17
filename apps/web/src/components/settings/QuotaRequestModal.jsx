@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import React, { useEffect } from "react";
-import { message } from "antd";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -54,12 +54,12 @@ function QuotaRequestModal({ open, onClose }) {
 
       await requestQuota({ reason: values.reason, requested_bytes: values.amount * ByteMultipliers.GB }).unwrap();
 
-      message.success("Quota request submitted successfully!");
+      toast.success("Quota request submitted successfully!");
       form.reset();
       setLoading(false);
       onClose();
     } catch (_err) {
-      message.error("Validation failed");
+      toast.error("Validation failed");
       setLoading(false);
     }
   }

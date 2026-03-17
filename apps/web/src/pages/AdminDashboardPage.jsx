@@ -1,7 +1,9 @@
 // React core & third-party libraries
 import React, { useState } from "react";
-import { Form, InputNumber, Modal } from "antd";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import {
   Cpu,
   HardDrive,
@@ -43,6 +45,9 @@ import { Progress } from "@components/ui/progress";
 import { Skeleton } from "@components/ui/skeleton";
 import { Badge } from "@components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@components/ui/dialog";
+import { Input } from "@components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
 
 function bytesToGB(bytes) {
   if (!bytes) return 0;
@@ -55,11 +60,18 @@ function calculatePercentage(used, total) {
   return Math.min(100, Math.round((used / total) * 100));
 }
 
+const quotaFormSchema = z.object({
+  quota: z.number().min(1, "Quota must be at least 1 GB").max(1000, "Quota cannot exceed 1000 GB"),
+});
+
 export default function AdminDashboardPage() {
   // Local state
   const [activeTab, setActiveTab] = useState("1");
   const [editingUser, setEditingUser] = useState(null);
-  const [form] = Form.useForm();
+  const form = useForm({
+    resolver: zodResolver(quotaFormSchema),
+    defaultValues: { quota: 5 },
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [requestPage, setRequestPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
@@ -106,13 +118,12 @@ export default function AdminDashboardPage() {
   function handleEdit(user) {
     setEditingUser(user);
     const quotaGB = bytesToGB(user.quota_bytes);
-    form.setFieldsValue({ quota: quotaGB });
+    form.reset({ quota: quotaGB });
     setIsModalOpen(true);
   }
 
-  async function handleUpdate() {
+  async function handleUpdate(values) {
     try {
-      const values = await form.validateFields();
       const quotaBytes = values.quota * 1000 * 1000 * 1000;
       await updateUserQuota({ id: editingUser._id, quota_bytes: quotaBytes }).unwrap();
       toast.success("Quota updated successfully");
@@ -516,34 +527,50 @@ export default function AdminDashboardPage() {
         </div>
       </Tabs>
 
-      <Modal
-        title={
-          <div className="flex items-center gap-2">
-            <Edit2 size={18} className="text-primary" />
-            <span>Edit Quota for {editingUser?.name}</span>
-          </div>
-        }
-        open={isModalOpen}
-        onOk={handleUpdate}
-        onCancel={() => setIsModalOpen(false)}
-        className="aurora-modal"
-        centered
-        okText="Update Quota"
-        cancelText="Cancel"
-      >
-        <Form form={form} layout="vertical" className="mt-4">
-          <Form.Item
-            name="quota"
-            label={<span className="font-semibold text-label-secondary">Storage Quota (GB)</span>}
-            rules={[
-              { required: true, message: "Please enter quota" },
-              { type: "number", min: 1, max: 1000, message: "Quota must be between 1-1000 GB" },
-            ]}
-          >
-            <InputNumber min={1} max={1000} step={1} className="w-full h-10 flex items-center!" precision={0} />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-[420px] aurora-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 italic">
+              <Edit2 size={18} className="text-primary" />
+              <span>Edit Quota for {editingUser?.name}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleUpdate)} className="mt-4 space-y-4">
+              <FormField
+                control={form.control}
+                name="quota"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-semibold text-label-secondary">Storage Quota (GB)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        className="w-full h-12 bg-surface-dim/30 border-line/40 focus:border-primary/50 transition-all font-medium rounded-xl"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <DialogFooter className="mt-8">
+                <Button type="text" onClick={() => setIsModalOpen(false)} className="rounded-xl font-bold px-6">
+                  Cancel
+                </Button>
+                <Button htmlType="submit" styleType="primary" className="rounded-xl font-black px-8 shadow-glow italic">
+                  Update Quota
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

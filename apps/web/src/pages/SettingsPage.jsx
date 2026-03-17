@@ -1,7 +1,10 @@
 // React core & third-party libraries
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Form, Input } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { Bell, Lock, Cloud, Image as ImageIcon, PlayCircle, Mic, FileText, Archive, File, Send } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -23,6 +26,8 @@ import Button from "@shared-components/components/button";
 import { Card } from "@components/ui/card";
 import { Progress } from "@components/ui/progress";
 import { Skeleton } from "@components/ui/skeleton";
+import { Input } from "@components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
 import { Switch } from "@components/ui/switch";
 import { Separator } from "@components/ui/separator";
 import {
@@ -43,6 +48,14 @@ const CATEGORY_CONFIG = {
   other: { color: "var(--text-tertiary)", icon: <File size={14} />, label: "Other" },
 };
 
+const profileFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email("Invalid email address."),
+  email_notifications: z.boolean(),
+  storage_alerts: z.boolean(),
+  security_alerts: z.boolean(),
+});
+
 function SettingsPage() {
   // Local state
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -62,17 +75,25 @@ function SettingsPage() {
   const { data: usage, isLoading: usageLoading } = useGetQuotaUsageQuery(undefined, { skip: isAdmin });
 
   // Custom & shared hooks
-  const [form] = Form.useForm();
+  const form = useForm({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      email_notifications: true,
+      storage_alerts: true,
+      security_alerts: true,
+    },
+  });
 
   // Derived / computed variables
   const sortedBreakdown = [...(breakdown?.data || [])].sort((a, b) => b.total_size_bytes - a.total_size_bytes);
 
-  // useEffect
   useEffect(() => {
     if (user) {
-      form.setFieldsValue({
-        name: user.name,
-        email: user.email,
+      form.reset({
+        name: user.name || "",
+        email: user.email || "",
         email_notifications: user.notification_preferences?.email_notifications ?? true,
         storage_alerts: user.notification_preferences?.storage_alerts ?? true,
         security_alerts: user.notification_preferences?.security_alerts ?? true,
@@ -81,11 +102,9 @@ function SettingsPage() {
   }, [user, form]);
 
   // Event handlers
-  async function handleUpdateProfile(isFormSubmit = true) {
+  async function handleUpdateProfile(values, showToast = true) {
     try {
-      if (isFormSubmit) setIsSavingProfile(true);
-
-      const values = await form.validateFields();
+      setIsSavingProfile(true);
       await updateProfile({
         name: values.name,
         email: values.email,
@@ -95,11 +114,17 @@ function SettingsPage() {
           security_alerts: values.security_alerts,
         },
       }).unwrap();
+      if (showToast) toast.success("Profile updated successfully!");
     } catch (_err) {
-      // handled by RTK error middleware or locally
+      if (showToast) toast.error(_err.data?.message || "Failed to update profile");
     } finally {
-      if (isFormSubmit) setIsSavingProfile(false);
+      setIsSavingProfile(false);
     }
+  }
+
+  function handleSwitchChange(name, checked) {
+    form.setValue(name, checked, { shouldValidate: true, shouldDirty: true });
+    form.handleSubmit((values) => handleUpdateProfile(values, false))();
   }
 
   function handleRequestQuota() {
@@ -131,109 +156,138 @@ function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Side: Profile & Security */}
         <div className="lg:col-span-8 flex flex-col gap-8">
-          <Form form={form} layout="vertical" onFinish={() => handleUpdateProfile(true)}>
-            <Card className="rounded-3xl border-line shadow-sm overflow-hidden p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Form.Item name="name" label={<span className="font-bold text-label-secondary">Full Name</span>}>
-                  <Input
-                    className="premium-input h-14 bg-surface-dim border-line/50 focus:border-primary/50 focus:ring-primary/20"
-                    placeholder="Enter your name"
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((values) => handleUpdateProfile(values, true))}>
+              <Card className="rounded-3xl border-line shadow-sm overflow-hidden p-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold text-label-secondary">Full Name</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            className="premium-input h-14 bg-surface-dim border-line/50 focus:border-primary/50 focus:ring-primary/20"
+                            placeholder="Enter your name"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </Form.Item>
-                <Form.Item name="email" label={<span className="font-bold text-label-secondary">Email Address</span>}>
-                  <Input className="premium-input h-14 bg-surface-dim border-line/50 opacity-70" disabled={true} />
-                </Form.Item>
-              </div>
-              <Button
-                htmlType="submit"
-                styleType="primary"
-                loading={isSavingProfile}
-                className="h-12 px-10 font-bold rounded-2xl shadow-glow-sm mt-4 active:scale-95 transition-transform"
-              >
-                Save Profile
-              </Button>
-
-              <Separator className="my-10 bg-line/30" />
-
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
-                  <Bell size={24} />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold text-label-secondary">Email Address</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            className="premium-input h-14 bg-surface-dim border-line/50 opacity-70"
+                            disabled
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <div>
-                  <h2 className="text-xl font-black text-label">Notifications</h2>
-                  <p className="text-sm text-label-tertiary font-medium">Manage how you receive alerts and updates</p>
-                </div>
-              </div>
+                <Button
+                  htmlType="submit"
+                  styleType="primary"
+                  loading={isSavingProfile}
+                  className="h-12 px-10 font-bold rounded-2xl shadow-glow-sm mt-4 active:scale-95 transition-transform"
+                >
+                  Save Profile
+                </Button>
 
-              <div className="space-y-6">
-                {[
-                  {
-                    name: "email_notifications",
-                    label: "Email Notifications",
-                    desc: "Receive updates about file sharing and system alerts",
-                  },
-                  {
-                    name: "storage_alerts",
-                    label: "Storage Alerts",
-                    desc: "Get notified when your drive usage exceeds 80%",
-                  },
-                  {
-                    name: "security_alerts",
-                    label: "Security Alerts",
-                    desc: "Receive alerts about new sign-ins and password changes",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.name}
-                    className="flex justify-between items-center p-5 rounded-2xl bg-surface-dim/50 border border-line/30 hover:border-line/60 transition-colors"
-                  >
-                    <div className="pr-4 space-y-0.5">
-                      <p className="font-bold text-label">{item.label}</p>
-                      <p className="text-xs text-label-tertiary font-medium">{item.desc}</p>
-                    </div>
-                    <Form.Item name={item.name} valuePropName="checked" noStyle>
-                      <Switch
-                        onCheckedChange={(checked) => {
-                          form.setFieldsValue({ [item.name]: checked });
-                          handleUpdateProfile(false);
-                        }}
-                      />
-                    </Form.Item>
+                <Separator className="my-10 bg-line/30" />
+
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
+                    <Bell size={24} />
                   </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card className="rounded-3xl border-line shadow-sm p-8">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-secondary/20 text-secondary-foreground rounded-2xl flex items-center justify-center border border-secondary/30">
-                  <Lock size={24} />
+                  <div>
+                    <h2 className="text-xl font-black text-label">Notifications</h2>
+                    <p className="text-sm text-label-tertiary font-medium">Manage how you receive alerts and updates</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-black text-label">Security & Privacy</h2>
-                  <p className="text-sm text-label-tertiary font-medium">
-                    Control your account&apos;s security settings
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex flex-col md:flex-row gap-4">
-                <Button
-                  styleType="secondary"
-                  className="h-12 flex-1 font-bold rounded-2xl"
-                  onClick={() => setPasswordModalVisible(true)}
-                >
-                  Change Password
-                </Button>
-                <Button
-                  styleType="ghost"
-                  className="h-12 flex-1 font-bold rounded-2xl border-line-strong text-error hover:bg-error/5"
-                  disabled
-                >
-                  Delete Account
-                </Button>
-              </div>
-            </Card>
+                <div className="space-y-6">
+                  {[
+                    {
+                      name: "email_notifications",
+                      label: "Email Notifications",
+                      desc: "Receive updates about file sharing and system alerts",
+                    },
+                    {
+                      name: "storage_alerts",
+                      label: "Storage Alerts",
+                      desc: "Get notified when your drive usage exceeds 80%",
+                    },
+                    {
+                      name: "security_alerts",
+                      label: "Security Alerts",
+                      desc: "Receive alerts about new sign-ins and password changes",
+                    },
+                  ].map((item) => (
+                    <FormField
+                      key={item.name}
+                      control={form.control}
+                      name={item.name}
+                      render={({ field }) => (
+                        <FormItem className="flex justify-between items-center p-5 rounded-2xl bg-surface-dim/50 border border-line/30 hover:border-line/60 transition-colors">
+                          <div className="pr-4 space-y-0.5">
+                            <p className="font-bold text-label m-0">{item.label}</p>
+                            <p className="text-xs text-label-tertiary font-medium m-0">{item.desc}</p>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={(checked) => handleSwitchChange(item.name, checked)}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+              </Card>
+
+              <Card className="rounded-3xl border-line shadow-sm p-8">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 bg-secondary/20 text-secondary-foreground rounded-2xl flex items-center justify-center border border-secondary/30">
+                    <Lock size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-label">Security & Privacy</h2>
+                    <p className="text-sm text-label-tertiary font-medium">
+                      Control your account&apos;s security settings
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-4">
+                  <Button
+                    styleType="secondary"
+                    className="h-12 flex-1 font-bold rounded-2xl"
+                    onClick={() => setPasswordModalVisible(true)}
+                  >
+                    Change Password
+                  </Button>
+                  <Button
+                    styleType="ghost"
+                    className="h-12 flex-1 font-bold rounded-2xl border-line-strong text-error hover:bg-error/5"
+                    disabled
+                  >
+                    Delete Account
+                  </Button>
+                </div>
+              </Card>
+            </form>
           </Form>
         </div>
 

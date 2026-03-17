@@ -1,4 +1,3 @@
-import { Modal } from "antd";
 import { toast } from "sonner";
 import { useState } from "react";
 import { FileUtils } from "@shared-utils/utils";
@@ -27,6 +26,7 @@ export function useFileActions({ folders, clearSelection }) {
   const [renameItem, setRenameItem] = useState(null);
   const [newName, setNewName] = useState("");
   const [deleteItem, setDeleteItem] = useState(null);
+  const [bulkDeleteItems, setBulkDeleteItems] = useState(null);
   const [folderPicker, setFolderPicker] = useState({
     visible: false,
     action: "move", // 'move' | 'copy' | 'bulk-move' | 'bulk-copy'
@@ -93,25 +93,21 @@ export function useFileActions({ folders, clearSelection }) {
     }
   }
 
-  function handleBulkDelete(itemsToDelete) {
+  function handleBulkDeleteTrigger(itemsToDelete) {
     if (!itemsToDelete || itemsToDelete.length === 0) return;
-    Modal.confirm({
-      title: "Confirm Delete",
-      content: `Are you sure you want to move ${itemsToDelete.length} items to the trash?`,
-      okText: "Move to Trash",
-      okType: "danger",
-      onOk: async () => {
-        try {
-          await bulkDelete({ items: itemsToDelete }).unwrap();
-          toast.success("Items moved to trash");
-          clearSelection();
-        } catch {
-          toast.error("Failed to delete items");
-        }
-      },
-      className: "premium-modal",
-      centered: true,
-    });
+    setBulkDeleteItems(itemsToDelete);
+  }
+
+  async function handleBulkDeleteConfirm() {
+    if (!bulkDeleteItems) return;
+    try {
+      await bulkDelete({ items: bulkDeleteItems }).unwrap();
+      toast.success("Items moved to trash");
+      clearSelection();
+      setBulkDeleteItems(null);
+    } catch {
+      toast.error("Failed to delete items");
+    }
   }
 
   // Move & Copy Actions
@@ -204,6 +200,8 @@ export function useFileActions({ folders, clearSelection }) {
     setNewName,
     deleteItem,
     setDeleteItem,
+    bulkDeleteItems,
+    setBulkDeleteItems,
     folderPicker,
     setFolderPicker,
 
@@ -211,7 +209,8 @@ export function useFileActions({ folders, clearSelection }) {
     handleRenameConfirm,
     handleDeleteTrigger,
     handleDeleteConfirm,
-    handleBulkDelete,
+    handleBulkDeleteTrigger,
+    handleBulkDeleteConfirm,
     handleMoveTrigger,
     handleCopyTrigger,
     handleBulkMoveTrigger,

@@ -1,6 +1,5 @@
 // React core & third-party libraries
 import { useEffect, useState } from "react";
-import { Upload } from "antd";
 import { Cloud, Copy, Trash2, Download, Move, FolderOpen, Send, AlertTriangle, Info } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -39,8 +38,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 
-const { Dragger } = Upload;
-
+// Remove Dragger
 function MyFilesView() {
   // Local state
   const [infoItem, setInfoItem] = useState(null);
@@ -141,13 +139,16 @@ function MyFilesView() {
     setNewName,
     deleteItem,
     setDeleteItem,
+    bulkDeleteItems,
+    setBulkDeleteItems,
     folderPicker,
     setFolderPicker,
     handleRenameTrigger,
     handleRenameConfirm,
     handleDeleteTrigger,
     handleDeleteConfirm,
-    handleBulkDelete,
+    handleBulkDeleteTrigger,
+    handleBulkDeleteConfirm,
     handleMoveTrigger,
     handleCopyTrigger,
     handleBulkMoveTrigger,
@@ -158,10 +159,17 @@ function MyFilesView() {
     isActionLoading,
   } = useFileActions({ folders, clearSelection });
 
-  const { handleCreateFolder } = useFolderCreation({ currentFolderId });
+  const {
+    isFolderModalOpen,
+    setIsFolderModalOpen,
+    newFolderName,
+    setNewFolderName,
+    handleCreateFolderClick,
+    handleCreateFolderConfirm,
+  } = useFolderCreation({ currentFolderId });
   const { addUpload } = useUploadDetails();
   const { isDragging, handleDragEnter, handleDragLeave, handleDrop } = useDragDrop();
-  const { uploadRef, handleUploadClick, uploadProps } = useUploadHandler({
+  const { uploadInputRef, handleUploadClick, handleFileChange, dropzoneProps } = useUploadHandler({
     addUpload,
     currentFolderId,
     handleDragEnter,
@@ -202,7 +210,7 @@ function MyFilesView() {
             viewMode={viewMode}
             setViewMode={setViewMode}
             handleUploadClick={handleUploadClick}
-            handleCreateFolder={handleCreateFolder}
+            handleCreateFolder={handleCreateFolderClick}
           />
         }
       />
@@ -267,7 +275,7 @@ function MyFilesView() {
                     type="text"
                     danger
                     icon={<Trash2 size={16} />}
-                    onClick={() => handleBulkDelete(selectedItems)}
+                    onClick={() => handleBulkDeleteTrigger(selectedItems)}
                     className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-error hover:bg-error/10 border-none justify-center transition-all bg-transparent!"
                   >
                     <span className="text-[10px] uppercase tracking-tighter">Delete</span>
@@ -280,8 +288,9 @@ function MyFilesView() {
         </motion.div>
       )}
 
-      <div ref={uploadRef}>
-        <Dragger {...uploadProps} className="bg-transparent! border-none! cursor-default group relative">
+      <div className="relative group min-h-[400px]">
+        <input type="file" multiple className="hidden" ref={uploadInputRef} onChange={handleFileChange} />
+        <div {...dropzoneProps} className="w-full h-full min-h-[400px]">
           <FileGrid
             folders={folders}
             files={files}
@@ -301,7 +310,7 @@ function MyFilesView() {
             handleDownload={handleDownload}
             isDragging={isDragging}
           />
-        </Dragger>
+        </div>
 
         <Dialog open={quotaModalVisible} onOpenChange={setQuotaModalVisible}>
           <DialogContent className="max-w-[420px] p-0 overflow-hidden border-none aurora-modal">
@@ -419,7 +428,6 @@ function MyFilesView() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Modal */}
       <Dialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
         <DialogContent className="max-w-[400px] aurora-modal">
           <DialogHeader>
@@ -452,6 +460,82 @@ function MyFilesView() {
               className="rounded-xl font-black px-8 shadow-glow-sm italic"
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Modal */}
+      <Dialog open={!!bulkDeleteItems} onOpenChange={(open) => !open && setBulkDeleteItems(null)}>
+        <DialogContent className="max-w-[400px] aurora-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-error italic">
+              <AlertTriangle size={18} />
+              <span>Bulk Delete Items</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 flex flex-col items-center text-center gap-6">
+            <div className="w-16 h-16 bg-error/10 text-error rounded-full flex items-center justify-center border border-error/20 shadow-glow-sm">
+              <Trash2 size={24} />
+            </div>
+            <p className="text-sm text-label-tertiary font-medium leading-relaxed">
+              Are you sure you want to delete{" "}
+              <span className="text-label font-black italic">{bulkDeleteItems?.length} items</span>?
+              <br />
+              <span className="text-[10px] uppercase tracking-wider opacity-60 mt-2 block">
+                These items will be moved to trash.
+              </span>
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="text" onClick={() => setBulkDeleteItems(null)} className="rounded-xl font-bold px-6">
+              Cancel
+            </Button>
+            <Button
+              styleType="primary"
+              variant="destructive"
+              onClick={handleBulkDeleteConfirm}
+              className="rounded-xl font-black px-8 shadow-glow-sm italic"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Folder Modal */}
+      <Dialog open={isFolderModalOpen} onOpenChange={setIsFolderModalOpen}>
+        <DialogContent className="max-w-[420px] aurora-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 italic">
+              <FolderOpen size={18} className="text-primary" />
+              <span>New Folder</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-6 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary ml-1">
+                Folder Name
+              </Label>
+              <Input
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Folder name"
+                className="rounded-xl h-12 bg-surface-dim/30 border-line/40 focus:border-primary/50 transition-all font-medium"
+                onKeyDown={(e) => e.key === "Enter" && handleCreateFolderConfirm()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="text" onClick={() => setIsFolderModalOpen(false)} className="rounded-xl font-bold px-6">
+              Cancel
+            </Button>
+            <Button
+              styleType="primary"
+              onClick={handleCreateFolderConfirm}
+              className="rounded-xl font-black px-8 shadow-glow italic"
+            >
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>

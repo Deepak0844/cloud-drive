@@ -1,5 +1,5 @@
 import { isRejectedWithValue } from "@reduxjs/toolkit";
-import { notification } from "antd";
+import { toast } from "sonner";
 
 // Utils
 import AuthUtils from "../../utils/authUtils";
@@ -65,11 +65,9 @@ export default function rtkQueryErrorMiddleware(api) {
           (typeof data === "string" ? data : null) ||
           "An unexpected error occurred.";
 
-        notification.error({
-          message: `Error ${status || ""}`,
+        toast.error(`Error ${status || ""}`, {
           description: errorMessage,
-          placement: "topRight",
-          duration: 4,
+          duration: 4000,
         });
       }
     }

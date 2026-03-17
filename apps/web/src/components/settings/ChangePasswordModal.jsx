@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import React, { useEffect } from "react";
-import { message } from "antd";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -55,7 +55,7 @@ function ChangePasswordModal({ open, onClose }) {
         newPassword: values.newPassword,
       }).unwrap();
 
-      message.success("Password updated successfully!");
+      toast.success("Password updated successfully!");
       form.reset();
       onClose();
     } catch (err) {
@@ -68,9 +68,9 @@ function ChangePasswordModal({ open, onClose }) {
       if (errorMessage === "Incorrect current password") {
         form.setError("currentPassword", { type: "server", message: errorMessage });
       } else if (errorMessage) {
-        message.error(errorMessage);
+        toast.error(errorMessage);
       } else {
-        message.error("Failed to update password");
+        toast.error("Failed to update password");
       }
     }
   }
