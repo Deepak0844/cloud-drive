@@ -3,7 +3,7 @@ import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 // Retained for global message/toast until P8 sonner swap
 import { Lock, AlertCircle } from "lucide-react";
-import { message } from "antd";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -57,7 +57,7 @@ function ResetPasswordPage() {
   async function handleFinish(values) {
     try {
       await resetPassword({ token, password: values.password }).unwrap();
-      message.success("Password reset successfully! Please sign in with your new password.");
+      toast.success("Password reset successfully! Please sign in with your new password.");
       navigate(PageUrls.LoginPage);
     } catch (err) {
       const errorMessage =
@@ -65,7 +65,7 @@ function ResetPasswordPage() {
         err?.data?.message ||
         (typeof err?.data === "string" ? err.data : null) ||
         "Failed to reset password. Your link may have expired.";
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   }
 

@@ -1,7 +1,7 @@
 // React core & third-party libraries
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { message as antdMessage } from "antd";
+import { toast } from "sonner";
 import { Trash2, Home, RotateCcw, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -105,10 +105,10 @@ function TrashView() {
   async function onEmptyTrashConfirm() {
     try {
       await emptyTrash().unwrap();
-      antdMessage.success("Trash emptied successfully");
+      toast.success("Trash emptied successfully");
       clearSelection();
     } catch (_error) {
-      antdMessage.error("Failed to empty trash");
+      toast.error("Failed to empty trash");
     } finally {
       setConfirmEmpty(false);
     }
@@ -118,20 +118,20 @@ function TrashView() {
     if (selectedItems.length === 0) return;
     try {
       await restoreItems({ items: selectedItems }).unwrap();
-      antdMessage.success(`Restored ${selectedItems.length} items`);
+      toast.success(`Restored ${selectedItems.length} items`);
       clearSelection();
     } catch (_error) {
-      antdMessage.error("Failed to restore items");
+      toast.error("Failed to restore items");
     }
   }
 
   async function onDeleteSelectedConfirm() {
     try {
       await permanentlyDeleteItems({ items: selectedItems }).unwrap();
-      antdMessage.success(`Permanently deleted ${selectedItems.length} items`);
+      toast.success(`Permanently deleted ${selectedItems.length} items`);
       clearSelection();
     } catch (_error) {
-      antdMessage.error("Failed to delete items");
+      toast.error("Failed to delete items");
     } finally {
       setConfirmDelete(false);
     }

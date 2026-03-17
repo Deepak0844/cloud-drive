@@ -13,6 +13,9 @@ import Router from "./routes/Routes";
 // Error boundary
 import GlobalErrorBoundary from "@components/common/GlobalErrorBoundary";
 
+// UI Components
+import { Toaster } from "@components/ui/sonner";
+
 // Styles
 import "./styles/globals.css";
 
@@ -21,6 +24,7 @@ export function App() {
     <Provider store={store}>
       <GlobalErrorBoundary>
         <RouterProvider router={Router} />
+        <Toaster />
       </GlobalErrorBoundary>
     </Provider>
   );

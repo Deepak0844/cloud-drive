@@ -3,7 +3,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 // Retained for global message/toast until P8 sonner swap
 import { Lock, User } from "lucide-react";
-import { message } from "antd";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -55,7 +55,7 @@ function LoginPage() {
   async function handleFinish(values) {
     try {
       await login({ email: values.email, password: values.password }, from);
-      message.success("Welcome back!");
+      toast.success("Welcome back!");
     } catch (err) {
       const errorMessage =
         err?.data?.error?.message ||
@@ -66,7 +66,7 @@ function LoginPage() {
       if (errorMessage) {
         form.setError("password", { type: "server", message: errorMessage });
       } else {
-        message.error("Login failed. Please try again.");
+        toast.error("Login failed. Please try again.");
       }
     }
   }

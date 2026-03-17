@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import { useMemo, useState } from "react";
-import { message as antdMessage } from "antd";
+import { toast } from "sonner";
 import { X, Download, History } from "lucide-react";
 import { motion } from "framer-motion";
 import { FileUtils } from "@shared-utils/utils";
@@ -117,17 +117,17 @@ export default function RecentPage() {
     if (selectedItems.length === 0) return;
     const fileItems = selectedItems.filter((i) => i.type === ItemTypes.FILE);
     if (fileItems.length === 0) {
-      antdMessage.warning("Please select at least one file to download");
+      toast.warning("Please select at least one file to download");
       return;
     }
 
     try {
       const url = `${ApiBasePath}${BulkServiceUrls.bulkDownload}`;
       FileUtils.triggerPostDownload(url, { items: fileItems });
-      antdMessage.success("Preparing your download...");
+      toast.success("Preparing your download...");
       clearSelection();
     } catch {
-      antdMessage.error("Failed to initiate bulk download");
+      toast.error("Failed to initiate bulk download");
     }
   }
 

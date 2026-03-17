@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import React, { useState } from "react";
-import { message } from "antd";
+import { toast } from "sonner";
 import { Bell, CheckCircle, Server, Trash2, Info, AlertTriangle, CheckCheck } from "lucide-react";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -72,9 +72,9 @@ export default function NotificationDropdown() {
   async function handleMarkAllRead() {
     try {
       await markAllAsRead().unwrap();
-      message.success("All notifications marked as read");
+      toast.success("All notifications marked as read");
     } catch {
-      message.error("Failed to mark all as read");
+      toast.error("Failed to mark all as read");
     }
   }
 

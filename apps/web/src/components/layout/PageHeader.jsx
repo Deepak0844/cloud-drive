@@ -1,5 +1,12 @@
-import React from "react";
-import { Breadcrumb } from "antd";
+import React, { Fragment } from "react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@components/ui/breadcrumb";
 
 function PageHeader({ title, icon = null, breadcrumbItems = [], breadcrumbNode = null, rightContent = null }) {
   return (
@@ -9,14 +16,28 @@ function PageHeader({ title, icon = null, breadcrumbItems = [], breadcrumbNode =
           {icon}
           <span>{title}</span>
         </h1>
-        {breadcrumbNode || (
-          <Breadcrumb
-            separator={<span className="text-label-tertiary">/</span>}
-            items={breadcrumbItems.map((item) => ({
-              title: item.title,
-            }))}
-          />
-        )}
+        {breadcrumbNode ||
+          (breadcrumbItems.length > 0 && (
+            <Breadcrumb>
+              <BreadcrumbList>
+                {breadcrumbItems.map((item, index) => {
+                  const isLast = index === breadcrumbItems.length - 1;
+                  return (
+                    <Fragment key={index}>
+                      <BreadcrumbItem>
+                        {isLast ? (
+                          <BreadcrumbPage className="font-bold text-label-secondary">{item.title}</BreadcrumbPage>
+                        ) : (
+                          <BreadcrumbLink className="text-label-tertiary">{item.title}</BreadcrumbLink>
+                        )}
+                      </BreadcrumbItem>
+                      {!isLast && <BreadcrumbSeparator />}
+                    </Fragment>
+                  );
+                })}
+              </BreadcrumbList>
+            </Breadcrumb>
+          ))}
       </div>
 
       {rightContent ? <div className="flex flex-wrap items-center gap-3">{rightContent}</div> : null}

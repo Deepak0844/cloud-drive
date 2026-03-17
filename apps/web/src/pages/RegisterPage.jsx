@@ -3,7 +3,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 // Retained for global message/toast until P8 sonner swap
 import { Lock, Mail, User } from "lucide-react";
-import { message } from "antd";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -47,9 +47,9 @@ function RegisterPage() {
   async function handleFinish(values) {
     try {
       await register({ name: values.name, email: values.email, password: values.password });
-      message.success("Account created! Please sign in with your credentials.");
+      toast.success("Account created! Please sign in with your credentials.");
     } catch (err) {
-      message.error(err?.data?.message ?? "Registration failed. Please try again.");
+      toast.error(err?.data?.message ?? "Registration failed. Please try again.");
     }
   }
 

@@ -1,6 +1,7 @@
 // React core & third-party libraries
 import React, { useState } from "react";
-import { Form, InputNumber, Modal, message as antdMessage } from "antd";
+import { Form, InputNumber, Modal } from "antd";
+import { toast } from "sonner";
 import {
   Cpu,
   HardDrive,
@@ -114,44 +115,41 @@ export default function AdminDashboardPage() {
       const values = await form.validateFields();
       const quotaBytes = values.quota * 1000 * 1000 * 1000;
       await updateUserQuota({ id: editingUser._id, quota_bytes: quotaBytes }).unwrap();
-      antdMessage.success("Quota updated successfully");
+      toast.success("Quota updated successfully");
       setIsModalOpen(false);
     } catch (_error) {
-      antdMessage.error("Failed to update quota");
+      toast.error("Failed to update quota");
     }
   }
 
   async function handleUserStatusToggle(userId, isActive) {
     try {
       await updateUserStatus({ id: userId, is_active: isActive }).unwrap();
-      antdMessage.success(`User has been ${isActive ? "enabled" : "disabled"}`);
+      toast.success(`User has been ${isActive ? "enabled" : "disabled"}`);
     } catch (_err) {
-      antdMessage.error("Failed to update user status");
+      toast.error("Failed to update user status");
     }
   }
 
   async function handleRequestStatus(id, status) {
     try {
       await handleQuotaRequest({ id, status }).unwrap();
-      antdMessage.success(`Request ${status.toLowerCase()} successfully`);
+      toast.success(`Request ${status.toLowerCase()} successfully`);
     } catch (_err) {
-      antdMessage.error("Failed to update quota request");
+      toast.error("Failed to update quota request");
     }
   }
 
   async function handleSyncStorage(userId = null) {
+    const toastId = "reanalyze";
     try {
-      antdMessage.loading({
-        content: userId ? "Re-analyzing user storage..." : "Re-analyzing all users storage...",
-        key: "reanalyze",
-      });
+      toast.loading(userId ? "Re-analyzing user storage..." : "Re-analyzing all users storage...", { id: toastId });
       await runReanalysis({ userId }).unwrap();
-      antdMessage.success({
-        content: userId ? "User storage re-analyzed successfully" : "All storage re-analyzed successfully",
-        key: "reanalyze",
+      toast.success(userId ? "User storage re-analyzed successfully" : "All storage re-analyzed successfully", {
+        id: toastId,
       });
     } catch (_err) {
-      antdMessage.error({ content: "Storage re-analysis failed", key: "reanalyze" });
+      toast.error("Storage re-analysis failed", { id: toastId });
     }
   }
 
