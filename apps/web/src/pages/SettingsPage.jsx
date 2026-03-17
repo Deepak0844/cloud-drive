@@ -1,19 +1,8 @@
 // React core & third-party libraries
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Breadcrumb, Card, Divider, Form, Input, Progress, Skeleton, Switch, Typography } from "antd";
-import {
-  AudioOutlined,
-  BellOutlined,
-  CloudServerOutlined,
-  FileImageOutlined,
-  FileOutlined,
-  FileTextOutlined,
-  FileZipOutlined,
-  LockOutlined,
-  PlayCircleOutlined,
-  SendOutlined,
-} from "@ant-design/icons";
+import { Form, Input } from "antd";
+import { Bell, Lock, Cloud, Image as ImageIcon, PlayCircle, Mic, FileText, Archive, File, Send } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
@@ -31,16 +20,27 @@ import PageUrls from "@constants/pageUrls";
 import ChangePasswordModal from "@components/settings/ChangePasswordModal";
 import QuotaRequestModal from "@components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
-
-const { Text } = Typography;
+import { Card } from "@components/ui/card";
+import { Progress } from "@components/ui/progress";
+import { Skeleton } from "@components/ui/skeleton";
+import { Switch } from "@components/ui/switch";
+import { Separator } from "@components/ui/separator";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@components/ui/breadcrumb";
 
 const CATEGORY_CONFIG = {
-  image: { color: "#3b82f6", icon: <FileImageOutlined />, label: "Images" },
-  video: { color: "#ec4899", icon: <PlayCircleOutlined />, label: "Videos" },
-  audio: { color: "#8b5cf6", icon: <AudioOutlined />, label: "Audio" },
-  document: { color: "#10b981", icon: <FileTextOutlined />, label: "Documents" },
-  archive: { color: "#f59e0b", icon: <FileZipOutlined />, label: "Archives" },
-  other: { color: "#64748b", icon: <FileOutlined />, label: "Other" },
+  image: { color: "var(--chart-1)", icon: <ImageIcon size={14} />, label: "Images" },
+  video: { color: "var(--chart-2)", icon: <PlayCircle size={14} />, label: "Videos" },
+  audio: { color: "var(--chart-3)", icon: <Mic size={14} />, label: "Audio" },
+  document: { color: "var(--chart-4)", icon: <FileText size={14} />, label: "Documents" },
+  archive: { color: "var(--chart-5)", icon: <Archive size={14} />, label: "Archives" },
+  other: { color: "var(--text-tertiary)", icon: <File size={14} />, label: "Other" },
 };
 
 function SettingsPage() {
@@ -110,55 +110,58 @@ function SettingsPage() {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8 pb-32">
       <div className="px-1">
-        <h1 className="text-3xl font-black text-label-primary tracking-tight mb-2">{PageNames.SETTINGS}</h1>
-        <Breadcrumb
-          items={[
-            {
-              title: (
+        <h1 className="text-3xl font-black text-label tracking-tight mb-2">{PageNames.SETTINGS}</h1>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
                 <Link to={PageUrls.DashboardPage} className="text-label-tertiary hover:text-primary transition-colors">
                   {PageNames.MY_FILES}
                 </Link>
-              ),
-            },
-            { title: <span className="text-label-primary font-bold">{PageNames.SETTINGS}</span> },
-          ]}
-        />
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="text-label font-bold">{PageNames.SETTINGS}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Side: Profile & Security */}
         <div className="lg:col-span-8 flex flex-col gap-8">
           <Form form={form} layout="vertical" onFinish={() => handleUpdateProfile(true)}>
-            <Card
-              className="rounded-[32px] border-line shadow-sm overflow-hidden"
-              styles={{ body: { padding: "32px" } }}
-            >
+            <Card className="rounded-3xl border-line shadow-sm overflow-hidden p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Form.Item name="name" label={<span className="font-bold text-label-secondary">Full Name</span>}>
-                  <Input className="premium-input h-14" />
+                  <Input
+                    className="premium-input h-14 bg-surface-dim border-line/50 focus:border-primary/50 focus:ring-primary/20"
+                    placeholder="Enter your name"
+                  />
                 </Form.Item>
                 <Form.Item name="email" label={<span className="font-bold text-label-secondary">Email Address</span>}>
-                  <Input className="premium-input h-14" disabled={true} />
+                  <Input className="premium-input h-14 bg-surface-dim border-line/50 opacity-70" disabled={true} />
                 </Form.Item>
               </div>
               <Button
                 htmlType="submit"
                 styleType="primary"
                 loading={isSavingProfile}
-                className="h-12 px-10 font-bold rounded-2xl shadow-lg shadow-primary/20 mt-2"
+                className="h-12 px-10 font-bold rounded-2xl shadow-glow-sm mt-4 active:scale-95 transition-transform"
               >
                 Save Profile
               </Button>
 
-              <Divider className="my-10" />
+              <Separator className="my-10 bg-line/30" />
 
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-warning/10 text-warning rounded-2xl flex items-center justify-center">
-                  <BellOutlined className="text-2xl" />
+                <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
+                  <Bell size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-label-primary">Notifications</h2>
-                  <p className="text-sm text-label-tertiary">Manage how you receive alerts and updates</p>
+                  <h2 className="text-xl font-black text-label">Notifications</h2>
+                  <p className="text-sm text-label-tertiary font-medium">Manage how you receive alerts and updates</p>
                 </div>
               </div>
 
@@ -182,28 +185,35 @@ function SettingsPage() {
                 ].map((item) => (
                   <div
                     key={item.name}
-                    className="flex justify-between items-center p-4 rounded-2xl bg-surface-dim border border-line/50"
+                    className="flex justify-between items-center p-5 rounded-2xl bg-surface-dim/50 border border-line/30 hover:border-line/60 transition-colors"
                   >
-                    <div className="pr-4">
-                      <p className="font-black text-label-primary">{item.label}</p>
-                      <p className="text-xs text-label-tertiary">{item.desc}</p>
+                    <div className="pr-4 space-y-0.5">
+                      <p className="font-bold text-label">{item.label}</p>
+                      <p className="text-xs text-label-tertiary font-medium">{item.desc}</p>
                     </div>
                     <Form.Item name={item.name} valuePropName="checked" noStyle>
-                      <Switch className="premium-switch" onChange={() => handleUpdateProfile(false)} />
+                      <Switch
+                        onCheckedChange={(checked) => {
+                          form.setFieldsValue({ [item.name]: checked });
+                          handleUpdateProfile(false);
+                        }}
+                      />
                     </Form.Item>
                   </div>
                 ))}
               </div>
             </Card>
 
-            <Card className="rounded-[32px] border-line shadow-sm" styles={{ body: { padding: "32px" } }}>
+            <Card className="rounded-3xl border-line shadow-sm p-8">
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 bg-secondary/10 text-secondary rounded-2xl flex items-center justify-center">
-                  <LockOutlined className="text-2xl" />
+                <div className="w-12 h-12 bg-secondary/20 text-secondary-foreground rounded-2xl flex items-center justify-center border border-secondary/30">
+                  <Lock size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-label-primary">Security & Privacy</h2>
-                  <p className="text-sm text-label-tertiary">Control your account&apos;s security settings</p>
+                  <h2 className="text-xl font-black text-label">Security & Privacy</h2>
+                  <p className="text-sm text-label-tertiary font-medium">
+                    Control your account&apos;s security settings
+                  </p>
                 </div>
               </div>
 
@@ -229,23 +239,20 @@ function SettingsPage() {
 
         {/* Right Side: Storage Dashboard */}
         <div className="lg:col-span-4 flex flex-col gap-6">
-          <Card
-            className="rounded-[32px] border-line shadow-xl bg-surface-alt relative overflow-hidden"
-            styles={{ body: { padding: "32px" } }}
-          >
+          <Card className="rounded-3xl border-line shadow-xl bg-surface-alt relative overflow-hidden p-8">
             {/* Glossy background Effect */}
-            <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
-            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-secondary/10 rounded-full blur-[80px]" />
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 rounded-full blur-[80px] opacity-30" />
+            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-secondary/15 rounded-full blur-[80px] opacity-30" />
 
             <div className="flex items-center justify-between mb-8 relative z-10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center shadow-lg shadow-primary/30">
-                  <CloudServerOutlined className="text-lg" />
+                <div className="w-10 h-10 bg-primary/20 text-primary rounded-xl flex items-center justify-center border border-primary/30 shadow-glow-sm">
+                  <Cloud size={20} />
                 </div>
-                <h3 className="font-black text-label-primary">Storage Overview</h3>
+                <h3 className="font-black text-label">Storage Overview</h3>
               </div>
-              <div className="px-2 py-1 bg-primary/10 rounded-lg">
-                <span className="text-[10px] font-black uppercase tracking-tighter text-primary">Active</span>
+              <div className="px-2.5 py-1 bg-success/10 border border-success/20 rounded-lg">
+                <span className="text-[10px] font-black uppercase tracking-widest text-success">Active</span>
               </div>
             </div>
 
@@ -253,36 +260,29 @@ function SettingsPage() {
               <Skeleton active paragraph={{ rows: 4 }} />
             ) : (
               <div className="relative z-10">
-                <div className="flex items-end justify-between mb-2">
+                <div className="flex items-end justify-between mb-3">
                   <div className="flex flex-col">
-                    <span className="text-3xl font-black text-label-primary tabular-nums">
+                    <span className="text-3xl font-black text-label tabular-nums">
                       {usage?.data?.percentage.toFixed(1)}
-                      <span className="text-lg font-bold opacity-50">%</span>
+                      <span className="text-lg font-bold opacity-40 ml-0.5">%</span>
                     </span>
                     <span className="text-[10px] font-bold text-label-tertiary uppercase tracking-widest">
-                      Storage Used
+                      Used Space
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-black text-primary block">
+                    <span className="text-sm font-extrabold text-primary block">
                       {formatBytes(usage?.data?.used_bytes)}
                     </span>
-                    <span className="text-[10px] font-bold text-label-tertiary">
+                    <span className="text-[10px] font-bold text-label-tertiary opacity-80">
                       of {formatBytes(usage?.data?.quota_bytes)}
                     </span>
                   </div>
                 </div>
 
                 <Progress
-                  percent={usage?.data?.percentage}
-                  showInfo={false}
-                  strokeLinecap="round"
-                  strokeWidth={14}
-                  className="premium-progress"
-                  strokeColor={{
-                    "0%": "var(--primary)",
-                    "100%": "var(--secondary)",
-                  }}
+                  value={usage?.data?.percentage}
+                  className="h-3.5 bg-line/20 overflow-hidden rounded-full shadow-inner"
                 />
 
                 <div className="mt-8 space-y-4">
@@ -296,20 +296,20 @@ function SettingsPage() {
 
                       return (
                         <div key={item.category} className="group cursor-default">
-                          <div className="flex items-center justify-between text-xs mb-1.5 px-0.5">
-                            <div className="flex items-center gap-2">
-                              <span style={{ color: config.color }} className="text-sm">
+                          <div className="flex items-center justify-between text-xs mb-2 px-0.5">
+                            <div className="flex items-center gap-2.5">
+                              <span style={{ color: config.color }} className="opacity-90">
                                 {config.icon}
                               </span>
-                              <span className="font-bold text-label-secondary">{config.label}</span>
+                              <span className="font-bold text-label-secondary tracking-tight">{config.label}</span>
                             </div>
-                            <span className="font-black text-label-primary tabular-nums">{percentage.toFixed(1)}%</span>
+                            <span className="font-black text-label tabular-nums">{percentage.toFixed(1)}%</span>
                           </div>
-                          <div className="w-full h-1.5 bg-line/20 rounded-full overflow-hidden">
+                          <div className="w-full h-1.5 bg-line/10 rounded-full overflow-hidden border border-line/5 shadow-inner">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${percentage}%` }}
-                              transition={{ duration: 1, ease: "easeOut" }}
+                              transition={{ duration: 1.2, ease: "circOut" }}
                               className="h-full rounded-full"
                               style={{ backgroundColor: config.color }}
                             />
@@ -331,9 +331,9 @@ function SettingsPage() {
                 <Button
                   styleType="primary"
                   fullWidth
-                  icon={<SendOutlined />}
+                  icon={<Send size={14} />}
                   onClick={handleRequestQuota}
-                  className="mt-10 h-12 font-black shadow-xl shadow-primary/20 rounded-2xl border-none text-xs tracking-widest uppercase"
+                  className="mt-10 h-12 font-black shadow-glow-sm rounded-2xl border-none text-xs tracking-[0.15em] uppercase hover:scale-[1.02] transition-transform"
                 >
                   Request Quota Increase
                 </Button>
@@ -341,16 +341,18 @@ function SettingsPage() {
             )}
           </Card>
 
-          <Card className="rounded-[32px] border-line shadow-sm border-dashed" styles={{ body: { padding: "24px" } }}>
-            <h4 className="font-black text-sm text-label-primary mb-2">NAS Engine Status</h4>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span className="text-xs font-bold text-label-secondary italic">Core services operating normally</span>
+          <Card className="rounded-3xl border-line shadow-sm border-dashed bg-surface/30 p-6 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-black text-sm text-label tracking-tight">NAS Engine Status</h4>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-success shadow-[0_0_8px_var(--success)] animate-pulse" />
+                <span className="text-[10px] font-extrabold text-success uppercase tracking-widest">Normal</span>
+              </div>
             </div>
-            <Text className="text-[10px] text-label-tertiary leading-relaxed block">
+            <p className="text-[10px] text-label-tertiary leading-[1.6] font-medium italic opacity-80">
               Your storage is physically managed by the Cloud Drive NAS core. Encryption and versioning are active on
               all blocks.
-            </Text>
+            </p>
           </Card>
         </div>
       </div>

@@ -1,16 +1,7 @@
 // React core & third-party libraries
-import React, { useEffect, useState } from "react";
-import { Input, Modal, Tooltip, Typography, Upload } from "antd";
-import {
-  CloudServerOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
-  DragOutlined,
-  FolderOpenOutlined,
-  SendOutlined,
-  WarningOutlined,
-} from "@ant-design/icons";
+import { useEffect, useState } from "react";
+import { Upload } from "antd";
+import { Cloud, Copy, Trash2, Download, Move, FolderOpen, Send, AlertTriangle, Info } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
@@ -43,8 +34,11 @@ import InfoDrawer from "@components/files/InfoDrawer";
 import PageHeader from "@components/layout/PageHeader";
 import QuotaRequestModal from "@components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@components/ui/dialog";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
 
-const { Text } = Typography;
 const { Dragger } = Upload;
 
 function MyFilesView() {
@@ -193,7 +187,11 @@ function MyFilesView() {
     <div className="flex flex-col gap-4 pb-10">
       <PageHeader
         title={PageNames.MY_FILES}
-        icon={<FolderOpenOutlined className="text-primary opacity-80" />}
+        icon={
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-glow-sm">
+            <FolderOpen className="text-xl text-primary" size={20} />
+          </div>
+        }
         breadcrumbNode={<BreadcrumbNav breadcrumbs={breadcrumbs} setCurrentFolderId={setCurrentFolderId} />}
         rightContent={
           <FileToolbar
@@ -214,47 +212,70 @@ function MyFilesView() {
       {selectedItems.length > 0 && (
         <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}>
           <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
-            <Tooltip title="Move selection">
-              <Button
-                type="text"
-                icon={<DragOutlined />}
-                onClick={() => handleBulkMoveTrigger(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Move</span>
-              </Button>
-            </Tooltip>
-            <Tooltip title="Copy selection">
-              <Button
-                type="text"
-                icon={<CopyOutlined />}
-                onClick={() => handleBulkCopyTrigger(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Copy</span>
-              </Button>
-            </Tooltip>
-            <Tooltip title="Download selection (files only)">
-              <Button
-                type="text"
-                icon={<DownloadOutlined />}
-                onClick={() => handleBulkDownload(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Download</span>
-              </Button>
-            </Tooltip>
-            <Tooltip title="Delete selection">
-              <Button
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleBulkDelete(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-danger hover:bg-danger-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Delete</span>
-              </Button>
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="text"
+                    icon={<Move size={16} />}
+                    onClick={() => handleBulkMoveTrigger(selectedItems)}
+                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
+                  >
+                    <span className="text-[10px] uppercase tracking-tighter">Move</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Move selection</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="text"
+                    icon={<Copy size={16} />}
+                    onClick={() => handleBulkCopyTrigger(selectedItems)}
+                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
+                  >
+                    <span className="text-[10px] uppercase tracking-tighter">Copy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Copy selection</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="text"
+                    icon={<Download size={16} />}
+                    onClick={() => handleBulkDownload(selectedItems)}
+                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
+                  >
+                    <span className="text-[10px] uppercase tracking-tighter">Download</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download selection (files only)</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="text"
+                    danger
+                    icon={<Trash2 size={16} />}
+                    onClick={() => handleBulkDelete(selectedItems)}
+                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-error hover:bg-error/10 border-none justify-center transition-all bg-transparent!"
+                  >
+                    <span className="text-[10px] uppercase tracking-tighter">Delete</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete selection</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </FloatingBulkActionsBar>
         </motion.div>
       )}
@@ -282,62 +303,59 @@ function MyFilesView() {
           />
         </Dragger>
 
-        <Modal
-          open={quotaModalVisible}
-          onCancel={() => setQuotaModalVisible(false)}
-          footer={null}
-          centered
-          width={420}
-          className="premium-modal"
-        >
-          <div className="py-6 px-2 flex flex-col items-center text-center gap-6">
-            <div className="w-20 h-20 bg-warning-light text-warning rounded-3xl flex items-center justify-center">
-              <WarningOutlined className="text-4xl" />
-            </div>
-
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-primary tracking-tight">Storage Limit Reached</h2>
-              <p className="text-label-secondary text-base pr-4 pl-4">
-                You&apos;ve used all of your available {STORAGE.TOTAL_QUOTA_GB} GB. Request an increase to keep saving
-                your files.
-              </p>
-            </div>
-
-            <div className="w-full bg-surface-dim p-4 rounded-2xl border border-line flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
-                  <CloudServerOutlined />
-                </div>
-                <div className="text-left">
-                  <p className="text-xs font-bold text-label leading-none">Current Plan</p>
-                  <p className="text-[10px] text-label-tertiary mt-1 uppercase tracking-wider">Free NAS Account</p>
-                </div>
+        <Dialog open={quotaModalVisible} onOpenChange={setQuotaModalVisible}>
+          <DialogContent className="max-w-[420px] p-0 overflow-hidden border-none aurora-modal">
+            <div className="py-8 px-6 flex flex-col items-center text-center gap-6">
+              <div className="w-20 h-20 bg-warning/10 text-warning rounded-3xl flex items-center justify-center border border-warning/20 shadow-glow-sm">
+                <AlertTriangle size={40} />
               </div>
-              <span className="text-sm font-black text-primary">
-                {STORAGE.TOTAL_QUOTA_GB}.0 GB / {STORAGE.TOTAL_QUOTA_GB}.0 GB
-              </span>
-            </div>
 
-            <div className="flex flex-col w-full gap-3 px-4">
-              <Button
-                type="primary"
-                size="large"
-                icon={<SendOutlined />}
-                onClick={handleRequestQuota}
-                className="w-full rounded-2xl h-14 font-black shadow-primary text-base"
-              >
-                Request Quota Increase
-              </Button>
-              <Button
-                type="text"
-                onClick={() => setQuotaModalVisible(false)}
-                className="w-full rounded-2xl h-12 text-label-tertiary font-bold hover:text-label"
-              >
-                Later
-              </Button>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black text-label tracking-tight italic">Storage Limit Reached</h2>
+                <p className="text-label-tertiary text-sm px-4 font-medium leading-relaxed">
+                  You&apos;ve used all of your available {STORAGE.TOTAL_QUOTA_GB} GB. Request an increase to keep saving
+                  your files.
+                </p>
+              </div>
+
+              <div className="w-full bg-surface-dim/50 p-4 rounded-2xl border border-line/30 flex items-center justify-between gap-4 shadow-inner">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center border border-primary/20">
+                    <Cloud size={18} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-black text-label leading-none uppercase tracking-wide">Current Plan</p>
+                    <p className="text-[10px] text-label-tertiary mt-1 uppercase tracking-widest font-bold">
+                      Free NAS Account
+                    </p>
+                  </div>
+                </div>
+                <span className="text-sm font-black text-primary italic">
+                  {STORAGE.TOTAL_QUOTA_GB}.0 GB / {STORAGE.TOTAL_QUOTA_GB}.0 GB
+                </span>
+              </div>
+
+              <div className="flex flex-col w-full gap-3 mt-2">
+                <Button
+                  styleType="primary"
+                  size="large"
+                  icon={<Send size={18} />}
+                  onClick={handleRequestQuota}
+                  className="w-full rounded-2xl h-14 font-black shadow-glow text-base uppercase tracking-wider"
+                >
+                  Request Increase
+                </Button>
+                <Button
+                  type="text"
+                  onClick={() => setQuotaModalVisible(false)}
+                  className="w-full rounded-2xl h-12 text-label-tertiary font-bold hover:text-label transition-colors"
+                >
+                  Later
+                </Button>
+              </div>
             </div>
-          </div>
-        </Modal>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
@@ -365,49 +383,79 @@ function MyFilesView() {
       />
 
       {/* Rename Modal */}
-      <Modal
-        title="Rename Item"
-        open={!!renameItem}
-        onOk={handleRenameConfirm}
-        onCancel={() => setRenameItem(null)}
-        okText="Rename"
-        centered
-        className="premium-modal"
-      >
-        <div className="py-4">
-          <Text type="secondary" className="block mb-2 text-xs font-bold uppercase tracking-wider">
-            New Name
-          </Text>
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="rounded-xl h-12"
-            onPressEnter={handleRenameConfirm}
-          />
-        </div>
-      </Modal>
+      <Dialog open={!!renameItem} onOpenChange={(open) => !open && setRenameItem(null)}>
+        <DialogContent className="max-w-[420px] aurora-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 italic">
+              <Info size={18} className="text-primary" />
+              <span>Rename Item</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-6 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary ml-1">
+                New Name
+              </Label>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="rounded-xl h-12 bg-surface-dim/30 border-line/40 focus:border-primary/50 transition-all font-medium"
+                onKeyDown={(e) => e.key === "Enter" && handleRenameConfirm()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="text" onClick={() => setRenameItem(null)} className="rounded-xl font-bold px-6">
+              Cancel
+            </Button>
+            <Button
+              styleType="primary"
+              onClick={handleRenameConfirm}
+              className="rounded-xl font-black px-8 shadow-glow italic"
+            >
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Modal */}
-      <Modal
-        title="Delete Item"
-        open={!!deleteItem}
-        onOk={handleDeleteConfirm}
-        onCancel={() => setDeleteItem(null)}
-        okText="Delete"
-        okButtonProps={{ danger: true }}
-        centered
-        className="premium-modal"
-      >
-        <div className="py-2 flex flex-col items-center text-center gap-4">
-          <div className="w-16 h-16 bg-danger-light text-danger rounded-full flex items-center justify-center text-2xl">
-            <DeleteOutlined />
+      <Dialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
+        <DialogContent className="max-w-[400px] aurora-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-error italic">
+              <AlertTriangle size={18} />
+              <span>Delete Item</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 flex flex-col items-center text-center gap-6">
+            <div className="w-16 h-16 bg-error/10 text-error rounded-full flex items-center justify-center border border-error/20 shadow-glow-sm">
+              <Trash2 size={24} />
+            </div>
+            <p className="text-sm text-label-tertiary font-medium leading-relaxed">
+              Are you sure you want to delete{" "}
+              <span className="text-label font-black italic">&quot;{deleteItem?.name}&quot;</span>?
+              <br />
+              <span className="text-[10px] uppercase tracking-wider opacity-60 mt-2 block">
+                This item will be moved to trash.
+              </span>
+            </p>
           </div>
-          <p className="text-base text-label-secondary font-medium">
-            Are you sure you want to delete <span className="text-label font-bold">&quot;{deleteItem?.name}&quot;</span>
-            ?
-          </p>
-        </div>
-      </Modal>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="text" onClick={() => setDeleteItem(null)} className="rounded-xl font-bold px-6">
+              Cancel
+            </Button>
+            <Button
+              styleType="primary"
+              variant="destructive"
+              onClick={handleDeleteConfirm}
+              className="rounded-xl font-black px-8 shadow-glow-sm italic"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

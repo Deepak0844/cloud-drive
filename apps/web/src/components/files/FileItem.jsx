@@ -1,7 +1,6 @@
 // React core & third-party libraries
 import React, { useEffect, useState } from "react";
-import { Card, Typography } from "antd";
-import { CheckCircleFilled, MoreOutlined, StarFilled } from "@ant-design/icons";
+import { Check, MoreVertical, Star } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Constants
@@ -14,13 +13,12 @@ import { useToggleFileFavoriteMutation } from "@services/api/fileApi";
 import { UrlUtils } from "@shared-utils/utils";
 import { getFileInfo } from "@utils/fileDisplayUtils";
 import { buildItemMenuItems } from "@utils/menuUtils";
+import { cn } from "@lib/utils";
 
 // Components
-import Button from "@shared-components/components/button";
 import Dropdown from "@shared-components/components/dropdown";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@components/ui/tooltip";
-
-const { Text } = Typography;
+import { Card, CardContent } from "@components/ui/card";
 
 function FileItem({
   file,
@@ -119,11 +117,12 @@ function FileItem({
   if (viewMode === "list") {
     return (
       <div
-        className={`group flex items-center gap-4 p-3 rounded-xl transition-colors cursor-pointer border ${
+        className={cn(
+          "group flex items-center gap-4 p-3 rounded-xl transition-all cursor-pointer border",
           isSelected
-            ? "bg-primary-light border-primary/20"
+            ? "bg-primary-light border-primary/30 shadow-glow-sm"
             : "bg-surface hover:bg-surface-dim border-transparent hover:border-line"
-        }`}
+        )}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onKeyDown={(e) => {
@@ -147,18 +146,23 @@ function FileItem({
           tabIndex={0}
         >
           <div
-            className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+            className={cn(
+              "w-5 h-5 rounded-md border flex items-center justify-center transition-colors",
               isSelected
                 ? "bg-primary border-primary text-on-primary"
-                : "border-line-strong bg-surface group-hover:border-primary"
-            }`}
+                : "border-line-strong bg-surface group-hover:border-primary/50"
+            )}
           >
-            {isSelected && <CheckCircleFilled className="text-xs" />}
+            {isSelected && <Check size={14} strokeWidth={3} />}
           </div>
         </div>
 
         <div
-          className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden text-xl ${getFileInfo(file.type).bg} ${getFileInfo(file.type).color}`}
+          className={cn(
+            "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden text-xl shadow-sm",
+            getFileInfo(file.type).bg,
+            getFileInfo(file.type).color
+          )}
         >
           {thumbnailSrc ? (
             <img
@@ -174,25 +178,22 @@ function FileItem({
 
         <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
           <div className="col-span-6 flex flex-col min-w-0">
-            <div className="font-medium text-sm text-label truncate">{file.name}</div>
+            <div className="font-semibold text-sm text-label truncate">{file.name}</div>
             {showParentContext && file.folder?.name && (
               <div className="text-[10px] text-label-tertiary truncate leading-none mt-0.5">
-                in <span className="font-bold">{file.folder.name}</span>
+                in <span className="font-bold opacity-80">{file.folder.name}</span>
               </div>
             )}
           </div>
-          <div className="col-span-3 text-xs text-label-tertiary capitalize">{file.type}</div>
-          <div className="col-span-3 text-xs text-label-tertiary">{file.size}</div>
+          <div className="col-span-3 text-xs text-label-tertiary capitalize font-medium">{file.type}</div>
+          <div className="col-span-3 text-xs text-label-tertiary font-bold">{file.size}</div>
         </div>
 
         <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="button" tabIndex={0}>
           <Dropdown menu={{ items: menuItems }} trigger={["click"]}>
-            <Button
-              type="text"
-              size="small"
-              icon={<MoreOutlined />}
-              className="text-label-tertiary hover:text-primary"
-            />
+            <div className="p-2 rounded-full hover:bg-surface-alt transition-colors group/more">
+              <MoreVertical size={18} className="text-label-tertiary group-hover/more:text-primary transition-colors" />
+            </div>
           </Dropdown>
         </div>
       </div>
@@ -202,82 +203,86 @@ function FileItem({
   return (
     <motion.div whileHover={{ y: -5 }} className="h-full relative">
       <Card
-        hoverable
-        className={`h-full border-2 rounded-2xl transition-all duration-200 relative ${
+        className={cn(
+          "h-full border-2 rounded-2xl transition-all duration-200 cursor-pointer overflow-hidden",
           isSelected
-            ? "border-primary bg-primary-light shadow-[0_0_0_2px_rgba(59,130,246,0.2)]"
-            : "border-transparent shadow-sm hover:shadow-xl bg-surface"
-        }`}
-        styles={{ body: { padding: "8px" } }}
+            ? "border-primary bg-primary-light shadow-glow"
+            : "border-transparent shadow-sm hover:shadow-md bg-surface"
+        )}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
       >
-        {isSelected && (
-          <div className="absolute top-2 right-2 z-20">
-            <CheckCircleFilled className="text-primary text-lg bg-surface rounded-full" />
-          </div>
-        )}
-
-        {isFavorite && !isSelected && (
-          <div className="absolute top-2 right-2 z-20">
-            <StarFilled className="text-warning text-lg" />
-          </div>
-        )}
-
-        <div className="absolute top-2 left-2 z-10"></div>
-
-        <div
-          className={`aspect-square rounded-xl flex items-center justify-center overflow-hidden mb-2 transition-colors duration-300 text-5xl ${
-            isSelected ? "bg-surface" : getFileInfo(file.type).bg
-          } ${getFileInfo(file.type).color}`}
-        >
-          {thumbnailSrc ? (
-            <img
-              src={thumbnailSrc}
-              alt={file.name}
-              className="w-full h-full object-cover pointer-events-none"
-              onError={() => setThumbnailSrc(null)}
-            />
-          ) : (
-            getFileInfo(file.type).icon
+        <CardContent className="p-2">
+          {isSelected && (
+            <div className="absolute top-2.5 right-2.5 z-20">
+              <div className="bg-primary text-on-primary rounded-full p-0.5 shadow-sm">
+                <Check size={14} strokeWidth={4} />
+              </div>
+            </div>
           )}
-        </div>
 
-        <div className="flex items-start justify-between gap-1 px-1 pb-1">
-          <div className="flex-1 min-w-0">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Text strong className="block truncate text-[12px] leading-tight mb-0.5 cursor-default">
-                    {file.name}
-                  </Text>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-[200px] break-words">
-                  {file.name}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            {showParentContext && file.folder?.name && (
-              <Text className="block truncate text-[9px] text-label-tertiary leading-none mb-1">
-                in <span className="font-black text-primary/70">{file.folder.name}</span>
-              </Text>
-            )}
-            <Text type="secondary" className="text-[10px] font-medium opacity-60">
-              {file.size}
-            </Text>
-          </div>
+          {isFavorite && !isSelected && (
+            <div className="absolute top-2.5 right-2.5 z-20">
+              <Star size={16} className="text-warning fill-warning" />
+            </div>
+          )}
+
           <div
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            role="button"
-            tabIndex={0}
-            className="mt-[-2px]"
+            className={cn(
+              "aspect-square rounded-xl flex items-center justify-center overflow-hidden mb-2.5 transition-colors duration-300 text-5xl",
+              isSelected ? "bg-surface/50 backdrop-blur-sm shadow-inner" : getFileInfo(file.type).bg,
+              getFileInfo(file.type).color
+            )}
           >
-            <Dropdown menu={{ items: menuItems }} trigger={["click"]}>
-              <MoreOutlined className="text-label-tertiary hover:text-primary cursor-pointer p-1 rounded-full hover:bg-surface-alt transition-colors text-sm" />
-            </Dropdown>
+            {thumbnailSrc ? (
+              <img
+                src={thumbnailSrc}
+                alt={file.name}
+                className="w-full h-full object-cover pointer-events-none"
+                onError={() => setThumbnailSrc(null)}
+              />
+            ) : (
+              getFileInfo(file.type).icon
+            )}
           </div>
-        </div>
+
+          <div className="flex items-start justify-between gap-1 px-1 pb-1">
+            <div className="flex-1 min-w-0">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="font-bold truncate text-[12px] leading-tight mb-0.5 text-label">{file.name}</div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[200px] wrap-break-word">
+                    {file.name}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              {showParentContext && file.folder?.name && (
+                <div className="truncate text-[9px] text-label-tertiary leading-none mb-1 font-medium italic">
+                  in <span className="font-bold text-primary/70">{file.folder.name}</span>
+                </div>
+              )}
+              <div className="text-[10px] font-bold text-label-tertiary/70 uppercase tracking-wider">{file.size}</div>
+            </div>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              role="button"
+              tabIndex={0}
+              className="mt-[-2px]"
+            >
+              <Dropdown menu={{ items: menuItems }} trigger={["click"]}>
+                <div className="p-1.5 rounded-full hover:bg-surface-alt transition-colors group/more">
+                  <MoreVertical
+                    size={16}
+                    className="text-label-tertiary group-hover/more:text-primary transition-colors"
+                  />
+                </div>
+              </Dropdown>
+            </div>
+          </div>
+        </CardContent>
       </Card>
     </motion.div>
   );

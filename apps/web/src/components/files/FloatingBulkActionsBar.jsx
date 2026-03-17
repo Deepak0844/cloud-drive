@@ -1,25 +1,32 @@
 import React from "react";
-import { CloseOutlined } from "@ant-design/icons";
-
+import { X } from "lucide-react";
 // Components
-import Button from "@shared-components/components/button";
+import { Button } from "@components/ui/button";
 
 export default function FloatingBulkActionsBar({ selectedCount, clearSelection, children }) {
+  if (selectedCount === 0) return null;
+
   return (
     <div className="fixed bottom-10 left-1/2 z-50 pointer-events-auto -translate-x-1/2">
-      <div className="bg-surface/90 backdrop-blur-xl rounded-full p-2 flex items-center gap-2 shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-primary/20 ring-1 ring-white/20 px-6 h-16 min-w-[400px] bulk-actions-bar">
-        <div className="flex items-center gap-3 pr-4 border-r border-line">
+      <div className="bg-surface/80 backdrop-blur-2xl rounded-3xl p-2 flex items-center gap-2 shadow-premium border border-white/10 px-6 h-16 min-w-[420px] bulk-actions-bar animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex items-center gap-4 pr-4 border-r border-white/10">
           <Button
-            type="text"
-            shape="circle"
-            icon={<CloseOutlined className="text-xs" />}
+            variant="ghost"
+            size="icon"
             onClick={clearSelection}
-            className="hover:rotate-90 transition-transform flex items-center justify-center w-8 h-8 bg-surface-alt"
-          />
-          <span className="text-sm font-black text-primary tracking-tight">{selectedCount} selected</span>
+            className="h-10 w-10 rounded-xl hover:rotate-90 hover:bg-destructive/10 text-label-secondary hover:text-destructive transition-all duration-300"
+          >
+            <X size={18} />
+          </Button>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">
+              Selected
+            </span>
+            <span className="text-sm font-black text-label leading-none">{selectedCount} items</span>
+          </div>
         </div>
 
-        <div className="flex gap-2 items-center pl-2">{children}</div>
+        <div className="flex gap-2 items-center pl-4">{children}</div>
       </div>
     </div>
   );

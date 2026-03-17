@@ -1,58 +1,55 @@
 // React core & third-party libraries
-import React, { useState } from "react";
-import { Divider, Drawer, Select, Tag, Typography } from "antd";
-import {
-  CalendarOutlined,
-  CloseOutlined,
-  FileImageOutlined,
-  FileOutlined,
-  FilePdfOutlined,
-  FileTextOutlined,
-  FolderFilled,
-  FolderOpenOutlined,
-  StarFilled,
-  TagsOutlined,
-} from "@ant-design/icons";
+import React, { useState, useEffect } from "react";
+import { Calendar, X, Image as ImageIcon, File, FileText, Folder, FolderOpen, Star, Tags } from "lucide-react";
 import dayjs from "dayjs";
 
 // Utils
 import { formatBytes } from "@shared-utils/utils";
+import { cn } from "@lib/utils";
 
 // Services (RTK Query hooks)
 import { useUpdateFileTagsMutation } from "@services/api/fileApi";
 import { useUpdateFolderTagsMutation } from "@services/api/folderApi";
 
 // Components
-import Button from "@shared-components/components/button";
-
-const { Text, Title } = Typography;
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@components/ui/sheet";
+import { Separator } from "@components/ui/separator";
+import { Badge } from "@components/ui/badge";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
 
 function getFileInfo(type, isFolder) {
   if (isFolder) {
-    return { icon: <FolderFilled />, color: "text-primary", bg: "bg-primary-light" };
+    return { icon: <Folder size={32} />, color: "text-primary", bg: "bg-primary/10" };
   }
   switch (type) {
     case "image":
-      return { icon: <FileImageOutlined />, color: "text-primary", bg: "bg-primary-light" };
+      return { icon: <ImageIcon size={32} />, color: "text-primary", bg: "bg-primary/10" };
     case "pdf":
-      return { icon: <FilePdfOutlined />, color: "text-danger", bg: "bg-danger-light" };
+      return { icon: <FileText size={32} />, color: "text-destructive", bg: "bg-destructive/10" };
     case "text":
-      return { icon: <FileTextOutlined />, color: "text-success", bg: "bg-success-light" };
+      return { icon: <FileText size={32} />, color: "text-success", bg: "bg-success/10" };
     default:
-      return { icon: <FileOutlined />, color: "text-label-secondary", bg: "bg-surface-alt" };
+      return { icon: <File size={32} />, color: "text-label-tertiary", bg: "bg-surface-alt" };
   }
 }
 
 function InfoDrawer({ item, open, onClose }) {
   // Local state
-  // initialise tags from item; default to empty array when item is null
-  const [tags, setTags] = useState(item?.tags || []);
+  const [tags, setTags] = useState([]);
+  const [newTag, setNewTag] = useState("");
+
+  useEffect(() => {
+    if (item?.tags) {
+      setTags(item.tags);
+    } else {
+      setTags([]);
+    }
+  }, [item]);
 
   // RTK Query hooks
-  // ── Hooks must always run — before any conditional return ──────────────────
   const [updateFileTags, { isLoading: savingFileTags }] = useUpdateFileTagsMutation();
   const [updateFolderTags, { isLoading: savingFolderTags }] = useUpdateFolderTagsMutation();
-  // ──────────────────────────────────────────────────────────────────────────
 
   if (!item) return null;
 
@@ -64,41 +61,57 @@ function InfoDrawer({ item, open, onClose }) {
   const isSavingTags = savingFileTags || savingFolderTags;
 
   // Event handlers
-  async function handleTagsChange(newTags) {
-    const previousTags = tags;
-    setTags(newTags);
+  async function handleAddTag(e) {
+    if (e.key === "Enter" && newTag.trim()) {
+      e.preventDefault();
+      const updatedTags = [...tags, newTag.trim()];
+      await saveTags(updatedTags);
+      setNewTag("");
+    }
+  }
+
+  async function handleRemoveTag(tagToRemove) {
+    const updatedTags = tags.filter((t) => t !== tagToRemove);
+    await saveTags(updatedTags);
+  }
+
+  async function saveTags(updatedTags) {
+    setTags(updatedTags);
     try {
       if (isFolder) {
-        await updateFolderTags({ id, tags: newTags }).unwrap();
+        await updateFolderTags({ id, tags: updatedTags }).unwrap();
       } else {
-        await updateFileTags({ id, tags: newTags }).unwrap();
+        await updateFileTags({ id, tags: updatedTags }).unwrap();
       }
-    } catch {
-      // Restore on error
-      setTags(previousTags);
+    } catch (err) {
+      console.error("Failed to update tags:", err);
+      // Optional: restore tags on error if needed
     }
   }
 
   function TitleSection() {
     return (
-      <div className="flex flex-col items-center justify-center p-6 bg-surface-dim/30 rounded-2xl mb-6 border border-line-base">
+      <div className="flex flex-col items-center justify-center p-6 bg-surface-dim/30 rounded-2xl mb-8 border border-white/5 shadow-inner">
         <div
-          className={`w-20 h-20 rounded-2xl flex items-center justify-center text-4xl shadow-sm mb-4 transition-transform hover:scale-105 ${fileInfo.bg} ${fileInfo.color}`}
+          className={cn(
+            "w-20 h-20 rounded-2xl flex items-center justify-center shadow-glow-sm mb-4 transition-transform hover:scale-105",
+            fileInfo.bg,
+            fileInfo.color
+          )}
         >
           {fileInfo.icon}
         </div>
-        <Title level={4} className="mb-1 text-center truncate w-full px-4" title={item.name}>
+        <h3 className="text-lg font-bold text-label mb-1 text-center truncate w-full px-4" title={item.name}>
           {item.name}
-        </Title>
-        <Text type="secondary" className="uppercase tracking-wider text-[10px] font-bold">
+        </h3>
+        <span className="uppercase tracking-widest text-[10px] font-black text-label-tertiary">
           {isFolder ? "Folder" : item.extension ? item.extension.replace(".", "") : fileType}
-        </Text>
+        </span>
       </div>
     );
   }
 
   function PropertiesTab() {
-    // Format the path safely
     let displayPath = "My Files";
 
     if (item.virtualPath) {
@@ -113,141 +126,146 @@ function InfoDrawer({ item, open, onClose }) {
     }
 
     return (
-      <div className="space-y-5">
-        <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-          <div>
-            <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-1">
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <span className="block text-[10px] uppercase font-black tracking-widest text-label-tertiary opacity-70">
               Size
-            </Text>
-            <Text strong className="text-sm">
+            </span>
+            <span className="text-sm font-bold text-label">
               {isFolder ? `${item.itemCount || 0} items` : formatBytes(item.size_bytes || item.size || 0)}
-            </Text>
+            </span>
           </div>
 
-          <div>
-            <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-1">
+          <div className="space-y-1">
+            <span className="block text-[10px] uppercase font-black tracking-widest text-label-tertiary opacity-70">
               Type
-            </Text>
-            <Tag className="m-0 rounded border-line-base bg-surface-dim font-bold text-xs px-2">
+            </span>
+            <Badge variant="secondary" className="rounded-md font-bold text-[10px] px-2 py-0 border-white/5">
               {isFolder
                 ? "FOLDER"
                 : item.extension
                   ? item.extension.replace(".", "").toUpperCase()
                   : fileType.toUpperCase()}
-            </Tag>
+            </Badge>
           </div>
         </div>
 
-        <Divider className="my-2 border-line-base" />
+        <Separator className="bg-white/5" />
 
-        <div>
-          <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-1">
+        <div className="space-y-2">
+          <span className="block text-[10px] uppercase font-black tracking-widest text-label-tertiary opacity-70">
             Path
-          </Text>
-          <div className="flex items-center gap-2 bg-surface-alt p-2.5 rounded-lg border border-line-base">
-            <FolderOpenOutlined className="text-primary shrink-0" />
-            <Text className="text-xs break-all font-medium" title={displayPath}>
+          </span>
+          <div className="flex items-center gap-2 bg-surface-alt/50 p-3 rounded-xl border border-white/5 shadow-inner">
+            <FolderOpen size={16} className="text-primary shrink-0" />
+            <span className="text-xs break-all font-semibold text-label/90" title={displayPath}>
               {displayPath}
-            </Text>
+            </span>
           </div>
         </div>
 
-        <Divider className="my-2 border-line-base" />
+        <Separator className="bg-white/5" />
 
-        {/* Tags Editor */}
-        <div>
-          <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-2">
-            <TagsOutlined className="mr-1" />
-            Tags
-          </Text>
-          <Select
-            mode="tags"
-            value={tags}
-            onChange={handleTagsChange}
-            placeholder="Add tags..."
-            className="w-full"
-            loading={isSavingTags}
-            tokenSeparators={[","]}
-            size="small"
-            variant="outlined"
-            style={{ width: "100%" }}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Tags size={14} className="text-label-tertiary" />
+            <span className="text-[10px] uppercase font-black tracking-widest text-label-tertiary opacity-70">
+              Tags
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-2">
+            {tags.map((tag) => (
+              <Badge key={tag} className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 pr-1 group">
+                {tag}
+                <button
+                  onClick={() => handleRemoveTag(tag)}
+                  className="ml-1 rounded-full hover:bg-primary/20 p-0.5 transition-colors"
+                >
+                  <X size={10} />
+                </button>
+              </Badge>
+            ))}
+          </div>
+
+          <Input
+            placeholder="Add tag and press Enter..."
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            onKeyDown={handleAddTag}
+            className="h-9 text-xs bg-surface-alt/30 border-white/5 focus-visible:ring-primary/20"
+            disabled={isSavingTags}
           />
         </div>
 
-        <Divider className="my-2 border-line-base" />
+        <Separator className="bg-white/5" />
 
-        <div className="space-y-4">
-          <div>
-            <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-1">
+        <div className="space-y-5">
+          <div className="space-y-1.5">
+            <span className="block text-[10px] uppercase font-black tracking-widest text-label-tertiary opacity-70">
               Modified
-            </Text>
-            <div className="flex items-center gap-2">
-              <CalendarOutlined className="text-label-tertiary" />
-              <Text className="text-sm font-medium">
+            </span>
+            <div className="flex items-center gap-2.5">
+              <Calendar size={14} className="text-label-tertiary" />
+              <span className="text-sm font-semibold text-label">
                 {item.updatedAt ? dayjs(item.updatedAt).format("MMM D, YYYY h:mm A") : "Just now"}
-              </Text>
+              </span>
             </div>
           </div>
-          <div>
-            <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-1">
+          <div className="space-y-1.5">
+            <span className="block text-[10px] uppercase font-black tracking-widest text-label-tertiary opacity-70">
               Created
-            </Text>
-            <div className="flex items-center gap-2">
-              <CalendarOutlined className="text-label-tertiary" />
-              <Text className="text-sm font-medium">
+            </span>
+            <div className="flex items-center gap-2.5">
+              <Calendar size={14} className="text-label-tertiary" />
+              <span className="text-sm font-semibold text-label">
                 {item.createdAt ? dayjs(item.createdAt).format("MMM D, YYYY h:mm A") : "Unknown"}
-              </Text>
+              </span>
             </div>
           </div>
           {item.favorited_at && (
-            <div>
-              <Text type="secondary" className="block text-[10px] uppercase font-bold tracking-wider mb-1">
+            <div className="space-y-1.5">
+              <span className="block text-[10px] uppercase font-black tracking-widest text-label-tertiary opacity-70">
                 Favorited At
-              </Text>
-              <div className="flex items-center gap-2">
-                <StarFilled className="text-warning" />
-                <Text className="text-sm font-medium">{dayjs(item.favorited_at).format("MMM D, YYYY h:mm A")}</Text>
+              </span>
+              <div className="flex items-center gap-2.5">
+                <Star size={14} className="text-warning fill-warning" />
+                <span className="text-sm font-semibold text-label">
+                  {dayjs(item.favorited_at).format("MMM D, YYYY h:mm A")}
+                </span>
               </div>
             </div>
           )}
         </div>
-        <Divider className="my-2 border-line-base" />
       </div>
     );
   }
 
-  // Render
   return (
-    <Drawer
-      placement="right"
-      onClose={onClose}
-      open={open}
-      closable={false}
-      classNames={{
-        body: "p-6",
-        wrapper: "shadow-2xl",
-      }}
-      className="bg-surface/95 backdrop-blur-xl border-l border-white/20"
-      styles={{
-        wrapper: { backdropFilter: "blur(20px)", width: 360 },
-      }}
-    >
-      <div className="flex items-center justify-between mb-6">
-        <Title level={5} className="m-0 text-label font-bold tracking-tight">
-          Info
-        </Title>
-        <Button
-          type="text"
-          icon={<CloseOutlined />}
-          onClick={onClose}
-          className="hover:bg-surface-dim text-label-secondary transition-colors rounded-xl flex items-center justify-center w-8 h-8"
-        />
-      </div>
+    <Sheet open={open} onOpenChange={(val) => !val && onClose()}>
+      <SheetContent
+        side="right"
+        className="w-full sm:max-w-[360px] bg-surface/95 backdrop-blur-2xl border-l border-white/10 p-0 shadow-2xl flex flex-col"
+      >
+        <SheetHeader className="p-6 pb-2 flex flex-row items-center justify-between space-y-0">
+          <SheetTitle className="text-lg font-black tracking-tight text-label">Details</SheetTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8 rounded-xl hover:bg-surface-dim hover:text-primary transition-all"
+          >
+            <X size={18} />
+          </Button>
+        </SheetHeader>
 
-      <TitleSection />
-
-      <PropertiesTab />
-    </Drawer>
+        <div className="flex-1 overflow-y-auto p-6 pt-2 custom-scrollbar">
+          <TitleSection />
+          <PropertiesTab />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

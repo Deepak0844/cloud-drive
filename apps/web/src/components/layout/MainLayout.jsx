@@ -8,6 +8,7 @@ import { UploadProvider } from "@contexts/UploadContext";
 import UploadManager from "../files/UploadManager";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import { Sheet, SheetContent } from "@components/ui/sheet";
 
 // ---------------------------------------------------------------------------
 // Hook — replaces Ant Design Grid.useBreakpoint
@@ -40,21 +41,18 @@ function MainLayout({ children }) {
   // Render
   return (
     <div className="flex h-screen overflow-hidden bg-surface">
-      {/* Mobile sidebar overlay */}
-      {isMobile && drawerVisible && (
-        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setDrawerVisible(false)} />
-      )}
-
       {/* Mobile slide-in drawer */}
       {isMobile ? (
-        <div
-          className={`fixed inset-y-0 left-0 z-50 w-[260px] transition-transform duration-300 ease-in-out ${
-            drawerVisible ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <Sidebar collapsed={false} setCollapsed={() => {}} isMobile={true} onClose={() => setDrawerVisible(false)} />
-        </div>
+        <Sheet open={drawerVisible} onOpenChange={setDrawerVisible}>
+          <SheetContent side="left" className="w-[260px] p-0 border-none sm:max-w-none">
+            <Sidebar
+              collapsed={false}
+              setCollapsed={() => {}}
+              isMobile={true}
+              onClose={() => setDrawerVisible(false)}
+            />
+          </SheetContent>
+        </Sheet>
       ) : (
         <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} isMobile={false} />
       )}

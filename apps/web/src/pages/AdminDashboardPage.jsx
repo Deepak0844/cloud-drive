@@ -1,14 +1,19 @@
 // React core & third-party libraries
 import React, { useState } from "react";
-import { Form, InputNumber, Modal, Skeleton, Space, Tabs, Tag, Typography, message as antdMessage } from "antd";
+import { Form, InputNumber, Modal, message as antdMessage } from "antd";
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EditOutlined,
-  HourglassOutlined,
-  ReloadOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
+  Cpu,
+  HardDrive,
+  Server as ServerIcon,
+  Users,
+  FileIcon,
+  User,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  RotateCw,
+  Edit2,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
@@ -19,6 +24,7 @@ import {
   useRunStorageReanalysisMutation,
   useUpdateUserQuotaMutation,
   useUpdateUserStatusMutation,
+  useGetSystemStatsQuery,
 } from "@services/api/adminApi";
 
 // Utils
@@ -26,14 +32,16 @@ import { formatBytes } from "@shared-utils/utils";
 
 // Constants
 import PageNames from "@constants/pageNames";
-import { UI_COLORS } from "@constants/uiConstants";
 
 // Components
 import Button from "@shared-components/components/button";
 import Table from "@shared-components/components/table";
 import TableActionButton from "@shared-components/components/table-action-button";
-
-const { Text, Title } = Typography;
+import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { Progress } from "@components/ui/progress";
+import { Skeleton } from "@components/ui/skeleton";
+import { Badge } from "@components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 
 function bytesToGB(bytes) {
   if (!bytes) return 0;
@@ -77,6 +85,10 @@ export default function AdminDashboardPage() {
     ps: pageSize,
   });
 
+  const { data: statsData, isLoading: statsLoading } = useGetSystemStatsQuery(undefined, {
+    pollingInterval: 30000,
+  });
+
   const [updateUserQuota] = useUpdateUserQuotaMutation();
   const [updateUserStatus] = useUpdateUserStatusMutation();
   const [handleQuotaRequest] = useHandleQuotaRequestMutation();
@@ -85,6 +97,7 @@ export default function AdminDashboardPage() {
   // Derived / computed variables
   const users = usersData?.data || [];
   const requests = requestsData?.data || [];
+  const stats = statsData?.data;
   const userPagination = usersData?.pagination;
   const requestPagination = requestsData?.pagination;
 
@@ -149,8 +162,8 @@ export default function AdminDashboardPage() {
       key: "name",
       render: (text) => (
         <div className="flex items-center gap-2">
-          <UserOutlined className="text-label-tertiary" />
-          <Text strong>{text}</Text>
+          <User size={14} className="text-label-tertiary" />
+          <span className="font-semibold text-label">{text}</span>
         </div>
       ),
     },
@@ -163,13 +176,17 @@ export default function AdminDashboardPage() {
       title: "Role",
       dataIndex: "role",
       key: "role",
-      render: (role) => <Tag color={UI_COLORS.ROLES[role] || "blue"}>{role}</Tag>,
+      render: (role) => (
+        <Badge variant="outline" className="capitalize">
+          {role.toLowerCase()}
+        </Badge>
+      ),
     },
     {
       title: "Status",
       key: "status",
       render: (_, record) => (
-        <Tag color={record.is_active ? "green" : "red"}>{record.is_active ? "Active" : "Disabled"}</Tag>
+        <Badge variant={record.is_active ? "success" : "destructive"}>{record.is_active ? "Active" : "Disabled"}</Badge>
       ),
     },
     {
@@ -185,11 +202,11 @@ export default function AdminDashboardPage() {
         const percent = calculatePercentage(record.used_bytes, record.quota_bytes);
 
         return (
-          <div>
-            <Text>
+          <div className="flex flex-col">
+            <span className="text-label">
               {usedText} / {totalText}
-            </Text>
-            <div className="text-xs text-label-secondary">{percent}% used</div>
+            </span>
+            <span className="text-xs text-label-secondary font-medium">{percent}% used</span>
           </div>
         );
       },
@@ -200,9 +217,9 @@ export default function AdminDashboardPage() {
       render: (_, record) =>
         record.role !== "ADMIN" && (
           <div className="flex gap-2">
-            <TableActionButton icon={<EditOutlined />} onClick={() => handleEdit(record)} buttonText="Edit Quota" />
+            <TableActionButton icon={<Edit2 size={14} />} onClick={() => handleEdit(record)} buttonText="Edit Quota" />
             <TableActionButton
-              icon={<ReloadOutlined />}
+              icon={<RotateCw size={14} />}
               popconfirmTitle="Re-analyze storage for this user?"
               onConfirm={() => handleSyncStorage(record._id)}
               buttonText="Re-sync"
@@ -224,16 +241,16 @@ export default function AdminDashboardPage() {
       title: "User",
       key: "user",
       render: (_, record) => (
-        <div>
-          <Text strong>{record.user?.name}</Text>
-          <div className="text-xs text-label-secondary">{record.user?.email}</div>
+        <div className="flex flex-col">
+          <span className="font-semibold text-label">{record.user?.name}</span>
+          <span className="text-xs text-label-secondary">{record.user?.email}</span>
         </div>
       ),
     },
     {
       title: "Requested Amount",
       key: "amount",
-      render: (_, record) => <Text>{formatBytes(record.requested_bytes)}</Text>,
+      render: (_, record) => <span className="text-label">{formatBytes(record.requested_bytes)}</span>,
     },
     {
       title: "Reason",
@@ -245,20 +262,21 @@ export default function AdminDashboardPage() {
       dataIndex: "status",
       key: "status",
       render: (status) => {
-        let color = UI_COLORS.STATUS.PENDING;
-        let icon = <HourglassOutlined />;
+        let variant = "info";
+        let IconComp = Clock;
         if (status === "APPROVED") {
-          color = UI_COLORS.STATUS.APPROVED;
-          icon = <CheckCircleOutlined />;
+          variant = "success";
+          IconComp = CheckCircle2;
         }
         if (status === "REJECTED") {
-          color = UI_COLORS.STATUS.REJECTED;
-          icon = <CloseCircleOutlined />;
+          variant = "destructive";
+          IconComp = XCircle;
         }
         return (
-          <Tag color={color} icon={icon}>
+          <Badge variant={variant} className="gap-1.5">
+            <IconComp size={12} />
             {status}
-          </Tag>
+          </Badge>
         );
       },
     },
@@ -273,72 +291,23 @@ export default function AdminDashboardPage() {
       key: "actions",
       render: (_, record) =>
         record.status === "PENDING" ? (
-          <Space>
+          <div className="flex gap-2">
             <TableActionButton
               type="primary"
-              icon={<CheckCircleOutlined />}
+              icon={<CheckCircle2 size={14} />}
               popconfirmTitle="Approve storage request?"
               onConfirm={() => handleRequestStatus(record._id, "APPROVED")}
               buttonText="Approve"
             />
             <TableActionButton
               danger
-              icon={<CloseCircleOutlined />}
+              icon={<XCircle size={14} />}
               popconfirmTitle="Reject storage request?"
               onConfirm={() => handleRequestStatus(record._id, "REJECTED")}
               buttonText="Reject"
             />
-          </Space>
+          </div>
         ) : null,
-    },
-  ];
-
-  const items = [
-    {
-      key: "1",
-      label: "User Management",
-      children: usersLoading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
-      ) : (
-        <Table
-          columns={userColumns}
-          dataSource={users}
-          rowKey="_id"
-          className="bg-surface rounded-xl shadow-sm"
-          loading={usersFetching}
-          pagination={{
-            current: userPage,
-            pageSize: pageSize,
-            total: userPagination?.totalItems || 0,
-            onChange: (p) => setUserPage(p),
-            showSizeChanger: false,
-          }}
-          scroll={{ x: "max-content", y: "calc(100vh - 320px)" }}
-        />
-      ),
-    },
-    {
-      key: "2",
-      label: "Quota Requests",
-      children: requestsLoading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
-      ) : (
-        <Table
-          columns={quotaColumns}
-          dataSource={requests}
-          rowKey="_id"
-          className="bg-surface rounded-xl shadow-sm"
-          loading={requestsFetching}
-          pagination={{
-            current: requestPage,
-            pageSize: pageSize,
-            total: requestPagination?.totalItems || 0,
-            onChange: (p) => setRequestPage(p),
-            showSizeChanger: false,
-          }}
-          scroll={{ x: "max-content", y: "calc(100vh - 320px)" }}
-        />
-      ),
     },
   ];
 
@@ -350,41 +319,230 @@ export default function AdminDashboardPage() {
       transition={{ duration: 0.3 }}
       className="p-6 h-full flex flex-col"
     >
-      <div className="mb-6 shrink-0 flex items-center justify-between">
-        <div>
-          <Title level={2} className="mb-0!">
-            {PageNames.ADMIN}
-          </Title>
-          <Text type="secondary">Manage users and storage requests</Text>
+      <div className="mb-8 shrink-0 flex items-center justify-between">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-black text-label tracking-tight mb-0!">{PageNames.ADMIN}</h2>
+          <p className="text-label-secondary font-medium">Manage users and storage requests</p>
         </div>
         <Button
-          icon={<ReloadOutlined />}
+          icon={<RotateCw size={16} />}
           loading={reanalyzing}
           onClick={() => handleSyncStorage()}
-          className="rounded-xl font-bold h-10 border-primary text-primary hover:bg-primary-light"
+          className="rounded-xl font-bold h-11 px-6 shadow-glow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           Re-analyze All Storage
         </Button>
       </div>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} className="admin-tabs flex-1" />
+      {/* System Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* CPU */}
+        <Card className="rounded-2xl shadow-sm border-line/50 glass-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-5">
+            <CardTitle className="text-sm font-bold text-label-secondary">CPU Usage</CardTitle>
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <Cpu className="h-4 w-4 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            {statsLoading ? (
+              <div className="space-y-3 mt-2">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-2 w-full mt-2" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-black text-label">{stats?.system?.cpu?.load}%</div>
+                <p className="text-xs font-semibold text-label-tertiary mt-1">
+                  Temp: {stats?.system?.cpu?.temp === "N/A" ? "N/A" : `${stats?.system?.cpu?.temp}°C`}
+                </p>
+                <Progress value={parseFloat(stats?.system?.cpu?.load) || 0} className="h-1.5 mt-3" />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Memory */}
+        <Card className="rounded-2xl shadow-sm border-line/50 glass-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-5">
+            <CardTitle className="text-sm font-bold text-label-secondary">Memory</CardTitle>
+            <div className="w-8 h-8 rounded-full bg-info/10 flex items-center justify-center">
+              <ServerIcon className="h-4 w-4 text-info" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            {statsLoading ? (
+              <div className="space-y-3 mt-2">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-2 w-full mt-2" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-black text-label">{stats?.system?.memory?.usage_percent}%</div>
+                <p className="text-xs font-semibold text-label-tertiary mt-1">
+                  {formatBytes(stats?.system?.memory?.used)} / {formatBytes(stats?.system?.memory?.total)}
+                </p>
+                <Progress value={parseFloat(stats?.system?.memory?.usage_percent) || 0} className="h-1.5 mt-3" />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Storage */}
+        <Card className="rounded-2xl shadow-sm border-line/50 glass-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-5">
+            <CardTitle className="text-sm font-bold text-label-secondary">Storage</CardTitle>
+            <div className="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center">
+              <HardDrive className="h-4 w-4 text-warning" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            {statsLoading ? (
+              <div className="space-y-3 mt-2">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-2 w-full mt-2" />
+              </div>
+            ) : (
+              <>
+                <div className="text-2xl font-black text-label">{stats?.system?.disk?.usage_percent}%</div>
+                <p className="text-xs font-semibold text-label-tertiary mt-1">
+                  {formatBytes(stats?.system?.disk?.used)} / {formatBytes(stats?.system?.disk?.total)}
+                </p>
+                <Progress value={parseFloat(stats?.system?.disk?.usage_percent) || 0} className="h-1.5 mt-3" />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Counts */}
+        <Card className="rounded-2xl shadow-sm border-primary/20 bg-linear-to-br from-primary/5 to-secondary/5">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-5">
+            <CardTitle className="text-sm font-bold text-primary">System Totals</CardTitle>
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+              <Users className="h-4 w-4 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5">
+            {statsLoading ? (
+              <div className="space-y-4 mt-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ) : (
+              <div className="space-y-3 mt-1">
+                <div className="flex justify-between items-center bg-surface-dim/50 p-2 rounded-lg border border-line/30">
+                  <div className="flex items-center gap-2">
+                    <Users size={14} className="text-label-secondary" />
+                    <span className="text-sm font-semibold text-label-secondary">Registered Users</span>
+                  </div>
+                  <span className="font-extrabold text-label">{stats?.counts?.total_users || 0}</span>
+                </div>
+                <div className="flex justify-between items-center bg-surface-dim/50 p-2 rounded-lg border border-line/30">
+                  <div className="flex items-center gap-2">
+                    <FileIcon size={14} className="text-label-secondary" />
+                    <span className="text-sm font-semibold text-label-secondary">Total Files</span>
+                  </div>
+                  <span className="font-extrabold text-label">{stats?.counts?.total_files || 0}</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="admin-tabs flex-1 flex flex-col">
+        <TabsList className="mb-4 w-fit h-10 p-1 bg-surface-dim border border-line items-center">
+          <TabsTrigger value="1" className="px-8 h-8 data-active:shadow-glow-sm">
+            User Management
+          </TabsTrigger>
+          <TabsTrigger value="2" className="px-8 h-8 data-active:shadow-glow-sm">
+            Quota Requests
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="flex-1 min-h-0 bg-surface rounded-2xl border border-line/50 shadow-premium overflow-hidden">
+          <TabsContent value="1" className="h-full m-0 p-0 focus-visible:ring-0">
+            {usersLoading ? (
+              <div className="p-6 space-y-4">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+            ) : (
+              <Table
+                columns={userColumns}
+                dataSource={users}
+                rowKey="_id"
+                className="bg-transparent border-none"
+                loading={usersFetching}
+                pagination={{
+                  current: userPage,
+                  pageSize: pageSize,
+                  total: userPagination?.totalItems || 0,
+                  onChange: (p) => setUserPage(p),
+                  showSizeChanger: false,
+                }}
+                scroll={{ x: "max-content", y: "calc(100vh - 460px)" }}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="2" className="h-full m-0 p-0 focus-visible:ring-0">
+            {requestsLoading ? (
+              <div className="p-6 space-y-4">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+            ) : (
+              <Table
+                columns={quotaColumns}
+                dataSource={requests}
+                rowKey="_id"
+                className="bg-transparent border-none"
+                loading={requestsFetching}
+                pagination={{
+                  current: requestPage,
+                  pageSize: pageSize,
+                  total: requestPagination?.totalItems || 0,
+                  onChange: (p) => setRequestPage(p),
+                  showSizeChanger: false,
+                }}
+                scroll={{ x: "max-content", y: "calc(100vh - 460px)" }}
+              />
+            )}
+          </TabsContent>
+        </div>
+      </Tabs>
 
       <Modal
-        title={`Edit Quota for ${editingUser?.name}`}
+        title={
+          <div className="flex items-center gap-2">
+            <Edit2 size={18} className="text-primary" />
+            <span>Edit Quota for {editingUser?.name}</span>
+          </div>
+        }
         open={isModalOpen}
         onOk={handleUpdate}
         onCancel={() => setIsModalOpen(false)}
+        className="aurora-modal"
+        centered
+        okText="Update Quota"
+        cancelText="Cancel"
       >
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" className="mt-4">
           <Form.Item
             name="quota"
-            label="Storage Quota (GB)"
+            label={<span className="font-semibold text-label-secondary">Storage Quota (GB)</span>}
             rules={[
               { required: true, message: "Please enter quota" },
               { type: "number", min: 1, max: 1000, message: "Quota must be between 1-1000 GB" },
             ]}
           >
-            <InputNumber min={1} max={1000} step={1} className="w-full" precision={0} />
+            <InputNumber min={1} max={1000} step={1} className="w-full h-10 flex items-center!" precision={0} />
           </Form.Item>
         </Form>
       </Modal>

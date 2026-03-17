@@ -1,17 +1,14 @@
 // React core & third-party libraries
 import React, { useState } from "react";
-import { Typography } from "antd";
-import { CloudUploadOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
-import { motion } from "framer-motion";
+import { CloudUpload, ChevronDown, ChevronUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // App-local contexts
 import { useUploadDetails } from "@contexts/UploadContext";
 
 // Components
 import UploadItem from "./UploadItem";
-import Button from "@shared-components/components/button";
-
-const { Text } = Typography;
+import { Button } from "@components/ui/button";
 
 function UploadManager() {
   // Local state
@@ -27,12 +24,12 @@ function UploadManager() {
 
   // Render
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-[360px] shadow-[0_12px_40px_rgba(0,0,0,0.12)] rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700 overflow-hidden flex flex-col">
+    <div className="fixed bottom-8 right-8 z-50 w-[380px] shadow-premium rounded-4xl bg-surface/95 backdrop-blur-2xl border border-white/10 overflow-hidden flex flex-col transition-all duration-500">
       {/* Header */}
       <div
         role="button"
         tabIndex={0}
-        className="px-5 py-3.5 bg-gray-900 flex justify-between items-center cursor-pointer hover:bg-gray-800 transition-colors"
+        className="px-6 py-4 bg-label flex justify-between items-center cursor-pointer hover:bg-label/90 transition-all active:scale-[0.99]"
         onClick={() => setMinimized(!minimized)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -42,44 +39,44 @@ function UploadManager() {
         }}
       >
         <div className="flex items-center gap-3">
-          <CloudUploadOutlined className="text-blue-400 text-xl" />
-          <Text className="font-semibold text-white tracking-wide">
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+            <CloudUpload size={18} className="text-primary animate-pulse" />
+          </div>
+          <span className="font-black text-white tracking-tight">
             {totalUploads} Upload{totalUploads !== 1 ? "s" : ""}
-          </Text>
+          </span>
         </div>
         <Button
-          type="text"
-          icon={
-            minimized ? (
-              <UpOutlined className="text-gray-400 hover:text-white transition-colors" />
-            ) : (
-              <DownOutlined className="text-gray-400 hover:text-white transition-colors" />
-            )
-          }
-          size="small"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all"
           onClick={(e) => {
             e.stopPropagation();
             setMinimized(!minimized);
           }}
-        />
+        >
+          {minimized ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        </Button>
       </div>
 
       {/* Upload Items List */}
-      <motion.div
-        initial={false}
-        animate={{
-          height: minimized ? 0 : "auto",
-          opacity: minimized ? 0 : 1,
-          pointerEvents: minimized ? "none" : "auto",
-        }}
-        className="max-h-96 overflow-y-auto bg-gray-50 dark:bg-gray-900/50 flex flex-col gap-0 relative"
-      >
-        <div className="p-4 flex flex-col gap-0">
-          {uploads.map((upload) => (
-            <UploadItem key={upload.id} upload={upload} />
-          ))}
-        </div>
-      </motion.div>
+      <AnimatePresence>
+        {!minimized && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden bg-surface-alt/20"
+          >
+            <div className="max-h-96 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
+              {uploads.map((upload) => (
+                <UploadItem key={upload.id} upload={upload} />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

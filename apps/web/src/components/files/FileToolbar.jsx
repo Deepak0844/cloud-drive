@@ -1,15 +1,26 @@
 // React core & third-party libraries
 import React from "react";
-import { Dropdown, Tooltip } from "antd";
-import { AppstoreOutlined, BarsOutlined, FilterOutlined, PlusOutlined, UploadOutlined } from "@ant-design/icons";
+import { LayoutGrid, List, Plus, Upload, ChevronDown, ArrowUpDown } from "lucide-react";
+import { cn } from "@lib/utils";
 
 // Constants
-import { DefaultPagination, ItemTypes, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
+import { DefaultPagination, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
 
 // Components
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
-import Button from "@shared-components/components/button";
+import { Button } from "@components/ui/button";
 import SearchInput from "@shared-components/components/search-input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 
 export default function FileToolbar({
   advancedFilters,
@@ -21,124 +32,185 @@ export default function FileToolbar({
   handleUploadClick,
   handleCreateFolder,
 }) {
-  // Render
+  const currentSortKey = `${sortBy}-${sortOrder}`;
+
+  const sortOptions = [
+    { key: "updatedAt-desc", label: "Newest First" },
+    { key: "updatedAt-asc", label: "Oldest First" },
+    { key: "name-asc", label: "Name (A-Z)" },
+    { key: "name-desc", label: "Name (Z-A)" },
+    { key: "size-desc", label: "Largest First" },
+    { key: "size-asc", label: "Smallest First" },
+  ];
+
+  const handleSortChange = (key) => {
+    const [f, o] = key.split("-");
+    updateParams({
+      [QUERY_PARAMS_KEYS.SORT_BY]: f,
+      [QUERY_PARAMS_KEYS.SORT_ORDER]: o,
+      [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+    });
+  };
+
   return (
-    <div className="flex gap-2 grow justify-end items-center">
-      <div className="w-56 flex-none">
-        <SearchInput
-          id="search-input"
-          name="search"
-          placeholder="Search in My Files..."
-          suffix={
-            <AdvancedFilterDropdown
-              initialFilters={advancedFilters}
-              onFilter={(filters) =>
-                updateParams({
-                  [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
-                  [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
-                  [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
-                  [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
-                  [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
-                  [QUERY_PARAMS_KEYS.TAG]: filters.tag,
-                  [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-                })
-              }
-              onClear={() =>
-                updateParams({
-                  [QUERY_PARAMS_KEYS.CATEGORY]: null,
-                  [QUERY_PARAMS_KEYS.START_DATE]: null,
-                  [QUERY_PARAMS_KEYS.END_DATE]: null,
-                  [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
-                  [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
-                  [QUERY_PARAMS_KEYS.TAG]: null,
-                  [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-                })
-              }
-              trigger={
-                <Tooltip title="Advanced Filters">
-                  <div className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-surface-alt cursor-pointer transition-all group/filter -mr-1">
-                    <FilterOutlined
-                      className={`text-xs ${Object.keys(advancedFilters).length > 0 ? "text-primary" : "text-label-tertiary"} group-hover/filter:text-primary`}
-                    />
-                  </div>
-                </Tooltip>
-              }
-            />
-          }
-          className="h-10 rounded-xl border-line bg-surface shadow-sm focus:shadow-md transition-all text-sm w-full premium-nav-search"
-          allowClear
-        />
-      </div>
+    <TooltipProvider>
+      <div className="flex gap-3 grow justify-end items-center">
+        {/* Search & Filters */}
+        <div className="w-64 flex-none">
+          <SearchInput
+            id="search-input"
+            name="search"
+            placeholder="Search in My Files..."
+            allowClear
+            suffix={
+              <AdvancedFilterDropdown
+                initialFilters={advancedFilters}
+                onFilter={(filters) =>
+                  updateParams({
+                    [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
+                    [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
+                    [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
+                    [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
+                    [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
+                    [QUERY_PARAMS_KEYS.TAG]: filters.tag,
+                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+                  })
+                }
+                onClear={() =>
+                  updateParams({
+                    [QUERY_PARAMS_KEYS.CATEGORY]: null,
+                    [QUERY_PARAMS_KEYS.START_DATE]: null,
+                    [QUERY_PARAMS_KEYS.END_DATE]: null,
+                    [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
+                    [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
+                    [QUERY_PARAMS_KEYS.TAG]: null,
+                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+                  })
+                }
+              />
+            }
+            className="premium-nav-search"
+          />
+        </div>
 
-      <div className="bg-surface-alt p-1 rounded-xl flex items-center gap-1">
-        <Dropdown
-          menu={{
-            items: [
-              { key: "updatedAt-desc", label: "Newest First" },
-              { key: "updatedAt-asc", label: "Oldest First" },
-              { key: "name-asc", label: "Name (A-Z)" },
-              { key: "name-desc", label: "Name (Z-A)" },
-              { key: "size-desc", label: "Largest First" },
-              { key: "size-asc", label: "Smallest First" },
-            ],
-            onClick: ({ key }) => {
-              const [f, o] = key.split("-");
-              updateParams({
-                [QUERY_PARAMS_KEYS.SORT_BY]: f,
-                [QUERY_PARAMS_KEYS.SORT_ORDER]: o,
-                [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-              });
-            },
-            selectable: true,
-            defaultSelectedKeys: [`${sortBy}-${sortOrder}`],
-          }}
-          trigger={["click"]}
-        >
-          <Button type="text" className="rounded-lg text-xs font-bold text-label-secondary">
-            Sort
-          </Button>
-        </Dropdown>
-      </div>
+        {/* Sorting Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 rounded-xl px-3 bg-surface-alt/50 border-white/5 hover:bg-white/10 text-label-secondary font-bold text-xs gap-2"
+            >
+              <ArrowUpDown size={14} className="text-primary" />
+              <span>Sort</span>
+              <ChevronDown size={14} className="opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-48 bg-surface/95 backdrop-blur-xl border-white/10 rounded-2xl p-1 shadow-premium"
+          >
+            <DropdownMenuLabel className="text-[10px] uppercase font-black tracking-widest text-label-tertiary px-3 py-2">
+              Sort By
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-white/5 mx-1" />
+            <DropdownMenuRadioGroup value={currentSortKey} onValueChange={handleSortChange}>
+              {sortOptions.map((option) => (
+                <DropdownMenuRadioItem
+                  key={option.key}
+                  value={option.key}
+                  className="rounded-lg py-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-all text-sm font-semibold pr-8"
+                >
+                  {option.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-      <div className="bg-surface-alt p-1 rounded-xl flex items-center gap-1">
-        <Button
-          type={viewMode === "grid" ? "default" : "text"}
-          size="small"
-          icon={<AppstoreOutlined />}
-          onClick={() => setViewMode("grid")}
-          className={`rounded-lg w-8 h-7 flex items-center justify-center border-none ${viewMode === "grid" ? "bg-surface shadow-sm text-primary" : "text-label-secondary hover:bg-surface-alt"}`}
-        />
-        <Button
-          type={viewMode === "list" ? "default" : "text"}
-          size="small"
-          icon={<BarsOutlined />}
-          onClick={() => setViewMode("list")}
-          className={`rounded-lg w-8 h-7 flex items-center justify-center border-none ${viewMode === "list" ? "bg-surface shadow-sm text-primary" : "text-label-secondary hover:bg-surface-alt"}`}
-        />
-      </div>
+        {/* View Toggle */}
+        <div className="bg-surface-alt/50 p-1 rounded-xl flex items-center gap-1 border border-white/5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewMode("grid")}
+                className={cn(
+                  "w-8 h-8 rounded-lg transition-all",
+                  viewMode === "grid"
+                    ? "bg-primary text-white shadow-glow-sm hover:bg-primary/90"
+                    : "text-label-tertiary hover:bg-white/5 hover:text-label-secondary"
+                )}
+              >
+                <LayoutGrid size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="bg-surface/90 backdrop-blur-md border-white/10 text-xs font-bold">
+              Grid View
+            </TooltipContent>
+          </Tooltip>
 
-      <Dropdown
-        menu={{
-          items: [
-            { key: "upload", label: "Upload File", icon: <UploadOutlined /> },
-            { key: ItemTypes.FOLDER, label: "New Folder", icon: <PlusOutlined /> },
-          ],
-          onClick: ({ key }) => {
-            if (key === "upload") handleUploadClick();
-            else if (key === ItemTypes.FOLDER) handleCreateFolder();
-          },
-        }}
-        placement="bottomRight"
-        trigger={["click"]}
-      >
-        <Button
-          type="primary"
-          className="rounded-xl h-10 px-4 font-bold shadow-primary text-sm flex items-center gap-2"
-        >
-          <PlusOutlined />
-          <span>New</span>
-        </Button>
-      </Dropdown>
-    </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "w-8 h-8 rounded-lg transition-all",
+                  viewMode === "list"
+                    ? "bg-primary text-white shadow-glow-sm hover:bg-primary/90"
+                    : "text-label-tertiary hover:bg-white/5 hover:text-label-secondary"
+                )}
+              >
+                <List size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="bg-surface/90 backdrop-blur-md border-white/10 text-xs font-bold">
+              List View
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* Global Action Button */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="aurora"
+              className="rounded-xl h-10 px-5 font-bold shadow-glow text-sm flex items-center gap-2 group"
+            >
+              <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+              <span>New</span>
+              <ChevronDown size={14} className="opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-48 bg-surface/95 backdrop-blur-xl border-white/10 rounded-2xl p-1 shadow-premium"
+          >
+            <DropdownMenuItem
+              onClick={handleUploadClick}
+              className="rounded-lg py-2.5 cursor-pointer focus:bg-primary/10 focus:text-primary transition-all text-sm font-bold gap-3"
+            >
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-focus:scale-110 transition-transform">
+                <Upload size={16} />
+              </div>
+              Upload File
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-white/5 mx-1" />
+            <DropdownMenuItem
+              onClick={handleCreateFolder}
+              className="rounded-lg py-2.5 cursor-pointer focus:bg-primary/10 focus:text-primary transition-all text-sm font-bold gap-3"
+            >
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-focus:scale-110 transition-transform">
+                <Plus size={16} />
+              </div>
+              New Folder
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </TooltipProvider>
   );
 }

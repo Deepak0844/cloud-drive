@@ -1,7 +1,7 @@
 // React core & third-party libraries
-import React, { useMemo, useState } from "react";
-import { App, Breadcrumb, Typography } from "antd";
-import { CloseOutlined, DownloadOutlined, HistoryOutlined } from "@ant-design/icons";
+import { useMemo, useState } from "react";
+import { message as antdMessage } from "antd";
+import { X, Download, History } from "lucide-react";
 import { motion } from "framer-motion";
 import { FileUtils } from "@shared-utils/utils";
 
@@ -27,8 +27,14 @@ import ListControls from "@components/files/ListControls";
 import PageHeader from "@components/layout/PageHeader";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
-
-const { Text } = Typography;
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@components/ui/breadcrumb";
 
 const VIEW_MODES = {
   GRID: "grid",
@@ -43,7 +49,6 @@ const TIME_LABELS = {
 
 export default function RecentPage() {
   // Redux hooks
-  const { message } = App.useApp();
 
   // Local state
   const [infoItem, setInfoItem] = useState(null);
@@ -112,17 +117,17 @@ export default function RecentPage() {
     if (selectedItems.length === 0) return;
     const fileItems = selectedItems.filter((i) => i.type === ItemTypes.FILE);
     if (fileItems.length === 0) {
-      message.warning("Please select at least one file to download");
+      antdMessage.warning("Please select at least one file to download");
       return;
     }
 
     try {
       const url = `${ApiBasePath}${BulkServiceUrls.bulkDownload}`;
       FileUtils.triggerPostDownload(url, { items: fileItems });
-      message.success("Preparing your download...");
+      antdMessage.success("Preparing your download...");
       clearSelection();
     } catch {
-      message.error("Failed to initiate bulk download");
+      antdMessage.error("Failed to initiate bulk download");
     }
   }
 
@@ -135,18 +140,22 @@ export default function RecentPage() {
         <PageHeader
           title={PageNames.RECENT}
           icon={
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <HistoryOutlined className="text-xl text-primary" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-glow-sm">
+              <History className="text-xl text-primary" size={20} />
             </div>
           }
           breadcrumbNode={
-            <Breadcrumb
-              className="mt-1"
-              items={[
-                { title: <span className="text-label-tertiary font-medium">My Files</span> },
-                { title: <span className="text-label-primary font-bold">{PageNames.RECENT}</span> },
-              ]}
-            />
+            <Breadcrumb className="mt-1">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink className="text-label-tertiary font-medium">My Files</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="text-label font-bold">{PageNames.RECENT}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           }
           rightContent={
             <ListControls
@@ -177,11 +186,11 @@ export default function RecentPage() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center h-96 grayscale opacity-60"
           >
-            <div className="w-24 h-24 mb-6 bg-surface-dim rounded-full flex items-center justify-center border border-line">
-              <HistoryOutlined className="text-4xl text-label-tertiary" />
+            <div className="w-24 h-24 mb-6 bg-surface-dim rounded-full flex items-center justify-center border border-line shadow-inner">
+              <History className="text-4xl text-label-tertiary" size={40} />
             </div>
-            <Text className="text-lg font-bold text-label-secondary">No recent items found</Text>
-            <Text className="text-label-tertiary">Tasks you work on will appear here</Text>
+            <span className="text-lg font-bold text-label-secondary italic">No recent items found</span>
+            <span className="text-label-tertiary text-sm">Tasks you work on will appear here</span>
           </motion.div>
         ) : (
           <div className="flex flex-col gap-12 py-4">
@@ -237,13 +246,13 @@ export default function RecentPage() {
             <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
               {isFetching ? (
                 <>
-                  <Loader size={24} />
-                  <Text className="text-label-tertiary text-sm">Loading more items...</Text>
+                  <Loader size={20} />
+                  <span className="text-label-tertiary text-xs font-medium">Loading more items...</span>
                 </>
               ) : paginationData?.hasNext ? (
-                <Text className="text-label-tertiary text-sm italic">Scroll for more</Text>
+                <span className="text-label-tertiary text-xs italic opacity-60">Scroll for more</span>
               ) : (
-                <Text className="text-label-tertiary text-sm italic">No more items</Text>
+                <span className="text-label-tertiary text-xs italic opacity-40">No more items to show</span>
               )}
             </div>
           </div>
@@ -291,14 +300,14 @@ export default function RecentPage() {
               className="h-9 px-4 border-none text-white/90 hover:text-white hover:bg-white/10 font-bold text-xs flex items-center gap-2 rounded-xl"
               onClick={clearSelection}
             >
-              <CloseOutlined />
+              <X size={14} />
               Deselect
             </Button>
             <div className="w-px h-4 bg-white/10" />
             <Button
               type="text"
               size="small"
-              icon={<DownloadOutlined />}
+              icon={<Download size={14} />}
               className="h-9 px-4 border-none text-primary hover:text-primary-light hover:bg-white/10 font-bold text-xs flex items-center gap-2 rounded-xl"
               onClick={handleBulkDownload}
             >

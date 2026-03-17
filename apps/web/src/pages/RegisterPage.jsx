@@ -1,9 +1,9 @@
 // React core & third-party libraries
 import React from "react";
 import { Link } from "react-router-dom";
-import { App } from "antd"; // Retained for global message/toast until P8 sonner swap
+// Retained for global message/toast until P8 sonner swap
 import { Lock, Mail, User } from "lucide-react";
-import { motion } from "framer-motion";
+import { message } from "antd";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,7 +29,7 @@ const registerSchema = z.object({
 
 function RegisterPage() {
   // Custom & shared hooks
-  const { message } = App.useApp();
+
   const { register, isRegisterLoading } = useAuth();
 
   // Form setup
@@ -55,106 +55,92 @@ function RegisterPage() {
 
   // Render
   return (
-    <div className="min-h-screen bg-surface-dim flex flex-col items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8 flex flex-col items-center gap-4"
-      >
-        <div className="w-20 h-20 flex items-center justify-center bg-white rounded-3xl shadow-lg border border-line-base p-4">
-          <img src="/logo.png" alt="Cloud Drive Logo" className="w-full h-full object-contain" />
+    <div className="w-full max-w-md">
+      <Card className="rounded-3xl shadow-xl p-4 border-white/10 glass-card">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold">Create Account</h2>
+          <p className="text-label-secondary">Join us and start managing your files securely.</p>
         </div>
-        <h1 className="text-4xl font-black text-gradient-primary tracking-tight">Cloud Drive</h1>
-      </motion.div>
 
-      <div className="w-full max-w-md">
-        <Card className="rounded-3xl shadow-xl p-4 border-white/10 glass-card">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold">Create Account</h2>
-            <p className="text-label-secondary">Join us and start managing your files securely.</p>
-          </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleFinish)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      prefix={<User size={18} className="text-label-tertiary" />}
+                      placeholder="Full Name"
+                      className="h-12 rounded-xl"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleFinish)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        prefix={<User size={18} className="text-label-tertiary" />}
-                        placeholder="Full Name"
-                        className="h-12 rounded-xl"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      prefix={<Mail size={18} className="text-label-tertiary" />}
+                      placeholder="email@example.com"
+                      className="h-12 rounded-xl"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        prefix={<Mail size={18} className="text-label-tertiary" />}
-                        placeholder="email@example.com"
-                        className="h-12 rounded-xl"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      prefix={<Lock size={18} className="text-label-tertiary" />}
+                      placeholder="••••••••"
+                      className="h-12 rounded-xl"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        prefix={<Lock size={18} className="text-label-tertiary" />}
-                        placeholder="••••••••"
-                        className="h-12 rounded-xl"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <Button
+              variant="aurora"
+              size="pill"
+              type="submit"
+              disabled={isRegisterLoading}
+              className="w-full text-lg mt-6 font-bold"
+            >
+              {isRegisterLoading ? "Creating Account..." : "Create Account"}
+            </Button>
+          </form>
+        </Form>
 
-              <Button
-                variant="aurora"
-                size="pill"
-                type="submit"
-                disabled={isRegisterLoading}
-                className="w-full text-lg mt-6 font-bold"
-              >
-                {isRegisterLoading ? "Creating Account..." : "Create Account"}
-              </Button>
-            </form>
-          </Form>
-
-          <div className="text-center mt-6">
-            <span className="text-label-secondary">Already have an account? </span>
-            <Link to={PageUrls.LoginPage} className="font-bold text-primary hover:text-primary-dark">
-              Sign in
-            </Link>
-          </div>
-        </Card>
-      </div>
+        <div className="text-center mt-6">
+          <span className="text-label-secondary">Already have an account? </span>
+          <Link to={PageUrls.LoginPage} className="font-bold text-primary hover:text-primary-dark">
+            Sign in
+          </Link>
+        </div>
+      </Card>
     </div>
   );
 }

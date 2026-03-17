@@ -1,9 +1,9 @@
 // React core & third-party libraries
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { App } from "antd"; // Retained for global message/toast until P8 sonner swap
+// Retained for global message/toast until P8 sonner swap
 import { Lock, User } from "lucide-react";
-import { motion } from "framer-motion";
+import { message } from "antd";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -43,7 +43,7 @@ function LoginPage() {
   });
 
   // Custom & shared hooks
-  const { message } = App.useApp();
+
   const { login, isLoginLoading } = useAuth();
 
   // Derived / computed variables
@@ -73,108 +73,94 @@ function LoginPage() {
 
   // Render
   return (
-    <div className="min-h-screen bg-surface-dim flex flex-col items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8 flex flex-col items-center gap-4"
-      >
-        <div className="w-20 h-20 flex items-center justify-center bg-white rounded-3xl shadow-lg border border-line-base p-4">
-          <img src="/logo.png" alt="Cloud Drive Logo" className="w-full h-full object-contain" />
+    <div className="w-full max-w-md">
+      <Card className="rounded-3xl shadow-xl p-4 border-white/10 glass-card">
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold">Welcome Back</h2>
+          <p className="text-label-secondary">Please enter your details to sign in.</p>
         </div>
-        <h1 className="text-4xl font-black text-gradient-primary tracking-tight">Cloud Drive</h1>
-      </motion.div>
 
-      <div className="w-full max-w-md">
-        <Card className="rounded-3xl shadow-xl p-4 border-white/10 glass-card">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold">Welcome Back</h2>
-            <p className="text-label-secondary">Please enter your details to sign in.</p>
-          </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleFinish)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      prefix={<User size={18} className="text-label-tertiary" />}
+                      placeholder="email@example.com"
+                      className="h-12 rounded-xl"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleFinish)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      prefix={<Lock size={18} className="text-label-tertiary" />}
+                      placeholder="••••••••"
+                      className="h-12 rounded-xl"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-between items-center mb-6 pt-2">
               <FormField
                 control={form.control}
-                name="email"
+                name="remember"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
+                  <FormItem className="flex flex-row items-start space-x-2 space-y-0">
                     <FormControl>
-                      <Input
-                        prefix={<User size={18} className="text-label-tertiary" />}
-                        placeholder="email@example.com"
-                        className="h-12 rounded-xl"
-                        {...field}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
-                    <FormMessage />
+                    <FormLabel className="font-normal cursor-pointer">Remember me</FormLabel>
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        prefix={<Lock size={18} className="text-label-tertiary" />}
-                        placeholder="••••••••"
-                        className="h-12 rounded-xl"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex justify-between items-center mb-6 pt-2">
-                <FormField
-                  control={form.control}
-                  name="remember"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                      <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <FormLabel className="font-normal cursor-pointer">Remember me</FormLabel>
-                    </FormItem>
-                  )}
-                />
-                <Link
-                  to={PageUrls.ForgotPasswordPage}
-                  className="text-sm font-medium text-primary hover:text-primary-dark"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-
-              <Button
-                variant="aurora"
-                size="pill"
-                type="submit"
-                disabled={isLoginLoading}
-                className="w-full text-lg mt-2 font-bold"
+              <Link
+                to={PageUrls.ForgotPasswordPage}
+                className="text-sm font-medium text-primary hover:text-primary-dark"
               >
-                {isLoginLoading ? "Signing In..." : "Sign In"}
-              </Button>
-            </form>
-          </Form>
+                Forgot password?
+              </Link>
+            </div>
 
-          <div className="text-center mt-6">
-            <span className="text-label-secondary">Don&apos;t have an account? </span>
-            <Link to={PageUrls.RegisterPage} className="font-bold text-primary hover:text-primary-dark">
-              Sign up for free
-            </Link>
-          </div>
-        </Card>
-      </div>
+            <Button
+              variant="aurora"
+              size="pill"
+              type="submit"
+              disabled={isLoginLoading}
+              className="w-full text-lg mt-2 font-bold"
+            >
+              {isLoginLoading ? "Signing In..." : "Sign In"}
+            </Button>
+          </form>
+        </Form>
+
+        <div className="text-center mt-6">
+          <span className="text-label-secondary">Don&apos;t have an account? </span>
+          <Link to={PageUrls.RegisterPage} className="font-bold text-primary hover:text-primary-dark">
+            Sign up for free
+          </Link>
+        </div>
+      </Card>
     </div>
   );
 }

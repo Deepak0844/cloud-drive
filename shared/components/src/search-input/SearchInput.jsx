@@ -9,9 +9,6 @@ import { useDebounce } from "@shared-hooks/hooks";
 // Constants
 import { QUERY_PARAMS_KEYS, TIMEOUTS } from "@shared-constants/constants";
 
-// Components
-import Icon from "../../common/icon/Icon";
-
 /**
  * Search Input Component with built-in URL synchronization
  * @param {Object} props
@@ -22,10 +19,13 @@ import Icon from "../../common/icon/Icon";
  * @returns
  */
 export default function SearchInput({
-  size,
   placeholder = "Search",
   className = "",
   queryKey = QUERY_PARAMS_KEYS.SEARCH,
+  // Destructure and discard AntD-specific props that shadcn Input doesn't support
+  allowClear,
+  prefix: _prefix,
+  suffix,
   ...rest
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -55,14 +55,29 @@ export default function SearchInput({
   }, [debouncedValue, queryKey, searchParams, setSearchParams]);
 
   return (
-    <Input
-      size={size === "middle" ? "default" : size}
-      placeholder={placeholder}
-      value={localValue}
-      onChange={(e) => setLocalValue(e.target.value)}
-      prefix={<Icon icon={Search} className="text-label-tertiary" size="small" />}
-      className={`h-10 sm:w-64 w-full bg-surface-alt border-transparent focus-visible:ring-primary ${className}`}
-      {...rest}
-    />
+    <div className={`relative flex items-center ${className}`}>
+      <Search size={15} className="absolute left-3 text-label-tertiary pointer-events-none" />
+      <Input
+        placeholder={placeholder}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        className="h-10 pl-9 pr-12 bg-surface-alt border-transparent focus-visible:ring-primary w-full"
+        {...rest}
+      />
+
+      <div className="absolute right-2 flex items-center gap-1">
+        {allowClear && localValue && (
+          <button
+            type="button"
+            onClick={() => setLocalValue("")}
+            className="text-label-tertiary hover:text-label transition-colors p-1"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        )}
+        {suffix && <div className="flex items-center">{suffix}</div>}
+      </div>
+    </div>
   );
 }

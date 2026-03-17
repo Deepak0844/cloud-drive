@@ -1,15 +1,15 @@
-/* eslint-disable react-refresh/only-export-components */
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
-import { Controller, FormProvider, useFormContext } from "react-hook-form";
+import { Controller, FormProvider } from "react-hook-form";
 import { Label } from "@components/ui/label";
 
 // Utils
 import { cn } from "@lib/utils";
 
-const Form = FormProvider;
+// Context & Hooks
+import { FormFieldContext, FormItemContext, useFormField } from "./form-context";
 
-const FormFieldContext = React.createContext({});
+const Form = FormProvider;
 
 const FormField = ({ ...props }) => {
   return (
@@ -18,31 +18,6 @@ const FormField = ({ ...props }) => {
     </FormFieldContext.Provider>
   );
 };
-
-const useFormField = () => {
-  const fieldContext = React.useContext(FormFieldContext);
-  const itemContext = React.useContext(FormItemContext);
-  const { getFieldState, formState } = useFormContext();
-
-  const fieldState = getFieldState(fieldContext.name, formState);
-
-  if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>");
-  }
-
-  const { id } = itemContext;
-
-  return {
-    id,
-    name: fieldContext.name,
-    formItemId: `${id}-form-item`,
-    formDescriptionId: `${id}-form-item-description`,
-    formMessageId: `${id}-form-item-message`,
-    ...fieldState,
-  };
-};
-
-const FormItemContext = React.createContext({});
 
 const FormItem = React.forwardRef(({ className, ...props }, ref) => {
   const id = React.useId();
@@ -100,4 +75,4 @@ const FormMessage = React.forwardRef(({ className, children, ...props }, ref) =>
 });
 FormMessage.displayName = "FormMessage";
 
-export { useFormField, Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField };
+export { Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField };

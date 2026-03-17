@@ -1,7 +1,6 @@
 // React core & third-party libraries
 import React from "react";
-import { Layout } from "antd";
-import { MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 // Components
@@ -12,8 +11,6 @@ import Button from "@shared-components/components/button";
 // Constants
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
-
-const { Header } = Layout;
 
 function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
   const { pathname } = useLocation();
@@ -31,7 +28,7 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
 
   // Render
   return (
-    <Header
+    <header
       className="backdrop-blur-md sticky top-0 z-40 w-full px-5 sm:px-8 flex justify-between items-center border-b border-line h-16 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all text-label"
       style={{ backgroundColor: "var(--bg-glass)", paddingInline: 0 }}
     >
@@ -39,7 +36,7 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
         {isMobile ? (
           <Button
             type="text"
-            icon={<MenuOutlined className="text-xl" />}
+            icon={<Menu size={20} />}
             onClick={() => setDrawerVisible(true)}
             className="flex items-center justify-center w-10 h-10 hover:bg-surface-alt rounded-xl transition-all"
           />
@@ -48,9 +45,9 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
             type="text"
             icon={
               collapsed ? (
-                <MenuUnfoldOutlined className="text-xl text-label-secondary hover:text-primary transition-all delay-75" />
+                <PanelLeftOpen size={20} className="text-label-secondary hover:text-primary transition-all delay-75" />
               ) : (
-                <MenuFoldOutlined className="text-xl text-label-secondary hover:text-primary transition-all delay-75" />
+                <PanelLeftClose size={20} className="text-label-secondary hover:text-primary transition-all delay-75" />
               )
             }
             onClick={() => setCollapsed(!collapsed)}
@@ -65,7 +62,7 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
         <div className="w-px h-6 bg-border-base mx-1 hidden sm:block"></div>
         <UserProfileDropdown isMobile={isMobile} />
       </div>
-    </Header>
+    </header>
   );
 }
 

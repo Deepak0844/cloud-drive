@@ -1,17 +1,8 @@
 // React core & third-party libraries
 import React from "react";
-import { Layout, Menu } from "antd";
-import {
-  ControlOutlined,
-  DeleteOutlined,
-  FolderOpenOutlined,
-  HistoryOutlined,
-  PictureOutlined,
-  SettingOutlined,
-  StarOutlined,
-} from "@ant-design/icons";
+import { SlidersHorizontal, Trash2, FolderOpen, History, Image as ImageIcon, Settings, Star } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 
 // Shared packages (shared/*)
 import { Roles } from "@shared-constants/constants";
@@ -30,12 +21,9 @@ import { useGetQuotaUsageQuery } from "@services/api/quotaApi";
 // Hooks
 import { useCurrentUser } from "@hooks/useCurrentUser";
 
-const { Sider } = Layout;
-
 function Sidebar({ collapsed, isMobile }) {
   // Custom & shared hooks
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const { role: serverRole } = useCurrentUser();
 
   // Derived / computed variables (part 1)
@@ -52,66 +40,60 @@ function Sidebar({ collapsed, isMobile }) {
   const allMenuItems = [
     {
       key: PageUrls.MyFilesPage,
-      icon: <FolderOpenOutlined className="text-lg" />,
-      label: <span className="font-semibold">{PageNames.MY_FILES}</span>,
+      icon: <FolderOpen size={20} strokeWidth={2.5} />,
+      label: PageNames.MY_FILES,
       roles: [Roles.USER],
     },
     {
       key: PageUrls.PhotosPage,
-      icon: <PictureOutlined className="text-lg" />,
-      label: <span className="font-semibold">{PageNames.PHOTOS}</span>,
+      icon: <ImageIcon size={20} strokeWidth={2.5} />,
+      label: PageNames.PHOTOS,
       roles: [Roles.USER],
     },
     {
       key: PageUrls.RecentPage,
-      icon: <HistoryOutlined className="text-lg" />,
-      label: <span className="font-semibold">{PageNames.RECENT}</span>,
+      icon: <History size={20} strokeWidth={2.5} />,
+      label: PageNames.RECENT,
       roles: [Roles.USER],
     },
     {
       key: PageUrls.FavoritesPage,
-      icon: <StarOutlined className="text-lg" />,
-      label: <span className="font-semibold">{PageNames.FAVORITES}</span>,
+      icon: <Star size={20} strokeWidth={2.5} />,
+      label: PageNames.FAVORITES,
       roles: [Roles.USER],
     },
     {
       key: PageUrls.TrashPage,
-      icon: <DeleteOutlined className="text-lg" />,
-      label: <span className="font-semibold">{PageNames.TRASH}</span>,
+      icon: <Trash2 size={20} strokeWidth={2.5} />,
+      label: PageNames.TRASH,
       roles: [Roles.USER],
     },
     {
       key: PageUrls.SettingsPage,
-      icon: <SettingOutlined className="text-lg" />,
-      label: <span className="font-semibold">{PageNames.SETTINGS}</span>,
+      icon: <Settings size={20} strokeWidth={2.5} />,
+      label: PageNames.SETTINGS,
       roles: [Roles.USER],
     },
     {
       key: PageUrls.AdminPage,
-      icon: <ControlOutlined className="text-lg" />,
-      label: <span className="font-semibold">{PageNames.ADMIN}</span>,
+      icon: <SlidersHorizontal size={20} strokeWidth={2.5} />,
+      label: PageNames.ADMIN,
       roles: [Roles.ADMIN],
     },
   ];
 
   // Filter based on current user's role
-  const menuItems = allMenuItems
-    .filter((item) => item.roles.includes(userRole))
-    .map(({ roles: _roles, ...rest }) => rest);
+  const menuItems = allMenuItems.filter((item) => item.roles.includes(userRole));
 
   // Render
   return (
-    <Sider
-      trigger={null}
-      collapsible
-      collapsed={collapsed}
-      theme="light"
-      className={`shadow-xl z-20 border-r border-line/50 overflow-visible ${isMobile ? "h-full" : "sticky top-0 h-screen"}`}
-      width={260}
-      collapsedWidth={80}
+    <aside
+      className={`bg-white shadow-xl z-20 border-r border-line/50 overflow-visible transition-all duration-300 ${
+        isMobile ? "h-full w-full" : "sticky top-0 h-screen"
+      } ${collapsed ? "w-[80px]" : "w-[260px]"}`}
     >
-      <div className="relative h-full">
-        <div className="h-16 flex items-center px-4 mb-2 overflow-hidden">
+      <div className="relative h-full flex flex-col">
+        <div className={`h-16 flex items-center mb-2 overflow-hidden ${collapsed ? "justify-center px-0" : "px-4"}`}>
           <div className="w-10 h-10 shrink-0 flex items-center justify-center mr-2">
             <img src="/logo.png" alt="Cloud Drive Logo" className="w-full h-full object-contain" />
           </div>
@@ -129,19 +111,38 @@ function Sidebar({ collapsed, isMobile }) {
             )}
           </AnimatePresence>
         </div>
-        <Menu
-          theme="light"
-          mode="inline"
-          selectedKeys={[pathname]}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-          className="sidebar-menu border-none px-2"
-        />
+
+        <nav className="flex-1 px-3 py-2 space-y-1">
+          {menuItems.map((item) => {
+            const isActive = pathname === item.key || (item.key !== "/" && pathname.startsWith(item.key));
+            return (
+              <Link
+                key={item.key}
+                to={item.key}
+                className={`flex items-center rounded-xl transition-all duration-200 group ${
+                  collapsed ? "justify-center px-0 py-3 mb-2" : "px-3 py-2.5"
+                } ${
+                  isActive
+                    ? "bg-primary/10 text-primary shadow-sm"
+                    : "text-label hover:bg-surface-alt hover:text-primary"
+                }`}
+                title={collapsed ? item.label : undefined}
+              >
+                <div
+                  className={`${isActive ? "text-primary" : "text-label-secondary group-hover:text-primary"} ${collapsed ? "mr-0" : "mr-3"}`}
+                >
+                  {item.icon}
+                </div>
+                {!collapsed && <span className="font-bold text-sm">{item.label}</span>}
+              </Link>
+            );
+          })}
+        </nav>
 
         {/* NAS-style Storage Section - Only for Users */}
         {userRole === Roles.USER && (
           <div
-            className={`absolute bottom-6 left-0 right-0 px-4 transition-all duration-300 ${collapsed ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-100 translate-y-0"}`}
+            className={`px-4 pb-6 transition-all duration-300 ${collapsed ? "opacity-0 translate-y-4 pointer-events-none hidden" : "opacity-100 translate-y-0"}`}
           >
             <div className="bg-surface-dim/80 backdrop-blur-sm p-4 rounded-2xl border border-line shadow-sm group">
               <div className="flex justify-between items-center mb-2.5">
@@ -170,7 +171,7 @@ function Sidebar({ collapsed, isMobile }) {
           </div>
         )}
       </div>
-    </Sider>
+    </aside>
   );
 }
 

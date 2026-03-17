@@ -1,15 +1,8 @@
 // React core & third-party libraries
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Breadcrumb, Input, Modal, Tooltip, Typography } from "antd";
-import {
-  CopyOutlined,
-  DeleteOutlined,
-  DragOutlined,
-  HomeOutlined,
-  StarFilled,
-  WarningOutlined,
-} from "@ant-design/icons";
+import { Input, Modal } from "antd";
+import { Copy, Trash2, Move, Home, Star, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Constants
@@ -39,8 +32,15 @@ import ListControls from "@components/files/ListControls";
 import PageHeader from "@components/layout/PageHeader";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
-
-const { Text } = Typography;
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@components/ui/breadcrumb";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 
 function FavoritesPage() {
   const navigate = useNavigate();
@@ -105,19 +105,26 @@ function FavoritesPage() {
   });
 
   // 7. Derived / computed variables
-  const breadcrumbsList = [
-    {
-      title: (
-        <Link
-          to={PageUrls.DashboardPage}
-          className="flex items-center gap-2 text-primary font-semibold text-xs transition-colors"
-        >
-          <HomeOutlined className="text-[10px]" /> <span>{PageNames.MY_FILES}</span>
-        </Link>
-      ),
-    },
-    { title: <span className="font-bold text-xs opacity-60">{PageNames.FAVORITES}</span> },
-  ];
+  const breadcrumbsList = (
+    <Breadcrumb className="mt-1">
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link
+              to={PageUrls.DashboardPage}
+              className="flex items-center gap-1.5 text-label-tertiary hover:text-primary transition-colors text-xs font-medium"
+            >
+              <Home size={12} /> <span>{PageNames.MY_FILES}</span>
+            </Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage className="text-label font-bold text-xs">{PageNames.FAVORITES}</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
 
   // Event handlers
 
@@ -137,10 +144,12 @@ function FavoritesPage() {
     <div className="flex flex-col gap-4 pb-10">
       <PageHeader
         title={PageNames.FAVORITES}
-        icon={<StarFilled className="text-warning opacity-80" />}
-        breadcrumbNode={
-          <Breadcrumb separator={<span className="text-label-tertiary">/</span>} items={breadcrumbsList} />
+        icon={
+          <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center border border-warning/20 shadow-glow-sm">
+            <Star className="text-warning fill-warning" size={20} />
+          </div>
         }
+        breadcrumbNode={breadcrumbsList}
         rightContent={
           <ListControls
             advancedFilters={advancedFilters}
@@ -158,37 +167,54 @@ function FavoritesPage() {
       {selectedItems.length > 0 && (
         <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}>
           <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
-            <Tooltip title="Move selection">
-              <Button
-                type="text"
-                icon={<DragOutlined />}
-                onClick={() => handleBulkMoveTrigger(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Move</span>
-              </Button>
-            </Tooltip>
-            <Tooltip title="Copy selection">
-              <Button
-                type="text"
-                icon={<CopyOutlined />}
-                onClick={() => handleBulkCopyTrigger(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Copy</span>
-              </Button>
-            </Tooltip>
-            <Tooltip title="Delete selection">
-              <Button
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleBulkDelete(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-danger hover:bg-danger-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Delete</span>
-              </Button>
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="text"
+                    icon={<Move size={16} />}
+                    onClick={() => handleBulkMoveTrigger(selectedItems)}
+                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
+                  >
+                    <span className="text-[10px] uppercase tracking-tighter">Move</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Move selection</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="text"
+                    icon={<Copy size={16} />}
+                    onClick={() => handleBulkCopyTrigger(selectedItems)}
+                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
+                  >
+                    <span className="text-[10px] uppercase tracking-tighter">Copy</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Copy selection</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="text"
+                    danger
+                    icon={<Trash2 size={16} />}
+                    onClick={() => handleBulkDelete(selectedItems)}
+                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-error hover:bg-error/10 border-none justify-center transition-all bg-transparent!"
+                  >
+                    <span className="text-[10px] uppercase tracking-tighter">Delete</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete selection</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </FloatingBulkActionsBar>
         </motion.div>
       )}
@@ -198,7 +224,7 @@ function FavoritesPage() {
         {isLoading ? (
           <div className="py-24 flex flex-col items-center justify-center gap-4">
             <Loader size={32} />
-            <Text className="text-label-tertiary">Loading favorites...</Text>
+            <span className="text-label-tertiary font-medium">Loading favorites...</span>
           </div>
         ) : (
           <>
@@ -276,25 +302,27 @@ function FavoritesPage() {
                 <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
                   {filesFetching ? (
                     <>
-                      <Loader size={24} />
-                      <Text className="text-label-tertiary text-sm">Loading more files...</Text>
+                      <Loader size={20} />
+                      <span className="text-label-tertiary text-xs font-medium">Loading more files...</span>
                     </>
                   ) : paginationData?.hasNext ? (
-                    <Text className="text-label-tertiary text-sm italic">Scroll for more</Text>
+                    <span className="text-label-tertiary text-xs italic opacity-60">Scroll for more</span>
                   ) : (
-                    <Text className="text-label-tertiary text-sm italic">No more files</Text>
+                    <span className="text-label-tertiary text-xs italic opacity-40">No more files to show</span>
                   )}
                 </div>
               </div>
             )}
 
             {folders.length === 0 && files.length === 0 && (
-              <div className="py-24 flex flex-col items-center justify-center text-center opacity-60">
-                <div className="w-20 h-20 mb-6 rounded-full bg-surface-dim flex items-center justify-center border-2 border-dashed border-line">
-                  <StarFilled className="text-3xl text-label-tertiary" />
+              <div className="py-24 flex flex-col items-center justify-center text-center opacity-60 grayscale">
+                <div className="w-20 h-20 mb-6 rounded-full bg-surface-dim flex items-center justify-center border-2 border-dashed border-line shadow-inner">
+                  <Star className="text-3xl text-label-tertiary" size={32} />
                 </div>
                 <h2 className="text-lg font-bold text-label mb-1">No favorites found</h2>
-                <p className="text-label-secondary text-sm">Starred items will appear here for quick access.</p>
+                <p className="text-label-secondary text-sm font-medium">
+                  Starred items will appear here for quick access.
+                </p>
               </div>
             )}
           </>
@@ -335,9 +363,10 @@ function FavoritesPage() {
 
       <Modal
         title={
-          <span className="text-danger flex items-center gap-2">
-            <WarningOutlined /> Delete Item
-          </span>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="text-error" size={18} />
+            <span className="text-error font-black">Delete Item</span>
+          </div>
         }
         open={!!deleteItem}
         onOk={handleDeleteConfirm}

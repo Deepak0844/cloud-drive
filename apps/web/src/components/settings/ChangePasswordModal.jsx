@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import React, { useEffect } from "react";
-import { App } from "antd"; // App for toast
+import { message } from "antd";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -30,7 +30,6 @@ function ChangePasswordModal({ open, onClose }) {
   const [updatePassword, { isLoading }] = useUpdatePasswordMutation();
 
   // Custom & shared hooks
-  const { message } = App.useApp();
 
   const form = useForm({
     resolver: zodResolver(changePasswordSchema),

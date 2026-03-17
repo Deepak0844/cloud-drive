@@ -1,4 +1,4 @@
-import { App, Modal } from "antd";
+import { message, Modal } from "antd";
 import { useState } from "react";
 import { FileUtils } from "@shared-utils/utils";
 
@@ -22,8 +22,6 @@ import { ItemTypes } from "@shared-constants/constants";
 import { ApiBasePath, FileServiceUrls, BulkServiceUrls } from "@constants/serviceUrls";
 
 export function useFileActions({ folders, clearSelection }) {
-  const { message } = App.useApp();
-
   // Dialog states
   const [renameItem, setRenameItem] = useState(null);
   const [newName, setNewName] = useState("");

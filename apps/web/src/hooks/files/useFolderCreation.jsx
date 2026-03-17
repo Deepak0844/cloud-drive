@@ -1,8 +1,7 @@
-import { App, Input, Modal } from "antd";
+import { message, Input, Modal } from "antd";
 import { useCreateFolderMutation } from "@services/api/folderApi";
 
 export function useFolderCreation({ currentFolderId }) {
-  const { message } = App.useApp();
   const [createFolder] = useCreateFolderMutation();
 
   function handleCreateFolder() {
