@@ -97,8 +97,10 @@ export default function NotificationDropdown() {
           </button>
         </DropdownMenuTrigger>
         {unreadCount > 0 && (
-          <div className="absolute top-1 right-1 pointer-events-none w-4 h-4 rounded-full bg-error border-2 border-surface flex items-center justify-center">
-            <span className="text-[9px] font-bold text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>
+          <div className="absolute top-0.5 right-0.5 pointer-events-none w-[18px] h-[18px] rounded-full bg-error border-2 border-surface flex items-center justify-center shadow-sm">
+            <span className="text-[10px] font-bold text-white leading-none">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
           </div>
         )}
       </div>

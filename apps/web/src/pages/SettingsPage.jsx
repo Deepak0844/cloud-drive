@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
@@ -16,8 +16,6 @@ import { useGetQuotaBreakdownQuery, useGetQuotaUsageQuery } from "@services/api/
 import { formatBytes } from "@shared-utils/utils";
 
 // Constants
-import PageNames from "@constants/pageNames";
-import PageUrls from "@constants/pageUrls";
 
 // Components
 import ChangePasswordModal from "@components/settings/ChangePasswordModal";
@@ -29,15 +27,6 @@ import { Skeleton } from "@components/ui/skeleton";
 import { Input } from "@components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
 import { Switch } from "@components/ui/switch";
-import { Separator } from "@components/ui/separator";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@components/ui/breadcrumb";
 
 const CATEGORY_CONFIG = {
   image: { color: "var(--chart-1)", icon: <ImageIcon size={14} />, label: "Images" },
@@ -134,31 +123,12 @@ function SettingsPage() {
   // Render
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8 pb-32">
-      <div className="px-1">
-        <h1 className="text-3xl font-black text-label tracking-tight mb-2">{PageNames.SETTINGS}</h1>
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to={PageUrls.DashboardPage} className="text-label-tertiary hover:text-primary transition-colors">
-                  {PageNames.MY_FILES}
-                </Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage className="text-label font-bold">{PageNames.SETTINGS}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Side: Profile & Security */}
         <div className="lg:col-span-8 flex flex-col gap-8">
           <Form {...form}>
             <form onSubmit={form.handleSubmit((values) => handleUpdateProfile(values, true))}>
-              <Card className="rounded-3xl border-line shadow-sm overflow-hidden p-8">
+              <Card className="glass-card rounded-4xl border-transparent shadow-md overflow-hidden p-8 bg-white/5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -197,16 +167,15 @@ function SettingsPage() {
                 </div>
                 <Button
                   htmlType="submit"
-                  styleType="primary"
+                  variant="aurora"
+                  size="pill"
                   loading={isSavingProfile}
-                  className="h-12 px-10 font-bold rounded-2xl shadow-glow-sm mt-4 active:scale-95 transition-transform"
+                  className="px-10 mt-4 h-12"
                 >
                   Save Profile
                 </Button>
 
-                <Separator className="my-10 bg-line/30" />
-
-                <div className="flex items-center gap-4 mb-8">
+                <div className="flex items-center gap-4 mb-8 mt-5">
                   <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shadow-inner">
                     <Bell size={24} />
                   </div>
@@ -257,7 +226,7 @@ function SettingsPage() {
                 </div>
               </Card>
 
-              <Card className="rounded-3xl border-line shadow-sm p-8">
+              <Card className="glass-card rounded-4xl mt-5 border-transparent shadow-md p-8 bg-white/5">
                 <div className="flex items-center gap-4 mb-8">
                   <div className="w-12 h-12 bg-secondary/20 text-secondary-foreground rounded-2xl flex items-center justify-center border border-secondary/30">
                     <Lock size={24} />
@@ -293,7 +262,7 @@ function SettingsPage() {
 
         {/* Right Side: Storage Dashboard */}
         <div className="lg:col-span-4 flex flex-col gap-6">
-          <Card className="rounded-3xl border-line shadow-xl bg-surface-alt relative overflow-hidden p-8">
+          <Card className="glass-card rounded-4xl border-transparent relative overflow-hidden p-8 bg-sidebar-nav-active-bg/30 shadow-glow-sm">
             {/* Glossy background Effect */}
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 rounded-full blur-[80px] opacity-30" />
             <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-secondary/15 rounded-full blur-[80px] opacity-30" />
@@ -383,11 +352,12 @@ function SettingsPage() {
                 </div>
 
                 <Button
-                  styleType="primary"
+                  variant="aurora"
+                  size="pill"
                   fullWidth
                   icon={<Send size={14} />}
                   onClick={handleRequestQuota}
-                  className="mt-10 h-12 font-black shadow-glow-sm rounded-2xl border-none text-xs tracking-[0.15em] uppercase hover:scale-[1.02] transition-transform"
+                  className="mt-10 h-12 uppercase tracking-[0.15em] text-xs"
                 >
                   Request Quota Increase
                 </Button>
@@ -395,7 +365,7 @@ function SettingsPage() {
             )}
           </Card>
 
-          <Card className="rounded-3xl border-line shadow-sm border-dashed bg-surface/30 p-6 flex flex-col gap-3">
+          <Card className="glass-card rounded-4xl border-dashed border-white/10 p-6 flex flex-col gap-3 bg-white/5 shadow-inner">
             <div className="flex items-center justify-between">
               <h4 className="font-black text-sm text-label tracking-tight">NAS Engine Status</h4>
               <div className="flex items-center gap-1.5">

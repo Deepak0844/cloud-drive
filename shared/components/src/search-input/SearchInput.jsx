@@ -1,6 +1,6 @@
 import { Input } from "@components/ui/input";
 import { Search } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 // Hooks
@@ -32,27 +32,39 @@ export default function SearchInput({
   const [localValue, setLocalValue] = useState(searchParams.get(queryKey) || "");
   const debouncedValue = useDebounce(localValue, TIMEOUTS.DEBOUNCE_MS || 300);
 
-  // Sync internal state with URL changes (e.g., back/forward buttons or clearing filters)
+  // Ref to track the last value we pushed to the URL to prevent recursive loops
+  const lastPushedValue = useRef(searchParams.get(queryKey) || "");
+
+  // Sync internal state with URL changes (e.g., back/forward buttons or clearing filters externally)
   useEffect(() => {
     const urlValue = searchParams.get(queryKey) || "";
-    if (urlValue !== localValue && urlValue !== debouncedValue) {
+    // Only update localValue if the URL change didn't come from our own push
+    if (urlValue !== lastPushedValue.current) {
       setLocalValue(urlValue);
+      lastPushedValue.current = urlValue;
     }
-  }, [searchParams, queryKey, localValue, debouncedValue]);
+  }, [searchParams, queryKey]);
 
   // Push debounced value to URL
   useEffect(() => {
     const currentUrlValue = searchParams.get(queryKey) || "";
     if (debouncedValue !== currentUrlValue) {
-      const newParams = new URLSearchParams(searchParams);
-      if (debouncedValue) {
-        newParams.set(queryKey, debouncedValue);
-      } else {
-        newParams.delete(queryKey);
-      }
-      setSearchParams(newParams, { replace: true });
+      lastPushedValue.current = debouncedValue;
+
+      setSearchParams(
+        (prev) => {
+          const newParams = new URLSearchParams(prev);
+          if (debouncedValue) {
+            newParams.set(queryKey, debouncedValue);
+          } else {
+            newParams.delete(queryKey);
+          }
+          return newParams;
+        },
+        { replace: true }
+      );
     }
-  }, [debouncedValue, queryKey, searchParams, setSearchParams]);
+  }, [debouncedValue, queryKey, setSearchParams, searchParams]);
 
   return (
     <div className={`relative flex items-center ${className}`}>

@@ -1,11 +1,9 @@
-// React core & third-party libraries
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Copy, Trash2, Move, Home, Star, AlertTriangle, Info } from "lucide-react";
-import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { Copy, Trash2, Move, Star, AlertTriangle, Info, Download } from "lucide-react";
 
 // Constants
-import PageNames from "@constants/pageNames";
+
 import PageUrls from "@constants/pageUrls";
 import { ItemTypes } from "@shared-constants/constants";
 
@@ -20,26 +18,16 @@ import { useSelectableItems } from "@hooks/files/useSelectableItems";
 import { useGetFilesQuery } from "@services/api/fileApi";
 import { useGetFoldersQuery } from "@services/api/folderApi";
 
-// Components
 import FileItem from "@components/files/FileItem";
 import FilePreviewModal from "@components/files/FilePreviewModal";
+import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
 import FolderItem from "@components/files/FolderItem";
 import FolderPickerModal from "@components/files/FolderPickerModal";
-import FloatingBulkActionsBar from "@components/files/FloatingBulkActionsBar";
 import InfoDrawer from "@components/files/InfoDrawer";
 import ListControls from "@components/files/ListControls";
 import PageHeader from "@components/layout/PageHeader";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@components/ui/breadcrumb";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -94,7 +82,6 @@ function FavoritesPage() {
     setNewName,
     setRenameItem,
     handleBulkCopyTrigger,
-    handleBulkDeleteTrigger,
     handleBulkDeleteConfirm,
     handleBulkMoveTrigger,
     handleCopyTrigger,
@@ -104,32 +91,13 @@ function FavoritesPage() {
     handleMoveTrigger,
     handleRenameConfirm,
     handleRenameTrigger,
+    handleBulkDownload,
   } = useFileActions({
     clearSelection,
     folders,
   });
 
   // 7. Derived / computed variables
-  const breadcrumbsList = (
-    <Breadcrumb className="mt-1">
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link
-              to={PageUrls.DashboardPage}
-              className="flex items-center gap-1.5 text-label-tertiary hover:text-primary transition-colors text-xs font-medium"
-            >
-              <Home size={12} /> <span>{PageNames.MY_FILES}</span>
-            </Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage className="text-label font-bold text-xs">{PageNames.FAVORITES}</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-  );
 
   // Event handlers
 
@@ -146,15 +114,8 @@ function FavoritesPage() {
 
   // Render
   return (
-    <div className="flex flex-col gap-4 pb-10">
+    <div className="flex flex-col gap-4 pb-10 bg-background min-h-full">
       <PageHeader
-        title={PageNames.FAVORITES}
-        icon={
-          <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center border border-warning/20 shadow-glow-sm">
-            <Star className="text-warning fill-warning" size={20} />
-          </div>
-        }
-        breadcrumbNode={breadcrumbsList}
         rightContent={
           <ListControls
             advancedFilters={advancedFilters}
@@ -168,61 +129,33 @@ function FavoritesPage() {
 
       <div className="h-4" />
 
-      {/* Bulk Actions Bar */}
-      {selectedItems.length > 0 && (
-        <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}>
-          <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="text"
-                    icon={<Move size={16} />}
-                    onClick={() => handleBulkMoveTrigger(selectedItems)}
-                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
-                  >
-                    <span className="text-[10px] uppercase tracking-tighter">Move</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Move selection</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="text"
-                    icon={<Copy size={16} />}
-                    onClick={() => handleBulkCopyTrigger(selectedItems)}
-                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
-                  >
-                    <span className="text-[10px] uppercase tracking-tighter">Copy</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Copy selection</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="text"
-                    danger
-                    icon={<Trash2 size={16} />}
-                    onClick={() => handleBulkDeleteTrigger(selectedItems)}
-                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-error hover:bg-error/10 border-none justify-center transition-all bg-transparent!"
-                  >
-                    <span className="text-[10px] uppercase tracking-tighter">Delete</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Delete selection</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </FloatingBulkActionsBar>
-        </motion.div>
-      )}
+      <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
+        <BulkAction
+          icon={<Move size={16} />}
+          label="Move"
+          tooltip="Move selection"
+          onClick={() => handleBulkMoveTrigger(selectedItems)}
+        />
+        <BulkAction
+          icon={<Copy size={16} />}
+          label="Copy"
+          tooltip="Copy selection"
+          onClick={() => handleBulkCopyTrigger(selectedItems)}
+        />
+        <BulkAction
+          icon={<Download size={16} />}
+          label="Download"
+          tooltip="Download selection (files only)"
+          onClick={() => handleBulkDownload(selectedItems)}
+        />
+        <BulkAction
+          icon={<Trash2 size={16} />}
+          label="Delete"
+          tooltip="Move to Trash"
+          danger
+          onClick={() => setBulkDeleteItems(selectedItems)}
+        />
+      </FloatingBulkActionsBar>
 
       {/* Content Section */}
       <div className="space-y-6">
@@ -337,7 +270,16 @@ function FavoritesPage() {
       {/* Shared Modals & Drawers */}
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
 
-      <FilePreviewModal file={previewFile} open={!!previewFile} onClose={() => setPreviewFile(null)} />
+      <FilePreviewModal
+        file={previewFile}
+        open={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+        allFiles={files}
+        currentIndex={
+          previewFile ? files.findIndex((f) => (f._id || f.id) === (previewFile._id || previewFile.id)) : -1
+        }
+        onNavigate={(index) => setPreviewFile(files[index])}
+      />
 
       <FolderPickerModal
         open={folderPicker.visible}

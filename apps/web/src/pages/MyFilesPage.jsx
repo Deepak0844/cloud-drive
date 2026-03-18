@@ -8,7 +8,6 @@ import { useGetFolderContentsQuery, useGetFolderDetailsQuery } from "@services/a
 
 // Constants
 import { QUERY_PARAMS_KEYS, STORAGE, DefaultSort } from "@shared-constants/constants";
-import PageNames from "@constants/pageNames";
 
 import { useDragDrop } from "@hooks/files/useDragDrop";
 import { useFileActions } from "@hooks/files/useFileActions";
@@ -27,13 +26,12 @@ import BreadcrumbNav from "@components/files/BreadcrumbNav";
 import FileGrid from "@components/files/FileGrid";
 import FilePreviewModal from "@components/files/FilePreviewModal";
 import FileToolbar from "@components/files/FileToolbar";
-import FloatingBulkActionsBar from "@components/files/FloatingBulkActionsBar";
+import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
 import FolderPickerModal from "@components/files/FolderPickerModal";
 import InfoDrawer from "@components/files/InfoDrawer";
 import PageHeader from "@components/layout/PageHeader";
 import QuotaRequestModal from "@components/settings/QuotaRequestModal";
 import Button from "@shared-components/components/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -194,12 +192,6 @@ function MyFilesView() {
   return (
     <div className="flex flex-col gap-4 pb-10">
       <PageHeader
-        title={PageNames.MY_FILES}
-        icon={
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-glow-sm">
-            <FolderOpen className="text-xl text-primary" size={20} />
-          </div>
-        }
         breadcrumbNode={<BreadcrumbNav breadcrumbs={breadcrumbs} setCurrentFolderId={setCurrentFolderId} />}
         rightContent={
           <FileToolbar
@@ -216,77 +208,6 @@ function MyFilesView() {
       />
 
       <div className="h-4" />
-
-      {selectedItems.length > 0 && (
-        <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}>
-          <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="text"
-                    icon={<Move size={16} />}
-                    onClick={() => handleBulkMoveTrigger(selectedItems)}
-                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
-                  >
-                    <span className="text-[10px] uppercase tracking-tighter">Move</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Move selection</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="text"
-                    icon={<Copy size={16} />}
-                    onClick={() => handleBulkCopyTrigger(selectedItems)}
-                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
-                  >
-                    <span className="text-[10px] uppercase tracking-tighter">Copy</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Copy selection</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="text"
-                    icon={<Download size={16} />}
-                    onClick={() => handleBulkDownload(selectedItems)}
-                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
-                  >
-                    <span className="text-[10px] uppercase tracking-tighter">Download</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Download selection (files only)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="text"
-                    danger
-                    icon={<Trash2 size={16} />}
-                    onClick={() => handleBulkDeleteTrigger(selectedItems)}
-                    className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-error hover:bg-error/10 border-none justify-center transition-all bg-transparent!"
-                  >
-                    <span className="text-[10px] uppercase tracking-tighter">Delete</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Delete selection</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </FloatingBulkActionsBar>
-        </motion.div>
-      )}
 
       <div className="relative group min-h-[400px]">
         <input type="file" multiple className="hidden" ref={uploadInputRef} onChange={handleFileChange} />
@@ -368,11 +289,43 @@ function MyFilesView() {
       </div>
 
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
+      <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
+        <BulkAction
+          icon={<Move size={16} />}
+          label="Move"
+          tooltip="Move selection"
+          onClick={() => handleBulkMoveTrigger(selectedItems)}
+        />
+        <BulkAction
+          icon={<Copy size={16} />}
+          label="Copy"
+          tooltip="Copy selection"
+          onClick={() => handleBulkCopyTrigger(selectedItems)}
+        />
+        <BulkAction
+          icon={<Download size={16} />}
+          label="Download"
+          tooltip="Download selection (files only)"
+          onClick={() => handleBulkDownload(selectedItems)}
+        />
+        <BulkAction
+          icon={<Trash2 size={16} />}
+          label="Delete"
+          tooltip="Delete selection"
+          danger
+          onClick={() => handleBulkDeleteTrigger(selectedItems)}
+        />
+      </FloatingBulkActionsBar>
       <FilePreviewModal
         file={previewFile}
         open={!!previewFile}
         onClose={() => setPreviewFile(null)}
         handleDownload={handleDownload}
+        allFiles={files}
+        currentIndex={
+          previewFile ? files.findIndex((f) => (f._id || f.id) === (previewFile._id || previewFile.id)) : -1
+        }
+        onNavigate={(index) => setPreviewFile(files[index])}
       />
       <QuotaRequestModal open={quotaRequestModalVisible} onClose={() => setQuotaRequestModalVisible(false)} />
 

@@ -118,10 +118,10 @@ function FileItem({
     return (
       <div
         className={cn(
-          "group flex items-center gap-4 p-3 rounded-xl transition-all cursor-pointer border",
+          "group flex items-center gap-4 p-3 rounded-2xl transition-all cursor-pointer border",
           isSelected
-            ? "bg-primary-light border-primary/30 shadow-glow-sm"
-            : "bg-surface hover:bg-surface-dim border-transparent hover:border-line"
+            ? "bg-primary/10 border-primary/40 shadow-glow-sm"
+            : "glass-card hover:bg-white/5 border-transparent hover:border-white/10"
         )}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
@@ -178,15 +178,23 @@ function FileItem({
 
         <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
           <div className="col-span-6 flex flex-col min-w-0">
-            <div className="font-semibold text-sm text-label truncate">{file.name}</div>
+            <div className="font-bold text-sm text-label truncate" title={file.name}>
+              {file.name}
+            </div>
             {showParentContext && file.folder?.name && (
-              <div className="text-[10px] text-label-tertiary truncate leading-none mt-0.5">
+              <div className="text-[10px] text-label-tertiary truncate leading-none mt-1 font-medium italic">
                 in <span className="font-bold opacity-80">{file.folder.name}</span>
               </div>
             )}
           </div>
-          <div className="col-span-3 text-xs text-label-tertiary capitalize font-medium">{file.type}</div>
-          <div className="col-span-3 text-xs text-label-tertiary font-bold">{file.size}</div>
+          <div className="col-span-3 text-xs text-label-tertiary capitalize font-bold tracking-tight opacity-70">
+            {file.type}
+          </div>
+          <div className="col-span-3">
+            <span className="text-[10px] font-black text-label-tertiary bg-white/5 px-2 py-0.5 rounded-lg border border-white/5 whitespace-nowrap">
+              {file.size}
+            </span>
+          </div>
         </div>
 
         <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="button" tabIndex={0}>
@@ -204,10 +212,10 @@ function FileItem({
     <motion.div whileHover={{ y: -5 }} className="h-full relative">
       <Card
         className={cn(
-          "h-full border-2 rounded-2xl transition-all duration-200 cursor-pointer overflow-hidden",
+          "h-full border-2 rounded-2xl transition-all duration-500 cursor-pointer overflow-hidden backdrop-blur-3xl backdrop-saturate-200",
           isSelected
-            ? "border-primary bg-primary-light shadow-glow"
-            : "border-transparent shadow-sm hover:shadow-md bg-surface"
+            ? "border-primary/60 bg-primary/10 shadow-glow"
+            : "glass-card border-white/10 border-t-white/20 border-l-white/15 hover:border-primary/40 hover:shadow-glow bg-white/10 shadow-premium"
         )}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
@@ -247,23 +255,31 @@ function FileItem({
           </div>
 
           <div className="flex items-start justify-between gap-1 px-1 pb-1">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 flex flex-col">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="font-bold truncate text-[12px] leading-tight mb-0.5 text-label">{file.name}</div>
+                    <div className="font-black text-[12px] leading-tight mb-1 text-label truncate" title={file.name}>
+                      {file.name}
+                    </div>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[200px] wrap-break-word">
+                  <TooltipContent
+                    side="top"
+                    className="max-w-[200px] break-all bg-surface/95 text-white font-bold border-white/10 backdrop-blur-xl"
+                  >
                     {file.name}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               {showParentContext && file.folder?.name && (
-                <div className="truncate text-[9px] text-label-tertiary leading-none mb-1 font-medium italic">
+                <div className="truncate text-[9px] text-label-tertiary leading-none mb-1 font-semibold italic">
                   in <span className="font-bold text-primary/70">{file.folder.name}</span>
                 </div>
               )}
-              <div className="text-[10px] font-bold text-label-tertiary/70 uppercase tracking-wider">{file.size}</div>
+              <div className="text-[10px] font-black text-label-tertiary/70 uppercase tracking-widest flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-primary/40" />
+                {file.size}
+              </div>
             </div>
             <div
               onClick={(e) => e.stopPropagation()}

@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import React from "react";
-import { LayoutGrid, List, Plus, Upload, ChevronDown, ArrowUpDown } from "lucide-react";
+import { LayoutGrid, List, Plus, Upload, ChevronDown, ArrowUpDown, Filter } from "lucide-react";
 import { cn } from "@lib/utils";
 
 // Constants
@@ -63,31 +63,53 @@ export default function FileToolbar({
             placeholder="Search in My Files..."
             allowClear
             suffix={
-              <AdvancedFilterDropdown
-                initialFilters={advancedFilters}
-                onFilter={(filters) =>
-                  updateParams({
-                    [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
-                    [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
-                    [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
-                    [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
-                    [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
-                    [QUERY_PARAMS_KEYS.TAG]: filters.tag,
-                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-                  })
-                }
-                onClear={() =>
-                  updateParams({
-                    [QUERY_PARAMS_KEYS.CATEGORY]: null,
-                    [QUERY_PARAMS_KEYS.START_DATE]: null,
-                    [QUERY_PARAMS_KEYS.END_DATE]: null,
-                    [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
-                    [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
-                    [QUERY_PARAMS_KEYS.TAG]: null,
-                    [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
-                  })
-                }
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <AdvancedFilterDropdown
+                      initialFilters={advancedFilters}
+                      onFilter={(filters) =>
+                        updateParams({
+                          [QUERY_PARAMS_KEYS.CATEGORY]: filters.category,
+                          [QUERY_PARAMS_KEYS.START_DATE]: filters.startDate,
+                          [QUERY_PARAMS_KEYS.END_DATE]: filters.endDate,
+                          [QUERY_PARAMS_KEYS.MIN_SIZE]: filters.minSize,
+                          [QUERY_PARAMS_KEYS.MAX_SIZE]: filters.maxSize,
+                          [QUERY_PARAMS_KEYS.TAG]: filters.tag,
+                          [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+                        })
+                      }
+                      onClear={() =>
+                        updateParams({
+                          [QUERY_PARAMS_KEYS.CATEGORY]: null,
+                          [QUERY_PARAMS_KEYS.START_DATE]: null,
+                          [QUERY_PARAMS_KEYS.END_DATE]: null,
+                          [QUERY_PARAMS_KEYS.MIN_SIZE]: null,
+                          [QUERY_PARAMS_KEYS.MAX_SIZE]: null,
+                          [QUERY_PARAMS_KEYS.TAG]: null,
+                          [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
+                        })
+                      }
+                      trigger={
+                        <div className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/5 cursor-pointer transition-all group/filter mr-1">
+                          <Filter
+                            size={14}
+                            className={cn(
+                              "transition-colors",
+                              Object.keys(advancedFilters || {}).length > 0
+                                ? "text-primary stroke-3"
+                                : "text-label-tertiary group-hover/filter:text-label-secondary"
+                            )}
+                          />
+                        </div>
+                      }
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="bg-surface/90 backdrop-blur-md border-white/10 text-xs font-bold text-white">
+                  Advanced Filters
+                </TooltipContent>
+              </Tooltip>
             }
             className="premium-nav-search"
           />
@@ -146,7 +168,7 @@ export default function FileToolbar({
                 <LayoutGrid size={16} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-surface/90 backdrop-blur-md border-white/10 text-xs font-bold">
+            <TooltipContent className="bg-surface/90 backdrop-blur-md border-white/10 text-xs font-bold text-white">
               Grid View
             </TooltipContent>
           </Tooltip>
@@ -167,7 +189,7 @@ export default function FileToolbar({
                 <List size={16} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="bg-surface/90 backdrop-blur-md border-white/10 text-xs font-bold">
+            <TooltipContent className="bg-surface/90 backdrop-blur-md border-white/10 text-xs font-bold text-white">
               List View
             </TooltipContent>
           </Tooltip>

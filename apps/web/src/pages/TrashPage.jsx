@@ -1,8 +1,8 @@
 // React core & third-party libraries
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+
 import { toast } from "sonner";
-import { Trash2, Home, RotateCcw, AlertTriangle } from "lucide-react";
+import { Trash2, RotateCcw, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
@@ -15,8 +15,6 @@ import {
 
 // Constants
 import { ItemTypes } from "@shared-constants/constants";
-import PageNames from "@constants/pageNames";
-import PageUrls from "@constants/pageUrls";
 
 // Hooks
 import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
@@ -26,21 +24,14 @@ import { useSelectableItems } from "@hooks/files/useSelectableItems";
 
 // Components
 import FileItem from "@components/files/FileItem";
-import FloatingBulkActionsBar from "@components/files/FloatingBulkActionsBar";
+import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
 import FolderItem from "@components/files/FolderItem";
 import ListControls from "@components/files/ListControls";
 import InfoDrawer from "@components/files/InfoDrawer";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
 import PageHeader from "@components/layout/PageHeader";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@components/ui/breadcrumb";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -140,32 +131,6 @@ function TrashView() {
   return (
     <div className="flex flex-col gap-6 pb-24">
       <PageHeader
-        title={PageNames.TRASH}
-        icon={
-          <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center border border-error/20 shadow-glow-sm">
-            <Trash2 className="text-xl text-error" size={20} />
-          </div>
-        }
-        breadcrumbNode={
-          <Breadcrumb className="mt-1">
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link
-                    to={PageUrls.DashboardPage}
-                    className="flex items-center gap-1.5 text-label-tertiary hover:text-primary transition-colors text-xs font-medium"
-                  >
-                    <Home size={12} /> <span>{PageNames.MY_FILES}</span>
-                  </Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage className="text-label font-bold text-xs">{PageNames.TRASH}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        }
         rightContent={
           <>
             <ListControls
@@ -194,49 +159,25 @@ function TrashView() {
         }
       />
 
-      {/* Bulk Actions Bar */}
-      {selectedItems.length > 0 && (
-        <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}>
-          <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
-            <Button
-              type="text"
-              icon={<RotateCcw size={16} />}
-              onClick={handleBulkRestore}
-              loading={isRestoring}
-              className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary/10 border-none justify-center transition-all bg-transparent!"
-            >
-              <span className="text-[10px] uppercase tracking-tighter">Restore</span>
-            </Button>
-            <Button
-              type="text"
-              icon={<Trash2 size={16} />}
-              onClick={() => setConfirmDelete(true)}
-              loading={isDeleting}
-              className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-error hover:bg-error/10 border-none justify-center transition-all bg-transparent!"
-            >
-              <span className="text-[10px] uppercase tracking-tighter">Delete</span>
-            </Button>
-          </FloatingBulkActionsBar>
-        </motion.div>
-      )}
+      <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
 
       {isLoading ? (
         <div className="py-20 flex justify-center w-full">
           <Loader size={32} />
         </div>
       ) : folders.length === 0 && files.length === 0 ? (
-        <div className="bg-surface rounded-3xl border border-line shadow-sm flex flex-col items-center justify-center py-24 px-8 mt-4 hover:border-primary/20 transition-colors">
+        <div className="glass-card rounded-[2.5rem] shadow-md flex flex-col items-center justify-center py-24 px-8 mt-4 bg-white/5 border-dashed border-white/10">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 16 }}
-            className="w-24 h-24 rounded-full bg-error/10 flex items-center justify-center mb-6 shadow-inner border border-error/20"
+            className="w-24 h-24 rounded-4xl glass-card flex items-center justify-center mb-8 shadow-inner border-[#dc2626]/20 crimson-glow"
           >
-            <Trash2 size={40} className="text-error opacity-80" />
+            <Trash2 size={44} className="text-[#dc2626] opacity-80" />
           </motion.div>
-          <h2 className="text-2xl font-bold text-label mb-2 tracking-tight">Your trash is empty</h2>
-          <p className="text-sm text-label-tertiary text-center max-w-xs leading-relaxed font-medium">
-            Items you delete will appear here and be permanently removed after 30 days.
+          <h2 className="text-3xl font-black text-label mb-3 tracking-tighter italic">Trash is Empty</h2>
+          <p className="text-sm text-label-tertiary text-center max-w-xs leading-relaxed font-medium opacity-70">
+            Deleted items stay here for 30 days before being permanently removed.
           </p>
         </div>
       ) : (
@@ -380,6 +321,24 @@ function TrashView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
+        <BulkAction
+          icon={<RotateCcw size={16} />}
+          label="Restore"
+          tooltip="Restore selection"
+          onClick={handleBulkRestore}
+          loading={isRestoring}
+        />
+        <BulkAction
+          icon={<Trash2 size={16} />}
+          label="Delete"
+          tooltip="Delete permanently"
+          danger
+          onClick={() => setConfirmDelete(true)}
+          loading={isDeleting}
+        />
+      </FloatingBulkActionsBar>
     </div>
   );
 }

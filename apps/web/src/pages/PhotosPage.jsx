@@ -1,7 +1,7 @@
 // React core & third-party libraries
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Calendar, Download, ImageIcon, Home, Clock, Maximize2, History } from "lucide-react";
+import { Calendar, Download, ImageIcon, Clock, Maximize2, History } from "lucide-react";
 import dayjs from "dayjs";
 import { motion } from "framer-motion";
 
@@ -15,7 +15,7 @@ import { useFileActions } from "@hooks/files/useFileActions";
 
 // Constants
 import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
-import PageNames from "@constants/pageNames";
+
 import PageUrls from "@constants/pageUrls";
 
 // Utils
@@ -25,17 +25,12 @@ import { UrlUtils } from "@shared-utils/utils";
 import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
 import PageHeader from "@components/layout/PageHeader";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@components/ui/breadcrumb";
+
 import { Skeleton } from "@components/ui/skeleton";
+import FilePreviewModal from "@components/files/FilePreviewModal";
 
 function PhotosPage() {
+  const [previewFile, setPreviewFile] = useState(null);
   const { page, pageSize, setPage, updateParams } = useListPageParams({ defaultPageSize: 50 });
   const { handleDownload } = useFileActions({ folders: [], clearSelection: () => {} });
 
@@ -122,7 +117,7 @@ function PhotosPage() {
           Your visual memories will appear here once you upload some images to your cloud drive.
         </p>
         <Link to={PageUrls.MyFilesPage}>
-          <Button styleType="primary" className="rounded-2xl px-10 h-12 font-bold shadow-glow">
+          <Button variant="aurora" size="pill" className="px-10 h-12 font-black italic">
             Upload Photos
           </Button>
         </Link>
@@ -132,34 +127,7 @@ function PhotosPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8 pb-32">
-      <PageHeader
-        title={PageNames.PHOTOS}
-        icon={
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-glow-sm">
-            <ImageIcon className="text-xl text-primary" size={20} />
-          </div>
-        }
-        breadcrumbNode={
-          <Breadcrumb className="mt-1">
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link
-                    to={PageUrls.DashboardPage}
-                    className="flex items-center gap-1.5 text-label-tertiary hover:text-primary transition-colors text-xs font-medium"
-                  >
-                    <Home size={12} /> <span>{PageNames.MY_FILES}</span>
-                  </Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage className="text-label font-bold text-xs">{PageNames.PHOTOS}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        }
-      />
+      <PageHeader />
 
       <div className="flex flex-col gap-12">
         {groupedPhotos.map(([group, groupPhotos]) => (
@@ -182,9 +150,11 @@ function PhotosPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-6 space-y-6">
               {groupPhotos.map((photo) => (
-                <PhotoCard key={photo._id || photo.id} photo={photo} handleDownload={handleDownload} />
+                <div key={photo._id || photo.id} className="break-inside-avoid">
+                  <PhotoCard photo={photo} handleDownload={handleDownload} onPreview={() => setPreviewFile(photo)} />
+                </div>
               ))}
             </div>
           </div>
@@ -213,16 +183,29 @@ function PhotosPage() {
           </div>
         )}
       </div>
+
+      <FilePreviewModal
+        file={previewFile}
+        open={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+        handleDownload={handleDownload}
+        allFiles={photos}
+        currentIndex={
+          previewFile ? photos.findIndex((p) => (p._id || p.id) === (previewFile._id || previewFile.id)) : -1
+        }
+        onNavigate={(index) => setPreviewFile(photos[index])}
+      />
     </motion.div>
   );
 }
 
-function PhotoCard({ photo, handleDownload }) {
+function PhotoCard({ photo, handleDownload, onPreview }) {
   return (
     <motion.div
-      whileHover={{ scale: 1.05 }}
+      whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className="group relative aspect-square rounded-[32px] overflow-hidden bg-surface-alt border border-line/20 cursor-pointer shadow-glow-sm hover:shadow-glow hover:border-primary/40 transition-all duration-500 ease-out"
+      onClick={() => onPreview?.()}
+      className="group relative aspect-auto rounded-3xl overflow-hidden bg-surface-alt border border-white/5 cursor-pointer shadow-glow-sm hover:shadow-glow hover:border-primary/40 transition-all duration-500 ease-out mb-6"
     >
       <img
         src={photo.thumbnailUrl}

@@ -1,23 +1,21 @@
 // React core & third-party libraries
 import React, { useState } from "react";
 import { toast } from "sonner";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import {
   Cpu,
   HardDrive,
   Server as ServerIcon,
   Users,
-  FileIcon,
   User,
   CheckCircle2,
   XCircle,
   Clock,
   RotateCw,
   Edit2,
+  ShieldCheck,
+  Zap,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Services (RTK Query hooks)
 import {
@@ -25,7 +23,6 @@ import {
   useGetUsersQuery,
   useHandleQuotaRequestMutation,
   useRunStorageReanalysisMutation,
-  useUpdateUserQuotaMutation,
   useUpdateUserStatusMutation,
   useGetSystemStatsQuery,
 } from "@services/api/adminApi";
@@ -34,44 +31,67 @@ import {
 import { formatBytes } from "@shared-utils/utils";
 
 // Constants
-import PageNames from "@constants/pageNames";
 
 // Components
 import Button from "@shared-components/components/button";
 import Table from "@shared-components/components/table";
-import TableActionButton from "@shared-components/components/table-action-button";
-import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { Card, CardContent } from "@components/ui/card";
 import { Progress } from "@components/ui/progress";
 import { Skeleton } from "@components/ui/skeleton";
 import { Badge } from "@components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@components/ui/dialog";
-import { Input } from "@components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
-
-function bytesToGB(bytes) {
-  if (!bytes) return 0;
-  // Use decimal (1000) for consistency with Google Drive standards
-  return Number((bytes / (1000 * 1000 * 1000)).toFixed(0));
-}
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@components/ui/tooltip";
+import EditQuotaModal from "@components/admin/EditQuotaModal";
 
 function calculatePercentage(used, total) {
   if (!total) return 0;
   return Math.min(100, Math.round((used / total) * 100));
 }
 
-const quotaFormSchema = z.object({
-  quota: z.number().min(1, "Quota must be at least 1 GB").max(1000, "Quota cannot exceed 1000 GB"),
-});
+/**
+ * Mini Circular Progress / Ring Chart
+ */
+function MiniRing({ percentage, color = "currentColor", size = 48, strokeWidth = 5 }) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="transform -rotate-90">
+        {/* Background Circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="rgba(255,255,255,0.05)"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+        />
+        {/* Progress Circle */}
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="absolute text-[10px] font-bold text-label">{Math.round(percentage)}%</span>
+    </div>
+  );
+}
 
 export default function AdminDashboardPage() {
   // Local state
-  const [activeTab, setActiveTab] = useState("1");
+  const [activeTab, setActiveTab] = useState("users");
   const [editingUser, setEditingUser] = useState(null);
-  const form = useForm({
-    resolver: zodResolver(quotaFormSchema),
-    defaultValues: { quota: 5 },
-  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [requestPage, setRequestPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
@@ -102,7 +122,6 @@ export default function AdminDashboardPage() {
     pollingInterval: 30000,
   });
 
-  const [updateUserQuota] = useUpdateUserQuotaMutation();
   const [updateUserStatus] = useUpdateUserStatusMutation();
   const [handleQuotaRequest] = useHandleQuotaRequestMutation();
   const [runReanalysis, { isLoading: reanalyzing }] = useRunStorageReanalysisMutation();
@@ -117,20 +136,7 @@ export default function AdminDashboardPage() {
   // Event handlers
   function handleEdit(user) {
     setEditingUser(user);
-    const quotaGB = bytesToGB(user.quota_bytes);
-    form.reset({ quota: quotaGB });
     setIsModalOpen(true);
-  }
-
-  async function handleUpdate(values) {
-    try {
-      const quotaBytes = values.quota * 1000 * 1000 * 1000;
-      await updateUserQuota({ id: editingUser._id, quota_bytes: quotaBytes }).unwrap();
-      toast.success("Quota updated successfully");
-      setIsModalOpen(false);
-    } catch (_error) {
-      toast.error("Failed to update quota");
-    }
   }
 
   async function handleUserStatusToggle(userId, isActive) {
@@ -170,9 +176,16 @@ export default function AdminDashboardPage() {
       dataIndex: "name",
       key: "name",
       render: (text) => (
-        <div className="flex items-center gap-2">
-          <User size={14} className="text-label-tertiary" />
-          <span className="font-semibold text-label">{text}</span>
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
+            <div className="relative w-12 h-12 rounded-2xl bg-surface-alt border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden backdrop-blur-xl group-hover:border-primary/50 transition-all duration-500">
+              <User size={22} className="text-primary group-hover:scale-110 transition-transform duration-500" />
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-black text-label tracking-tighter text-lg">{text}</span>
+          </div>
         </div>
       ),
     },
@@ -180,22 +193,18 @@ export default function AdminDashboardPage() {
       title: "Email",
       dataIndex: "email",
       key: "email",
-    },
-    {
-      title: "Role",
-      dataIndex: "role",
-      key: "role",
-      render: (role) => (
-        <Badge variant="outline" className="capitalize">
-          {role.toLowerCase()}
-        </Badge>
-      ),
+      render: (email) => <span className="text-label-secondary font-medium">{email}</span>,
     },
     {
       title: "Status",
       key: "status",
       render: (_, record) => (
-        <Badge variant={record.is_active ? "success" : "destructive"}>{record.is_active ? "Active" : "Disabled"}</Badge>
+        <Badge
+          variant={record.is_active ? "success" : "destructive"}
+          className={`px-3 py-1 ${record.is_active ? "bg-success/10" : "bg-destructive/10"}`}
+        >
+          {record.is_active ? "Active" : "Disabled"}
+        </Badge>
       ),
     },
     {
@@ -203,7 +212,7 @@ export default function AdminDashboardPage() {
       key: "usage",
       render: (_, record) => {
         if (record.role === "ADMIN") {
-          return null;
+          return <span className="text-xs text-label-tertiary italic">Unlimited</span>;
         }
 
         const usedText = formatBytes(record.used_bytes);
@@ -211,35 +220,71 @@ export default function AdminDashboardPage() {
         const percent = calculatePercentage(record.used_bytes, record.quota_bytes);
 
         return (
-          <div className="flex flex-col">
-            <span className="text-label">
-              {usedText} / {totalText}
-            </span>
-            <span className="text-xs text-label-secondary font-medium">{percent}% used</span>
+          <div className="flex flex-col gap-1 w-32">
+            <div className="flex justify-between text-[11px] font-bold">
+              <span className="text-label">{usedText}</span>
+              <span className="text-label-tertiary">{totalText}</span>
+            </div>
+            <Progress
+              value={percent}
+              className="h-1.5 bg-white/5"
+              indicatorClassName="bg-gradient-to-r from-primary to-info"
+            />
           </div>
         );
       },
     },
     {
-      title: "Action",
+      title: "Actions",
       key: "action",
       render: (_, record) =>
         record.role !== "ADMIN" && (
-          <div className="flex gap-2">
-            <TableActionButton icon={<Edit2 size={14} />} onClick={() => handleEdit(record)} buttonText="Edit Quota" />
-            <TableActionButton
-              icon={<RotateCw size={14} />}
-              popconfirmTitle="Re-analyze storage for this user?"
-              onConfirm={() => handleSyncStorage(record._id)}
-              buttonText="Re-sync"
-            />
-            <TableActionButton
-              danger={record.is_active}
-              type={record.is_active ? "default" : "primary"}
-              popconfirmTitle={`Are you sure you want to ${record.is_active ? "disable" : "enable"} this user?`}
-              onConfirm={() => handleUserStatusToggle(record._id, !record.is_active)}
-              buttonText={record.is_active ? "Disable" : "Enable"}
-            />
+          <div className="flex gap-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleEdit(record)}
+                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-label-secondary hover:bg-primary/20 hover:text-primary hover:border-primary/30 hover:shadow-glow-sm transition-all duration-300 group"
+                  >
+                    <Edit2 size={16} className="group-hover:scale-110 transition-transform" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Edit Quota</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleSyncStorage(record._id)}
+                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-label-secondary hover:bg-info/20 hover:text-info hover:border-info/30 hover:shadow-glow-info transition-all duration-300 group"
+                  >
+                    <RotateCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Re-sync Storage</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleUserStatusToggle(record._id, !record.is_active)}
+                    className={`w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center transition-all duration-300 group ${
+                      record.is_active
+                        ? "text-label-secondary hover:bg-destructive/20 hover:text-destructive hover:border-destructive/30 hover:shadow-glow-destructive"
+                        : "text-success hover:bg-success/20 hover:border-success/30 hover:shadow-glow-success"
+                    }`}
+                  >
+                    {record.is_active ? (
+                      <XCircle size={16} className="group-hover:scale-110 transition-transform" />
+                    ) : (
+                      <CheckCircle2 size={16} className="group-hover:scale-110 transition-transform" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{record.is_active ? "Disable User" : "Enable User"}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         ),
     },
@@ -251,39 +296,47 @@ export default function AdminDashboardPage() {
       key: "user",
       render: (_, record) => (
         <div className="flex flex-col">
-          <span className="font-semibold text-label">{record.user?.name}</span>
-          <span className="text-xs text-label-secondary">{record.user?.email}</span>
+          <span className="font-bold text-label">{record.user?.name || "Unknown User"}</span>
+          <span className="text-xs text-label-secondary font-medium">{record.user?.email || "No Email"}</span>
         </div>
       ),
     },
     {
       title: "Requested Amount",
       key: "amount",
-      render: (_, record) => <span className="text-label">{formatBytes(record.requested_bytes)}</span>,
+      render: (_, record) => (
+        <span className="text-lg font-black text-gradient-primary italic tracking-tighter">
+          {formatBytes(record.requested_bytes)}
+        </span>
+      ),
     },
     {
       title: "Reason",
       dataIndex: "reason",
       key: "reason",
+      render: (reason) => (
+        <span className="text-label-secondary font-medium max-w-[200px] truncate block">{reason}</span>
+      ),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       render: (status) => {
-        let variant = "info";
         let IconComp = Clock;
+        let className = "bg-info/5 text-info border-info/20 shadow-glow-sm";
+
         if (status === "APPROVED") {
-          variant = "success";
           IconComp = CheckCircle2;
+          className = "bg-success/10 text-success border-success/20 shadow-glow-sm cursor-default";
         }
         if (status === "REJECTED") {
-          variant = "destructive";
           IconComp = XCircle;
+          className = "bg-destructive/10 text-destructive border-destructive/20 shadow-glow-sm cursor-default";
         }
         return (
-          <Badge variant={variant} className="gap-1.5">
-            <IconComp size={12} />
+          <Badge variant="outline" className={`gap-2 px-4 py-1.5 font-black italic rounded-xl ${className}`}>
+            <IconComp size={14} strokeWidth={3} />
             {status}
           </Badge>
         );
@@ -293,7 +346,7 @@ export default function AdminDashboardPage() {
       title: "Date",
       dataIndex: "createdAt",
       key: "date",
-      render: (date) => new Date(date).toLocaleDateString(),
+      render: (date) => <span className="text-label-tertiary font-medium">{new Date(date).toLocaleDateString()}</span>,
     },
     {
       title: "Actions",
@@ -301,20 +354,22 @@ export default function AdminDashboardPage() {
       render: (_, record) =>
         record.status === "PENDING" ? (
           <div className="flex gap-2">
-            <TableActionButton
-              type="primary"
-              icon={<CheckCircle2 size={14} />}
-              popconfirmTitle="Approve storage request?"
-              onConfirm={() => handleRequestStatus(record._id, "APPROVED")}
-              buttonText="Approve"
-            />
-            <TableActionButton
-              danger
-              icon={<XCircle size={14} />}
-              popconfirmTitle="Reject storage request?"
-              onConfirm={() => handleRequestStatus(record._id, "REJECTED")}
-              buttonText="Reject"
-            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-4 rounded-lg bg-success/10 hover:bg-success/20 border-success/20 text-success font-bold text-xs"
+              onClick={() => handleRequestStatus(record._id, "APPROVED")}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-4 rounded-lg bg-destructive/10 hover:bg-destructive/20 border-destructive/20 text-destructive font-bold text-xs"
+              onClick={() => handleRequestStatus(record._id, "REJECTED")}
+            >
+              Reject
+            </Button>
           </div>
         ) : null,
     },
@@ -322,255 +377,217 @@ export default function AdminDashboardPage() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.3 }}
-      className="p-6 h-full flex flex-col"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="p-8 h-full flex flex-col bg-background overflow-y-auto"
     >
-      <div className="mb-8 shrink-0 flex items-center justify-between">
+      {/* Header */}
+      <div className="mb-10 shrink-0 flex items-center justify-between">
         <div className="space-y-1">
-          <h2 className="text-3xl font-black text-label tracking-tight mb-0!">{PageNames.ADMIN}</h2>
-          <p className="text-label-secondary font-medium">Manage users and storage requests</p>
+          <p className="text-label-secondary font-medium flex items-center gap-2">
+            <ShieldCheck size={14} className="text-primary" />
+            System Administration & Analytics
+          </p>
         </div>
         <Button
+          variant="aurora"
+          size="pill"
           icon={<RotateCw size={16} />}
           loading={reanalyzing}
           onClick={() => handleSyncStorage()}
-          className="rounded-xl font-bold h-11 px-6 shadow-glow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="h-12 px-8 shadow-glow-lg font-black italic tracking-tight"
         >
           Re-analyze All Storage
         </Button>
       </div>
 
-      {/* System Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
         {/* CPU */}
-        <Card className="rounded-2xl shadow-sm border-line/50 glass-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-5">
-            <CardTitle className="text-sm font-bold text-label-secondary">CPU Usage</CardTitle>
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Cpu className="h-4 w-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {statsLoading ? (
-              <div className="space-y-3 mt-2">
-                <Skeleton className="h-8 w-20" />
-                <Skeleton className="h-3 w-32" />
-                <Skeleton className="h-2 w-full mt-2" />
-              </div>
-            ) : (
-              <>
-                <div className="text-2xl font-black text-label">{stats?.system?.cpu?.load}%</div>
-                <p className="text-xs font-semibold text-label-tertiary mt-1">
-                  Temp: {stats?.system?.cpu?.temp === "N/A" ? "N/A" : `${stats?.system?.cpu?.temp}°C`}
-                </p>
-                <Progress value={parseFloat(stats?.system?.cpu?.load) || 0} className="h-1.5 mt-3" />
-              </>
-            )}
-          </CardContent>
-        </Card>
-
+        <StatCard
+          title="CPU Usage"
+          value={`${stats?.system?.cpu?.load}%`}
+          subtext={`Temp: ${stats?.system?.cpu?.temp === "N/A" ? "N/A" : `${stats?.system?.cpu?.temp}°C`}`}
+          percentage={parseFloat(stats?.system?.cpu?.load) || 0}
+          icon={<Cpu size={18} />}
+          color="#7c3aed"
+          loading={statsLoading}
+        />
         {/* Memory */}
-        <Card className="rounded-2xl shadow-sm border-line/50 glass-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-5">
-            <CardTitle className="text-sm font-bold text-label-secondary">Memory</CardTitle>
-            <div className="w-8 h-8 rounded-full bg-info/10 flex items-center justify-center">
-              <ServerIcon className="h-4 w-4 text-info" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {statsLoading ? (
-              <div className="space-y-3 mt-2">
-                <Skeleton className="h-8 w-20" />
-                <Skeleton className="h-3 w-32" />
-                <Skeleton className="h-2 w-full mt-2" />
-              </div>
-            ) : (
-              <>
-                <div className="text-2xl font-black text-label">{stats?.system?.memory?.usage_percent}%</div>
-                <p className="text-xs font-semibold text-label-tertiary mt-1">
-                  {formatBytes(stats?.system?.memory?.used)} / {formatBytes(stats?.system?.memory?.total)}
-                </p>
-                <Progress value={parseFloat(stats?.system?.memory?.usage_percent) || 0} className="h-1.5 mt-3" />
-              </>
-            )}
-          </CardContent>
-        </Card>
-
+        <StatCard
+          title="Memory"
+          value={`${stats?.system?.memory?.usage_percent}%`}
+          subtext={`${formatBytes(stats?.system?.memory?.used)} / ${formatBytes(stats?.system?.memory?.total)}`}
+          percentage={parseFloat(stats?.system?.memory?.usage_percent) || 0}
+          icon={<ServerIcon size={18} />}
+          color="#06b6d4"
+          loading={statsLoading}
+        />
         {/* Storage */}
-        <Card className="rounded-2xl shadow-sm border-line/50 glass-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-5">
-            <CardTitle className="text-sm font-bold text-label-secondary">Storage</CardTitle>
-            <div className="w-8 h-8 rounded-full bg-warning/10 flex items-center justify-center">
-              <HardDrive className="h-4 w-4 text-warning" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {statsLoading ? (
-              <div className="space-y-3 mt-2">
-                <Skeleton className="h-8 w-20" />
-                <Skeleton className="h-3 w-32" />
-                <Skeleton className="h-2 w-full mt-2" />
-              </div>
-            ) : (
-              <>
-                <div className="text-2xl font-black text-label">{stats?.system?.disk?.usage_percent}%</div>
-                <p className="text-xs font-semibold text-label-tertiary mt-1">
-                  {formatBytes(stats?.system?.disk?.used)} / {formatBytes(stats?.system?.disk?.total)}
-                </p>
-                <Progress value={parseFloat(stats?.system?.disk?.usage_percent) || 0} className="h-1.5 mt-3" />
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Counts */}
-        <Card className="rounded-2xl shadow-sm border-primary/20 bg-linear-to-br from-primary/5 to-secondary/5">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-5">
-            <CardTitle className="text-sm font-bold text-primary">System Totals</CardTitle>
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <Users className="h-4 w-4 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5">
-            {statsLoading ? (
-              <div className="space-y-4 mt-3">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-            ) : (
-              <div className="space-y-3 mt-1">
-                <div className="flex justify-between items-center bg-surface-dim/50 p-2 rounded-lg border border-line/30">
-                  <div className="flex items-center gap-2">
-                    <Users size={14} className="text-label-secondary" />
-                    <span className="text-sm font-semibold text-label-secondary">Registered Users</span>
-                  </div>
-                  <span className="font-extrabold text-label">{stats?.counts?.total_users || 0}</span>
-                </div>
-                <div className="flex justify-between items-center bg-surface-dim/50 p-2 rounded-lg border border-line/30">
-                  <div className="flex items-center gap-2">
-                    <FileIcon size={14} className="text-label-secondary" />
-                    <span className="text-sm font-semibold text-label-secondary">Total Files</span>
-                  </div>
-                  <span className="font-extrabold text-label">{stats?.counts?.total_files || 0}</span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <StatCard
+          title="System Storage"
+          value={`${stats?.system?.disk?.usage_percent}%`}
+          subtext={`${formatBytes(stats?.system?.disk?.used)} / ${formatBytes(stats?.system?.disk?.total)}`}
+          percentage={parseFloat(stats?.system?.disk?.usage_percent) || 0}
+          icon={<HardDrive size={18} />}
+          color="#f59e0b"
+          loading={statsLoading}
+        />
+        {/* Users */}
+        <StatCard
+          title="Total Users"
+          value={stats?.counts?.total_users || 0}
+          subtext="Registered Accounts"
+          percentage={100}
+          icon={<Users size={18} />}
+          color="#10b981"
+          isTotal
+          loading={statsLoading}
+        />
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="admin-tabs flex-1 flex flex-col">
-        <TabsList className="mb-4 w-fit h-10 p-1 bg-surface-dim border border-line items-center">
-          <TabsTrigger value="1" className="px-8 h-8 data-active:shadow-glow-sm">
-            User Management
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <TabsList className="mb-6 w-fit h-14 p-1.5 glass-bar border-white/10 rounded-2xl items-center gap-2">
+          <TabsTrigger
+            value="users"
+            className="px-8 h-11 rounded-xl gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-glow-md font-bold transition-all hover:bg-white/5 active:scale-95"
+          >
+            <Users size={16} />
+            Users
           </TabsTrigger>
-          <TabsTrigger value="2" className="px-8 h-8 data-active:shadow-glow-sm">
+          <TabsTrigger
+            value="requests"
+            className="px-8 h-11 rounded-xl gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-glow-md font-bold transition-all hover:bg-white/5 active:scale-95"
+          >
+            <Zap size={16} />
             Quota Requests
+            {requests.filter((r) => r.status === "PENDING").length > 0 && (
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            )}
           </TabsTrigger>
         </TabsList>
 
-        <div className="flex-1 min-h-0 bg-surface rounded-2xl border border-line/50 shadow-premium overflow-hidden">
-          <TabsContent value="1" className="h-full m-0 p-0 focus-visible:ring-0">
-            {usersLoading ? (
-              <div className="p-6 space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-              </div>
-            ) : (
-              <Table
-                columns={userColumns}
-                dataSource={users}
-                rowKey="_id"
-                className="bg-transparent border-none"
-                loading={usersFetching}
-                pagination={{
-                  current: userPage,
-                  pageSize: pageSize,
-                  total: userPagination?.totalItems || 0,
-                  onChange: (p) => setUserPage(p),
-                  showSizeChanger: false,
-                }}
-                scroll={{ x: "max-content", y: "calc(100vh - 460px)" }}
-              />
-            )}
-          </TabsContent>
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          <AnimatePresence mode="wait">
+            <TabsContent value="users" className="h-full m-0 p-0 focus-visible:ring-0 outline-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="h-full bg-surface/40 rounded-3xl border border-white/10 shadow-2xl overflow-hidden glass-card"
+              >
+                {usersLoading ? (
+                  <div className="p-8 space-y-6">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                  </div>
+                ) : (
+                  <Table
+                    columns={userColumns}
+                    dataSource={users}
+                    rowKey="_id"
+                    className="bg-transparent border-none admin-premium-table"
+                    loading={usersFetching}
+                    pagination={{
+                      current: userPage,
+                      pageSize: pageSize,
+                      total: userPagination?.totalItems || 0,
+                      onChange: (p) => setUserPage(p),
+                      showSizeChanger: false,
+                    }}
+                    scroll={{ x: "max-content", y: "calc(100vh - 440px)" }}
+                  />
+                )}
+              </motion.div>
+            </TabsContent>
 
-          <TabsContent value="2" className="h-full m-0 p-0 focus-visible:ring-0">
-            {requestsLoading ? (
-              <div className="p-6 space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-              </div>
-            ) : (
-              <Table
-                columns={quotaColumns}
-                dataSource={requests}
-                rowKey="_id"
-                className="bg-transparent border-none"
-                loading={requestsFetching}
-                pagination={{
-                  current: requestPage,
-                  pageSize: pageSize,
-                  total: requestPagination?.totalItems || 0,
-                  onChange: (p) => setRequestPage(p),
-                  showSizeChanger: false,
-                }}
-                scroll={{ x: "max-content", y: "calc(100vh - 460px)" }}
-              />
-            )}
-          </TabsContent>
+            <TabsContent value="requests" className="h-full m-0 p-0 focus-visible:ring-0 outline-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="h-full bg-surface/40 rounded-3xl border border-white/10 shadow-2xl overflow-hidden glass-card"
+              >
+                {requestsLoading ? (
+                  <div className="p-8 space-y-6">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                  </div>
+                ) : (
+                  <Table
+                    columns={quotaColumns}
+                    dataSource={requests}
+                    rowKey="_id"
+                    className="bg-transparent border-none admin-premium-table"
+                    loading={requestsFetching}
+                    pagination={{
+                      current: requestPage,
+                      pageSize: pageSize,
+                      total: requestPagination?.totalItems || 0,
+                      onChange: (p) => setRequestPage(p),
+                      showSizeChanger: false,
+                    }}
+                    scroll={{ x: "max-content", y: "calc(100vh - 440px)" }}
+                  />
+                )}
+              </motion.div>
+            </TabsContent>
+          </AnimatePresence>
         </div>
       </Tabs>
 
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-[420px] aurora-modal">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 italic">
-              <Edit2 size={18} className="text-primary" />
-              <span>Edit Quota for {editingUser?.name}</span>
-            </DialogTitle>
-          </DialogHeader>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdate)} className="mt-4 space-y-4">
-              <FormField
-                control={form.control}
-                name="quota"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-semibold text-label-secondary">Storage Quota (GB)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={1000}
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        className="w-full h-12 bg-surface-dim/30 border-line/40 focus:border-primary/50 transition-all font-medium rounded-xl"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter className="mt-8">
-                <Button type="text" onClick={() => setIsModalOpen(false)} className="rounded-xl font-bold px-6">
-                  Cancel
-                </Button>
-                <Button htmlType="submit" styleType="primary" className="rounded-xl font-black px-8 shadow-glow italic">
-                  Update Quota
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+      {/* Quota Modal */}
+      <EditQuotaModal open={isModalOpen} onClose={() => setIsModalOpen(false)} user={editingUser} />
     </motion.div>
+  );
+}
+
+/**
+ * Stat Card Sub-component
+ */
+function StatCard({ title, value, subtext, percentage, icon, color, loading, isTotal = false }) {
+  return (
+    <Card className="glass-card border-white/10 hover:border-white/20 transition-all duration-300 group relative overflow-hidden h-40">
+      <div
+        className="absolute top-0 right-0 w-32 h-32 blur-3xl opacity-10 rounded-full pointer-events-none -mr-16 -mt-16 transition-opacity group-hover:opacity-20"
+        style={{ backgroundColor: color }}
+      />
+      <CardContent className="p-0 h-full flex items-center px-6">
+        {loading ? (
+          <div className="w-full flex justify-between items-center">
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-3 w-28" />
+            </div>
+            <Skeleton className="h-14 w-14 rounded-full" />
+          </div>
+        ) : (
+          <div className="w-full flex justify-between items-center relative">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-center gap-2">
+                <div className="text-label-tertiary group-hover:text-label transition-colors">
+                  {React.cloneElement(icon, { size: 16 })}
+                </div>
+                <h3 className="text-xs font-bold text-label-secondary uppercase tracking-widest">{title}</h3>
+              </div>
+              <div className="text-3xl font-black text-label tracking-tighter truncate leading-tight">{value}</div>
+              <p className="text-[10px] font-bold text-label-tertiary uppercase truncate max-w-[120px]">{subtext}</p>
+            </div>
+            {!isTotal ? (
+              <MiniRing percentage={percentage} color={color} size={64} strokeWidth={6} />
+            ) : (
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center border border-white/10 bg-white/5 shadow-inner transition-transform group-hover:scale-105"
+                style={{ color }}
+              >
+                {React.cloneElement(icon, { size: 28, strokeWidth: 2.5 })}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

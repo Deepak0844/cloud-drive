@@ -91,9 +91,10 @@ function ErrorPage({ forcedStatus, forcedMessage }) {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Button
-            styleType="primary"
+            variant="aurora"
+            size="pill"
             onClick={handleBack}
-            className="w-full sm:w-auto h-14 px-10 rounded-[20px] text-base font-black shadow-glow hover:scale-[1.03] transition-all flex items-center gap-2 italic uppercase tracking-wider"
+            className="w-full sm:w-auto h-14 px-10 italic uppercase tracking-wider"
           >
             <Home size={18} />
             Return to Core

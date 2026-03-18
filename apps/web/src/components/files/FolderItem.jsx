@@ -82,10 +82,10 @@ function FolderItem({
     return (
       <div
         className={cn(
-          "group flex items-center gap-4 p-3 rounded-xl transition-all cursor-pointer border",
+          "group flex items-center gap-4 p-3 rounded-2xl transition-all cursor-pointer border",
           isSelected
-            ? "bg-primary-light border-primary/30 shadow-glow-sm"
-            : "bg-surface hover:bg-surface-dim border-transparent hover:border-line"
+            ? "bg-primary/10 border-primary/40 shadow-glow-sm"
+            : "glass-card hover:bg-white/5 border-transparent hover:border-white/10"
         )}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
@@ -130,16 +130,20 @@ function FolderItem({
           <FolderIcon size={20} fill={isSelected ? "currentColor" : "none"} />
         </div>
 
-        <div className="flex-1 min-w-0 flex items-center justify-between">
-          <div className="flex flex-col min-w-0">
-            <div className="font-semibold text-sm text-label truncate">{folder.name}</div>
+        <div className="flex-1 min-w-0 flex items-center justify-between gap-4">
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="font-bold text-sm text-label truncate" title={folder.name}>
+              {folder.name}
+            </div>
             {showParentContext && folder.parent?.name && (
-              <div className="text-[10px] text-label-tertiary truncate leading-none mt-0.5">
+              <div className="text-[10px] text-label-tertiary truncate leading-none mt-1 font-medium italic">
                 in <span className="font-bold opacity-80">{folder.parent.name}</span>
               </div>
             )}
           </div>
-          <div className="text-xs text-label-tertiary font-medium">{folder.itemCount || 0} items</div>
+          <div className="shrink-0 text-xs text-label-tertiary font-bold tracking-tight bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+            {folder.itemCount || 0} items
+          </div>
         </div>
 
         <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="button" tabIndex={0}>
@@ -157,10 +161,10 @@ function FolderItem({
     <motion.div whileHover={{ y: -4 }} className="relative h-full">
       <Card
         className={cn(
-          "h-full border-2 rounded-2xl transition-all duration-200 cursor-pointer overflow-hidden",
+          "h-full border-2 rounded-2xl transition-all duration-500 cursor-pointer overflow-hidden backdrop-blur-3xl backdrop-saturate-200",
           isSelected
-            ? "border-primary bg-primary-light shadow-glow"
-            : "border-transparent shadow-sm hover:shadow-md bg-surface"
+            ? "border-primary/60 bg-primary/10 shadow-glow"
+            : "glass-card border-white/10 border-t-white/20 border-l-white/15 hover:border-primary/40 hover:shadow-glow bg-white/10 shadow-premium"
         )}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
@@ -189,16 +193,19 @@ function FolderItem({
             >
               <FolderIcon size={22} fill={isSelected ? "currentColor" : "none"} />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold truncate text-[13px] text-label" title={folder.name}>
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
+              <div className="font-black truncate text-[13px] text-label leading-tight mb-0.5" title={folder.name}>
                 {folder.name}
               </div>
               {showParentContext && folder.parent?.name && (
-                <div className="truncate text-[10px] text-label-tertiary leading-none mb-1 font-medium italic">
+                <div className="truncate text-[9px] text-label-tertiary leading-none mb-1 font-semibold italic">
                   in <span className="font-bold opacity-80">{folder.parent.name}</span>
                 </div>
               )}
-              <div className="text-[11px] font-semibold text-label-tertiary">{folder.itemCount || 0} items</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-label-tertiary/70 flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-primary/40" />
+                {folder.itemCount || 0} items
+              </div>
             </div>
             <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="button" tabIndex={0}>
               <Dropdown menu={{ items: menuItems }} trigger={["click"]}>

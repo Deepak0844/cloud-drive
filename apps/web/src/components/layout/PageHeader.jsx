@@ -8,14 +8,10 @@ import {
   BreadcrumbSeparator,
 } from "@components/ui/breadcrumb";
 
-function PageHeader({ title, icon = null, breadcrumbItems = [], breadcrumbNode = null, rightContent = null }) {
+function PageHeader({ breadcrumbItems = [], breadcrumbNode = null, rightContent = null }) {
   return (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-black text-label tracking-tight flex items-center gap-3 m-0">
-          {icon}
-          <span>{title}</span>
-        </h1>
+      <div className="flex flex-col gap-1.5 mt-2">
         {breadcrumbNode ||
           (breadcrumbItems.length > 0 && (
             <Breadcrumb>

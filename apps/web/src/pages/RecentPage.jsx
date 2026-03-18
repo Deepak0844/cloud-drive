@@ -1,7 +1,6 @@
-// React core & third-party libraries
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { X, Download, History } from "lucide-react";
+import { Download, History } from "lucide-react";
 import { motion } from "framer-motion";
 import { FileUtils } from "@shared-utils/utils";
 
@@ -9,8 +8,9 @@ import { FileUtils } from "@shared-utils/utils";
 import { useGetRecentFilesQuery, useTouchFileMutation } from "@services/api/fileApi";
 
 // Constants
-import PageNames from "@constants/pageNames";
+
 import { ApiBasePath, BulkServiceUrls } from "@constants/serviceUrls";
+import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
 import { ItemTypes } from "@shared-constants/constants";
 
 // Hooks
@@ -25,16 +25,7 @@ import FilePreviewModal from "@components/files/FilePreviewModal";
 import InfoDrawer from "@components/files/InfoDrawer";
 import ListControls from "@components/files/ListControls";
 import PageHeader from "@components/layout/PageHeader";
-import Button from "@shared-components/components/button";
 import Loader from "@shared-components/components/loader";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@components/ui/breadcrumb";
 
 const VIEW_MODES = {
   GRID: "grid",
@@ -135,28 +126,9 @@ export default function RecentPage() {
 
   // Render
   return (
-    <div className="flex flex-col h-full bg-surface">
+    <div className="flex flex-col h-full bg-background">
       <div className="px-8 pt-8 pb-4">
         <PageHeader
-          title={PageNames.RECENT}
-          icon={
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-glow-sm">
-              <History className="text-xl text-primary" size={20} />
-            </div>
-          }
-          breadcrumbNode={
-            <Breadcrumb className="mt-1">
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbLink className="text-label-tertiary font-medium">My Files</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage className="text-label font-bold">{PageNames.RECENT}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          }
           rightContent={
             <ListControls
               advancedFilters={advancedFilters}
@@ -275,47 +247,22 @@ export default function RecentPage() {
           onClose={() => {
             setPreviewFile(null);
           }}
+          allFiles={filteredItems}
+          currentIndex={
+            previewFile ? filteredItems.findIndex((f) => (f._id || f.id) === (previewFile._id || previewFile.id)) : -1
+          }
+          onNavigate={(index) => setPreviewFile(filteredItems[index])}
         />
       )}
 
-      {/* Simplified Bulk Actions Bar for Recent Page */}
-      {selectedItems.length > 0 && (
-        <div className="bulk-actions-bar rounded-[24px] p-2 pr-3 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.3)] fixed bottom-10 left-1/2 -translate-x-1/2 z-1000 bg-[#1a1c1e] border border-white/10 w-[95%] max-w-[500px]">
-          <div className="flex items-center gap-3 ml-2 shrink-0">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-primary font-black text-xs">{selectedItems.length}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-white text-[11px] font-black uppercase tracking-wider leading-none">
-                Items Selected
-              </span>
-              <span className="text-white/40 text-[9px] font-bold uppercase tracking-tight">Recent Page</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 p-1 bg-white/5 rounded-[20px] ml-4 overflow-hidden flex-nowrap">
-            <Button
-              type="text"
-              size="small"
-              className="h-9 px-4 border-none text-white/90 hover:text-white hover:bg-white/10 font-bold text-xs flex items-center gap-2 rounded-xl"
-              onClick={clearSelection}
-            >
-              <X size={14} />
-              Deselect
-            </Button>
-            <div className="w-px h-4 bg-white/10" />
-            <Button
-              type="text"
-              size="small"
-              icon={<Download size={14} />}
-              className="h-9 px-4 border-none text-primary hover:text-primary-light hover:bg-white/10 font-bold text-xs flex items-center gap-2 rounded-xl"
-              onClick={handleBulkDownload}
-            >
-              Download
-            </Button>
-          </div>
-        </div>
-      )}
+      <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
+        <BulkAction
+          icon={<Download size={16} />}
+          label="Download"
+          tooltip="Download selection"
+          onClick={handleBulkDownload}
+        />
+      </FloatingBulkActionsBar>
     </div>
   );
 }

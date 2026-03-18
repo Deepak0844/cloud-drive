@@ -137,19 +137,14 @@
   --shadow-md:          0 8px 24px var(--_black-50);
   --shadow-glow:        0 0 20px var(--_violet-25);
   --shadow-glow-sm:     0 0 15px var(--_violet-20);
-  --shadow-glow-danger: 0 0 20px var(--_red-35);
+  --shadow-glow-crimson: 0 0 20px rgba(220, 38, 38, 0.3);
+
 
   /* ── Misc ────────────────────────────────────────────────── */
   --primary-hover:  var(--_violet-12);
   --primary-light:  var(--_violet-12);
   --primary-dark:   var(--_violet-700);
   --tooltip-bg:     var(--_slate-800);
-
-  /* ── Sidebar nav specific ────────────────────────────────── */
-  --sidebar-nav-active-bg:    var(--_violet-15);
-  --sidebar-nav-active-color: var(--_violet-400);
-  --sidebar-nav-hover-bg:     var(--_white-05);
-  --sidebar-nav-hover-color:  var(--_crisp-white);
 
   /* ── Glass surfaces ──────────────────────────────────────── */
   --glass-surface-bg:     var(--_white-04);
@@ -248,6 +243,10 @@
   --color-primary-light: var(--primary-light);
   --color-primary-dark:  var(--primary-dark);
   --color-tooltip:       var(--tooltip-bg);
+
+  /* Shadows for Tailwind utility usage */
+  --shadow-glow:         var(--shadow-glow);
+  --shadow-glow-sm:      var(--shadow-glow-sm);
 }
 
 /* ── Base layer ───────────────────────────────────────────────── */
@@ -298,9 +297,12 @@
   /* Glass card effect */
   .glass-card {
     background: var(--glass-surface-bg);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(210%);
+    -webkit-backdrop-filter: blur(24px) saturate(210%);
     border: 1px solid var(--glass-surface-border);
+    box-shadow: 
+      inset 0 1px 1px rgba(255, 255, 255, 0.08),
+      0 4px 12px rgba(0, 0, 0, 0.2);
   }
 
   /* Auth page layout */
@@ -330,39 +332,121 @@
     box-shadow: var(--shadow-glow-danger);
   }
 
+
+  .crimson-glow {
+    box-shadow: var(--shadow-glow-crimson);
+  }
+
+  /* Shared Sidebar Active Highlights */
+  .sidebar-active-violet {
+    background: var(--_violet-15) !important;
+    color: var(--_violet-400) !important;
+    box-shadow: var(--shadow-glow-sm) !important;
+  }
+
+  .sidebar-active-orange {
+    background: rgba(249, 115, 22, 0.15) !important;
+    color: #fb923c !important; /* orange-400 */
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.3) !important;
+  }
+
+  .sidebar-active-gold {
+    background: rgba(245, 158, 11, 0.15) !important;
+    color: #fbbf24 !important; /* amber-400 */
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.3) !important;
+  }
+
+  .sidebar-active-crimson {
+    background: rgba(220, 38, 38, 0.15) !important;
+    color: #f87171 !important; /* red-400 */
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.3) !important;
+  }
+
+  .sidebar-active-cyan {
+    background: var(--_cyan-15) !important;
+    color: var(--_cyan-400) !important;
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.3) !important;
+  }
+
+  .sidebar-active-indigo {
+    background: rgba(99, 102, 241, 0.15) !important;
+    color: #818cf8 !important; /* indigo-400 */
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.3) !important;
+  }
+
   /* Premium shadow */
   .premium-shadow {
     box-shadow:
       0 20px 40px var(--shadow-premium-dark),
       0 0 0 1px var(--shadow-premium-border);
   }
-}
 
-/* ── Sidebar navigation (custom, replacing Ant Design Menu) ─── */
-.sidebar-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 48px;
-  padding: 0 14px;
-  border-radius: 12px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  color: var(--text-secondary);
-  font-weight: 500;
-  cursor: pointer;
-  user-select: none;
-}
+  /* Admin Premium Table Styles — Ant Design Overrides */
+  .admin-premium-table .ant-table {
+    @apply bg-transparent;
+    background: transparent !important;
+  }
 
-.sidebar-nav-item:hover {
-  background: var(--sidebar-nav-hover-bg);
-  color: var(--sidebar-nav-hover-color);
-  transform: translateX(2px);
-}
+  .admin-premium-table .ant-table-thead > tr > th {
+    @apply font-black text-[10px] uppercase tracking-widest px-6 py-5 transition-colors border-b border-white/10;
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: var(--_slate-400) !important; /* High contrast label-secondary color */
+  }
 
-.sidebar-nav-item.active {
-  background: var(--sidebar-nav-active-bg);
-  color: var(--sidebar-nav-active-color);
-  box-shadow: var(--shadow-glow-sm);
+  .admin-premium-table .ant-table-thead > tr > th:hover {
+    color: var(--_white) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  /* Remove Ant Design default vertical dividers (pseudo-elements) */
+  .admin-premium-table .ant-table-thead > tr > th::before {
+    display: none !important;
+  }
+
+  .admin-premium-table .ant-table-tbody > tr > td {
+    @apply border-b border-white/5 px-6 py-5 transition-all duration-300;
+  }
+
+  .admin-premium-table .ant-table-tbody > tr:hover > td {
+    background: rgba(139, 92, 246, 0.08) !important; /* Subtle violet glow wrap */
+  }
+
+  .admin-premium-table .ant-table-tbody > tr.ant-table-row-selected > td {
+    @apply bg-primary/5!;
+  }
+
+  /* Table Empty State */
+  .admin-premium-table .ant-empty-description {
+    @apply text-label-tertiary font-bold;
+  }
+
+  /* Pagination */
+  .admin-premium-table .ant-pagination-item {
+    @apply bg-white/5 border-white/10 rounded-lg font-bold transition-all;
+  }
+
+  .admin-premium-table .ant-pagination-item-active {
+    background: var(--_violet-20) !important;
+    border-color: var(--_violet-400) !important;
+    box-shadow: var(--shadow-glow-sm) !important;
+  }
+
+  .admin-premium-table .ant-pagination-item-active a {
+    color: var(--_violet-400) !important;
+  }
+
+  .admin-premium-table .ant-pagination-prev .ant-pagination-item-link,
+  .admin-premium-table .ant-pagination-next .ant-pagination-item-link {
+    @apply bg-white/5 border-white/10 rounded-lg text-label-secondary transition-colors;
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .admin-premium-table .ant-pagination-prev:hover .ant-pagination-item-link,
+  .admin-premium-table .ant-pagination-next:hover .ant-pagination-item-link {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: var(--_white-20) !important;
+    color: var(--_white) !important;
+  }
 }
 
 /* ── Custom Scrollbar ─────────────────────────────────────────── */
@@ -387,4 +471,67 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+/* ── Ultra Premium Modal & Effects ─────────────────────────────── */
+
+:root {
+  --shadow-glow-info: 0 0 15px rgba(14, 165, 233, 0.4);
+  --shadow-glow-success: 0 0 15px rgba(34, 197, 94, 0.4);
+  --shadow-glow-destructive: 0 0 15px rgba(239, 68, 68, 0.4);
+  --shadow-glow-primary: 0 0 25px rgba(139, 92, 246, 0.3);
+}
+
+.shadow-glow-info { box-shadow: var(--shadow-glow-info) !important; }
+.shadow-glow-success { box-shadow: var(--shadow-glow-success) !important; }
+.shadow-glow-destructive { box-shadow: var(--shadow-glow-destructive) !important; }
+.shadow-glow-primary { box-shadow: var(--shadow-glow-primary) !important; }
+
+.premium-modal-glass {
+  background: rgba(15, 23, 42, 0.8) !important;
+  backdrop-filter: blur(40px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 20px 50px rgba(0, 0, 0, 0.8),
+    inset 0 1px 1px rgba(255, 255, 255, 0.15) !important;
+}
+
+.aurora-modal {
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(40px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 25px 50px -12px rgba(0, 0, 0, 0.8),
+    0 0 30px rgba(124, 58, 237, 0.15) !important;
+  border-radius: 2.5rem !important;
+}
+
+.aurora-modal [role="dialog"] {
+  border-radius: 2.5rem !important;
+}
+
+.aurora-modal input {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.aurora-modal input:focus {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(124, 58, 237, 0.4) !important;
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.1) !important;
+}
+
+.premium-slider [role=slider] {
+  @apply w-5 h-5 rounded-full bg-white border-4 border-primary shadow-glow-sm hover:scale-110 transition-transform cursor-grab active:cursor-grabbing;
+}
+
+.no-spin::-webkit-inner-spin-button,
+.no-spin::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spin {
+  -moz-appearance: textfield;
 }

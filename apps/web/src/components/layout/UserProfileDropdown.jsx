@@ -111,8 +111,10 @@ export default function UserProfileDropdown({ isMobile }) {
           sideOffset={8}
           className="bg-slate-800 text-slate-50 border-none px-3 py-2 shadow-xl"
         >
-          <p className="font-bold text-sm mb-0.5">{displayName}</p>
-          <p className="text-[10px] opacity-80">{displayEmail}</p>
+          <div className="flex flex-col">
+            <p className="font-bold text-sm mb-0.5">{displayName}</p>
+            <p className="text-[10px] opacity-80">{displayEmail}</p>
+          </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
