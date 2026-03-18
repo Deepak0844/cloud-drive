@@ -267,7 +267,7 @@ function MyFilesView() {
 
               <div className="flex flex-col w-full gap-3 mt-2">
                 <Button
-                  styleType="primary"
+                  variant="primary"
                   size="large"
                   icon={<Send size={18} />}
                   onClick={handleRequestQuota}
@@ -276,7 +276,7 @@ function MyFilesView() {
                   Request Increase
                 </Button>
                 <Button
-                  type="text"
+                  variant="ghost"
                   onClick={() => setQuotaModalVisible(false)}
                   className="w-full rounded-2xl h-12 text-label-tertiary font-bold hover:text-label transition-colors"
                 >
@@ -367,11 +367,11 @@ function MyFilesView() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="text" onClick={() => setRenameItem(null)} className="rounded-xl font-bold px-6">
+            <Button variant="ghost" onClick={() => setRenameItem(null)} className="rounded-xl font-bold px-6">
               Cancel
             </Button>
             <Button
-              styleType="primary"
+              variant="primary"
               onClick={handleRenameConfirm}
               className="rounded-xl font-black px-8 shadow-glow italic"
             >
@@ -403,11 +403,10 @@ function MyFilesView() {
             </p>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="text" onClick={() => setDeleteItem(null)} className="rounded-xl font-bold px-6">
+            <Button variant="ghost" onClick={() => setDeleteItem(null)} className="rounded-xl font-bold px-6">
               Cancel
             </Button>
             <Button
-              styleType="primary"
               variant="destructive"
               onClick={handleDeleteConfirm}
               className="rounded-xl font-black px-8 shadow-glow-sm italic"
@@ -441,11 +440,10 @@ function MyFilesView() {
             </p>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="text" onClick={() => setBulkDeleteItems(null)} className="rounded-xl font-bold px-6">
+            <Button variant="ghost" onClick={() => setBulkDeleteItems(null)} className="rounded-xl font-bold px-6">
               Cancel
             </Button>
             <Button
-              styleType="primary"
               variant="destructive"
               onClick={handleBulkDeleteConfirm}
               className="rounded-xl font-black px-8 shadow-glow-sm italic"
@@ -480,11 +478,11 @@ function MyFilesView() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="text" onClick={() => setIsFolderModalOpen(false)} className="rounded-xl font-bold px-6">
+            <Button variant="ghost" onClick={() => setIsFolderModalOpen(false)} className="rounded-xl font-bold px-6">
               Cancel
             </Button>
             <Button
-              styleType="primary"
+              variant="primary"
               onClick={handleCreateFolderConfirm}
               className="rounded-xl font-black px-8 shadow-glow italic"
             >

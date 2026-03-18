@@ -1,24 +1,17 @@
-import { Button, Popconfirm, Tooltip } from "antd";
+import { Popconfirm, Tooltip } from "antd";
+import Button from "../button/Button";
 
 export default function TableActionButton({
   icon,
   tooltipTitle,
   onClick,
-  danger = false,
-  type = "default",
+  variant = "outline",
   popconfirmTitle,
   onConfirm,
   buttonText,
 }) {
   const btn = (
-    <Button
-      icon={icon}
-      onClick={!popconfirmTitle ? onClick : undefined}
-      size="small"
-      danger={danger}
-      type={type}
-      ghost={danger}
-    >
+    <Button icon={icon} onClick={!popconfirmTitle ? onClick : undefined} size="sm" variant={variant}>
       {buttonText}
     </Button>
   );

@@ -81,7 +81,7 @@ class GlobalErrorBoundary extends Component {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
               <Button
-                styleType="primary"
+                variant="primary"
                 onClick={this.handleReload}
                 className="w-full sm:w-auto flex-1 h-14 rounded-[20px] font-black text-base shadow-glow hover:scale-[1.03] transition-all flex items-center justify-center gap-2 italic uppercase tracking-wider"
               >
@@ -89,7 +89,7 @@ class GlobalErrorBoundary extends Component {
                 Reload Page
               </Button>
               <Button
-                type="text"
+                variant="ghost"
                 onClick={this.handleGoHome}
                 className="w-full sm:w-auto flex-1 h-14 rounded-[20px] font-bold text-base text-label-secondary hover:text-label hover:bg-white/5 flex items-center justify-center gap-2"
               >

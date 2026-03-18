@@ -145,7 +145,6 @@ function TrashView() {
             />
 
             <Button
-              styleType="primary"
               variant="destructive"
               icon={<Trash2 size={16} />}
               onClick={() => setConfirmEmpty(true)}

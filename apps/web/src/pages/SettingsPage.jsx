@@ -166,7 +166,7 @@ function SettingsPage() {
                   />
                 </div>
                 <Button
-                  htmlType="submit"
+                  type="submit"
                   variant="aurora"
                   size="pill"
                   loading={isSavingProfile}
@@ -241,14 +241,14 @@ function SettingsPage() {
 
                 <div className="flex flex-col md:flex-row gap-4">
                   <Button
-                    styleType="secondary"
+                    variant="secondary"
                     className="h-12 flex-1 font-bold rounded-2xl"
                     onClick={() => setPasswordModalVisible(true)}
                   >
                     Change Password
                   </Button>
                   <Button
-                    styleType="ghost"
+                    variant="ghost"
                     className="h-12 flex-1 font-bold rounded-2xl border-line-strong text-error hover:bg-error/5"
                     disabled
                   >

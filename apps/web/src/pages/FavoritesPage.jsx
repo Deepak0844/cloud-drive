@@ -314,11 +314,11 @@ function FavoritesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button type="text" onClick={() => setRenameItem(null)} className="rounded-xl font-bold px-6">
+            <Button variant="ghost" onClick={() => setRenameItem(null)} className="rounded-xl font-bold px-6">
               Cancel
             </Button>
             <Button
-              styleType="primary"
+              variant="primary"
               onClick={handleRenameConfirm}
               className="rounded-xl font-black px-8 shadow-glow italic"
             >
@@ -351,11 +351,10 @@ function FavoritesPage() {
             </p>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="text" onClick={() => setDeleteItem(null)} className="rounded-xl font-bold px-6">
+            <Button variant="ghost" onClick={() => setDeleteItem(null)} className="rounded-xl font-bold px-6">
               Cancel
             </Button>
             <Button
-              styleType="primary"
               variant="destructive"
               onClick={handleDeleteConfirm}
               className="rounded-xl font-black px-8 shadow-glow-sm italic"
@@ -389,11 +388,10 @@ function FavoritesPage() {
             </p>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="text" onClick={() => setBulkDeleteItems(null)} className="rounded-xl font-bold px-6">
+            <Button variant="ghost" onClick={() => setBulkDeleteItems(null)} className="rounded-xl font-bold px-6">
               Cancel
             </Button>
             <Button
-              styleType="primary"
               variant="destructive"
               onClick={handleBulkDeleteConfirm}
               className="rounded-xl font-black px-8 shadow-glow-sm italic"
