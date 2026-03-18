@@ -184,7 +184,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
           <div className="flex flex-col">
-            <span className="font-black text-label tracking-tighter text-lg">{text}</span>
+            <span className="font-black text-label tracking-tighter text-lg select-text">{text}</span>
           </div>
         </div>
       ),
@@ -193,7 +193,7 @@ export default function AdminDashboardPage() {
       title: "Email",
       dataIndex: "email",
       key: "email",
-      render: (email) => <span className="text-label-secondary font-medium">{email}</span>,
+      render: (email) => <span className="text-label-secondary font-medium select-text">{email}</span>,
     },
     {
       title: "Status",
@@ -296,8 +296,10 @@ export default function AdminDashboardPage() {
       key: "user",
       render: (_, record) => (
         <div className="flex flex-col">
-          <span className="font-bold text-label">{record.user?.name || "Unknown User"}</span>
-          <span className="text-xs text-label-secondary font-medium">{record.user?.email || "No Email"}</span>
+          <span className="font-bold text-label select-text">{record.user?.name || "Unknown User"}</span>
+          <span className="text-xs text-label-secondary font-medium select-text">
+            {record.user?.email || "No Email"}
+          </span>
         </div>
       ),
     },

@@ -132,7 +132,7 @@ function FolderItem({
 
         <div className="flex-1 min-w-0 flex items-center justify-between gap-4">
           <div className="flex flex-col min-w-0 flex-1">
-            <div className="font-bold text-sm text-label truncate" title={folder.name}>
+            <div className="font-bold text-sm text-label truncate select-text" title={folder.name}>
               {folder.name}
             </div>
             {showParentContext && folder.parent?.name && (
@@ -194,7 +194,10 @@ function FolderItem({
               <FolderIcon size={22} fill={isSelected ? "currentColor" : "none"} />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <div className="font-black truncate text-[13px] text-label leading-tight mb-0.5" title={folder.name}>
+              <div
+                className="font-black truncate text-[13px] text-label leading-tight mb-0.5 select-text"
+                title={folder.name}
+              >
                 {folder.name}
               </div>
               {showParentContext && folder.parent?.name && (

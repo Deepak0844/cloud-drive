@@ -255,7 +255,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground select-none;
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
@@ -382,6 +382,9 @@
   }
 
   /* Admin Premium Table Styles — Ant Design Overrides */
+  .admin-premium-table {
+    @apply select-text;
+  }
   .admin-premium-table .ant-table {
     @apply bg-transparent;
     background: transparent !important;

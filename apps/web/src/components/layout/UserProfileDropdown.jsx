@@ -112,8 +112,8 @@ export default function UserProfileDropdown({ isMobile }) {
           className="bg-slate-800 text-slate-50 border-none px-3 py-2 shadow-xl"
         >
           <div className="flex flex-col">
-            <p className="font-bold text-sm mb-0.5">{displayName}</p>
-            <p className="text-[10px] opacity-80">{displayEmail}</p>
+            <p className="font-bold text-sm mb-0.5 select-text">{displayName}</p>
+            <p className="text-[10px] opacity-80 select-text">{displayEmail}</p>
           </div>
         </TooltipContent>
       </Tooltip>

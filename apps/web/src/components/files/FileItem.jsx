@@ -178,7 +178,7 @@ function FileItem({
 
         <div className="flex-1 min-w-0 grid grid-cols-12 gap-4 items-center">
           <div className="col-span-6 flex flex-col min-w-0">
-            <div className="font-bold text-sm text-label truncate" title={file.name}>
+            <div className="font-bold text-sm text-label truncate select-text" title={file.name}>
               {file.name}
             </div>
             {showParentContext && file.folder?.name && (
@@ -259,7 +259,10 @@ function FileItem({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="font-black text-[12px] leading-tight mb-1 text-label truncate" title={file.name}>
+                    <div
+                      className="font-black text-[12px] leading-tight mb-1 text-label truncate select-text"
+                      title={file.name}
+                    >
                       {file.name}
                     </div>
                   </TooltipTrigger>
