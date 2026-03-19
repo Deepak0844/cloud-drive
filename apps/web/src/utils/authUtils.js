@@ -24,9 +24,9 @@ function isUserAuthenticated() {
  * Stores the logged-in user's profile in localStorage (for UI use only — NOT the token).
  */
 function storeUserInfoInLocalStorage(data) {
-  const { name, role, email, _id } = data.user || data;
+  const { name, role, email, _id, id } = data.user || data;
   const user = {
-    id: _id,
+    id: _id || id,
     name,
     role,
     email,

@@ -13,6 +13,7 @@ import SearchInput from "@components/common/SearchInput";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
@@ -132,21 +133,23 @@ export default function FileToolbar({
             align="end"
             className="w-48 bg-surface/95 backdrop-blur-xl border-white/10 rounded-2xl p-1 shadow-premium"
           >
-            <DropdownMenuLabel className="text-[10px] uppercase font-black tracking-widest text-label-tertiary px-3 py-2">
-              Sort By
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-white/5 mx-1" />
-            <DropdownMenuRadioGroup value={currentSortKey} onValueChange={handleSortChange}>
-              {sortOptions.map((option) => (
-                <DropdownMenuRadioItem
-                  key={option.key}
-                  value={option.key}
-                  className="rounded-lg py-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-all text-sm font-semibold pr-8"
-                >
-                  {option.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-[10px] uppercase font-black tracking-widest text-label-tertiary px-3 py-2">
+                Sort By
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-white/5 mx-1" />
+              <DropdownMenuRadioGroup value={currentSortKey} onValueChange={handleSortChange}>
+                {sortOptions.map((option) => (
+                  <DropdownMenuRadioItem
+                    key={option.key}
+                    value={option.key}
+                    className="rounded-lg py-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-all text-sm font-semibold pr-8"
+                  >
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
 
