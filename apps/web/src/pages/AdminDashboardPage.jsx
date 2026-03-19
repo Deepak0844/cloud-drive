@@ -33,8 +33,8 @@ import { formatBytes } from "@shared-utils/utils";
 // Constants
 
 // Components
-import Button from "@shared-components/components/button";
-import Table from "@shared-components/components/table";
+import { Button } from "@components/ui/button";
+import Table from "@components/common/Table";
 import { Card, CardContent } from "@components/ui/card";
 import { Progress } from "@components/ui/progress";
 import { Skeleton } from "@components/ui/skeleton";

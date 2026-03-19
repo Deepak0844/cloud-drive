@@ -1,16 +1,7 @@
 import React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "../../../../apps/web/src/components/ui/dialog";
-import { Button as ShadcnButton } from "../../../../apps/web/src/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@components/ui/dialog";
+import { Button } from "@components/ui/button";
 
-/**
- * Bridge wrapper for Modal to shadcn Dialog.
- */
 export default function Modal({
   open = false,
   modalTitle = "",
@@ -39,17 +30,12 @@ export default function Modal({
 
         <DialogFooter className="border-t border-white/5 pt-4 mt-4">
           <div className="flex justify-end gap-3 w-full">
-            <ShadcnButton variant="ghost" onClick={handleCloseModal}>
+            <Button variant="ghost" onClick={handleCloseModal}>
               {cancelText}
-            </ShadcnButton>
-            <ShadcnButton
-              variant="primary"
-              onClick={handleSubmit}
-              disabled={btnLoading}
-              className="shadow-primary px-6"
-            >
+            </Button>
+            <Button variant="primary" onClick={handleSubmit} disabled={btnLoading} className="shadow-primary px-6">
               {btnText}
-            </ShadcnButton>
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>

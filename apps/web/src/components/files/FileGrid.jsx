@@ -9,7 +9,7 @@ import { ItemTypes } from "@shared-constants/constants";
 // Components
 import FileItem from "@components/files/FileItem";
 import FolderItem from "@components/files/FolderItem";
-import Loader from "@shared-components/components/loader";
+import Loader from "@components/common/Loader";
 
 export default function FileGrid({
   folders,

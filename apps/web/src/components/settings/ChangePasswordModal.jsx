@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useUpdatePasswordMutation } from "@services/api/authApi";
 
 // Components
-import Modal from "@shared-components/components/modal";
+import Modal from "@components/common/Modal";
 
 const changePasswordSchema = z
   .object({

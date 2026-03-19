@@ -16,7 +16,7 @@ import { useRequestQuotaIncreaseMutation } from "@services/api/quotaApi";
 import { ByteMultipliers } from "@shared-constants/constants";
 
 // Components
-import Modal from "@shared-components/components/modal";
+import Modal from "@components/common/Modal";
 
 const quotaSchema = z.object({
   amount: z.coerce.number().min(1, { message: "Minimum is 1 GB" }).max(100, { message: "Maximum is 100 GB" }),

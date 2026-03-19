@@ -31,7 +31,7 @@ import FolderPickerModal from "@components/files/FolderPickerModal";
 import InfoDrawer from "@components/files/InfoDrawer";
 import PageHeader from "@components/layout/PageHeader";
 import QuotaRequestModal from "@components/settings/QuotaRequestModal";
-import Button from "@shared-components/components/button";
+import { Button } from "@components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@components/ui/dialog";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";

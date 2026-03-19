@@ -4,7 +4,7 @@ import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Components
-import Button from "@shared-components/components/button";
+import { Button } from "@components/ui/button";
 
 // Constants
 import PageUrls from "@constants/pageUrls";

@@ -8,7 +8,7 @@ import { useGetFoldersQuery } from "@services/api/folderApi";
 
 // Components
 import { Button } from "@components/ui/button";
-import Loader from "@shared-components/components/loader";
+import Loader from "@components/common/Loader";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@components/ui/dialog";
 import {
   Breadcrumb,

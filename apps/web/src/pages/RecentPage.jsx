@@ -25,7 +25,7 @@ import FilePreviewModal from "@components/files/FilePreviewModal";
 import InfoDrawer from "@components/files/InfoDrawer";
 import ListControls from "@components/files/ListControls";
 import PageHeader from "@components/layout/PageHeader";
-import Loader from "@shared-components/components/loader";
+import Loader from "@components/common/Loader";
 
 const VIEW_MODES = {
   GRID: "grid",

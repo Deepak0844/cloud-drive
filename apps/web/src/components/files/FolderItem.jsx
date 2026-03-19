@@ -11,7 +11,7 @@ import { buildItemMenuItems } from "@utils/menuUtils";
 import { cn } from "@lib/utils";
 
 // Components
-import Dropdown from "@shared-components/components/dropdown";
+import Dropdown from "@components/common/Dropdown";
 import { Card, CardContent } from "@components/ui/card";
 
 function FolderItem({

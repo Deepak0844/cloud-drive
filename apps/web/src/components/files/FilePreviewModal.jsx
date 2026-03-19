@@ -12,7 +12,7 @@ import { cn } from "@lib/utils";
 
 // Components
 import { Button } from "@components/ui/button";
-import Loader from "@shared-components/components/loader";
+import Loader from "@components/common/Loader";
 import VideoPlayer from "@components/media/VideoPlayer";
 import AudioPlayer from "@components/media/AudioPlayer";
 import ItemDetailsContent from "./ItemDetailsContent";

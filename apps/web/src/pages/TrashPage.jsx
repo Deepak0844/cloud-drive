@@ -28,8 +28,8 @@ import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBu
 import FolderItem from "@components/files/FolderItem";
 import ListControls from "@components/files/ListControls";
 import InfoDrawer from "@components/files/InfoDrawer";
-import Button from "@shared-components/components/button";
-import Loader from "@shared-components/components/loader";
+import { Button } from "@components/ui/button";
+import Loader from "@components/common/Loader";
 import PageHeader from "@components/layout/PageHeader";
 
 import {

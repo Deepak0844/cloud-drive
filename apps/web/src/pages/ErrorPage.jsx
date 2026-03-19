@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import PageUrls from "@constants/pageUrls";
 
 // Components
-import Button from "@shared-components/components/button";
+import { Button } from "@components/ui/button";
 
 /**
  * Universal Error Page.

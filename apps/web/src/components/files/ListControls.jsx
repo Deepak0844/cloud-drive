@@ -8,7 +8,7 @@ import { DefaultPagination, QUERY_PARAMS_KEYS } from "@shared-constants/constant
 // Components
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
 import { Button } from "@components/ui/button";
-import SearchInput from "@shared-components/components/search-input";
+import SearchInput from "@components/common/SearchInput";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 
 export default function ListControls({

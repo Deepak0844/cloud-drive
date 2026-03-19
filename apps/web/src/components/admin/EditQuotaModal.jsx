@@ -12,7 +12,7 @@ import { useUpdateUserQuotaMutation } from "@services/api/adminApi";
 import { ByteMultipliers } from "@shared-constants/constants";
 
 // Components
-import Modal from "@shared-components/components/modal";
+import Modal from "@components/common/Modal";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
 import { Input } from "@components/ui/input";
 

@@ -20,7 +20,7 @@ import { formatBytes } from "@shared-utils/utils";
 // Components
 import ChangePasswordModal from "@components/settings/ChangePasswordModal";
 import QuotaRequestModal from "@components/settings/QuotaRequestModal";
-import Button from "@shared-components/components/button";
+import { Button } from "@components/ui/button";
 import { Card } from "@components/ui/card";
 import { Progress } from "@components/ui/progress";
 import { Skeleton } from "@components/ui/skeleton";

@@ -16,7 +16,7 @@ import { buildItemMenuItems } from "@utils/menuUtils";
 import { cn } from "@lib/utils";
 
 // Components
-import Dropdown from "@shared-components/components/dropdown";
+import Dropdown from "@components/common/Dropdown";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@components/ui/tooltip";
 import { Card, CardContent } from "@components/ui/card";
 

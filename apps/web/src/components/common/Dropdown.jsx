@@ -8,16 +8,11 @@ import {
 } from "@components/ui/dropdown-menu";
 
 export default function Dropdown({ menu, children }) {
-  // Extract items from AntD's menu property format: { items: [...] }
   const items = menu?.items || [];
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-      {/* 
-        Force render on mount if needed, or stick to default (lazy).
-        Aurora styling: glass-card with a premium shadow 
-      */}
       <DropdownMenuContent align="end" className="w-52 glass-card border-white/10 shadow-premium p-1.5 z-50">
         {items.map((item, index) => {
           if (item.type === "divider") {

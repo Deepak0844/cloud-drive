@@ -22,8 +22,8 @@ import PageUrls from "@constants/pageUrls";
 import { UrlUtils } from "@shared-utils/utils";
 
 // Components
-import Button from "@shared-components/components/button";
-import Loader from "@shared-components/components/loader";
+import { Button } from "@components/ui/button";
+import Loader from "@components/common/Loader";
 import PageHeader from "@components/layout/PageHeader";
 
 import { Skeleton } from "@components/ui/skeleton";

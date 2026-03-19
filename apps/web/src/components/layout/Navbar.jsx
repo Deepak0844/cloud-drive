@@ -6,7 +6,7 @@ import { useLocation } from "react-router-dom";
 // Components
 import NotificationDropdown from "./NotificationDropdown";
 import UserProfileDropdown from "./UserProfileDropdown";
-import Button from "@shared-components/components/button";
+import { Button } from "@components/ui/button";
 
 // Constants
 import PageNames from "@constants/pageNames";
