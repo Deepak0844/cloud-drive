@@ -8,18 +8,12 @@ import { FileUtils } from "@shared-utils/utils";
 import { useGetRecentFilesQuery, useTouchFileMutation } from "@services/api/fileApi";
 
 // Constants
-
 import { ApiBasePath, BulkServiceUrls } from "@constants/serviceUrls";
-import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
+import { VIEW_MODES, TIME_LABELS } from "@constants/uiConstants";
 import { ItemTypes } from "@shared-constants/constants";
 
-// Hooks
-import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
-import { useListPageParams } from "@hooks/files/useListPageParams";
-import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
-import { useSelectableItems } from "@hooks/files/useSelectableItems";
-
 // Components
+import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
 import FileItem from "@components/files/FileItem";
 import FilePreviewModal from "@components/files/FilePreviewModal";
 import InfoDrawer from "@components/files/InfoDrawer";
@@ -27,16 +21,11 @@ import ListControls from "@components/files/ListControls";
 import PageHeader from "@components/layout/PageHeader";
 import Loader from "@components/common/Loader";
 
-const VIEW_MODES = {
-  GRID: "grid",
-  LIST: "list",
-};
-
-const TIME_LABELS = {
-  TODAY: "Today",
-  YESTERDAY: "Yesterday",
-  EARLIER: "Earlier",
-};
+// Hooks
+import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
+import { useListPageParams } from "@hooks/files/useListPageParams";
+import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
+import { useSelectableItems } from "@hooks/files/useSelectableItems";
 
 export default function RecentPage() {
   // Redux hooks

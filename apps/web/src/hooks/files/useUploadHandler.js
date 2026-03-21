@@ -1,4 +1,5 @@
 import { useRef, useCallback } from "react";
+import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 export function useUploadHandler({ addUpload, currentFolderId, handleDragEnter, handleDragLeave, handleDrop }) {
   const uploadInputRef = useRef(null);
@@ -30,7 +31,7 @@ export function useUploadHandler({ addUpload, currentFolderId, handleDragEnter, 
       const files = e.dataTransfer.files;
       if (files && files.length > 0) {
         Array.from(files).forEach((file) => {
-          addUpload(file, currentFolderId === "root" ? null : currentFolderId);
+          addUpload(file, currentFolderId === ROOT_FOLDER_ID ? null : currentFolderId);
         });
       }
     },

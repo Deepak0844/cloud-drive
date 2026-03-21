@@ -5,7 +5,7 @@ import { Mail, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { forgotSchema } from "@schemas/authSchemas";
 
 import { Card } from "@components/ui/card";
 import { Input } from "@components/ui/input";
@@ -19,10 +19,6 @@ import { useForgotPasswordMutation } from "@services/api/authApi";
 import PageUrls from "@constants/pageUrls";
 
 // Components
-
-const forgotSchema = z.object({
-  email: z.string().min(1, { message: "Please enter a valid email address." }).email({ message: "Invalid email" }),
-});
 
 function ForgotPasswordPage() {
   // Local state

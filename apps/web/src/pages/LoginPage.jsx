@@ -6,7 +6,7 @@ import { Lock, User } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { loginSchema } from "@schemas/authSchemas";
 
 import { Card } from "@components/ui/card";
 import { Input } from "@components/ui/input";
@@ -21,12 +21,6 @@ import PageUrls from "@constants/pageUrls";
 import { useAuth } from "@hooks/useAuth";
 
 // Components
-
-const loginSchema = z.object({
-  email: z.string().min(1, { message: "Please input your email!" }).email({ message: "Invalid email address" }),
-  password: z.string().min(1, { message: "Please input your password!" }),
-  remember: z.boolean().default(true),
-});
 
 function LoginPage() {
   // Router hooks & params

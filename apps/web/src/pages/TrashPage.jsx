@@ -1,5 +1,5 @@
 // React core & third-party libraries
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { toast } from "sonner";
 import { Trash2, RotateCcw, AlertTriangle } from "lucide-react";
@@ -88,9 +88,6 @@ function TrashView() {
   });
 
   // useEffect
-  useEffect(() => {
-    // Handled by updateParams, but good for external URL changes
-  }, [debouncedSearch, advancedFilters]);
   useOutsideClickClear({ clearSelection });
 
   async function onEmptyTrashConfirm() {

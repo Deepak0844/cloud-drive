@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useCreateFolderMutation } from "@services/api/folderApi";
+import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 export function useFolderCreation({ currentFolderId }) {
   const [createFolder] = useCreateFolderMutation();
@@ -19,7 +20,7 @@ export function useFolderCreation({ currentFolderId }) {
     try {
       await createFolder({
         name,
-        parent: currentFolderId === "root" ? null : currentFolderId,
+        parent: currentFolderId === ROOT_FOLDER_ID ? null : currentFolderId,
       }).unwrap();
       toast.success("Folder created");
       setIsFolderModalOpen(false);

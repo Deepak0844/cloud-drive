@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import { useEffect, useState } from "react";
-import { Cloud, Copy, Trash2, Download, Move, FolderOpen, Send, AlertTriangle, Info } from "lucide-react";
+import { Cloud, Copy, Trash2, Download, Move, Send, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
@@ -8,6 +8,7 @@ import { useGetFolderContentsQuery, useGetFolderDetailsQuery } from "@services/a
 
 // Constants
 import { QUERY_PARAMS_KEYS, STORAGE, DefaultSort } from "@shared-constants/constants";
+import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 import { useDragDrop } from "@hooks/files/useDragDrop";
 import { useFileActions } from "@hooks/files/useFileActions";
@@ -31,10 +32,12 @@ import FolderPickerModal from "@components/files/FolderPickerModal";
 import InfoDrawer from "@components/files/InfoDrawer";
 import PageHeader from "@components/layout/PageHeader";
 import QuotaRequestModal from "@components/settings/QuotaRequestModal";
+import RenameModal from "@components/files/RenameModal";
+import DeleteModal from "@components/files/DeleteModal";
+import BulkDeleteModal from "@components/files/BulkDeleteModal";
+import CreateFolderModal from "@components/files/CreateFolderModal";
 import { Button } from "@components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@components/ui/dialog";
-import { Input } from "@components/ui/input";
-import { Label } from "@components/ui/label";
+import { Dialog, DialogContent } from "@components/ui/dialog";
 
 // Remove Dragger
 function MyFilesView() {
@@ -49,7 +52,7 @@ function MyFilesView() {
     useListPageParams();
 
   // Derived / computed variables
-  const currentFolderId = searchParams.get("folder") || "root";
+  const currentFolderId = searchParams.get("folder") || ROOT_FOLDER_ID;
 
   const sortBy = searchParams.get(QUERY_PARAMS_KEYS.SORT_BY) || DefaultSort.FIELD;
   const sortOrder = searchParams.get(QUERY_PARAMS_KEYS.SORT_ORDER) || DefaultSort.ORDER;
@@ -72,20 +75,20 @@ function MyFilesView() {
   const { data: detailsData } = useGetFolderDetailsQuery(
     { id: currentFolderId },
     {
-      skip: currentFolderId === "root" || !!debouncedSearch,
+      skip: currentFolderId === ROOT_FOLDER_ID || !!debouncedSearch,
     }
   );
 
   // Derived / computed variables
   const folders = contentsData?.data?.folders || [];
   const files = contentsData?.data?.files || [];
-  const breadcrumbs = currentFolderId === "root" ? [] : detailsData?.data?.breadcrumbs || [];
+  const breadcrumbs = currentFolderId === ROOT_FOLDER_ID ? [] : detailsData?.data?.breadcrumbs || [];
   const paginationData = contentsData?.pagination || {};
 
   // Event handlers
   function setCurrentFolderId(id) {
     const newParams = new URLSearchParams(searchParams);
-    if (id === "root" || !id) {
+    if (id === ROOT_FOLDER_ID || !id) {
       newParams.delete("folder");
     } else {
       newParams.set("folder", id);
@@ -345,152 +348,37 @@ function MyFilesView() {
       />
 
       {/* Rename Modal */}
-      <Dialog open={!!renameItem} onOpenChange={(open) => !open && setRenameItem(null)}>
-        <DialogContent className="max-w-[420px] aurora-modal">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 italic">
-              <Info size={18} className="text-primary" />
-              <span>Rename Item</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-6 space-y-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary ml-1">
-                New Name
-              </Label>
-              <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="rounded-xl h-12 bg-surface-dim/30 border-line/40 focus:border-primary/50 transition-all font-medium"
-                onKeyDown={(e) => e.key === "Enter" && handleRenameConfirm()}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setRenameItem(null)} className="rounded-xl font-bold px-6">
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleRenameConfirm}
-              className="rounded-xl font-black px-8 shadow-glow italic"
-            >
-              Rename
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RenameModal
+        open={!!renameItem}
+        onClose={() => setRenameItem(null)}
+        name={newName}
+        onNameChange={(e) => setNewName(e.target.value)}
+        onConfirm={handleRenameConfirm}
+      />
 
-      <Dialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
-        <DialogContent className="max-w-[400px] aurora-modal">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-error italic">
-              <AlertTriangle size={18} />
-              <span>Delete Item</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 flex flex-col items-center text-center gap-6">
-            <div className="w-16 h-16 bg-error/10 text-error rounded-full flex items-center justify-center border border-error/20 shadow-glow-sm">
-              <Trash2 size={24} />
-            </div>
-            <p className="text-sm text-label-tertiary font-medium leading-relaxed">
-              Are you sure you want to delete{" "}
-              <span className="text-label font-black italic">&quot;{deleteItem?.name}&quot;</span>?
-              <br />
-              <span className="text-[10px] uppercase tracking-wider opacity-60 mt-2 block">
-                This item will be moved to trash.
-              </span>
-            </p>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" onClick={() => setDeleteItem(null)} className="rounded-xl font-bold px-6">
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              className="rounded-xl font-black px-8 shadow-glow-sm italic"
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteModal
+        open={!!deleteItem}
+        onClose={() => setDeleteItem(null)}
+        itemName={deleteItem?.name}
+        onConfirm={handleDeleteConfirm}
+      />
 
       {/* Bulk Delete Modal */}
-      <Dialog open={!!bulkDeleteItems} onOpenChange={(open) => !open && setBulkDeleteItems(null)}>
-        <DialogContent className="max-w-[400px] aurora-modal">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-error italic">
-              <AlertTriangle size={18} />
-              <span>Bulk Delete Items</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 flex flex-col items-center text-center gap-6">
-            <div className="w-16 h-16 bg-error/10 text-error rounded-full flex items-center justify-center border border-error/20 shadow-glow-sm">
-              <Trash2 size={24} />
-            </div>
-            <p className="text-sm text-label-tertiary font-medium leading-relaxed">
-              Are you sure you want to delete{" "}
-              <span className="text-label font-black italic">{bulkDeleteItems?.length} items</span>?
-              <br />
-              <span className="text-[10px] uppercase tracking-wider opacity-60 mt-2 block">
-                These items will be moved to trash.
-              </span>
-            </p>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" onClick={() => setBulkDeleteItems(null)} className="rounded-xl font-bold px-6">
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleBulkDeleteConfirm}
-              className="rounded-xl font-black px-8 shadow-glow-sm italic"
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <BulkDeleteModal
+        open={!!bulkDeleteItems}
+        onClose={() => setBulkDeleteItems(null)}
+        count={bulkDeleteItems?.length}
+        onConfirm={handleBulkDeleteConfirm}
+      />
 
       {/* Create Folder Modal */}
-      <Dialog open={isFolderModalOpen} onOpenChange={setIsFolderModalOpen}>
-        <DialogContent className="max-w-[420px] aurora-modal">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 italic">
-              <FolderOpen size={18} className="text-primary" />
-              <span>New Folder</span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-6 space-y-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary ml-1">
-                Folder Name
-              </Label>
-              <Input
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="Folder name"
-                className="rounded-xl h-12 bg-surface-dim/30 border-line/40 focus:border-primary/50 transition-all font-medium"
-                onKeyDown={(e) => e.key === "Enter" && handleCreateFolderConfirm()}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsFolderModalOpen(false)} className="rounded-xl font-bold px-6">
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleCreateFolderConfirm}
-              className="rounded-xl font-black px-8 shadow-glow italic"
-            >
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateFolderModal
+        open={isFolderModalOpen}
+        onClose={() => setIsFolderModalOpen(false)}
+        folderName={newFolderName}
+        onFolderNameChange={(e) => setNewFolderName(e.target.value)}
+        onConfirm={handleCreateFolderConfirm}
+      />
     </div>
   );
 }

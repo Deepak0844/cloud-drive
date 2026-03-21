@@ -19,6 +19,7 @@ export default defineConfig({
       "@store": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/store"),
       "@styles": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/styles"),
       "@utils": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/utils"),
+      "@schemas": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/schemas"),
     },
     dedupe: ["react", "react-dom"],
   },

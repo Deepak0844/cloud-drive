@@ -2,6 +2,7 @@
  * API Utilities for parameter serialization and RTK Query cache tagging.
  */
 import { TagIds } from "@constants/apiTags";
+import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 function convertFalseToString(params, key) {
   if (params[key] === false) {
@@ -106,7 +107,7 @@ function serializePaginatedQueryArgs({ endpointName, queryArgs }) {
  * Specifically for folder contents where folderId is the primary parameter.
  */
 function serializeFolderContentsQueryArgs({ endpointName, queryArgs }) {
-  const id = typeof queryArgs === "string" ? queryArgs : queryArgs?.folderId || "root";
+  const id = typeof queryArgs === "string" ? queryArgs : queryArgs?.folderId || ROOT_FOLDER_ID;
   const { pg: _pg, ...rest } = typeof queryArgs === "object" && queryArgs ? queryArgs : {};
   delete rest.folderId;
   return `${endpointName}-${id}-${JSON.stringify(rest)}`;

@@ -4,6 +4,7 @@ import { Home } from "lucide-react";
 
 // App-local constants
 import PageNames from "@constants/pageNames";
+import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 // Components
 import {
@@ -23,7 +24,7 @@ export default function BreadcrumbNav({ breadcrumbs, setCurrentFolderId }) {
           <BreadcrumbLink
             asChild
             className="flex items-center gap-2 cursor-pointer text-primary font-bold hover:text-primary/80 transition-all"
-            onClick={() => setCurrentFolderId("root")}
+            onClick={() => setCurrentFolderId(ROOT_FOLDER_ID)}
           >
             <div className="flex items-center gap-2">
               <Home size={14} className="stroke-[2.5]" />

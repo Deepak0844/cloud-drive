@@ -6,7 +6,7 @@ import { Lock, Mail, User } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { registerSchema } from "@schemas/authSchemas";
 
 import { Card } from "@components/ui/card";
 import { Input } from "@components/ui/input";
@@ -20,12 +20,6 @@ import PageUrls from "@constants/pageUrls";
 import { useAuth } from "@hooks/useAuth";
 
 // Components
-
-const registerSchema = z.object({
-  name: z.string().min(1, { message: "Please input your name!" }),
-  email: z.string().min(1, { message: "Please input your email!" }).email({ message: "Invalid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters!" }),
-});
 
 function RegisterPage() {
   // Custom & shared hooks

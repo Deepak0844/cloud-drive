@@ -1,6 +1,7 @@
 // React core & third-party libraries
-import React, { useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 import {
   Cpu,
   HardDrive,
@@ -29,75 +30,36 @@ import {
 
 // Utils
 import { formatBytes } from "@shared-utils/utils";
+import MathUtils from "@utils/mathUtils";
 
 // Constants
+import { ADMIN_QUERY_PARAMS } from "@constants/uiConstants";
+import { DefaultPagination } from "@shared-constants/constants";
 
 // Components
 import { Button } from "@components/ui/button";
 import Table from "@components/common/Table";
-import { Card, CardContent } from "@components/ui/card";
 import { Progress } from "@components/ui/progress";
 import { Skeleton } from "@components/ui/skeleton";
 import { Badge } from "@components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@components/ui/tooltip";
 import EditQuotaModal from "@components/admin/EditQuotaModal";
-
-function calculatePercentage(used, total) {
-  if (!total) return 0;
-  return Math.min(100, Math.round((used / total) * 100));
-}
-
-/**
- * Mini Circular Progress / Ring Chart
- */
-function MiniRing({ percentage, color = "currentColor", size = 48, strokeWidth = 5 }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="transform -rotate-90">
-        {/* Background Circle */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="rgba(255,255,255,0.05)"
-          strokeWidth={strokeWidth}
-          fill="transparent"
-        />
-        {/* Progress Circle */}
-        <motion.circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          fill="transparent"
-          strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
-          animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          strokeLinecap="round"
-        />
-      </svg>
-      <span className="absolute text-[10px] font-bold text-label">{Math.round(percentage)}%</span>
-    </div>
-  );
-}
+import StatCard from "@components/admin/StatCard";
 
 export default function AdminDashboardPage() {
+  // URL params
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get(ADMIN_QUERY_PARAMS.TAB) || "users";
+  const userPage = Number(searchParams.get(ADMIN_QUERY_PARAMS.USER_PAGE)) || 1;
+  const requestPage = Number(searchParams.get(ADMIN_QUERY_PARAMS.REQUEST_PAGE)) || 1;
+
   // Local state
-  const [activeTab, setActiveTab] = useState("users");
   const [editingUser, setEditingUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [requestPage, setRequestPage] = useState(1);
-  const [userPage, setUserPage] = useState(1);
 
   // Derived / computed variables
-  const pageSize = 10;
+  const pageSize = DefaultPagination.pageSize;
 
   // RTK Query hooks
   const {
@@ -217,7 +179,7 @@ export default function AdminDashboardPage() {
 
         const usedText = formatBytes(record.used_bytes);
         const totalText = formatBytes(record.quota_bytes);
-        const percent = calculatePercentage(record.used_bytes, record.quota_bytes);
+        const percent = MathUtils.calculatePercentage(record.used_bytes, record.quota_bytes);
 
         return (
           <div className="flex flex-col gap-1 w-32">
@@ -449,7 +411,16 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) =>
+          setSearchParams((prev) => {
+            prev.set(ADMIN_QUERY_PARAMS.TAB, tab);
+            return prev;
+          })
+        }
+        className="flex-1 flex flex-col min-h-0"
+      >
         <TabsList className="mb-6 w-fit h-14 p-1.5 glass-bar border-white/10 rounded-2xl items-center gap-2">
           <TabsTrigger
             value="users"
@@ -495,7 +466,11 @@ export default function AdminDashboardPage() {
                       current: userPage,
                       pageSize: pageSize,
                       total: userPagination?.totalItems || 0,
-                      onChange: (p) => setUserPage(p),
+                      onChange: (p) =>
+                        setSearchParams((prev) => {
+                          prev.set(ADMIN_QUERY_PARAMS.USER_PAGE, p);
+                          return prev;
+                        }),
                       showSizeChanger: false,
                     }}
                     scroll={{ x: "max-content", y: "calc(100vh - 440px)" }}
@@ -527,7 +502,11 @@ export default function AdminDashboardPage() {
                       current: requestPage,
                       pageSize: pageSize,
                       total: requestPagination?.totalItems || 0,
-                      onChange: (p) => setRequestPage(p),
+                      onChange: (p) =>
+                        setSearchParams((prev) => {
+                          prev.set(ADMIN_QUERY_PARAMS.REQUEST_PAGE, p);
+                          return prev;
+                        }),
                       showSizeChanger: false,
                     }}
                     scroll={{ x: "max-content", y: "calc(100vh - 440px)" }}
@@ -542,54 +521,5 @@ export default function AdminDashboardPage() {
       {/* Quota Modal */}
       <EditQuotaModal open={isModalOpen} onClose={() => setIsModalOpen(false)} user={editingUser} />
     </motion.div>
-  );
-}
-
-/**
- * Stat Card Sub-component
- */
-function StatCard({ title, value, subtext, percentage, icon, color, loading, isTotal = false }) {
-  return (
-    <Card className="glass-card border-white/10 hover:border-white/20 transition-all duration-300 group relative overflow-hidden h-40">
-      <div
-        className="absolute top-0 right-0 w-32 h-32 blur-3xl opacity-10 rounded-full pointer-events-none -mr-16 -mt-16 transition-opacity group-hover:opacity-20"
-        style={{ backgroundColor: color }}
-      />
-      <CardContent className="p-0 h-full flex items-center px-6">
-        {loading ? (
-          <div className="w-full flex justify-between items-center">
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-3 w-28" />
-            </div>
-            <Skeleton className="h-14 w-14 rounded-full" />
-          </div>
-        ) : (
-          <div className="w-full flex justify-between items-center relative">
-            <div className="space-y-1.5 min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="text-label-tertiary group-hover:text-label transition-colors">
-                  {React.cloneElement(icon, { size: 16 })}
-                </div>
-                <h3 className="text-xs font-bold text-label-secondary uppercase tracking-widest">{title}</h3>
-              </div>
-              <div className="text-3xl font-black text-label tracking-tighter truncate leading-tight">{value}</div>
-              <p className="text-[10px] font-bold text-label-tertiary uppercase truncate max-w-[120px]">{subtext}</p>
-            </div>
-            {!isTotal ? (
-              <MiniRing percentage={percentage} color={color} size={64} strokeWidth={6} />
-            ) : (
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center border border-white/10 bg-white/5 shadow-inner transition-transform group-hover:scale-105"
-                style={{ color }}
-              >
-                {React.cloneElement(icon, { size: 28, strokeWidth: 2.5 })}
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }

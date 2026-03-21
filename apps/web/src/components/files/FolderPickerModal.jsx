@@ -6,6 +6,9 @@ import { cn } from "@lib/utils";
 // Services (RTK Query hooks)
 import { useGetFoldersQuery } from "@services/api/folderApi";
 
+// Constants
+import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
+
 // Components
 import { Button } from "@components/ui/button";
 import Loader from "@components/common/Loader";
@@ -33,7 +36,7 @@ function FolderPickerModal({
 }) {
   // Local state
   // Navigation history to avoid calling folder details API
-  const [history, setHistory] = useState([{ id: "root", name: "My Files" }]);
+  const [history, setHistory] = useState([{ id: ROOT_FOLDER_ID, name: "My Files" }]);
 
   // Derived / computed variables
   const currentFolder = history[history.length - 1];
@@ -43,7 +46,7 @@ function FolderPickerModal({
   // Fetch only folders in the current directory (optimized)
   const { data: foldersData, isLoading: isFoldersLoading } = useGetFoldersQuery(
     {
-      parentId: currentFolderId === "root" ? null : currentFolderId,
+      parentId: currentFolderId === ROOT_FOLDER_ID ? null : currentFolderId,
     },
     { skip: !open }
   );
@@ -55,8 +58,8 @@ function FolderPickerModal({
 
   // Event handlers
   function handleNavigate(id, name) {
-    if (id === "root") {
-      setHistory([{ id: "root", name: "My Files" }]);
+    if (id === ROOT_FOLDER_ID) {
+      setHistory([{ id: ROOT_FOLDER_ID, name: "My Files" }]);
     } else {
       setHistory((prev) => [...prev, { id, name }]);
     }
@@ -72,12 +75,12 @@ function FolderPickerModal({
   }
 
   function handleConfirm() {
-    onConfirm(currentFolderId === "root" ? "root" : currentFolderId);
+    onConfirm(currentFolderId === ROOT_FOLDER_ID ? ROOT_FOLDER_ID : currentFolderId);
   }
 
   // Derived / computed variables
   const isSameFolder =
-    (currentFolderId === "root" && (currentParentId === null || currentParentId === "root")) ||
+    (currentFolderId === ROOT_FOLDER_ID && (currentParentId === null || currentParentId === ROOT_FOLDER_ID)) ||
     currentFolderId === currentParentId;
 
   // Render
@@ -97,7 +100,7 @@ function FolderPickerModal({
               variant="ghost"
               size="icon"
               onClick={handleBack}
-              disabled={currentFolderId === "root"}
+              disabled={currentFolderId === ROOT_FOLDER_ID}
               className="shrink-0 h-10 w-10 rounded-xl hover:bg-primary/10 text-label-secondary hover:text-primary transition-all disabled:opacity-30"
             >
               <ArrowLeft size={20} />

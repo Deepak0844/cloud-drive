@@ -19,7 +19,7 @@ import { useBulkCopyMutation, useBulkDeleteMutation, useBulkMoveMutation } from 
 
 // Constants
 import { ItemTypes } from "@shared-constants/constants";
-import { ApiBasePath, FileServiceUrls, BulkServiceUrls } from "@constants/serviceUrls";
+import { ApiBasePath, FileServiceUrls, BulkServiceUrls, ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 export function useFileActions({ folders, clearSelection }) {
   // Dialog states
@@ -131,7 +131,7 @@ export function useFileActions({ folders, clearSelection }) {
 
   async function handleFolderPickerConfirm(targetFolderId) {
     const { action, item, items } = folderPicker;
-    const normalizedTargetId = targetFolderId === "root" ? null : targetFolderId;
+    const normalizedTargetId = targetFolderId === ROOT_FOLDER_ID ? null : targetFolderId;
 
     try {
       if (action === "move" || action === "copy") {

@@ -1,31 +1,17 @@
 // React core & third-party libraries
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 
 // App-local contexts
 import { UploadProvider } from "@contexts/UploadContext";
 
 // Components
-import UploadManager from "../files/UploadManager";
+import UploadManager from "@components/files/UploadManager";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import { Sheet, SheetContent } from "@components/ui/sheet";
 
-// ---------------------------------------------------------------------------
-// Hook — replaces Ant Design Grid.useBreakpoint
-// ---------------------------------------------------------------------------
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia("(max-width: 767px)");
-    setIsMobile(mql.matches);
-    const handler = (e) => setIsMobile(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, []);
-
-  return isMobile;
-}
+// Hooks
+import { useIsMobile } from "@hooks/useMediaQuery";
 
 // ---------------------------------------------------------------------------
 // Component

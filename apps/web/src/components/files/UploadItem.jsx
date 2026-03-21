@@ -22,6 +22,7 @@ import { cn } from "@lib/utils";
 
 // Constants
 import { UPLOAD_CHUNK_SIZE, SPEED_WINDOW_MS, UPLOAD_COMPLETE_DELAY_MS } from "@shared-constants/constants";
+import { DEFAULT_CHUNK_SIZE } from "@constants/uiConstants";
 
 // App-local contexts
 import { useUploadDetails } from "@contexts/UploadContext";
@@ -135,7 +136,7 @@ function UploadItem({ upload }) {
   const executeUpload = useCallback(async () => {
     try {
       let initData = null;
-      const safeChunkSize = UPLOAD_CHUNK_SIZE || 10 * 1000 * 1000;
+      const safeChunkSize = UPLOAD_CHUNK_SIZE || DEFAULT_CHUNK_SIZE;
       if (!stateRef.current.uploadId && file.size > safeChunkSize) {
         initData = await initPromise;
       }

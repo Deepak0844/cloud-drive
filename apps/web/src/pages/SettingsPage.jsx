@@ -2,11 +2,13 @@
 import React, { useState, useEffect } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Bell, Lock, Cloud, Image as ImageIcon, PlayCircle, Mic, FileText, Archive, File, Send } from "lucide-react";
 import { motion } from "framer-motion";
+
+// Schemas
+import { profileFormSchema } from "@schemas/settingsSchemas";
 
 // Services (RTK Query hooks)
 import { useGetMeQuery, useUpdateProfileMutation } from "@services/api/authApi";
@@ -16,6 +18,7 @@ import { useGetQuotaBreakdownQuery, useGetQuotaUsageQuery } from "@services/api/
 import { formatBytes } from "@shared-utils/utils";
 
 // Constants
+import { CATEGORY_CONFIG } from "@constants/uiConstants";
 
 // Components
 import ChangePasswordModal from "@components/settings/ChangePasswordModal";
@@ -28,22 +31,15 @@ import { Input } from "@components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
 import { Switch } from "@components/ui/switch";
 
-const CATEGORY_CONFIG = {
-  image: { color: "var(--chart-1)", icon: <ImageIcon size={14} />, label: "Images" },
-  video: { color: "var(--chart-2)", icon: <PlayCircle size={14} />, label: "Videos" },
-  audio: { color: "var(--chart-3)", icon: <Mic size={14} />, label: "Audio" },
-  document: { color: "var(--chart-4)", icon: <FileText size={14} />, label: "Documents" },
-  archive: { color: "var(--chart-5)", icon: <Archive size={14} />, label: "Archives" },
-  other: { color: "var(--text-tertiary)", icon: <File size={14} />, label: "Other" },
+// Category icon map — rendering decision local to SettingsPage.
+const CATEGORY_ICONS = {
+  image: <ImageIcon size={14} />,
+  video: <PlayCircle size={14} />,
+  audio: <Mic size={14} />,
+  document: <FileText size={14} />,
+  archive: <Archive size={14} />,
+  other: <File size={14} />,
 };
-
-const profileFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters."),
-  email: z.string().email("Invalid email address."),
-  email_notifications: z.boolean(),
-  storage_alerts: z.boolean(),
-  security_alerts: z.boolean(),
-});
 
 function SettingsPage() {
   // Local state
@@ -322,7 +318,7 @@ function SettingsPage() {
                           <div className="flex items-center justify-between text-xs mb-2 px-0.5">
                             <div className="flex items-center gap-2.5">
                               <span style={{ color: config.color }} className="opacity-90">
-                                {config.icon}
+                                {CATEGORY_ICONS[item.category] || CATEGORY_ICONS.other}
                               </span>
                               <span className="font-bold text-label-secondary tracking-tight">{config.label}</span>
                             </div>

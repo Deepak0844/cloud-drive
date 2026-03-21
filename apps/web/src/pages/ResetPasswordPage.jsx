@@ -6,7 +6,7 @@ import { Lock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { resetSchema } from "@schemas/authSchemas";
 
 import { Card } from "@components/ui/card";
 import { Input } from "@components/ui/input";
@@ -20,16 +20,6 @@ import PageUrls from "@constants/pageUrls";
 import { useResetPasswordMutation } from "@services/api/authApi";
 
 // Components
-
-const resetSchema = z
-  .object({
-    password: z.string().min(6, { message: "Password must be at least 6 characters." }),
-    confirmPassword: z.string().min(1, { message: "Please confirm your new password." }),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match.",
-    path: ["confirmPassword"],
-  });
 
 function ResetPasswordPage() {
   // Router hooks & params

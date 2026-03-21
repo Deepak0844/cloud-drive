@@ -3,7 +3,7 @@ import React, { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { changePasswordSchema } from "@schemas/settingsSchemas";
 
 import { Input } from "@components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
@@ -13,17 +13,6 @@ import { useUpdatePasswordMutation } from "@services/api/authApi";
 
 // Components
 import Modal from "@components/common/Modal";
-
-const changePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(1, { message: "Please enter your current password" }),
-    newPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
-    confirmPassword: z.string().min(1, { message: "Please confirm your new password" }),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "The two passwords do not match",
-    path: ["confirmPassword"],
-  });
 
 function ChangePasswordModal({ open, onClose }) {
   // RTK Query hooks

@@ -2,11 +2,11 @@ import { isRejectedWithValue } from "@reduxjs/toolkit";
 import { toast } from "sonner";
 
 // Utils
-import AuthUtils from "../../utils/authUtils";
-import Navigation from "../../utils/navigationUtils";
+import AuthUtils from "@utils/authUtils";
+import Navigation from "@utils/navigationUtils";
 
 // Constants
-import PageUrls from "../../constants/pageUrls";
+import PageUrls from "@constants/pageUrls";
 
 /**
  * Global RTK Query Error Middleware.
