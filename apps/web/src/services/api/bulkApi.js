@@ -50,6 +50,7 @@ const bulkCopyMutation = () => ({
     url: BulkServiceUrls.bulkCopy,
     method: HttpMethods.POST,
     body: { items, targetFolderId },
+    onError: { suppressGlobalError: true },
   }),
   invalidatesTags: [
     ...ApiUtils.listTags(TagTypes.FILES),

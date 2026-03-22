@@ -31,3 +31,10 @@ export const finalizeChunkedUploadSchema = z.object({
     totalSize: z.number().int().positive().optional(),
   }),
 });
+
+// GET /upload/status?uploadId=<id>
+export const getUploadStatusSchema = z.object({
+  query: z.object({
+    uploadId: z.string().min(1, "Upload ID is required"),
+  }),
+});

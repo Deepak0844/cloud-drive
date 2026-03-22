@@ -43,6 +43,8 @@ const initChunkedUploadMutation = () => ({
     url: FileServiceUrls.initChunkedUpload,
     method: HttpMethods.POST,
     body,
+    // Upload errors must never redirect to the error page — they surface in the upload drawer.
+    onError: { suppressGlobalError: true },
   }),
 });
 
@@ -51,6 +53,7 @@ const finalizeChunkedUploadMutation = () => ({
     url: FileServiceUrls.finalizeChunkedUpload,
     method: HttpMethods.POST,
     body,
+    onError: { suppressGlobalError: true },
   }),
   invalidatesTags: [
     ...ApiUtils.listTags(TagTypes.FILES),
@@ -67,6 +70,7 @@ const uploadFileMutation = () => ({
     url: FileServiceUrls.uploadFile,
     method: HttpMethods.POST,
     body: formData,
+    onError: { suppressGlobalError: true },
   }),
   invalidatesTags: [
     ...ApiUtils.listTags(TagTypes.FILES),
@@ -98,10 +102,18 @@ const uploadFileChunkedMutation = () => ({
       }
 
       if (!state.uploadId && initData) {
-        // Correctly access .data property from server response
-        const { uploadId, totalChunks } = initData.data || {};
-        state.uploadId = uploadId;
-        state.totalChunks = totalChunks;
+        if (initData.__resume) {
+          // Resuming a cross-session upload — server confirmed these chunk indices exist on disk.
+          // uploadedChunkSet is read by uploadFileInChunks to skip already-received chunks.
+          state.uploadId = initData.uploadId;
+          state.totalChunks = initData.totalChunks;
+          state.uploadedChunkSet = new Set(initData.uploadedChunks || []);
+        } else {
+          // Normal fresh-start path
+          const { uploadId, totalChunks } = initData.data || {};
+          state.uploadId = uploadId;
+          state.totalChunks = totalChunks;
+        }
       }
 
       if (file.size > safeChunkSize && (!state.uploadId || !state.totalChunks)) {
@@ -144,7 +156,9 @@ const uploadFileChunkedMutation = () => ({
       if (error.message === "canceled" || signal.aborted) {
         return { error: { message: "canceled" } };
       }
-      return { error: { message: error.message || "Upload failed" } };
+      // Extract the server-side message (axios wraps it in error.response.data)
+      const serverMessage = error?.data?.message || error?.response?.data?.message || error.message || "Upload failed";
+      return { error: { message: serverMessage } };
     }
   },
   invalidatesTags: [
@@ -220,6 +234,7 @@ const copyFileMutation = () => ({
     url: UrlUtils.format(FileServiceUrls.copyFile, { id }),
     method: HttpMethods.POST,
     body: { folderId },
+    onError: { suppressGlobalError: true },
   }),
   invalidatesTags: [
     ...ApiUtils.listTags(TagTypes.FILES),
@@ -261,6 +276,16 @@ const getPlaybackInfoQuery = () => ({
   keepUnusedDataFor: 300,
 });
 
+// Query the server for which chunks of an in-progress upload already exist on disk.
+// Used by UploadContext to restore a session after page reload.
+const getChunkUploadStatusQuery = () => ({
+  query: (uploadId) => ({
+    url: `${FileServiceUrls.uploadChunkStatus}?uploadId=${encodeURIComponent(uploadId)}`,
+  }),
+  // Never serve a stale response — always hit the server on resume
+  keepUnusedDataFor: 0,
+});
+
 // ---------------------------------------------------------------------------
 // Inject Endpoints
 // ---------------------------------------------------------------------------
@@ -269,6 +294,7 @@ export const fileApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getFiles: builder.query(getFilesQuery()),
     getRecentFiles: builder.query(getRecentFilesQuery()),
+    getChunkUploadStatus: builder.query(getChunkUploadStatusQuery()),
     initChunkedUpload: builder.mutation(initChunkedUploadMutation()),
     finalizeChunkedUpload: builder.mutation(finalizeChunkedUploadMutation()),
     uploadFile: builder.mutation(uploadFileMutation()),
@@ -288,6 +314,7 @@ export const fileApi = api.injectEndpoints({
 export const {
   useGetFilesQuery,
   useGetRecentFilesQuery,
+  useGetChunkUploadStatusQuery,
   useUploadFileMutation,
   useUploadFileChunkedMutation,
   useInitChunkedUploadMutation,

@@ -15,10 +15,12 @@ import {
   RotateCw,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 // Utils
 import { formatBytes } from "@shared-utils/utils";
 import { cn } from "@lib/utils";
+import { clearUploadSession } from "@utils/uploadSessionStore";
 
 // Constants
 import { UPLOAD_CHUNK_SIZE, SPEED_WINDOW_MS, UPLOAD_COMPLETE_DELAY_MS } from "@shared-constants/constants";
@@ -94,7 +96,7 @@ function UploadItem({ upload }) {
   const [uploadFileChunked] = useUploadFileChunkedMutation();
 
   // Custom & shared hooks
-  const { id, file, folderId, initPromise } = upload;
+  const { id, file, folderId, initPromise, fingerprint } = upload;
   const { removeUpload } = useUploadDetails();
 
   const hasStartedRef = useRef(false);
@@ -160,6 +162,7 @@ function UploadItem({ upload }) {
       const res = await promise.unwrap();
 
       if (res?.success) {
+        if (fingerprint) clearUploadSession(fingerprint);
         setStatus(UploadStatus.SUCCESS);
         setProgress(100);
         setSpeed(0);
@@ -170,7 +173,16 @@ function UploadItem({ upload }) {
       if (err.name === "AbortError" || err.message === "canceled" || err.message === "Aborted") {
         // Paused or cancelled, do nothing
       } else {
-        setError(err?.data?.message || err.message || "Upload failed");
+        const message = err?.data?.message || err.message || "Upload failed";
+        const isQuotaError = message.toLowerCase().includes("quota");
+        if (isQuotaError) {
+          toast.error("Storage quota exceeded", {
+            description:
+              "You don't have enough storage space for this file. Free up space or request a quota increase.",
+            duration: 6000,
+          });
+        }
+        setError(message);
         setStatus(UploadStatus.ERROR);
         setSpeed(0);
         setEta(null);
@@ -207,11 +219,14 @@ function UploadItem({ upload }) {
 
   const cancel = useCallback(() => {
     if (uploadPromiseRef.current) uploadPromiseRef.current.abort();
+    // Explicit cancel = user does not want to resume, so remove the persisted session.
+    // Pause does NOT call cancel, so paused sessions remain resumable.
+    if (fingerprint) clearUploadSession(fingerprint);
     stateRef.current = { uploadId: null, totalChunks: 0, currentChunkIndex: 0, uploadedBytes: 0 };
     setStatus(UploadStatus.CANCELLED);
     setSpeed(0);
     setEta(null);
-  }, []);
+  }, [fingerprint]);
 
   function handleCancel() {
     cancel();

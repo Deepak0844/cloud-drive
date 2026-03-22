@@ -89,11 +89,26 @@ export async function uploadFileInChunks({
   onProgressFn,
   chunkSize = UPLOAD_CHUNK_SIZE,
 }) {
+  // On resume, state.uploadedChunkSet contains indices already confirmed by the server;
+  // skip those chunks entirely so only missing chunks are re-sent.
+  const uploadedChunkSet = state.uploadedChunkSet instanceof Set ? state.uploadedChunkSet : new Set();
+
   while (state.currentChunkIndex < state.totalChunks) {
     if (signal?.aborted) throw new Error("canceled");
 
     const start = state.currentChunkIndex * chunkSize;
     const end = Math.min(start + chunkSize, file.size);
+
+    // ── Resume fast-forward ──────────────────────────────────────────────
+    if (uploadedChunkSet.has(state.currentChunkIndex)) {
+      state.uploadedBytes += end - start;
+      state.currentChunkIndex++;
+      const overallProg = Math.min(Math.round((state.uploadedBytes / file.size) * 100), 99);
+      if (onProgressFn) onProgressFn(overallProg, state.uploadedBytes);
+      continue;
+    }
+    // ────────────────────────────────────────────────────────────────────
+
     const blob = file.slice(start, end);
     const buffer = await blob.arrayBuffer();
 

@@ -97,7 +97,48 @@ export const uploadChunk = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Complete chunked upload — assemble all chunks into a stable ID-based path
+ * @desc    Get the status of an in-progress chunked upload session
+ * @route   GET /api/v1/files/upload/status
+ * @access  Private
+ *
+ * Returns totalChunks from meta.json and the sorted list of chunk indices
+ * already written to disk. The client uses this on page reload to resume
+ * an interrupted upload without re-sending already-received chunks.
+ */
+export const getUploadStatus = asyncHandler(async (req, res) => {
+  const { uploadId } = req.query;
+
+  // Ownership guard — same pattern as uploadChunk
+  if (!uploadId.startsWith(`${req.user.id}_`)) {
+    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
+
+  if (!fs.existsSync(chunkDir)) {
+    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  // Read expected total from meta.json written at init time
+  const metaPath = path.join(chunkDir, "meta.json");
+  let totalChunks = null;
+  if (fs.existsSync(metaPath)) {
+    try {
+      const meta = JSON.parse(await fs.promises.readFile(metaPath, "utf-8"));
+      totalChunks = typeof meta.totalChunks === "number" ? meta.totalChunks : null;
+    } catch {
+      // non-fatal
+    }
+  }
+
+  // Collect the indices of chunks already on disk
+  const chunkFiles = fs.readdirSync(chunkDir).filter((f) => /^chunk_\d+$/.test(f));
+  const uploadedChunks = chunkFiles.map((f) => parseInt(f.split("_")[1], 10)).sort((a, b) => a - b);
+
+  return ResponseUtils.success(res, { uploadId, totalChunks, uploadedChunks });
+});
+
+/**
  * @route   POST /api/v1/files/upload/finalize
  * @access  Private
  */

@@ -143,6 +143,77 @@ describe("Chunked Upload API", () => {
     });
   });
 
+  /* ─── Upload Status ──────────────────────────────────────────────────── */
+
+  describe("GET /api/v1/files/upload/status", () => {
+    let uploadId;
+
+    beforeEach(async () => {
+      const initRes = await request(app)
+        .post("/api/v1/files/upload/init")
+        .set(authHeader)
+        .send({ fileName: "status-test.bin", fileSize: 3 * 1000, totalChunks: 3 });
+      uploadId = initRes.body.data.uploadId;
+    });
+
+    it("should return uploadId, totalChunks, and empty uploadedChunks for a fresh session", async () => {
+      const res = await request(app)
+        .get(`/api/v1/files/upload/status?uploadId=${uploadId}`)
+        .set(authHeader)
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.uploadId).toBe(uploadId);
+      expect(res.body.data.totalChunks).toBe(3);
+      expect(res.body.data.uploadedChunks).toEqual([]);
+    });
+
+    it("should return sorted indices of chunks already on disk", async () => {
+      // Upload chunk 2 first, then chunk 0 — result should still be sorted
+      await request(app)
+        .post(`/api/v1/files/upload/chunk?uploadId=${uploadId}&chunkIndex=2`)
+        .set(authHeader)
+        .set("Content-Type", "application/octet-stream")
+        .send(Buffer.alloc(1000, 0xcc));
+
+      await request(app)
+        .post(`/api/v1/files/upload/chunk?uploadId=${uploadId}&chunkIndex=0`)
+        .set(authHeader)
+        .set("Content-Type", "application/octet-stream")
+        .send(Buffer.alloc(1000, 0xaa));
+
+      const res = await request(app)
+        .get(`/api/v1/files/upload/status?uploadId=${uploadId}`)
+        .set(authHeader)
+        .expect(200);
+
+      expect(res.body.data.uploadedChunks).toEqual([0, 2]);
+      expect(res.body.data.totalChunks).toBe(3);
+    });
+
+    it("should return 404 for a non-existent uploadId", async () => {
+      const res = await request(app)
+        .get(`/api/v1/files/upload/status?uploadId=${user._id.toString()}_nonexistent`)
+        .set(authHeader)
+        .expect(404);
+
+      expect(res.body.success).toBe(false);
+    });
+
+    it("should reject uploadId that belongs to another user", async () => {
+      const anotherUser = await createTestUser({ email: "other2@test.com" });
+      const anotherHeader = getAuthHeader(anotherUser);
+
+      // uploadId prefix is the original user's ID — other user must not access it
+      const res = await request(app)
+        .get(`/api/v1/files/upload/status?uploadId=${uploadId}`)
+        .set(anotherHeader)
+        .expect(404);
+
+      expect(res.body.success).toBe(false);
+    });
+  });
+
   /* ─── Full flow: init → chunks → finalize ────────────────────────────── */
 
   describe("Full chunked upload flow", () => {

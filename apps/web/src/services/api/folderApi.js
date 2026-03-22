@@ -120,6 +120,7 @@ const copyFolderMutation = () => ({
     url: UrlUtils.format(FolderServiceUrls.copyFolder, { id }),
     method: HttpMethods.POST,
     body: { parentId },
+    onError: { suppressGlobalError: true },
   }),
   invalidatesTags: [...ApiUtils.listTags(TagTypes.FOLDERS), ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS)],
 });

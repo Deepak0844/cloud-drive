@@ -1,7 +1,12 @@
 import express from "express";
 
 // Controllers
-import { finalizeChunkedUpload, initChunkedUpload, uploadChunk } from "#controllers/chunkedController.js";
+import {
+  finalizeChunkedUpload,
+  getUploadStatus,
+  initChunkedUpload,
+  uploadChunk,
+} from "#controllers/chunkedController.js";
 import {
   bulkDelete,
   copyFile,
@@ -31,7 +36,12 @@ import validate from "#middlewares/validate.js";
 import uploadMiddleware from "#middlewares/uploadMiddleware.js";
 
 // Schemas
-import { finalizeChunkedUploadSchema, initChunkedUploadSchema, uploadChunkSchema } from "#schemas/chunked.schema.js";
+import {
+  finalizeChunkedUploadSchema,
+  getUploadStatusSchema,
+  initChunkedUploadSchema,
+  uploadChunkSchema,
+} from "#schemas/chunked.schema.js";
 import {
   moveFileSchema,
   renameFileSchema,
@@ -57,6 +67,7 @@ router.use(protect);
 // File upload routes
 router.post("/upload", uploadMiddleware, validate(uploadFileSchema), uploadFile);
 router.post("/upload/init", validate(initChunkedUploadSchema), initChunkedUpload);
+router.get("/upload/status", validate(getUploadStatusSchema), getUploadStatus);
 // Raw binary middleware for chunk uploads — bypasses FormData serialization so
 // the browser can stream each chunk immediately without pre-reading the full file.
 const rawChunkMiddleware = express.raw({ type: "*/*", limit: "25mb" });

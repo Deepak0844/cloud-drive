@@ -35,6 +35,7 @@ export const FileServiceUrls = {
   hlsPlaylist: `${FilesBasePath}/:id/hls/master.m3u8`,
   initUpload: `${FilesBasePath}/upload/init`,
   uploadChunk: `${FilesBasePath}/upload/chunk`,
+  uploadChunkStatus: `${FilesBasePath}/upload/status`,
 };
 
 // Bulk Service Urls
