@@ -13,6 +13,8 @@ class GlobalErrorBoundary extends Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
+    this.handleReload = this.handleReload.bind(this);
+    this.handleGoHome = this.handleGoHome.bind(this);
   }
 
   static getDerivedStateFromError(error) {
@@ -23,13 +25,13 @@ class GlobalErrorBoundary extends Component {
     this.setState({ errorInfo });
   }
 
-  handleReload = () => {
+  handleReload() {
     window.location.reload();
-  };
+  }
 
-  handleGoHome = () => {
+  handleGoHome() {
     window.location.href = PageUrls.DashboardPage;
-  };
+  }
 
   render() {
     if (this.state.hasError) {

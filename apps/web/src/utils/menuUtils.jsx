@@ -71,3 +71,6 @@ export function buildItemMenuItems({
 
   return items;
 }
+
+const MenuUtils = { buildItemMenuItems };
+export default MenuUtils;

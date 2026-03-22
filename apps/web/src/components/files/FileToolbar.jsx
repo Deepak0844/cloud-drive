@@ -44,14 +44,14 @@ export default function FileToolbar({
     { key: "size-asc", label: "Smallest First" },
   ];
 
-  const handleSortChange = (key) => {
+  function handleSortChange(key) {
     const [f, o] = key.split("-");
     updateParams({
       [QUERY_PARAMS_KEYS.SORT_BY]: f,
       [QUERY_PARAMS_KEYS.SORT_ORDER]: o,
       [QUERY_PARAMS_KEYS.PAGE_NO]: DefaultPagination.pageNumber,
     });
-  };
+  }
 
   return (
     <TooltipProvider>

@@ -9,12 +9,7 @@ import { DEFAULT_CHUNK_SIZE } from "@constants/uiConstants";
 import { useInitChunkedUploadMutation, fileApi } from "@services/api/fileApi";
 
 // Utils
-import {
-  getFileFingerprint,
-  saveUploadSession,
-  loadUploadSession,
-  clearUploadSession,
-} from "@utils/uploadSessionStore";
+import UploadSessionStore from "@utils/uploadSessionStore";
 
 const UploadContext = createContext(null);
 
@@ -41,9 +36,9 @@ export function UploadProvider({ children }) {
       let fingerprint = null;
 
       if (file.size > safeChunkSize) {
-        fingerprint = getFileFingerprint(file);
+        fingerprint = UploadSessionStore.getFileFingerprint(file);
         const totalChunks = Math.ceil(file.size / safeChunkSize);
-        const savedSession = loadUploadSession(fingerprint);
+        const savedSession = UploadSessionStore.loadUploadSession(fingerprint);
 
         if (savedSession) {
           // An interrupted session exists locally — verify the server still holds the chunks
@@ -67,12 +62,12 @@ export function UploadProvider({ children }) {
               // Server returned 404 or network error — session expired or gone, fall through
             }
             // Session expired on server: clear stale local record and start fresh
-            clearUploadSession(fp);
+            UploadSessionStore.clearUploadSession(fp);
             const body = { fileName: file.name, fileSize: file.size, totalChunks, folderId: folderId || null };
             const data = await initChunkedUpload(body).unwrap();
             const { uploadId, totalChunks: tc } = data?.data || {};
             if (uploadId) {
-              saveUploadSession(fp, {
+              UploadSessionStore.saveUploadSession(fp, {
                 uploadId,
                 totalChunks: tc,
                 fileName: file.name,
@@ -91,7 +86,7 @@ export function UploadProvider({ children }) {
             .then((data) => {
               const { uploadId, totalChunks: tc } = data?.data || {};
               if (uploadId) {
-                saveUploadSession(fp, {
+                UploadSessionStore.saveUploadSession(fp, {
                   uploadId,
                   totalChunks: tc,
                   fileName: file.name,

@@ -1,7 +1,7 @@
 // Utils
 import ApiUtils from "./apiUtils";
 import HttpClientFactory from "@utils/httpClientFactory";
-import { uploadSingleFile, uploadFileInChunks } from "@utils/chunkUploadUtils";
+import ChunkUploadUtils from "@utils/chunkUploadUtils";
 import { UrlUtils } from "@shared-utils/utils";
 
 // Constants
@@ -96,7 +96,7 @@ const uploadFileChunkedMutation = () => ({
       const safeChunkSize = UPLOAD_CHUNK_SIZE || DEFAULT_CHUNK_SIZE;
 
       if (file.size <= safeChunkSize) {
-        await uploadSingleFile({ httpClient, file, folderId, signal, onProgressFn });
+        await ChunkUploadUtils.uploadSingleFile({ httpClient, file, folderId, signal, onProgressFn });
         return { data: { success: true } };
       }
 
@@ -119,7 +119,7 @@ const uploadFileChunkedMutation = () => ({
         throw new Error("Missing upload session metadata. Please retry.");
       }
 
-      await uploadFileInChunks({
+      await ChunkUploadUtils.uploadFileInChunks({
         file,
         state,
         signal,

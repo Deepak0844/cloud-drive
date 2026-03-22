@@ -128,3 +128,6 @@ export async function uploadFileInChunks({ file, state, signal, onProgressFn, ch
     if (onProgressFn) onProgressFn(overallProg, state.uploadedBytes);
   }
 }
+
+const ChunkUploadUtils = { uploadChunkRaw, uploadSingleFile, uploadFileInChunks };
+export default ChunkUploadUtils;

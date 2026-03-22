@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 // Utils
-import Navigation from "./navigationUtils";
+import Navigation from "@utils/navigationUtils";
 
 /**
  * Syncs the React Router navigate function with the global navigator.

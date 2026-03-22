@@ -20,7 +20,7 @@ import { toast } from "sonner";
 // Utils
 import { formatBytes } from "@shared-utils/utils";
 import { cn } from "@lib/utils";
-import { clearUploadSession } from "@utils/uploadSessionStore";
+import UploadSessionStore from "@utils/uploadSessionStore";
 
 // Constants
 import { UPLOAD_CHUNK_SIZE, SPEED_WINDOW_MS, UPLOAD_COMPLETE_DELAY_MS } from "@shared-constants/constants";
@@ -162,7 +162,7 @@ function UploadItem({ upload }) {
       const res = await promise.unwrap();
 
       if (res?.success) {
-        if (fingerprint) clearUploadSession(fingerprint);
+        if (fingerprint) UploadSessionStore.clearUploadSession(fingerprint);
         setStatus(UploadStatus.SUCCESS);
         setProgress(100);
         setSpeed(0);
@@ -221,7 +221,7 @@ function UploadItem({ upload }) {
     if (uploadPromiseRef.current) uploadPromiseRef.current.abort();
     // Explicit cancel = user does not want to resume, so remove the persisted session.
     // Pause does NOT call cancel, so paused sessions remain resumable.
-    if (fingerprint) clearUploadSession(fingerprint);
+    if (fingerprint) UploadSessionStore.clearUploadSession(fingerprint);
     stateRef.current = { uploadId: null, totalChunks: 0, currentChunkIndex: 0, uploadedBytes: 0 };
     setStatus(UploadStatus.CANCELLED);
     setSpeed(0);

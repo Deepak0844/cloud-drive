@@ -20,7 +20,7 @@ import ResetPasswordPage from "@pages/ResetPasswordPage";
 import AuthLayout from "@components/layout/AuthLayout";
 
 // Utils
-import NavigationSetter from "@utils/NavigationSetter";
+import NavigationSetter from "@components/common/NavigationSetter";
 
 function Root() {
   return (

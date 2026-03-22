@@ -81,8 +81,8 @@ export default function ItemDetailsContent({ item, className }) {
       } else {
         await updateFileTags({ id, tags: updatedTags }).unwrap();
       }
-    } catch (err) {
-      console.error("Failed to update tags:", err);
+    } catch {
+      // Error is surfaced via RTK Query global error middleware
     }
   }
 

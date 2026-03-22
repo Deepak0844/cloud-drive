@@ -106,3 +106,6 @@ export function clearUploadSession(fingerprint) {
     // noop
   }
 }
+
+const UploadSessionStore = { getFileFingerprint, saveUploadSession, loadUploadSession, clearUploadSession };
+export default UploadSessionStore;

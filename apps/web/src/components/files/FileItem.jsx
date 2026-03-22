@@ -8,8 +8,8 @@ import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 
 // Utils
 import { UrlUtils } from "@shared-utils/utils";
-import { getFileInfo } from "@utils/fileDisplayUtils";
-import { buildItemMenuItems } from "@utils/menuUtils";
+import FileDisplayUtils from "@utils/fileDisplayUtils";
+import MenuUtils from "@utils/menuUtils";
 import { cn } from "@lib/utils";
 
 // Components
@@ -93,7 +93,7 @@ function FileItem({
     handleDownload?.(file);
   }
 
-  const menuItems = buildItemMenuItems({
+  const menuItems = MenuUtils.buildItemMenuItems({
     item: file,
     isFolder: false,
     isTrashItem,
@@ -156,8 +156,8 @@ function FileItem({
         <div
           className={cn(
             "shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden text-xl shadow-sm",
-            getFileInfo(file.type).bg,
-            getFileInfo(file.type).color
+            FileDisplayUtils.getFileInfo(file.type).bg,
+            FileDisplayUtils.getFileInfo(file.type).color
           )}
         >
           {thumbnailSrc ? (
@@ -168,7 +168,7 @@ function FileItem({
               onError={() => setThumbnailSrc(null)}
             />
           ) : (
-            getFileInfo(file.type).icon
+            FileDisplayUtils.getFileInfo(file.type).icon
           )}
         </div>
 
@@ -242,8 +242,8 @@ function FileItem({
           <div
             className={cn(
               "aspect-square rounded-xl flex items-center justify-center overflow-hidden mb-2.5 transition-colors duration-300 text-5xl",
-              isSelected ? "bg-surface/50 backdrop-blur-sm shadow-inner" : getFileInfo(file.type).bg,
-              getFileInfo(file.type).color
+              isSelected ? "bg-surface/50 backdrop-blur-sm shadow-inner" : FileDisplayUtils.getFileInfo(file.type).bg,
+              FileDisplayUtils.getFileInfo(file.type).color
             )}
           >
             {thumbnailSrc ? (
@@ -254,7 +254,7 @@ function FileItem({
                 onError={() => setThumbnailSrc(null)}
               />
             ) : (
-              getFileInfo(file.type).icon
+              FileDisplayUtils.getFileInfo(file.type).icon
             )}
           </div>
 

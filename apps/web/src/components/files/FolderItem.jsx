@@ -4,7 +4,7 @@ import { Folder as FolderIcon, MoreVertical, Star, Check } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Utils
-import { buildItemMenuItems } from "@utils/menuUtils";
+import MenuUtils from "@utils/menuUtils";
 import { cn } from "@lib/utils";
 
 // Components
@@ -58,7 +58,7 @@ function FolderItem({
     onOpen?.(folder);
   }
 
-  const menuItems = buildItemMenuItems({
+  const menuItems = MenuUtils.buildItemMenuItems({
     item: folder,
     isFolder: true,
     isTrashItem,

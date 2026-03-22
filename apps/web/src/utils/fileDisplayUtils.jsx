@@ -20,3 +20,6 @@ export function getFileInfo(type) {
       return { icon: <FileIcon size={24} />, color: "text-muted-foreground", bg: "bg-surface-alt" };
   }
 }
+
+const FileDisplayUtils = { getFileInfo };
+export default FileDisplayUtils;
