@@ -1,4 +1,5 @@
 // Native modules
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
@@ -43,6 +44,9 @@ export const initChunkedUpload = asyncHandler(async (req, res) => {
 
   await fs.promises.mkdir(chunkDir, { recursive: true });
 
+  // Persist session metadata so finalize can verify all chunks arrived
+  await fs.promises.writeFile(path.join(chunkDir, "meta.json"), JSON.stringify({ totalChunks }));
+
   return ResponseUtils.success(res, { uploadId, totalChunks });
 });
 
@@ -55,7 +59,7 @@ export const initChunkedUpload = asyncHandler(async (req, res) => {
  * Body is raw binary (application/octet-stream), parsed by express.raw().
  */
 export const uploadChunk = asyncHandler(async (req, res) => {
-  const { uploadId, chunkIndex } = req.query;
+  const { uploadId, chunkIndex, chunkHash } = req.query;
 
   // Ownership guard: uploadId is generated as `<userId>_<timestamp>` in initChunkedUpload.
   // Reject any ID that doesn't belong to the authenticated user.
@@ -80,6 +84,15 @@ export const uploadChunk = asyncHandler(async (req, res) => {
 
   await fs.promises.writeFile(chunkPath, chunkBuffer);
 
+  // Optional per-chunk integrity check — client sends SHA-256 hex of the raw buffer
+  if (chunkHash) {
+    const computedHash = crypto.createHash("sha256").update(chunkBuffer).digest("hex");
+    if (computedHash !== chunkHash) {
+      await fs.promises.unlink(chunkPath).catch(() => {});
+      return ResponseUtils.error(res, `Chunk ${idx} integrity check failed: hash mismatch`, HttpStatus.BAD_REQUEST);
+    }
+  }
+
   return ResponseUtils.success(res, { chunkIndex: idx, uploadId });
 });
 
@@ -102,6 +115,18 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
+  // Read session metadata written at init time
+  const metaPath = path.join(chunkDir, "meta.json");
+  let expectedTotalChunks = null;
+  if (fs.existsSync(metaPath)) {
+    try {
+      const meta = JSON.parse(await fs.promises.readFile(metaPath, "utf-8"));
+      expectedTotalChunks = typeof meta.totalChunks === "number" ? meta.totalChunks : null;
+    } catch {
+      // non-fatal — fall through to the chunk count check below
+    }
+  }
+
   const chunks = fs
     .readdirSync(chunkDir)
     .filter((f) => /^chunk_\d+$/.test(f))
@@ -113,6 +138,23 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
 
   if (chunks.length === 0) {
     return ResponseUtils.error(res, "No chunks found for this upload", HttpStatus.BAD_REQUEST);
+  }
+
+  // Verify every expected chunk arrived — catch missing or duplicate indices
+  if (expectedTotalChunks !== null) {
+    if (chunks.length !== expectedTotalChunks) {
+      return ResponseUtils.error(
+        res,
+        `Upload incomplete: expected ${expectedTotalChunks} chunks but found ${chunks.length}`,
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    const presentIndices = new Set(chunks.map((f) => parseInt(f.split("_")[1], 10)));
+    for (let i = 0; i < expectedTotalChunks; i++) {
+      if (!presentIndices.has(i)) {
+        return ResponseUtils.error(res, `Upload incomplete: chunk ${i} is missing`, HttpStatus.BAD_REQUEST);
+      }
+    }
   }
 
   const user = await User.findById(req.user.id).select("+encryption_key_wrapped");

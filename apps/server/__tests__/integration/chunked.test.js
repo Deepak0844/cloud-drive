@@ -213,5 +213,51 @@ describe("Chunked Upload API", () => {
 
       expect(res.body.success).toBe(false);
     });
+
+    it("should fail finalize when a chunk is missing (gap in indices)", async () => {
+      const initRes = await request(app)
+        .post("/api/v1/files/upload/init")
+        .set(authHeader)
+        .send({ fileName: "gap.bin", fileSize: 1024, totalChunks: 2 })
+        .expect(200);
+
+      const { uploadId } = initRes.body.data;
+
+      // Upload only chunk 0 — deliberately skip chunk 1
+      await request(app)
+        .post(`/api/v1/files/upload/chunk?uploadId=${uploadId}&chunkIndex=0`)
+        .set(authHeader)
+        .set("Content-Type", "application/octet-stream")
+        .send(Buffer.alloc(512, 0xcc))
+        .expect(200);
+
+      const res = await request(app)
+        .post("/api/v1/files/upload/finalize")
+        .set(authHeader)
+        .send({ uploadId, fileName: "gap.bin", mimeType: "application/octet-stream" })
+        .expect(400);
+
+      expect(res.body.success).toBe(false);
+    });
+
+    it("should reject a chunk with a mismatched SHA-256 hash", async () => {
+      const initRes = await request(app)
+        .post("/api/v1/files/upload/init")
+        .set(authHeader)
+        .send({ fileName: "hashed.bin", fileSize: 512, totalChunks: 1 })
+        .expect(200);
+
+      const { uploadId } = initRes.body.data;
+      const wrongHash = "a".repeat(64); // valid hex format but wrong value
+
+      const res = await request(app)
+        .post(`/api/v1/files/upload/chunk?uploadId=${uploadId}&chunkIndex=0&chunkHash=${wrongHash}`)
+        .set(authHeader)
+        .set("Content-Type", "application/octet-stream")
+        .send(Buffer.alloc(512, 0xdd))
+        .expect(400);
+
+      expect(res.body.success).toBe(false);
+    });
   });
 });
