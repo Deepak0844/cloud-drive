@@ -104,13 +104,13 @@ export default function AdminQuotaPage() {
       title: "Actions",
       key: "actions",
       render: (_, record) =>
-        record.status === "PENDING" ? (
+        record.status === QuotaStatus.PENDING ? (
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               className="h-8 px-4 rounded-lg bg-success/10 hover:bg-success/20 border-success/20 text-success font-bold text-xs"
-              onClick={() => handleRequestStatus(record._id, "APPROVED")}
+              onClick={() => handleRequestStatus(record._id, QuotaStatus.APPROVED)}
             >
               Approve
             </Button>
@@ -118,7 +118,7 @@ export default function AdminQuotaPage() {
               variant="outline"
               size="sm"
               className="h-8 px-4 rounded-lg bg-destructive/10 hover:bg-destructive/20 border-destructive/20 text-destructive font-bold text-xs"
-              onClick={() => handleRequestStatus(record._id, "REJECTED")}
+              onClick={() => handleRequestStatus(record._id, QuotaStatus.REJECTED)}
             >
               Reject
             </Button>

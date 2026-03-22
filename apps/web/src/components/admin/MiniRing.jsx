@@ -1,3 +1,4 @@
+// React core & third-party libraries
 import { motion } from "framer-motion";
 
 /**

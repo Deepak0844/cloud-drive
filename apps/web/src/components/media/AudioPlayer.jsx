@@ -1,8 +1,4 @@
-// Third-party styles
-import "@vidstack/react/player/styles/default/theme.css";
-import "@vidstack/react/player/styles/default/layouts/audio.css";
-
-// Third-party
+// React core & third-party libraries
 import { MediaPlayer, MediaProvider } from "@vidstack/react";
 import { DefaultAudioLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 
@@ -11,6 +7,10 @@ import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 
 // Utils
 import { UrlUtils } from "@shared-utils/utils";
+
+// Styles
+import "@vidstack/react/player/styles/default/theme.css";
+import "@vidstack/react/player/styles/default/layouts/audio.css";
 
 /**
  * AudioPlayer

@@ -1,4 +1,4 @@
-// Shared utils
+// Utils
 import { UrlUtils } from "@shared-utils/utils";
 
 // Constants

@@ -1,10 +1,10 @@
-// Third-party styles
-import "@vidstack/react/player/styles/default/theme.css";
-import "@vidstack/react/player/styles/default/layouts/video.css";
-
-// Third-party
+// React core & third-party libraries
 import { isHLSProvider, MediaPlayer, MediaProvider } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
+
+// Styles
+import "@vidstack/react/player/styles/default/theme.css";
+import "@vidstack/react/player/styles/default/layouts/video.css";
 
 /**
  * VideoPlayer

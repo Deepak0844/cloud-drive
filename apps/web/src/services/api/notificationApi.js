@@ -1,10 +1,10 @@
+// Utils
+import { UrlUtils } from "@shared-utils/utils";
+
 // Constants
 import { TagTypes } from "@constants/apiTags";
 import { NotificationServiceUrls } from "@constants/serviceUrls";
 import { HttpMethods } from "@shared-constants/constants/httpConstants";
-
-// Utils
-import { UrlUtils } from "@shared-utils/utils";
 
 // Services
 import api from "./api";

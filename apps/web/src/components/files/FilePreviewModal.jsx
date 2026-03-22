@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 // Constants
 import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
+import { FileCategories } from "@shared-constants/constants";
 
 // Utils
 import { UrlUtils } from "@shared-utils/utils";
@@ -38,7 +39,7 @@ export default function FilePreviewModal({
   const currentFile = file;
   const type = currentFile?.type || currentFile?.category;
   const fileId = currentFile?.id || currentFile?._id;
-  const isMediaFile = type === "video" || type === "audio";
+  const isMediaFile = type === FileCategories.VIDEO || type === FileCategories.AUDIO;
 
   // Navigation logic
   const hasMultipleFiles = allFiles.length > 1;
@@ -159,7 +160,7 @@ export default function FilePreviewModal({
       );
     }
 
-    if (type === "video") {
+    if (type === FileCategories.VIDEO) {
       if (isPlaybackInfoLoading || !playbackInfo) {
         return (
           <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70 text-white">
@@ -171,7 +172,7 @@ export default function FilePreviewModal({
       return <VideoPlayer playbackInfo={playbackInfo} onError={() => setHasError(true)} />;
     }
 
-    if (type === "audio") {
+    if (type === FileCategories.AUDIO) {
       if (isPlaybackInfoLoading || !playbackInfo) {
         return (
           <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70 text-white">

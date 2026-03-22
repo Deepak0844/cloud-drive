@@ -1,3 +1,4 @@
+// React core & third-party libraries
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 // Components

@@ -1,4 +1,7 @@
+// React core & third-party libraries
 import React, { Fragment } from "react";
+
+// Components
 import {
   Breadcrumb,
   BreadcrumbItem,

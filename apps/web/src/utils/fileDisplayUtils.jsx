@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React from "react";
 import { Image, FileText, FileAudio, FileVideo, FileCode, FileArchive, File as FileIcon } from "lucide-react";
 

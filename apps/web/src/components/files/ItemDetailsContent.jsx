@@ -18,13 +18,14 @@ import { Input } from "@components/ui/input";
 
 // Constants
 import PageNames from "@constants/pageNames";
+import { FileCategories, ItemTypes } from "@shared-constants/constants";
 
 function getFileInfo(type, isFolder) {
   if (isFolder) {
     return { icon: <Folder size={32} />, color: "text-primary", bg: "bg-primary/10" };
   }
   switch (type) {
-    case "image":
+    case FileCategories.IMAGE:
       return { icon: <ImageIcon size={32} />, color: "text-primary", bg: "bg-primary/10" };
     case "pdf":
       return { icon: <FileText size={32} />, color: "text-destructive", bg: "bg-destructive/10" };
@@ -57,7 +58,7 @@ export default function ItemDetailsContent({ item, className }) {
 
   // Derived / computed variables
   const isFolder = "itemCount" in item || item.type === "Folder" || item.type === "FOLDER" || !item.extension;
-  const fileType = isFolder ? "folder" : item.category || item.type || "file";
+  const fileType = isFolder ? ItemTypes.FOLDER : item.category || item.type || ItemTypes.FILE;
   const fileInfo = getFileInfo(fileType, isFolder);
   const id = item._id || item.id;
   const isSavingTags = savingFileTags || savingFolderTags;

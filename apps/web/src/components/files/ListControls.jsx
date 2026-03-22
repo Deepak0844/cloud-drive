@@ -4,6 +4,7 @@ import { LayoutGrid, List, Filter } from "lucide-react";
 
 // Constants
 import { DefaultPagination, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
+import { VIEW_MODES } from "@constants/uiConstants";
 
 // Utils
 import { cn } from "@lib/utils";
@@ -23,8 +24,8 @@ export default function ListControls({
   updateParams,
   viewMode,
   setViewMode,
-  gridValue = "grid",
-  listValue = "list",
+  gridValue = VIEW_MODES.GRID,
+  listValue = VIEW_MODES.LIST,
   variant = "default",
 }) {
   const isRecentVariant = variant === "recent";

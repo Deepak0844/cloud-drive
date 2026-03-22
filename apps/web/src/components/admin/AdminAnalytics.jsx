@@ -1,9 +1,10 @@
+// React core & third-party libraries
 import { Cpu, HardDrive, Server as ServerIcon } from "lucide-react";
 
 // Utils
 import { formatBytes } from "@shared-utils/utils";
 
-// Chart components
+// Components
 import HardwareGaugeCard from "./charts/HardwareGaugeCard";
 import UserStatusDonut from "./charts/UserStatusDonut";
 import StorageOverviewCard from "./charts/StorageOverviewCard";

@@ -181,7 +181,7 @@ function UploadItem({ upload }) {
         }
       }
     },
-    [file, folderId, id, initPromise, removeUpload, updateSpeed, uploadFileChunked]
+    [file, fingerprint, folderId, id, initPromise, removeUpload, updateSpeed, uploadFileChunked]
   );
 
   const start = useCallback(

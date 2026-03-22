@@ -1,13 +1,11 @@
 // Utils
 import AuthUtils from "@utils/authUtils";
+import SocketClient from "@services/socketClient";
 
 // Constants
 import { TagTypes } from "@constants/apiTags";
 import { AuthServiceUrls } from "@constants/serviceUrls";
 import { HttpMethods } from "@shared-constants/constants/httpConstants";
-
-// Socket
-import SocketClient from "@services/socketClient";
 
 // Services
 import api from "./api";

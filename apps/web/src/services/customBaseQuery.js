@@ -1,6 +1,5 @@
-import axios from "axios";
-
 // Utils
+import axios from "axios";
 import HttpClientFactory from "@utils/httpClientFactory";
 
 /**

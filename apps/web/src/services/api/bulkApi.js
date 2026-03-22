@@ -1,10 +1,10 @@
+// Utils
+import ApiUtils from "./apiUtils";
+
 // Constants
 import { TagIds, TagTypes } from "@constants/apiTags";
 import { BulkServiceUrls } from "@constants/serviceUrls";
 import { HttpMethods } from "@shared-constants/constants/httpConstants";
-
-// Utils
-import ApiUtils from "./apiUtils";
 
 // Services
 import api from "./api";

@@ -12,16 +12,18 @@ import { Input } from "@components/ui/input";
 import { Badge } from "@components/ui/badge";
 
 // Constants
-import { ByteMultipliers } from "@shared-constants/constants";
+import { ByteMultipliers, FileCategories } from "@shared-constants/constants";
+
+// Utils
 import { cn } from "@lib/utils";
 
 const CATEGORIES = [
-  { label: "Images", value: "image" },
-  { label: "Videos", value: "video" },
-  { label: "Audio", value: "audio" },
-  { label: "Documents", value: "document" },
-  { label: "Archives", value: "archive" },
-  { label: "Other", value: "other" },
+  { label: "Images", value: FileCategories.IMAGE },
+  { label: "Videos", value: FileCategories.VIDEO },
+  { label: "Audio", value: FileCategories.AUDIO },
+  { label: "Documents", value: FileCategories.DOCUMENT },
+  { label: "Archives", value: FileCategories.ARCHIVE },
+  { label: "Other", value: FileCategories.OTHER },
 ];
 
 function AdvancedFilterDropdown({ onFilter, onClear, initialFilters = {}, trigger, align = "right" }) {

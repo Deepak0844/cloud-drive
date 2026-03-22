@@ -1,6 +1,5 @@
-import { io } from "socket.io-client";
-
 // Utils
+import { io } from "socket.io-client";
 import AuthUtils from "@utils/authUtils";
 
 /**
