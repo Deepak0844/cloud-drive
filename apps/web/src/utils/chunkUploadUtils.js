@@ -3,17 +3,29 @@ import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 import { UPLOAD_CHUNK_SIZE } from "@shared-constants/constants";
 
 /**
+ * Compute SHA-256 of an ArrayBuffer and return a lowercase hex string.
+ * Uses the browser's built-in Web Crypto API (no external dependency).
+ */
+async function sha256Hex(buffer) {
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
  * Send a single chunk as raw binary using XHR for real onUploadProgress events.
  * Metadata goes in query params — no FormData serialization.
  */
-export function uploadChunkRaw({ uploadId, chunkIndex, buffer, signal, onProgress, authToken }) {
+export function uploadChunkRaw({ uploadId, chunkIndex, chunkHash, buffer, signal, onProgress, authToken }) {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new Error("canceled"));
 
     const xhr = new XMLHttpRequest();
+    const hashParam = chunkHash ? `&chunkHash=${chunkHash}` : "";
     const url = `${ApiBasePath}${FileServiceUrls.uploadChunk}?uploadId=${encodeURIComponent(
       uploadId
-    )}&chunkIndex=${chunkIndex}`;
+    )}&chunkIndex=${chunkIndex}${hashParam}`;
 
     xhr.open("POST", url);
     xhr.setRequestHeader("Authorization", `Bearer ${authToken}`);
@@ -87,9 +99,12 @@ export async function uploadFileInChunks({
 
     const bytesBeforeThisChunk = state.uploadedBytes;
 
+    const chunkHash = await sha256Hex(buffer);
+
     await uploadChunkRaw({
       uploadId: state.uploadId,
       chunkIndex: state.currentChunkIndex,
+      chunkHash,
       buffer,
       signal,
       authToken,
