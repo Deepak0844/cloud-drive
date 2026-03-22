@@ -4,11 +4,12 @@ import Folder from "#models/Folder.js";
 
 // Constants
 import { HttpStatus, ItemTypes } from "@shared-constants/constants";
+import { ErrorMessages, SuccessMessages, SocketEvents, SocketActions } from "#constants/generalConstants.js";
 
 // Utils
 import ResponseUtils from "#utils/responseUtils.js";
 import DbUtils from "#utils/dbUtils.js";
-import { applyAdvancedFilters } from "#utils/filterUtils.js";
+import { applyAdvancedFilters, escapeRegex } from "#utils/filterUtils.js";
 import { paginateQuery } from "#utils/paginationUtils.js";
 
 // Services
@@ -27,13 +28,13 @@ export const getTrashItems = asyncHandler(async (req, res) => {
 
   let folderQuery = { user: req.user.id, is_deleted: true, deleted_directly: true };
   if (search && search !== "null" && search !== "undefined") {
-    folderQuery.name = { $regex: search, $options: "i" };
+    folderQuery.name = { $regex: escapeRegex(search), $options: "i" };
   }
   folderQuery = applyAdvancedFilters(folderQuery, req.query, true);
 
   const fileQuery = { user: req.user.id, is_deleted: true, deleted_directly: true };
   if (search && search !== "null" && search !== "undefined") {
-    fileQuery.name = { $regex: search, $options: "i" };
+    fileQuery.name = { $regex: escapeRegex(search), $options: "i" };
   }
   // We only fetch items that were `deleted_directly` by the user.
   // Items deleted because their parent folder was deleted will NOT be shown at the root of the trash.
@@ -75,21 +76,18 @@ export const restoreItems = asyncHandler(async (req, res) => {
   const { items } = req.body; // Expects array of { id, type }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
-    return ResponseUtils.error(res, "No items provided for restoration", HttpStatus.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.BAD_REQUEST, HttpStatus.BAD_REQUEST);
   }
 
-  for (const item of items) {
-    if (!item.id || !item.type) {
-      continue;
-    }
+  // Each restore is fully independent — run them in parallel for better throughput.
+  await Promise.all(
+    items
+      .filter((item) => item.id && item.type)
+      .map((item) => DbUtils.restoreRecursive(item.type, item.id, req.user.id))
+  );
 
-    // DbUtils.restoreRecursive handles moving items back to original_parent (if it exists and is not deleted),
-    // otherwise restores to root. It also restores all children.
-    await DbUtils.restoreRecursive(item.type, item.id, req.user.id);
-  }
-
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "RESTORE", items });
-  return ResponseUtils.success(res, { message: "Items restored successfully" });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.RESTORE, items });
+  return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_RESTORED });
 });
 
 /**
@@ -101,20 +99,18 @@ export const deleteItemsPermanently = asyncHandler(async (req, res) => {
   const { items } = req.body; // Expects array of { id, type }
 
   if (!items || !Array.isArray(items) || items.length === 0) {
-    return ResponseUtils.error(res, "No items provided for deletion", HttpStatus.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.BAD_REQUEST, HttpStatus.BAD_REQUEST);
   }
 
-  for (const item of items) {
-    if (!item.id || !item.type) {
-      continue;
-    }
+  // Independent operations — run in parallel.
+  await Promise.all(
+    items
+      .filter((item) => item.id && item.type)
+      .map((item) => DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id))
+  );
 
-    // DbUtils.permanentDeleteRecursive deletes records from MongoDB and unlinks physical storage files
-    await DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id);
-  }
-
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "PERMANENT_DELETE", items });
-  return ResponseUtils.success(res, { message: "Items permanently deleted" });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.PERMANENT_DELETE, items });
+  return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_PERMANENTLY_DELETED });
 });
 
 /**
@@ -133,13 +129,11 @@ export const emptyTrash = asyncHandler(async (req, res) => {
   ];
 
   if (itemsToDelete.length === 0) {
-    return ResponseUtils.success(res, { message: "Trash is already empty" });
+    return ResponseUtils.success(res, { message: SuccessMessages.TRASH_ALREADY_EMPTY });
   }
 
-  for (const item of itemsToDelete) {
-    await DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id);
-  }
+  await Promise.all(itemsToDelete.map((item) => DbUtils.permanentDeleteRecursive(item.type, item.id, req.user.id)));
 
-  SocketService.emitToUser(req.user.id, "FILE_CHANGE", { action: "EMPTY_TRASH" });
-  return ResponseUtils.success(res, { message: "Trash emptied successfully" });
+  SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.EMPTY_TRASH });
+  return ResponseUtils.success(res, { message: SuccessMessages.TRASH_EMPTIED });
 });

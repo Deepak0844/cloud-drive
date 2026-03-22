@@ -8,7 +8,7 @@ import User from "#models/User.js";
 import Env from "#config/env.js";
 
 // Constants
-import { ErrorMessages } from "#constants/generalConstants.js";
+import { ErrorMessages, AUTH_COOKIE_NAME } from "#constants/generalConstants.js";
 import { Roles, HttpStatus } from "@shared-constants/constants";
 
 // Middleware
@@ -22,8 +22,8 @@ export const protect = asyncHandler(async (req, res, next) => {
   let token;
 
   try {
-    if (req.cookies?.token) {
-      token = req.cookies.token;
+    if (req.cookies?.[AUTH_COOKIE_NAME]) {
+      token = req.cookies[AUTH_COOKIE_NAME];
     } else if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
       token = req.headers.authorization.split(" ")[1];
     }

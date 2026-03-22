@@ -8,7 +8,7 @@ import EmailService from "#services/emailService.js";
 import config from "#config/env.js";
 
 // Constants
-import { ErrorMessages } from "#constants/generalConstants.js";
+import { ErrorMessages, SuccessMessages, NotificationTypes } from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
@@ -30,7 +30,7 @@ export const updatePassword = asyncHandler(async (req, res) => {
 
   // Check current password
   if (!(await user.matchPassword(currentPassword))) {
-    return ResponseUtils.error(res, "Incorrect current password", HttpStatus.UNAUTHORIZED);
+    return ResponseUtils.error(res, ErrorMessages.INCORRECT_PASSWORD, HttpStatus.UNAUTHORIZED);
   }
 
   // Set new password
@@ -41,7 +41,7 @@ export const updatePassword = asyncHandler(async (req, res) => {
   const { createNotification } = await import("#controllers/notificationController.js");
   createNotification(
     user._id,
-    "security", // NotificationTypes.SECURITY_ALERT
+    NotificationTypes.SECURITY_ALERT,
     "Password Changed",
     "Your account password was just changed. If this wasn't you, please contact support immediately."
   ).catch(() => {}); // Non-blocking
@@ -66,7 +66,7 @@ export const updatePassword = asyncHandler(async (req, res) => {
     },
   }).catch(() => {});
 
-  sendTokenResponse(user, HttpStatus.OK, res, "Password updated successfully");
+  sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.PASSWORD_UPDATED);
 });
 
 /**
@@ -144,5 +144,5 @@ export const resetPassword = asyncHandler(async (req, res) => {
   user.resetPasswordExpire = undefined;
   await user.save();
 
-  sendTokenResponse(user, HttpStatus.OK, res, "Password reset success");
+  sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.PASSWORD_RESET);
 });

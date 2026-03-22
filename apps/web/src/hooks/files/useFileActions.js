@@ -1,4 +1,4 @@
-import { App, Modal } from "antd";
+import { toast } from "sonner";
 import { useState } from "react";
 import { FileUtils } from "@shared-utils/utils";
 
@@ -19,15 +19,14 @@ import { useBulkCopyMutation, useBulkDeleteMutation, useBulkMoveMutation } from 
 
 // Constants
 import { ItemTypes } from "@shared-constants/constants";
-import { ApiBasePath, FileServiceUrls, BulkServiceUrls } from "@constants/serviceUrls";
+import { ApiBasePath, FileServiceUrls, BulkServiceUrls, ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 export function useFileActions({ folders, clearSelection }) {
-  const { message } = App.useApp();
-
   // Dialog states
   const [renameItem, setRenameItem] = useState(null);
   const [newName, setNewName] = useState("");
   const [deleteItem, setDeleteItem] = useState(null);
+  const [bulkDeleteItems, setBulkDeleteItems] = useState(null);
   const [folderPicker, setFolderPicker] = useState({
     visible: false,
     action: "move", // 'move' | 'copy' | 'bulk-move' | 'bulk-copy'
@@ -66,10 +65,10 @@ export function useFileActions({ folders, clearSelection }) {
       if (isFolder) await renameFolder({ id, name: newName }).unwrap();
       else await renameFile({ id, name: newName }).unwrap();
 
-      message.success(`Renamed successfully`);
+      toast.success(`Renamed successfully`);
       setRenameItem(null);
     } catch (err) {
-      message.error(err.data?.message || "Failed to rename");
+      toast.error(err.data?.message || "Failed to rename");
     }
   }
 
@@ -87,32 +86,28 @@ export function useFileActions({ folders, clearSelection }) {
       if (isFolder) await deleteFolder({ id }).unwrap();
       else await deleteFile({ id }).unwrap();
 
-      message.success(`Deleted ${deleteItem.name}`);
+      toast.success(`Deleted ${deleteItem.name}`);
       setDeleteItem(null);
     } catch (err) {
-      message.error(err.data?.message || "Failed to delete");
+      toast.error(err.data?.message || "Failed to delete");
     }
   }
 
-  function handleBulkDelete(itemsToDelete) {
+  function handleBulkDeleteTrigger(itemsToDelete) {
     if (!itemsToDelete || itemsToDelete.length === 0) return;
-    Modal.confirm({
-      title: "Confirm Delete",
-      content: `Are you sure you want to move ${itemsToDelete.length} items to the trash?`,
-      okText: "Move to Trash",
-      okType: "danger",
-      onOk: async () => {
-        try {
-          await bulkDelete({ items: itemsToDelete }).unwrap();
-          message.success("Items moved to trash");
-          clearSelection();
-        } catch {
-          message.error("Failed to delete items");
-        }
-      },
-      className: "premium-modal",
-      centered: true,
-    });
+    setBulkDeleteItems(itemsToDelete);
+  }
+
+  async function handleBulkDeleteConfirm() {
+    if (!bulkDeleteItems) return;
+    try {
+      await bulkDelete({ items: bulkDeleteItems }).unwrap();
+      toast.success("Items moved to trash");
+      clearSelection();
+      setBulkDeleteItems(null);
+    } catch {
+      toast.error("Failed to delete items");
+    }
   }
 
   // Move & Copy Actions
@@ -136,7 +131,7 @@ export function useFileActions({ folders, clearSelection }) {
 
   async function handleFolderPickerConfirm(targetFolderId) {
     const { action, item, items } = folderPicker;
-    const normalizedTargetId = targetFolderId === "root" ? null : targetFolderId;
+    const normalizedTargetId = targetFolderId === ROOT_FOLDER_ID ? null : targetFolderId;
 
     try {
       if (action === "move" || action === "copy") {
@@ -146,25 +141,25 @@ export function useFileActions({ folders, clearSelection }) {
         if (action === "move") {
           if (isFolder) await moveFolder({ id, parentId: normalizedTargetId }).unwrap();
           else await moveFile({ id, folderId: normalizedTargetId }).unwrap();
-          message.success(`${item.name} moved successfully`);
+          toast.success(`${item.name} moved successfully`);
         } else {
           if (isFolder) await copyFolder({ id, parentId: normalizedTargetId }).unwrap();
           else await copyFile({ id, folderId: normalizedTargetId }).unwrap();
-          message.success(`${item.name} copied successfully`);
+          toast.success(`${item.name} copied successfully`);
         }
       } else if (action === "bulk-move" || action === "bulk-copy") {
         if (action === "bulk-move") {
           await bulkMove({ items, targetFolderId: normalizedTargetId }).unwrap();
-          message.success(`${items.length} items moved successfully`);
+          toast.success(`${items.length} items moved successfully`);
         } else {
           await bulkCopy({ items, targetFolderId: normalizedTargetId }).unwrap();
-          message.success(`${items.length} items copied successfully`);
+          toast.success(`${items.length} items copied successfully`);
         }
         clearSelection();
       }
       setFolderPicker({ ...folderPicker, visible: false });
     } catch (err) {
-      message.error(err.data?.message || `Failed to ${action}`);
+      toast.error(err.data?.message || `Failed to ${action}`);
     }
   }
 
@@ -172,14 +167,14 @@ export function useFileActions({ folders, clearSelection }) {
   function handleDownload(file) {
     if (!file) return;
     FileUtils.startFileDownload(file, `${ApiBasePath}${FileServiceUrls.downloadFile}`);
-    message.success({ content: "Download started", key: "downloading" });
+    toast.success("Download started", { id: "downloading" });
   }
 
   function handleBulkDownload(itemsToDownload) {
     if (!itemsToDownload || itemsToDownload.length === 0) return;
     const fileItems = itemsToDownload.filter((i) => i.type === ItemTypes.FILE);
     if (fileItems.length === 0) {
-      message.warning("Please select at least one file to download");
+      toast.warning("Please select at least one file to download");
       return;
     }
 
@@ -191,10 +186,10 @@ export function useFileActions({ folders, clearSelection }) {
       // This bypasses RTK Query/Axios to allow the browser to handle the stream directly.
       FileUtils.triggerPostDownload(url, payload);
 
-      message.success("Preparing your download...");
+      toast.success("Preparing your download...");
       clearSelection();
     } catch {
-      message.error("Failed to initiate bulk download");
+      toast.error("Failed to initiate bulk download");
     }
   }
 
@@ -205,6 +200,8 @@ export function useFileActions({ folders, clearSelection }) {
     setNewName,
     deleteItem,
     setDeleteItem,
+    bulkDeleteItems,
+    setBulkDeleteItems,
     folderPicker,
     setFolderPicker,
 
@@ -212,7 +209,8 @@ export function useFileActions({ folders, clearSelection }) {
     handleRenameConfirm,
     handleDeleteTrigger,
     handleDeleteConfirm,
-    handleBulkDelete,
+    handleBulkDeleteTrigger,
+    handleBulkDeleteConfirm,
     handleMoveTrigger,
     handleCopyTrigger,
     handleBulkMoveTrigger,

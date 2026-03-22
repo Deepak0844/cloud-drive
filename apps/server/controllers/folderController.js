@@ -3,8 +3,8 @@ import Folder from "#models/Folder.js";
 import File from "#models/File.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages } from "#constants/generalConstants.js";
-import { HttpStatus, ItemTypes } from "@shared-constants/constants";
+import { ErrorMessages, SuccessMessages, SocketEvents, SocketActions } from "#constants/generalConstants.js";
+import { HttpStatus, ItemTypes, DefaultPagination } from "@shared-constants/constants";
 
 // Middleware
 import asyncHandler from "#middlewares/asyncHandler.js";
@@ -12,7 +12,7 @@ import asyncHandler from "#middlewares/asyncHandler.js";
 // Utils
 import { AppError } from "#utils/errorUtils.js";
 import ResponseUtils from "#utils/responseUtils.js";
-import { applyAdvancedFilters } from "#utils/filterUtils.js";
+import { applyAdvancedFilters, escapeRegex } from "#utils/filterUtils.js";
 import DbUtils from "#utils/dbUtils.js";
 import FolderUtils from "#utils/folderUtils.js";
 
@@ -30,7 +30,7 @@ export const getFolders = asyncHandler(async (req, res) => {
   let query = { user: req.user.id, is_deleted: false };
 
   if (search && search !== "null" && search !== "undefined") {
-    query.name = { $regex: search, $options: "i" };
+    query.name = { $regex: escapeRegex(search), $options: "i" };
   }
 
   const isFav = isFavorite === "true" || isFavorite === true;
@@ -87,7 +87,7 @@ export const getFolderContents = asyncHandler(async (req, res) => {
   // Build folder query
   let folderQuery = { user: req.user.id, is_deleted: false };
   if (search && search !== "null" && search !== "undefined") {
-    folderQuery.name = { $regex: search, $options: "i" };
+    folderQuery.name = { $regex: escapeRegex(search), $options: "i" };
   } else {
     folderQuery.parent = folderId;
   }
@@ -96,14 +96,14 @@ export const getFolderContents = asyncHandler(async (req, res) => {
   // Build file query
   let fileQuery = { user: req.user.id, is_deleted: false };
   if (search && search !== "null" && search !== "undefined") {
-    fileQuery.name = { $regex: search, $options: "i" };
+    fileQuery.name = { $regex: escapeRegex(search), $options: "i" };
   } else {
     fileQuery.folder = folderId;
   }
   fileQuery = applyAdvancedFilters(fileQuery, req.query, false);
 
   const pg = Math.max(1, parseInt(req.query.pg) || 1);
-  const ps = Math.max(1, Math.min(100, parseInt(req.query.ps) || 20));
+  const ps = Math.max(1, Math.min(DefaultPagination.maxPageSize, parseInt(req.query.ps) || DefaultPagination.pageSize));
   const skip = (pg - 1) * ps;
 
   const sortDirection = sortOrder === "desc" ? -1 : 1;
@@ -219,6 +219,14 @@ export const getFolderDetails = asyncHandler(async (req, res) => {
 export const createFolder = asyncHandler(async (req, res) => {
   const { name, parent } = req.body;
 
+  // Verify the parent folder belongs to this user before creating a child inside it
+  if (parent) {
+    const parentFolder = await Folder.findOne({ _id: parent, user: req.user.id, is_deleted: false });
+    if (!parentFolder) {
+      return ResponseUtils.error(res, ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+  }
+
   const folderPath = await FolderUtils.calculateFolderPath(parent);
 
   const folder = await Folder.create({
@@ -228,8 +236,8 @@ export const createFolder = asyncHandler(async (req, res) => {
     path: folderPath,
   });
 
-  SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
-    action: "CREATE",
+  SocketService.emitToUser(req.user.id, SocketEvents.FOLDER_CHANGE, {
+    action: SocketActions.CREATE,
     folderId: folder._id,
     parentId: folder.parent,
   });
@@ -250,8 +258,8 @@ export const renameFolder = asyncHandler(async (req, res) => {
     throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
-    action: "RENAME",
+  SocketService.emitToUser(req.user.id, SocketEvents.FOLDER_CHANGE, {
+    action: SocketActions.RENAME,
     folderId: folder._id,
     name: folder.name,
   });
@@ -273,8 +281,8 @@ export const moveFolder = asyncHandler(async (req, res) => {
     throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
-    action: "MOVE",
+  SocketService.emitToUser(req.user.id, SocketEvents.FOLDER_CHANGE, {
+    action: SocketActions.MOVE,
     folderId: folder._id,
     destParentId: parentId,
   });
@@ -315,14 +323,14 @@ export const deleteFolder = asyncHandler(async (req, res) => {
 
   await DbUtils.softDeleteRecursive(ItemTypes.FOLDER, req.params.id, req.user.id, true);
 
-  SocketService.emitToUser(req.user.id, "FOLDER_CHANGE", {
-    action: "DELETE",
+  SocketService.emitToUser(req.user.id, SocketEvents.FOLDER_CHANGE, {
+    action: SocketActions.DELETE,
     folderId: req.params.id,
   });
 
   return ResponseUtils.success(
     res,
-    { message: "Folder and its contents moved to trash" },
+    { message: SuccessMessages.FOLDER_DELETED },
     HttpStatus.OK,
     SuccessMessages.FOLDER_DELETED
   );

@@ -45,7 +45,15 @@ const fileSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    encryption_iv: {
+      type: String,
+      required: true,
+    },
     thumbnail_path: {
+      type: String,
+      default: null,
+    },
+    thumbnail_iv: {
       type: String,
       default: null,
     },
@@ -151,9 +159,19 @@ fileSchema.virtual("stream_url").get(function () {
 });
 
 // Indexes
-fileSchema.index({ user: 1, folder: 1 });
-fileSchema.index({ user: 1, is_favorite: 1 });
-fileSchema.index({ is_deleted: 1 });
+// ── Compound indexes (high-priority — cover the most common query shapes) ──────
+// Almost every query filters on { user, is_deleted } — these two fields together
+// are the single most important compound index on this collection.
+fileSchema.index({ user: 1, is_deleted: 1 });
+// File listing inside a folder (the default "browse" view)
+fileSchema.index({ user: 1, folder: 1, is_deleted: 1 });
+// Favorites listing sorted by when the file was favorited
+fileSchema.index({ user: 1, is_favorite: 1, favorited_at: -1 });
+// Recent-files endpoint sorts by last_opened_at scoped to a user
+fileSchema.index({ user: 1, last_opened_at: -1 });
+// Name search ($regex) — scoping to user first reduces the scan range significantly
+fileSchema.index({ user: 1, name: 1 });
+// ── Single-field indexes (secondary lookups & filters) ──────────────────────────
 fileSchema.index({ category: 1 });
 fileSchema.index({ extension: 1 });
 fileSchema.index({ tags: 1 });

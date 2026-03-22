@@ -6,6 +6,25 @@ export const SocketEvents = {
   QUOTA_UPDATE: "QUOTA_UPDATE",
   ITEM_BULK_CHANGE: "ITEM_BULK_CHANGE",
   QUOTA_REQUEST: "QUOTA_REQUEST",
+  FILE_CHANGE: "FILE_CHANGE",
+  FOLDER_CHANGE: "FOLDER_CHANGE",
+  STORAGE_SYNC_COMPLETE: "STORAGE_SYNC_COMPLETE",
+};
+
+/**
+ * Socket action types sent inside event payloads
+ */
+export const SocketActions = {
+  CREATE: "CREATE",
+  RENAME: "RENAME",
+  MOVE: "MOVE",
+  COPY: "COPY",
+  DELETE: "DELETE",
+  BULK_DELETE: "BULK_DELETE",
+  RESTORE: "RESTORE",
+  PERMANENT_DELETE: "PERMANENT_DELETE",
+  EMPTY_TRASH: "EMPTY_TRASH",
+  UPLOAD: "UPLOAD",
 };
 
 /**
@@ -56,9 +75,14 @@ export const ErrorMessages = {
   THUMBNAIL_FAILED: "Thumbnail generation failed",
   THUMBNAIL_NOT_AVAILABLE: "Thumbnail not available",
   FOLDER_ALREADY_EXISTS: "Folder with this name already exists",
+  ALREADY_PENDING_REQUEST: "You already have a pending quota request",
   TOKEN_EXPIRED: "Your session has expired, please log in again",
   FILE_TYPE_NOT_ALLOWED: "This file type is not allowed",
   INVALID_MOVE: "Cannot move a folder into itself or its own descendant",
+  ENCRYPTION_KEYS_MISSING: "Encryption keys missing",
+  PREVIEW_NOT_SUPPORTED: "Preview not supported for this file type",
+  STREAMING_NOT_SUPPORTED: "Streaming not supported for this file type",
+  INCORRECT_PASSWORD: "Incorrect current password",
 };
 
 /**
@@ -71,6 +95,7 @@ export const SuccessMessages = {
   PROFILE_LOADED: "User profile loaded successfully",
   PROFILE_UPDATED: "User profile updated successfully",
   FOLDER_LOADED: "Folder details retrieved successfully",
+  FOLDERS_LOADED: "Folders retrieved successfully",
   FOLDER_CONTENTS_LOADED: "Folder contents retrieved successfully",
   FOLDER_CREATED: "Folder created successfully",
   FOLDER_RENAMED: "Folder renamed successfully",
@@ -81,8 +106,19 @@ export const SuccessMessages = {
   FAVORITE_TOGGLED: "Favorite status updated",
   QUOTA_REQUEST_SUBMITTED: "Quota request submitted successfully.",
   NOTIFICATIONS_MARKED_READ: "All notifications marked as read",
+  NOTIFICATION_DELETED: "Notification deleted",
+  ALL_NOTIFICATIONS_DELETED: "All notifications deleted",
   TRASH_EMPTIED: "Trash emptied successfully",
   PUSH_TOKEN_REGISTERED: "Push token registered successfully",
+  PASSWORD_UPDATED: "Password updated successfully",
+  PASSWORD_RESET: "Password reset success",
+  FILE_TRASHED: "File moved to trash",
+  ITEMS_TRASHED: "Items moved to trash",
+  ITEMS_MOVED: "Items moved successfully",
+  ITEMS_COPIED: "Items copied successfully",
+  ITEMS_RESTORED: "Items restored successfully",
+  ITEMS_PERMANENTLY_DELETED: "Items permanently deleted",
+  TRASH_ALREADY_EMPTY: "Trash is already empty",
 };
 
 /**
@@ -98,6 +134,23 @@ export const FileCategories = {
 };
 
 /**
+ * Video Constants
+ */
+export const VideoMimeTypes = {
+  MP4: "video/mp4",
+  WEBM: "video/webm",
+  QUICKTIME: "video/quicktime",
+  M4V: "video/x-m4v",
+};
+
+export const VideoExtensions = {
+  MP4: "mp4",
+  MOV: "mov",
+  WEBM: "webm",
+  M4V: "m4v",
+};
+
+/**
  * Bulk Actions
  */
 export const BulkActions = {
@@ -107,3 +160,60 @@ export const BulkActions = {
   MOVE: "move",
   COPY: "copy",
 };
+
+/**
+ * Auth / Cookie Constants
+ */
+export const AUTH_COOKIE_NAME = "token";
+
+export const CookieConfig = {
+  HTTP_ONLY: true,
+  SAME_SITE: "strict",
+  MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
+/**
+ * HTTP Cache-Control durations (seconds)
+ */
+export const CacheDurations = {
+  ONE_HOUR: 3600,
+  ONE_DAY: 86400,
+};
+
+/**
+ * HLS streaming configuration
+ */
+export const HlsConfig = {
+  SEGMENT_DURATION: 6, // seconds per HLS segment
+  CACHE_TTL_MS: 2 * 60 * 60 * 1000, // 2 hours TTL for cached segments
+  MAX_CACHE_SIZE_BYTES: 2 * 1024 * 1024 * 1024, // 2 GB max cache
+  CLEANUP_INTERVAL_MINUTES: 30, // background cleanup interval
+  CACHE_SUBDIR: "hls-cache", // subdirectory under NAS_STORAGE_PATH
+};
+
+/**
+ * Byte conversion multipliers
+ */
+export const ByteMultipliers = {
+  KB: 1000,
+  MB: 1000 * 1000,
+  GB: 1000 * 1000 * 1000,
+};
+
+/**
+ * Speed window cutoff for upload progress (ms)
+ */
+export const SPEED_WINDOW_MS = 5000;
+
+/**
+ * Default notification fallback values
+ */
+export const NotificationDefaults = {
+  USED_PERCENTAGE: "80",
+  TOTAL_QUOTA: "10GB",
+};
+
+/**
+ * Percentage multiplier
+ */
+export const PERCENTAGE_MULTIPLIER = 100;

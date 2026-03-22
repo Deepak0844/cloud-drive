@@ -1,5 +1,4 @@
-// React core & third-party libraries
-import { notification } from "antd";
+import { toast } from "sonner";
 
 // Constants
 import { TagTypes } from "@constants/apiTags";
@@ -53,11 +52,9 @@ const subscribeToSocketEventsQuery = () => ({
         // Display UI Toast for dedicated notification events
         if (event === "notification" && data) {
           const { title, message } = data;
-          notification.info({
-            message: title || "New Notification",
+          toast.info(title || "New Notification", {
             description: message || "You have a new update.",
-            placement: "bottomRight",
-            duration: 5,
+            duration: 5000,
           });
         }
       };

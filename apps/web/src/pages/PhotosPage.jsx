@@ -1,8 +1,7 @@
 // React core & third-party libraries
-import React, { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Breadcrumb, Empty, Image, Skeleton, Typography } from "antd";
-import { CalendarOutlined, DownloadOutlined, PictureOutlined } from "@ant-design/icons";
+import { Calendar, Download, ImageIcon, Clock, Maximize2, History } from "lucide-react";
 import dayjs from "dayjs";
 import { motion } from "framer-motion";
 
@@ -16,20 +15,22 @@ import { useFileActions } from "@hooks/files/useFileActions";
 
 // Constants
 import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
-import PageNames from "@constants/pageNames";
+
 import PageUrls from "@constants/pageUrls";
 
 // Utils
 import { UrlUtils } from "@shared-utils/utils";
 
 // Components
+import { Button } from "@components/ui/button";
+import Loader from "@components/common/Loader";
 import PageHeader from "@components/layout/PageHeader";
-import Button from "@shared-components/components/button";
-import Loader from "@shared-components/components/loader";
 
-const { Text } = Typography;
+import { Skeleton } from "@components/ui/skeleton";
+import FilePreviewModal from "@components/files/FilePreviewModal";
 
 function PhotosPage() {
+  const [previewFile, setPreviewFile] = useState(null);
   const { page, pageSize, setPage, updateParams } = useListPageParams({ defaultPageSize: 50 });
   const { handleDownload } = useFileActions({ folders: [], clearSelection: () => {} });
 
@@ -87,16 +88,14 @@ function PhotosPage() {
   // Render
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="px-1 mb-4">
-          <Skeleton.Button active size="large" shape="round" style={{ width: 150 }} />
-          <div className="mt-2">
-            <Skeleton.Input active size="small" style={{ width: 200 }} />
-          </div>
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-10 w-48 rounded-xl" />
+          <Skeleton className="h-4 w-64 rounded-lg" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
-            <Skeleton.Node key={i} active className="aspect-square w-full rounded-2xl" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((i) => (
+            <Skeleton key={i} className="aspect-square w-full rounded-[24px]" />
           ))}
         </div>
       </div>
@@ -106,78 +105,57 @@ function PhotosPage() {
   if (photos.length === 0) {
     return (
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4"
       >
-        <Empty
-          image={<PictureOutlined style={{ fontSize: 64, color: "var(--primary)", opacity: 0.2 }} />}
-          description={
-            <div className="max-w-xs mx-auto">
-              <h3 className="text-xl font-bold text-label-primary mb-1">No Photos Found</h3>
-              <p className="text-label-tertiary">Your visual memories will appear here once you upload some images.</p>
-            </div>
-          }
-        >
-          <Link to={PageUrls.MyFilesPage}>
-            <Button styleType="primary" className="rounded-2xl px-8 h-12 font-bold shadow-lg shadow-primary/20">
-              Upload Photos
-            </Button>
-          </Link>
-        </Empty>
+        <div className="w-24 h-24 mb-6 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shadow-glow-sm">
+          <ImageIcon size={48} className="text-primary opacity-40" />
+        </div>
+        <h3 className="text-2xl font-black text-label mb-2 tracking-tight italic">No Photos Found</h3>
+        <p className="text-label-tertiary mb-8 max-w-sm font-medium leading-relaxed">
+          Your visual memories will appear here once you upload some images to your cloud drive.
+        </p>
+        <Link to={PageUrls.MyFilesPage}>
+          <Button variant="aurora" size="pill" className="px-10 h-12 font-black italic">
+            Upload Photos
+          </Button>
+        </Link>
       </motion.div>
     );
   }
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8 pb-32">
-      <PageHeader
-        title={PageNames.PHOTOS}
-        icon={
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <PictureOutlined className="text-xl text-primary" />
-          </div>
-        }
-        breadcrumbNode={
-          <Breadcrumb
-            className="mt-1"
-            items={[
-              {
-                title: (
-                  <Link
-                    to={PageUrls.DashboardPage}
-                    className="text-label-tertiary hover:text-primary transition-colors"
-                  >
-                    {PageNames.MY_FILES}
-                  </Link>
-                ),
-              },
-              { title: <span className="text-label-primary font-bold">{PageNames.PHOTOS}</span> },
-            ]}
-          />
-        }
-      />
+      <PageHeader />
 
       <div className="flex flex-col gap-12">
         {groupedPhotos.map(([group, groupPhotos]) => (
-          <div key={group} className="flex flex-col gap-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-surface-alt flex items-center justify-center text-label-tertiary">
-                <CalendarOutlined />
+          <div key={group} className="flex flex-col gap-6">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-surface-dim flex items-center justify-center text-label-tertiary border border-line/30 shadow-inner">
+                <Calendar size={18} />
               </div>
-              <h2 className="text-lg font-black text-label-secondary tracking-tight">{group}</h2>
-              <div className="h-px bg-line grow" />
-              <Text className="text-[10px] font-black uppercase text-label-tertiary tracking-widest">
-                {groupPhotos.length} Items
-              </Text>
+              <div className="flex flex-col">
+                <h2 className="text-xl font-black text-label tracking-tight italic leading-none">{group}</h2>
+                <span className="text-[10px] font-bold uppercase text-label-tertiary tracking-widest mt-1">
+                  Collection of memories
+                </span>
+              </div>
+              <div className="h-px bg-linear-to-r from-line/40 to-transparent grow ml-4" />
+              <div className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 shadow-glow-sm">
+                <span className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">
+                  {groupPhotos.length} Items
+                </span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-              <Image.PreviewGroup>
-                {groupPhotos.map((photo) => (
-                  <PhotoCard key={photo._id || photo.id} photo={photo} handleDownload={handleDownload} />
-                ))}
-              </Image.PreviewGroup>
+            <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 xl:columns-6 gap-6 space-y-6">
+              {groupPhotos.map((photo) => (
+                <div key={photo._id || photo.id} className="break-inside-avoid">
+                  <PhotoCard photo={photo} handleDownload={handleDownload} onPreview={() => setPreviewFile(photo)} />
+                </div>
+              ))}
             </div>
           </div>
         ))}
@@ -187,79 +165,85 @@ function PhotosPage() {
       <div ref={loaderRef} className="py-12 flex flex-col items-center justify-center w-full gap-4">
         {isFetching && page > 1 && (
           <>
-            <Loader size={32} />
-            <Text type="secondary" className="text-xs font-bold uppercase tracking-widest opacity-50">
-              Loading more memories...
-            </Text>
+            <Loader size={24} />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-label-tertiary animate-pulse">
+              Syncing more memories...
+            </span>
           </>
         )}
         {!hasNextPage && photos.length > 0 && (
-          <div className="flex flex-col items-center gap-2 opacity-30">
-            <div className="h-px bg-line w-24" />
-            <Text className="text-[10px] font-black uppercase tracking-[0.2em]">End of Gallery</Text>
+          <div className="flex flex-col items-center gap-3 opacity-40 scale-90">
+            <div className="h-px bg-linear-to-r from-transparent via-line to-transparent w-48" />
+            <div className="flex items-center gap-2">
+              <History size={12} className="text-label-tertiary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-label-tertiary">
+                End of Gallery
+              </span>
+            </div>
           </div>
         )}
       </div>
+
+      <FilePreviewModal
+        file={previewFile}
+        open={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+        handleDownload={handleDownload}
+        allFiles={photos}
+        currentIndex={
+          previewFile ? photos.findIndex((p) => (p._id || p.id) === (previewFile._id || previewFile.id)) : -1
+        }
+        onNavigate={(index) => setPreviewFile(photos[index])}
+      />
     </motion.div>
   );
 }
 
-function PhotoCard({ photo, handleDownload }) {
+function PhotoCard({ photo, handleDownload, onPreview }) {
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className="group relative aspect-square rounded-[24px] overflow-hidden bg-surface-alt border border-line/50 cursor-pointer shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300"
+      onClick={() => onPreview?.()}
+      className="group relative aspect-auto rounded-3xl overflow-hidden bg-surface-alt border border-white/5 cursor-pointer shadow-glow-sm hover:shadow-glow hover:border-primary/40 transition-all duration-500 ease-out mb-6"
     >
-      <Image
+      <img
         src={photo.thumbnailUrl}
-        preview={{
-          src: photo.previewUrl,
-          mask: (
-            <div className="flex flex-col items-center gap-2">
-              <PictureOutlined className="text-2xl" />
-              <Text className="text-[10px] font-black uppercase text-white tracking-widest">View Full</Text>
-            </div>
-          ),
-        }}
         alt={photo.name}
-        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-        wrapperClassName="w-full h-full"
-        fallback="/api/placeholder/400/400"
+        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 grayscale-20 group-hover:grayscale-0"
+        loading="lazy"
+        onError={(e) => {
+          e.target.src = "/api/placeholder/400/400";
+        }}
       />
 
-      {/* Glassmorphic Overlay (only visible on non-hover to not interfere with mask) */}
-      <div className="absolute inset-x-2 bottom-2 p-3 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30 opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-300 pointer-events-none z-10">
-        <Text className="text-[9px] font-black text-white truncate block uppercase tracking-wider shadow-sm">
-          {photo.name}
-        </Text>
-        <Text className="text-[8px] font-bold text-white/80 block mt-0.5 tabular-nums">
-          {dayjs(photo.createdAt).format("MMM D, YYYY")}
-        </Text>
+      {/* Glossmorphic Overlay */}
+      <div className="absolute inset-x-3 bottom-3 p-4 bg-black/40 backdrop-blur-xl rounded-[24px] border border-white/10 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-500 pointer-events-none z-10 shadow-2xl scale-95 group-hover:scale-100">
+        <span className="text-[11px] font-black text-white truncate block uppercase tracking-wider">{photo.name}</span>
+        <div className="flex items-center gap-1.5 mt-1.5 opacity-80">
+          <Clock size={10} className="text-white/60" />
+          <span className="text-[9px] font-bold text-white/70 block tabular-nums">
+            {dayjs(photo.createdAt).format("MMM D, YYYY")}
+          </span>
+        </div>
       </div>
 
-      <div className="absolute top-2 right-2 flex gap-2 z-10 pointer-events-auto">
-        <div
-          role="button"
-          tabIndex={0}
+      <div className="absolute top-3 right-3 flex gap-2 z-10 pointer-events-auto">
+        <button
           onClick={(e) => {
             e.stopPropagation();
             handleDownload?.(photo);
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
-              handleDownload?.(photo);
-            }
-          }}
-          className="w-8 h-8 bg-black/20 hover:bg-primary/40 backdrop-blur-sm rounded-xl border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer"
+          className="w-9 h-9 bg-black/40 hover:bg-primary/60 backdrop-blur-xl rounded-xl border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 cursor-pointer shadow-glow-sm hover:scale-110 active:scale-90"
         >
-          <DownloadOutlined className="text-white text-xs" />
-        </div>
-        <div className="w-8 h-8 bg-black/20 backdrop-blur-sm rounded-xl border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-          <PictureOutlined className="text-white text-xs" />
-        </div>
+          <Download size={14} className="text-white" />
+        </button>
+        <button
+          className="w-9 h-9 bg-black/40 hover:bg-white/20 backdrop-blur-xl rounded-xl border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 cursor-pointer shadow-glow-sm hover:scale-110"
+          onClick={() => window.open(photo.previewUrl, "_blank")}
+        >
+          <Maximize2 size={14} className="text-white" />
+        </button>
       </div>
     </motion.div>
   );

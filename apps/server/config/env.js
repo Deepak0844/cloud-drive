@@ -14,11 +14,16 @@ const envSchema = z.object({
   JWT_SECRET: z.string({
     required_error: "JWT_SECRET is required",
   }),
+  STORAGE_ENCRYPTION_KEY: z
+    .string({
+      required_error: "STORAGE_ENCRYPTION_KEY is required for file encryption",
+    })
+    .length(64, "STORAGE_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)"),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.string().optional(),
   SMTP_EMAIL: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
-  JWT_EXPIRES_IN: z.string().default("1h"),
+  JWT_EXPIRES_IN: z.string().default("7d"), // Must align with CookieConfig.MAX_AGE_MS (7 days)
   FROM_NAME: z.string().default("Cloud Drive"),
   FROM_EMAIL: z.string().default("noreply@cloud-drive.com"),
   DEFAULT_QUOTA_BYTES: z.string().transform(Number).default("10000000000"),
@@ -38,8 +43,7 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  const logger = (await import("../utils/logger.js")).default;
-  logger.error("❌ Invalid environment variables:", parsed.error.format());
+  console.error("❌ Invalid environment variables:", parsed.error.format());
   process.exit(1);
 }
 

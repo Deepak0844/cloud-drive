@@ -16,7 +16,12 @@ import { admin, protect } from "#middlewares/auth.js";
 import validate from "#middlewares/validate.js";
 
 // Schemas
-import { handleQuotaRequestSchema, updateUserQuotaSchema, updateUserStatusSchema } from "#schemas/admin.schema.js";
+import {
+  getUsersQuerySchema,
+  handleQuotaRequestSchema,
+  updateUserQuotaSchema,
+  updateUserStatusSchema,
+} from "#schemas/admin.schema.js";
 
 const router = express.Router();
 
@@ -24,7 +29,7 @@ const router = express.Router();
 router.use(protect);
 router.use(admin);
 
-router.get("/users", getUsers);
+router.get("/users", validate(getUsersQuerySchema), getUsers);
 router.patch("/users/:id/quota", validate(updateUserQuotaSchema), updateUserQuota);
 router.patch("/users/:id/status", validate(updateUserStatusSchema), updateUserStatus);
 router.get("/stats", getSystemStats);

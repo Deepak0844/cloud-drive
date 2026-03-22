@@ -3,14 +3,19 @@ import User from "#models/User.js";
 
 // Services
 import EmailService from "#services/emailService.js";
-import FileService from "#services/fileService.js";
 
 // Controllers
 import { createNotification } from "#controllers/notificationController.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, NotificationTypes } from "#constants/generalConstants.js";
-import { HttpStatus } from "@shared-constants/constants";
+import {
+  ErrorMessages,
+  SuccessMessages,
+  NotificationTypes,
+  AUTH_COOKIE_NAME,
+  CookieConfig,
+} from "#constants/generalConstants.js";
+import { HttpStatus, Roles } from "@shared-constants/constants";
 
 // Config
 import config from "#config/env.js";
@@ -24,6 +29,7 @@ import ResponseUtils from "#utils/responseUtils.js";
 import logger from "#utils/logger.js";
 import SecurityUtils from "#utils/securityUtils.js";
 import { sendTokenResponse } from "#utils/authUtils.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
 
 // ─── Local Helpers ────────────────────────────────────────────────────────────
 
@@ -73,10 +79,14 @@ export const register = asyncHandler(async (req, res) => {
     throw new AppError(ErrorMessages.USER_ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
   }
 
+  // Generate AES-256-GCM wrapped User Data Encryption Key
+  const { wrappedKey } = CryptoUtils.generateAndWrapUserKey();
+
   const user = await User.create({
     name,
     email,
     password,
+    encryption_key_wrapped: wrappedKey,
   });
 
   // Welcome email
@@ -137,7 +147,7 @@ export const login = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const logout = (req, res) => {
-  res.clearCookie("token", { httpOnly: true, sameSite: "strict" });
+  res.clearCookie(AUTH_COOKIE_NAME, { httpOnly: CookieConfig.HTTP_ONLY, sameSite: CookieConfig.SAME_SITE });
   return ResponseUtils.success(res, {}, HttpStatus.OK, { message: SuccessMessages.LOGOUT_SUCCESS });
 };
 
@@ -147,15 +157,12 @@ export const logout = (req, res) => {
  * @access  Private
  */
 export const getMe = asyncHandler(async (req, res) => {
-  // Sync storage quota only for standard users
-  if (req.user.role !== "ADMIN") {
-    await FileService.recalculateUsedBytes(req.user.id);
-  }
-
+  // used_bytes is kept in sync after every upload/delete/copy/trash operation;
+  // running a full DB aggregation on every profile load is unnecessary overhead.
   const userDoc = await User.findById(req.user.id);
   const user = userDoc.toObject();
 
-  if (user.role === "ADMIN") {
+  if (user.role === Roles.ADMIN) {
     delete user.quota_bytes;
     delete user.used_bytes;
   }

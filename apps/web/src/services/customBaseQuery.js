@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Utils
-import HttpClientFactory from "../utils/httpClientFactory";
+import HttpClientFactory from "@utils/httpClientFactory";
 
 /**
  * Custom Base Query for RTK Query.
@@ -116,7 +116,13 @@ const customBaseQuery =
       return { data: result };
     } catch (error) {
       if (axios.isCancel?.(error) || error.code === "ERR_CANCELED") {
-        throw error;
+        return {
+          error: {
+            status: "CANCELED",
+            data: error.message,
+            ...uiFlags,
+          },
+        };
       }
 
       return {

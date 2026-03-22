@@ -18,6 +18,8 @@ import {
   NotificationTypes,
   SocketEvents,
   FileCategories,
+  ByteMultipliers,
+  PERCENTAGE_MULTIPLIER,
 } from "#constants/generalConstants.js";
 import { Roles, HttpStatus, QuotaStatus } from "@shared-constants/constants";
 
@@ -39,7 +41,7 @@ export const getQuotaUsage = asyncHandler(async (req, res) => {
   return ResponseUtils.success(res, {
     quota_bytes: user.quota_bytes,
     used_bytes: user.used_bytes,
-    percentage: (user.used_bytes / user.quota_bytes) * 100,
+    percentage: (user.used_bytes / user.quota_bytes) * PERCENTAGE_MULTIPLIER,
   });
 });
 
@@ -117,7 +119,7 @@ export const requestQuotaIncrease = asyncHandler(async (req, res) => {
           admin._id.toString(),
           NotificationTypes.QUOTA_REQUEST,
           "New Quota Request",
-          `${userNameDisplay} has requested ${(requested_bytes / (1000 * 1000 * 1000)).toFixed(0)} GB additional storage.`,
+          `${userNameDisplay} has requested ${(requested_bytes / ByteMultipliers.GB).toFixed(0)} GB additional storage.`,
           { requestId: quotaRequest._id }
         );
       })
@@ -127,7 +129,7 @@ export const requestQuotaIncrease = asyncHandler(async (req, res) => {
     SocketService.emitToAdmins(SocketEvents.NOTIFICATION, {
       type: NotificationTypes.QUOTA_REQUEST,
       title: "New Quota Request",
-      message: `${userNameDisplay} has requested ${(requested_bytes / (1000 * 1000 * 1000)).toFixed(0)} GB additional storage.`,
+      message: `${userNameDisplay} has requested ${(requested_bytes / ByteMultipliers.GB).toFixed(0)} GB additional storage.`,
     });
 
     // 3. Trigger the admin table refresh

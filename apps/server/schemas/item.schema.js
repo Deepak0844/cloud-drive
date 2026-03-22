@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const bulkOperationSchema = z.object({
   body: z.object({
-    action: z.enum(["delete", "move", "copy"]),
+    action: z.enum(["delete", "restore", "permanent_delete", "move", "copy"]),
     items: z
       .array(
         z.object({

@@ -2,18 +2,20 @@ import fs from "fs";
 
 // Utils
 import logger from "#utils/logger.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
 
 /**
- * Serve a file using HTTP 206 Partial Content (YouTube-style progressive streaming).
- * The browser requests only the bytes it needs right now; seeks trigger new Range requests.
- * Always sets Content-Disposition: inline so the browser plays inline, never prompts download.
+ * Serve a file using HTTP 206 Partial Content (YouTube-style progressive streaming)
+ * with on-the-fly AES-256-CTR decryption!
  *
  * @param {object} res - Express response
- * @param {string} filePath - Absolute path to the file to serve
+ * @param {string} filePath - Absolute path to the encrypted file to serve
  * @param {string} mimeType - MIME type to set on the response
  * @param {string|null} rangeHeader - Value of the request Range header (may be undefined)
+ * @param {Buffer} userKey - The unwrapped plaintext user key (32 bytes)
+ * @param {Buffer} iv - The 16-byte IV for the file
  */
-function serveWithRange(res, filePath, mimeType, rangeHeader) {
+function serveWithRange(res, filePath, mimeType, rangeHeader, userKey, iv) {
   const stat = fs.statSync(filePath);
   const fileSize = stat.size;
 
@@ -24,7 +26,8 @@ function serveWithRange(res, filePath, mimeType, rangeHeader) {
     "Cache-Control": "private, no-store", // no-store prevents caching error responses
   };
 
-  let stream;
+  let fileStream;
+  let decipherStream;
 
   if (rangeHeader) {
     const parts = rangeHeader.replace(/bytes=/, "").split("-");
@@ -38,24 +41,34 @@ function serveWithRange(res, filePath, mimeType, rangeHeader) {
       "Content-Range": `bytes ${start}-${end}/${fileSize}`,
       "Content-Length": chunkSize,
     });
-    stream = fs.createReadStream(filePath, { start, end });
+
+    fileStream = fs.createReadStream(filePath, { start, end });
+    decipherStream = CryptoUtils.getDecipherForRange(userKey, iv, start);
   } else {
     res.writeHead(200, {
       ...sharedHeaders,
       "Content-Length": fileSize,
     });
-    stream = fs.createReadStream(filePath);
+    fileStream = fs.createReadStream(filePath);
+    decipherStream = CryptoUtils.getDecipherStream(userKey, iv);
   }
 
   // Guard against stream errors after headers are sent (e.g. file deleted mid-stream)
-  stream.on("error", (err) => {
+  fileStream.on("error", (err) => {
     logger.error(`[Stream] Read stream error for ${filePath}: ${err.message}`);
     if (!res.writableEnded) {
       res.end();
     }
   });
 
-  stream.pipe(res);
+  decipherStream.on("error", (err) => {
+    logger.error(`[Stream] Decipher error for ${filePath}: ${err.message}`);
+    if (!res.writableEnded) {
+      res.end();
+    }
+  });
+
+  fileStream.pipe(decipherStream).pipe(res);
 }
 
 const StreamingUtils = {

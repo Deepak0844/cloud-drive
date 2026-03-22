@@ -1,176 +1,228 @@
 // React core & third-party libraries
-import React, { useEffect, useState } from "react";
-import { Modal, Typography } from "antd";
-import { DownloadOutlined } from "@ant-design/icons";
+import React, { useEffect, useState, useCallback } from "react";
+import { Download, X, AlertCircle, FileText, File, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Constants
 import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 
 // Utils
 import { UrlUtils } from "@shared-utils/utils";
+import { cn } from "@lib/utils";
 
 // Components
-import Button from "@shared-components/components/button";
-import Loader from "@shared-components/components/loader";
+import { Button } from "@components/ui/button";
+import Loader from "@components/common/Loader";
+import VideoPlayer from "@components/media/VideoPlayer";
+import AudioPlayer from "@components/media/AudioPlayer";
+import ItemDetailsContent from "./ItemDetailsContent";
 
-const { Text } = Typography;
+// Services
+import { useGetPlaybackInfoQuery } from "@services/api/fileApi";
 
-export default function FilePreviewModal({ file, open, onClose, handleDownload }) {
+export default function FilePreviewModal({
+  file,
+  open,
+  onClose,
+  handleDownload,
+  allFiles = [],
+  currentIndex = -1,
+  onNavigate,
+}) {
   // Local state
   const [hasError, setHasError] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [previewSrc, setPreviewSrc] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false);
 
-  // Custom & shared hooks
+  const currentFile = file;
+  const type = currentFile?.type || currentFile?.category;
+  const fileId = currentFile?.id || currentFile?._id;
+  const isMediaFile = type === "video" || type === "audio";
 
-  // useEffect
-  // Derive resource endpoints via our authenticated proxy helper
+  // Navigation logic
+  const hasMultipleFiles = allFiles.length > 1;
+  const canGoNext = hasMultipleFiles && currentIndex < allFiles.length - 1;
+  const canGoPrev = hasMultipleFiles && currentIndex > 0;
+
+  const handleNext = useCallback(
+    (e) => {
+      e?.stopPropagation();
+      if (canGoNext) onNavigate?.(currentIndex + 1);
+    },
+    [canGoNext, currentIndex, onNavigate]
+  );
+
+  const handlePrev = useCallback(
+    (e) => {
+      e?.stopPropagation();
+      if (canGoPrev) onNavigate?.(currentIndex - 1);
+    },
+    [canGoPrev, currentIndex, onNavigate]
+  );
+
+  // Keyboard shortcuts
   useEffect(() => {
-    if (!open || !file) {
+    if (!open) return;
+
+    const handleKeyDown = (e) => {
+      switch (e.key) {
+        case "ArrowRight":
+          handleNext();
+          break;
+        case "ArrowLeft":
+          handlePrev();
+          break;
+        case "Escape":
+          onClose();
+          break;
+        case "i":
+        case "I":
+          setShowSidebar((prev) => !prev);
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, handleNext, handlePrev, onClose]);
+
+  // Fetch HLS/native playback strategy for video and audio files
+  const {
+    data: playbackInfoResponse,
+    isLoading: isPlaybackInfoLoading,
+    isError: isPlaybackInfoError,
+  } = useGetPlaybackInfoQuery(fileId, {
+    skip: !fileId || !isMediaFile || !open,
+  });
+
+  const playbackInfo = playbackInfoResponse?.data;
+
+  // Derive preview URL for images and PDFs
+  useEffect(() => {
+    if (!open || !currentFile || isMediaFile) {
       setPreviewSrc(null);
-      setLoading(true);
-      setHasError(false);
+      setPreviewLoading(true);
       return;
     }
 
     try {
-      setHasError(false);
-      const fileId = file.id || file._id;
-      const type = file.category || file.type;
-
-      let url = "";
-
-      if (type === "audio") {
-        url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.stream}`, { id: fileId });
-        url += `${url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
-      } else {
-        // Video and Images natively stream through the Express preview handler
-        url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.preview}`, { id: fileId });
-        url += `${url.includes("?") ? "&" : "?"}_t=${Date.now()}`;
-      }
-
-      setPreviewSrc(url);
-      setLoading(false); // Let native HTML tags handle progressive load indication
-    } catch (err) {
-      console.error("Failed to construct preview URL:", err);
+      const id = currentFile.id || currentFile._id;
+      const url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.preview}`, { id });
+      setPreviewSrc(`${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`);
+      setPreviewLoading(false);
+    } catch (_err) {
       setHasError(true);
-      setLoading(false);
+      setPreviewLoading(false);
     }
 
-    // Cleanup blob URLs to prevent memory leaks (if any are still around from other features)
     return () => {
-      if (previewSrc && previewSrc.startsWith("blob:")) {
-        URL.revokeObjectURL(previewSrc);
-      }
+      if (previewSrc?.startsWith("blob:")) URL.revokeObjectURL(previewSrc);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, open]);
+  }, [currentFile, open, isMediaFile, previewSrc]);
 
-  // Event handlers
-  function onDownload() {
-    if (!file) return;
-    handleDownload?.(file);
-  }
+  // Reset error state when the opened file changes
+  useEffect(() => {
+    setHasError(false);
+  }, [fileId]);
 
-  // Render
-  const renderContent = () => {
-    if (loading) {
+  // Renderers
+  function renderContent() {
+    if (hasError || isPlaybackInfoError) {
       return (
-        <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70">
-          <Loader size={32} />
-          <Text className="text-label-tertiary">Loading preview...</Text>
-        </div>
-      );
-    }
-
-    if (hasError) {
-      return (
-        <div className="flex flex-col items-center justify-center p-20 gap-4">
-          <Text className="text-xl font-bold text-label">Preview Unavailable</Text>
-          <Text className="text-label-secondary text-center max-w-xs mb-4">
-            We couldn&apos;t generate a preview for this file type, or the file may be corrupted.
-          </Text>
-          <Button type="primary" icon={<DownloadOutlined />} onClick={onDownload} className="font-bold rounded-xl h-10">
-            Download File Instead
+        <div className="flex flex-col items-center justify-center p-12 gap-6 text-center text-white">
+          <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center">
+            <AlertCircle size={32} className="text-destructive" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold">Preview Unavailable</h3>
+            <p className="text-white/60 max-w-xs text-sm">
+              We couldn&apos;t generate a preview for &quot;{currentFile?.name}&quot;.
+            </p>
+          </div>
+          <Button
+            onClick={() => handleDownload?.(currentFile)}
+            variant="aurora"
+            size="lg"
+            className="rounded-xl font-bold px-8 shadow-glow-sm"
+          >
+            <Download className="mr-2 h-5 w-5" />
+            Download Instead
           </Button>
         </div>
       );
     }
 
-    const type = file?.type || file?.category;
-
     if (type === "video") {
-      return (
-        <div className="relative w-full rounded-2xl overflow-hidden bg-black/5 flex items-center justify-center">
-          <video
-            controls
-            autoPlay
-            src={previewSrc}
-            className="w-full h-auto max-h-[70vh] object-contain"
-            onError={() => {
-              // If direct /preview fails (non-native format), retry via /stream (on-the-fly transcode)
-              if (previewSrc && !previewSrc.includes("/stream")) {
-                const fileId = file.id || file._id;
-                let streamUrl = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.stream}`, { id: fileId });
-                streamUrl += `${streamUrl.includes("?") ? "&" : "?"}_t=${Date.now()}`;
-                setPreviewSrc(streamUrl);
-              } else {
-                setHasError(true);
-              }
-            }}
-          >
-            <track kind="captions" srcLang="en" label="English" />
-          </video>
-        </div>
-      );
+      if (isPlaybackInfoLoading || !playbackInfo) {
+        return (
+          <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70 text-white">
+            <Loader size={32} />
+            <span className="text-sm font-semibold">Preparing video...</span>
+          </div>
+        );
+      }
+      return <VideoPlayer playbackInfo={playbackInfo} onError={() => setHasError(true)} />;
     }
 
     if (type === "audio") {
-      return (
-        <div className="flex flex-col items-center justify-center p-10 bg-surface-dim rounded-2xl gap-8">
-          <div className="w-32 h-32 bg-primary/10 rounded-full flex items-center justify-center animate-pulse">
-            <svg
-              className="w-16 h-16 text-primary"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-            </svg>
+      if (isPlaybackInfoLoading || !playbackInfo) {
+        return (
+          <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70 text-white">
+            <Loader size={32} />
+            <span className="text-sm font-semibold">Preparing audio...</span>
           </div>
-          <audio controls autoPlay src={previewSrc} className="w-full max-w-md" onError={() => setHasError(true)}>
-            <track kind="captions" srcLang="en" label="English" />
-          </audio>
+        );
+      }
+      return (
+        <AudioPlayer
+          playbackInfo={playbackInfo}
+          audioMetadata={currentFile?.audio_metadata}
+          fileId={fileId}
+          onError={() => setHasError(true)}
+        />
+      );
+    }
+
+    if (previewLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70 text-white">
+          <Loader size={32} />
+          <span className="text-sm font-semibold">Loading preview...</span>
         </div>
       );
     }
 
-    if (type === "image" || file?.mime_type?.startsWith("image/")) {
+    if (type === "image" || currentFile?.mime_type?.startsWith("image/")) {
       return (
-        <div className="relative w-full rounded-2xl overflow-hidden bg-checkered flex items-center justify-center">
-          <img
+        <div className="relative w-full h-full flex items-center justify-center p-4">
+          <motion.img
+            key={fileId}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
             src={previewSrc}
-            alt={file?.name}
-            className="max-w-full max-h-[75vh] object-contain shadow-sm"
+            alt={currentFile?.name}
+            className="max-w-full max-h-full rounded-lg shadow-2xl object-contain"
             onError={() => setHasError(true)}
           />
         </div>
       );
     }
 
-    // PDF Fallback
-    if (type === "pdf" || file?.mime_type === "application/pdf") {
+    if (type === "pdf" || currentFile?.mime_type === "application/pdf") {
       return (
-        <div className="w-full h-[75vh] rounded-2xl overflow-hidden shadow-inner border border-line">
+        <div className="w-full h-full max-h-[90vh] rounded-xl overflow-hidden shadow-inner border border-white/10 bg-white/5">
           <object data={previewSrc} type="application/pdf" className="w-full h-full">
-            <div className="flex flex-col items-center justify-center h-full p-20 gap-4">
-              <Text className="text-xl font-bold text-label">Browser PDF Viewer Not Supported</Text>
-              <Button
-                type="primary"
-                icon={<DownloadOutlined />}
-                onClick={onDownload}
-                className="font-bold rounded-xl h-10"
-              >
+            <div className="flex flex-col items-center justify-center h-full p-20 gap-6 text-center text-white">
+              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                <FileText size={32} className="text-primary" />
+              </div>
+              <h3 className="text-xl font-bold">PDF Support Missing</h3>
+              <p className="text-white/60 text-sm">Your browser doesn&apos;t support direct PDF viewing.</p>
+              <Button onClick={() => handleDownload?.(currentFile)} variant="aurora" size="lg" className="rounded-xl">
                 Download PDF
               </Button>
             </div>
@@ -179,52 +231,163 @@ export default function FilePreviewModal({ file, open, onClose, handleDownload }
       );
     }
 
-    // Default Fallback
     return (
-      <div className="flex flex-col items-center justify-center p-20 gap-4">
-        <Text className="text-xl font-bold text-label">No Preview Available</Text>
-        <Text className="text-label-secondary">Previews are not supported for .{file?.extension || "this"} files.</Text>
+      <div className="flex flex-col items-center justify-center p-20 gap-8 text-center text-white">
+        <div className="w-24 h-24 rounded-4xl bg-white/5 flex items-center justify-center border border-white/10 shadow-inner">
+          <File size={48} className="text-white/40" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-2xl font-bold">No Preview Available</h3>
+          <p className="text-white/40 uppercase tracking-[0.2em] font-black text-xs">
+            .{currentFile?.extension || "UNKNOWN"} FILE
+          </p>
+        </div>
         <Button
-          type="primary"
-          icon={<DownloadOutlined />}
-          onClick={onDownload}
-          className="font-bold rounded-xl h-10 mt-2"
+          onClick={() => handleDownload?.(currentFile)}
+          variant="aurora"
+          className="h-14 px-12 rounded-2xl font-black text-base shadow-glow uppercase"
         >
           Download File
         </Button>
       </div>
     );
-  };
+  }
+
+  if (!open) return null;
 
   return (
-    <Modal
-      open={open}
-      onCancel={onClose}
-      footer={null}
-      destroyOnHidden
-      centered
-      width={1000}
-      title={
-        <div className="flex items-center gap-3 pr-8">
-          <Text className="font-bold truncate text-lg max-w-lg">{file?.name}</Text>
-          <Button
-            type="text"
-            icon={<DownloadOutlined />}
-            size="small"
-            onClick={onDownload}
-            className="text-primary hover:bg-primary-light rounded-lg font-semibold"
-          >
-            Download
-          </Button>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-100 flex flex-col bg-black/98 backdrop-blur-xl select-none overflow-hidden"
+      >
+        {/* Immersive Header */}
+        <div className="h-20 px-6 flex items-center justify-between border-b border-white/5 bg-linear-to-b from-black/40 to-transparent relative z-20">
+          <div className="flex items-center gap-6 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="w-10 h-10 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-all shadow-glow-sm"
+            >
+              <X size={20} />
+            </Button>
+            <div className="flex flex-col min-w-0">
+              <h2 className="text-base font-bold text-white truncate max-w-[400px]" title={currentFile?.name}>
+                {currentFile?.name}
+              </h2>
+              {hasMultipleFiles && (
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#f59e0b] mt-0.5">
+                  Item {currentIndex + 1} of {allFiles.length}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDownload?.(currentFile)}
+              className="w-10 h-10 rounded-xl hover:bg-white/10 text-white/50 hover:text-white"
+            >
+              <Download size={18} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowSidebar(!showSidebar)}
+              className={cn(
+                "w-10 h-10 rounded-xl transition-all",
+                showSidebar
+                  ? "bg-primary/20 text-primary shadow-glow-sm"
+                  : "hover:bg-white/10 text-white/50 hover:text-white"
+              )}
+            >
+              <Info size={18} />
+            </Button>
+          </div>
         </div>
-      }
-      className="premium-modal"
-      styles={{
-        body: { padding: "20px" },
-        header: { marginBottom: 0, padding: "16px 20px", borderBottom: "1px solid rgba(0,0,0,0.06)" },
-      }}
-    >
-      {renderContent()}
-    </Modal>
+
+        {/* Main Content Area */}
+        <div className="flex flex-1 relative min-h-0">
+          {/* Navigation Arrows */}
+          <AnimatePresence>
+            {canGoPrev && (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="absolute left-6 top-1/2 -translate-y-1/2 z-30"
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handlePrev}
+                  className="w-14 h-14 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all shadow-2xl backdrop-blur-md"
+                >
+                  <ChevronLeft size={32} strokeWidth={3} />
+                </Button>
+              </motion.div>
+            )}
+
+            {canGoNext && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="absolute right-6 top-1/2 -translate-y-1/2 z-30"
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleNext}
+                  className="w-14 h-14 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all shadow-2xl backdrop-blur-md"
+                >
+                  <ChevronRight size={32} strokeWidth={3} />
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Immersive Viewport */}
+          <div className="flex-1 flex items-center justify-center relative bg-gradient-radial from-white/5 to-transparent">
+            {renderContent()}
+          </div>
+
+          {/* Collapsible Meta Sidebar */}
+          <AnimatePresence>
+            {showSidebar && (
+              <motion.div
+                initial={{ opacity: 0, x: 300 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 300 }}
+                className="w-[360px] bg-surface/90 backdrop-blur-3xl border-l border-white/10 flex flex-col shadow-[-20px_0_40px_rgba(0,0,0,0.5)] z-40 overflow-hidden"
+              >
+                <div className="p-6 pb-2 flex items-center justify-between">
+                  <h3 className="text-lg font-black tracking-tight text-white italic">Details</h3>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowSidebar(false)}
+                    className="h-8 w-8 rounded-lg hover:bg-white/10 text-white/50"
+                  >
+                    <X size={18} />
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  <ItemDetailsContent
+                    item={currentFile}
+                    className="**:text-white/90 [&_h3]:text-white [&_.bg-surface-dim]:bg-white/5 [&_.bg-surface-alt]:bg-white/5 [&_span]:text-white/60"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

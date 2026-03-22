@@ -34,9 +34,23 @@ function init(server) {
   // Authentication middleware
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token;
+      let token = socket.handshake.auth?.token;
+
+      // Fallback: Check cookies for the token (common for HttpOnly cookie auth)
+      if (!token && socket.handshake.headers.cookie) {
+        const cookieStr = socket.handshake.headers.cookie;
+        const cookies = cookieStr.split(";").reduce((acc, curr) => {
+          const [key, value] = curr.split("=").map((c) => c.trim());
+          if (key && value) {
+            acc[key] = value;
+          }
+          return acc;
+        }, {});
+        token = cookies.token;
+      }
+
       if (!token) {
-        logger.warn("Socket connection rejected: No token");
+        logger.warn("Socket connection rejected: No token found in auth or cookies");
         return next(new Error("Authentication error: No token"));
       }
 

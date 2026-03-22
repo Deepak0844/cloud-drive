@@ -1,6 +1,7 @@
 // Native modules
 import fs from "fs";
 import path from "path";
+import os from "os";
 import mongoose from "mongoose";
 
 // Models
@@ -12,13 +13,23 @@ import User from "#models/User.js";
 import config from "#config/env.js";
 
 // Constants
-import { NotificationTypes, ErrorMessages } from "#constants/generalConstants.js";
+import {
+  NotificationTypes,
+  ErrorMessages,
+  FileCategories,
+  VideoExtensions,
+  SocketEvents,
+  SocketActions,
+} from "#constants/generalConstants.js";
 
 // Utils
 import logger from "#utils/logger.js";
 import FormatUtils from "#utils/formatUtils.js";
 import FileUtils from "#utils/fileUtils.js";
 import MetadataService from "#services/metadataService.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
+import MediaUtils from "#utils/mediaUtils.js";
+import SocketService from "#services/socketService.js";
 
 // ─── Circular-dependency-safe lazy import ────────────────────────────────────
 // notificationController.js <-> fileService.js would be circular if imported
@@ -40,6 +51,7 @@ function getUserDir(userId) {
       fs.mkdirSync(userDir, { recursive: true });
     } catch (err) {
       logger.error(`[FileService] Failed to create user directory: ${userDir}. Error: ${err.message}`);
+      return null; // Return null if directory creation fails
     }
   }
   return userDir;
@@ -321,6 +333,12 @@ async function copyFileInternal(userId, fileId, targetFolderId) {
     return;
   }
 
+  // Enforce quota before duplicating — a copy consumes as much space as the original.
+  const hasQuota = await checkQuota(userId, sourceFile.size_bytes);
+  if (!hasQuota) {
+    throw new Error(ErrorMessages.QUOTA_EXCEEDED);
+  }
+
   const uniqueName = await getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
   const ext = path.extname(sourceFile.original_name);
 
@@ -411,6 +429,122 @@ async function bulkCopy(userId, items, targetFolderId) {
 
 // ─── Zip Export ───────────────────────────────────────────────────────────────
 
+/**
+ * Shared logic to finalize a file upload (Optimization -> Encryption -> DB Record)
+ */
+async function finalizeUploadedFile({
+  userId,
+  folderId,
+  tempFilePath,
+  originalName,
+  mimeType,
+  size,
+  category,
+  extension,
+  fileId = new mongoose.Types.ObjectId(),
+  metadata = {},
+  hash = "",
+  extra = {},
+}) {
+  let finalSize = size;
+  const finalMimeType = mimeType;
+  const finalExtension = extension;
+  let finalUploadPath = tempFilePath;
+
+  // 1. Optimize video (Fast Start) before encryption if needed
+  if (category === FileCategories.VIDEO) {
+    const lowerExt = extension.toLowerCase();
+    if (lowerExt === VideoExtensions.MP4 || lowerExt === VideoExtensions.MOV) {
+      const optimizedPath = path.join(
+        os.tmpdir(),
+        `optimized-${Date.now()}-${path.parse(originalName).name}.${VideoExtensions.MP4}`
+      );
+      try {
+        await MediaUtils.relocateMoovAtom(tempFilePath, optimizedPath);
+        // Clean up original temp file
+        await fs.promises.unlink(tempFilePath).catch(() => {});
+        finalUploadPath = optimizedPath;
+        finalSize = fs.statSync(finalUploadPath).size;
+        logger.info(`[Upload] Web-optimized video (Fast Start): ${originalName} (Size: ${finalSize})`);
+      } catch (err) {
+        logger.warn(
+          `[Upload] Fast-start optimization failed for ${originalName}, continuing with original: ${err.message}`
+        );
+      }
+    }
+  }
+
+  // 1a. Extract metadata if caller did not supply any (e.g. chunked uploads skip this step).
+  //     This guarantees file.metadata.codec is populated for ALL uploads, which is crucial
+  //     for detecting HEVC-in-MP4 when needsVideoPreview is called later.
+  if (!metadata || Object.keys(metadata).length === 0) {
+    try {
+      const { metadata: extracted, extra: extractedExtra } = await MetadataService.extractMetadata(
+        finalUploadPath,
+        category
+      );
+      metadata = extracted;
+      // Merge extra fields (e.g. audio_metadata, gps, taken_at) so chunked uploads
+      // also benefit from these enrichments.
+      extra = { ...extractedExtra, ...extra };
+      logger.debug(`[Upload] Metadata extracted on-demand for ${originalName}: codec=${metadata?.codec ?? "n/a"}`);
+    } catch (metaErr) {
+      logger.warn(`[Upload] On-demand metadata extraction failed for ${originalName}: ${metaErr.message}`);
+    }
+  }
+
+  // 2. Setup encryption & storage
+  const user = await User.findById(userId).select("+encryption_key_wrapped");
+  if (!user || !user.encryption_key_wrapped) {
+    throw new Error("User encryption key missing");
+  }
+
+  const iv = CryptoUtils.generateFileIv();
+  const stablePath = getPhysicalFilePath(userId, fileId.toString(), `.${finalExtension}`);
+
+  const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+  const cipher = CryptoUtils.getCipherStream(plaintextKey, iv);
+
+  // 3. Encrypt and save to disk
+  await new Promise((resolve, reject) => {
+    const readStream = fs.createReadStream(finalUploadPath);
+    const writeStream = fs.createWriteStream(stablePath);
+
+    readStream.pipe(cipher).pipe(writeStream).on("finish", resolve).on("error", reject);
+
+    readStream.on("error", reject);
+    cipher.on("error", reject);
+  });
+
+  // 4. Cleanup final temp file
+  await fs.promises.unlink(finalUploadPath).catch(() => {});
+
+  // 5. Create DB record
+  const uniqueName = await getUniqueFilename(userId, folderId, originalName);
+  const file = await File.create({
+    _id: fileId,
+    user: userId,
+    folder: folderId === "null" || !folderId ? null : folderId,
+    name: uniqueName,
+    original_name: originalName,
+    mime_type: finalMimeType,
+    extension: finalExtension,
+    category,
+    size_bytes: finalSize,
+    storage_path: stablePath,
+    encryption_iv: iv.toString("hex"),
+    metadata,
+    hash,
+    ...extra,
+  });
+
+  // 6. Housekeeping
+  await User.findByIdAndUpdate(userId, { $inc: { used_bytes: finalSize } });
+  SocketService.emitToUser(userId, SocketEvents.FILE_CHANGE, { action: SocketActions.UPLOAD, file });
+
+  return file;
+}
+
 async function processUpload(userId, folderId, fileObj) {
   const hasQuota = await checkQuota(userId, fileObj.size);
   if (!hasQuota) {
@@ -418,45 +552,60 @@ async function processUpload(userId, folderId, fileObj) {
     throw new Error(ErrorMessages.QUOTA_EXCEEDED);
   }
 
-  const sanitizedOriginalName = path.basename(fileObj.originalname);
-  const uniqueName = await getUniqueFilename(userId, folderId, sanitizedOriginalName);
   const extension = FileUtils.getFileExtension(fileObj.originalname);
   const category = MetadataService.getCategory(fileObj.mimetype, fileObj.originalname);
 
+  // Extract metadata BEFORE encryption/optimization
   const [{ metadata, extra }, hash] = await Promise.all([
     MetadataService.extractMetadata(fileObj.path, category),
     MetadataService.calculateHash(fileObj.path),
   ]);
 
-  // Create DB record first to obtain a stable _id
-  const file = await File.create({
-    name: uniqueName,
-    original_name: sanitizedOriginalName,
-    user: userId,
-    folder: folderId === "null" || !folderId ? null : folderId,
-    mime_type: fileObj.mimetype,
-    extension,
+  return finalizeUploadedFile({
+    userId,
+    folderId,
+    tempFilePath: fileObj.path,
+    originalName: fileObj.originalname,
+    mimeType: fileObj.mimetype,
+    size: fileObj.size,
     category,
-    size_bytes: fileObj.size,
-    storage_path: "pending", // will be updated below
+    extension,
     metadata,
     hash,
-    ...extra,
+    extra,
   });
-
-  // Copy+unlink instead of rename (cross-device safe: tmpdir and NAS are different mount points)
-  const stablePath = getPhysicalFilePath(userId, file._id.toString(), `.${extension}`);
-  await fs.promises.copyFile(fileObj.path, stablePath);
-  await fs.promises.unlink(fileObj.path);
-  file.storage_path = stablePath;
-  await file.save();
-
-  await User.findByIdAndUpdate(userId, { $inc: { used_bytes: fileObj.size } });
-
-  return file;
 }
 
-async function collectFolderFiles(folderId, userId, parentPath, zipItems) {
+async function prepareZipPayload(userId, items) {
+  const user = await User.findById(userId).select("+encryption_key_wrapped");
+  if (!user || !user.encryption_key_wrapped) {
+    throw new Error("User encryption key missing");
+  }
+
+  const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+  const zipItems = [];
+
+  for (const item of items) {
+    if (item.type === "file") {
+      const file = await File.findOne({ _id: item.id, user: userId });
+      if (file && fs.existsSync(file.storage_path)) {
+        zipItems.push({
+          path: file.storage_path,
+          name: file.original_name || file.name,
+          type: "file",
+          userKey: plaintextKey,
+          iv: Buffer.from(file.encryption_iv, "hex"),
+        });
+      }
+    } else if (item.type === "folder") {
+      // Need a custom collector that also attaches keys
+      await collectFolderFilesEncrypted(item.id, userId, "", zipItems, plaintextKey);
+    }
+  }
+  return zipItems;
+}
+
+async function collectFolderFilesEncrypted(folderId, userId, parentPath, zipItems, plaintextKey) {
   const folder = await Folder.findOne({ _id: folderId, user: userId });
   if (!folder) {
     return;
@@ -467,29 +616,20 @@ async function collectFolderFiles(folderId, userId, parentPath, zipItems) {
   const files = await File.find({ folder: folderId, user: userId, is_deleted: false });
   for (const f of files) {
     if (fs.existsSync(f.storage_path)) {
-      zipItems.push({ path: f.storage_path, name: `${currentPath}/${f.original_name || f.name}`, type: "file" });
+      zipItems.push({
+        path: f.storage_path,
+        name: `${currentPath}/${f.original_name || f.name}`,
+        type: "file",
+        userKey: plaintextKey,
+        iv: Buffer.from(f.encryption_iv, "hex"),
+      });
     }
   }
 
   const subfolders = await Folder.find({ parent: folderId, user: userId, is_deleted: false });
   for (const sf of subfolders) {
-    await collectFolderFiles(sf._id, userId, currentPath, zipItems);
+    await collectFolderFilesEncrypted(sf._id, userId, currentPath, zipItems, plaintextKey);
   }
-}
-
-async function prepareZipPayload(userId, items) {
-  const zipItems = [];
-  for (const item of items) {
-    if (item.type === "file") {
-      const file = await File.findOne({ _id: item.id, user: userId });
-      if (file && fs.existsSync(file.storage_path)) {
-        zipItems.push({ path: file.storage_path, name: file.original_name || file.name, type: "file" });
-      }
-    } else if (item.type === "folder") {
-      await collectFolderFiles(item.id, userId, "", zipItems);
-    }
-  }
-  return zipItems;
 }
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
@@ -508,6 +648,7 @@ const FileService = {
   bulkCopy,
   prepareZipPayload,
   processUpload,
+  finalizeUploadedFile,
 };
 
 export default FileService;

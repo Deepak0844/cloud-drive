@@ -8,6 +8,11 @@ import User from "#models/User.js";
 
 // Services
 import FileService from "#services/fileService.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
+import HlsCacheUtils from "#utils/hlsCacheUtils.js";
+
+// Config
+import config from "#config/env.js";
 
 // Constants
 import { ErrorMessages } from "#constants/generalConstants.js";
@@ -153,12 +158,16 @@ async function permanentDeleteRecursive(type, id, userId) {
       safeUnlink(file.storage_path);
       safeUnlink(file.thumbnail_path);
 
-      // Update user quota atomically
-      await User.findByIdAndUpdate(userId, {
-        $inc: { used_bytes: -file.size_bytes },
-      });
-      // Safety check: ensure used_bytes doesn't go below 0
-      await User.findOneAndUpdate({ _id: userId, used_bytes: { $lt: 0 } }, { used_bytes: 0 });
+      // Purge any cached HLS segments for this file
+      await HlsCacheUtils.purgeFileCache(config.NAS_STORAGE_PATH, file._id.toString());
+
+      // Atomically decrement quota — $max:0 prevents going negative in a single operation
+      // Decrement quota — fetch current value first to avoid aggregation pipeline syntax
+      const userDoc = await User.findById(userId).select("used_bytes");
+      if (userDoc) {
+        const newUsedBytes = Math.max((userDoc.used_bytes || 0) - (file.size_bytes || 0), 0);
+        await User.findByIdAndUpdate(userId, { $set: { used_bytes: newUsedBytes } });
+      }
 
       await file.deleteOne();
     }
@@ -201,6 +210,15 @@ async function copyRecursive(type, id, targetFolderId, userId) {
     const uniqueName = await FileService.getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
     const ext = sourceFile.extension ? `.${sourceFile.extension}` : "";
 
+    const user = await User.findById(userId).select("+encryption_key_wrapped");
+    if (!user || !user.encryption_key_wrapped || !sourceFile.encryption_iv) {
+      throw new Error("Encryption keys missing");
+    }
+
+    const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+    const sourceIv = Buffer.from(sourceFile.encryption_iv, "hex");
+    const newIv = CryptoUtils.generateFileIv();
+
     // Create DB record first to get a stable _id for the bucketed path
     const newFile = await File.create({
       user: userId,
@@ -212,15 +230,28 @@ async function copyRecursive(type, id, targetFolderId, userId) {
       category: sourceFile.category,
       size_bytes: sourceFile.size_bytes,
       storage_path: "pending",
+      encryption_iv: newIv.toString("hex"),
       tags: sourceFile.tags,
       metadata: sourceFile.metadata,
     });
 
     const newStoragePath = FileService.getPhysicalFilePath(userId, newFile._id.toString(), ext);
 
-    // Physical copy
+    // Stream from source (decrypt) to destination (encrypt with new IV)
     if (fs.existsSync(sourceFile.storage_path)) {
-      fs.copyFileSync(sourceFile.storage_path, newStoragePath);
+      const decipherStream = CryptoUtils.getDecipherStream(plaintextKey, sourceIv);
+      const cipherStream = CryptoUtils.getCipherStream(plaintextKey, newIv);
+
+      await new Promise((resolve, reject) => {
+        const readStream = fs.createReadStream(sourceFile.storage_path);
+        const writeStream = fs.createWriteStream(newStoragePath);
+
+        readStream.pipe(decipherStream).pipe(cipherStream).pipe(writeStream).on("finish", resolve).on("error", reject);
+
+        readStream.on("error", reject);
+        decipherStream.on("error", reject);
+        cipherStream.on("error", reject);
+      });
     }
 
     newFile.storage_path = newStoragePath;
@@ -232,7 +263,28 @@ async function copyRecursive(type, id, targetFolderId, userId) {
     if (sourceFile.thumbnail_path && fs.existsSync(sourceFile.thumbnail_path)) {
       const thumbDir = FileService.getThumbnailDir(userId);
       const newThumbPath = path.join(thumbDir, `${newFile._id}.jpg`);
-      fs.copyFileSync(sourceFile.thumbnail_path, newThumbPath);
+
+      if (sourceFile.thumbnail_iv) {
+        const thumbSourceIv = Buffer.from(sourceFile.thumbnail_iv, "hex");
+        const thumbNewIv = CryptoUtils.generateFileIv();
+        const thumbDecipher = CryptoUtils.getDecipherStream(plaintextKey, thumbSourceIv);
+        const thumbCipher = CryptoUtils.getCipherStream(plaintextKey, thumbNewIv);
+
+        await new Promise((resolve, reject) => {
+          const readStream = fs.createReadStream(sourceFile.thumbnail_path);
+          const writeStream = fs.createWriteStream(newThumbPath);
+          readStream.pipe(thumbDecipher).pipe(thumbCipher).pipe(writeStream).on("finish", resolve).on("error", reject);
+          readStream.on("error", reject);
+          thumbDecipher.on("error", reject);
+          thumbCipher.on("error", reject);
+        });
+
+        newFile.thumbnail_iv = thumbNewIv.toString("hex");
+      } else {
+        // Fallback for any old unencrypted thumbnails
+        fs.copyFileSync(sourceFile.thumbnail_path, newThumbPath);
+      }
+
       newFile.thumbnail_path = newThumbPath;
     }
 

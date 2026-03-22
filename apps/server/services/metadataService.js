@@ -1,5 +1,5 @@
+import { execFile } from "child_process";
 import { path as ffprobePath } from "@ffprobe-installer/ffprobe";
-import ffmpeg from "fluent-ffmpeg";
 import sharp from "sharp";
 import * as mm from "music-metadata";
 import ExifParser from "exif-parser";
@@ -10,7 +10,8 @@ import FileUtils from "#utils/fileUtils.js";
 import { FileCategories } from "#constants/generalConstants.js";
 import logger from "#utils/logger.js";
 
-ffmpeg.setFfprobePath(ffprobePath);
+// Prefer system ffprobe over npm-bundled binary (better codec support)
+const resolvedFfprobePath = fs.existsSync("/usr/bin/ffprobe") ? "/usr/bin/ffprobe" : ffprobePath;
 
 /**
  * Determine the category based on MIME type and extension
@@ -19,16 +20,16 @@ function getCategory(mimeType, filename) {
   const ext = FileUtils.getFileExtension(filename).toLowerCase();
 
   const imageExts = ["jpg", "jpeg", "png", "gif", "webp", "avif", "heic", "heif", "tiff", "tif", "bmp", "svg"];
-  const videoExts = ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts", "3gp"];
+  const videoExts = ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts", "3gp", "hevc", "h265"];
   const audioExts = ["mp3", "wav", "flac", "aac", "m4a", "ogg", "opus", "wma"];
 
-  if (mimeType.startsWith("image/") || imageExts.includes(ext)) {
+  if (mimeType?.startsWith("image/") || imageExts.includes(ext)) {
     return FileCategories.IMAGE;
   }
-  if (mimeType.startsWith("video/") || videoExts.includes(ext)) {
+  if (mimeType?.startsWith("video/") || videoExts.includes(ext)) {
     return FileCategories.VIDEO;
   }
-  if (mimeType.startsWith("audio/") || audioExts.includes(ext)) {
+  if (mimeType?.startsWith("audio/") || audioExts.includes(ext)) {
     return FileCategories.AUDIO;
   }
 
@@ -46,17 +47,26 @@ function getCategory(mimeType, filename) {
 }
 
 /**
- * Promise wrapper for ffprobe
+ * Promise wrapper for ffprobe — direct execFile, no fluent-ffmpeg layer.
  */
 function probeFile(filePath) {
   return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(filePath, (err, data) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(data);
+    execFile(
+      resolvedFfprobePath,
+      ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", filePath],
+      { maxBuffer: 10 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        if (err) {
+          reject(new Error(`ffprobe failed for ${filePath}: ${err.message}\n${stderr}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(stdout));
+        } catch (parseErr) {
+          reject(new Error(`ffprobe JSON parse failed: ${parseErr.message}`));
+        }
       }
-    });
+    );
   });
 }
 
@@ -92,7 +102,7 @@ async function extractMetadata(filePath, category) {
           }
         }
       } catch (exifErr) {
-        console.warn("EXIF extraction failed:", exifErr.message);
+        logger.warn("EXIF extraction failed:", exifErr.message);
       }
     } else if (category === FileCategories.VIDEO) {
       const probeData = await probeFile(filePath);

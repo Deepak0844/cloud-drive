@@ -11,7 +11,13 @@ import EmailService from "#services/emailService.js";
 import config from "#config/env.js";
 
 // Constants
-import { ErrorMessages, SuccessMessages, SocketEvents, NotificationTypes } from "#constants/generalConstants.js";
+import {
+  ErrorMessages,
+  SuccessMessages,
+  SocketEvents,
+  NotificationTypes,
+  NotificationDefaults,
+} from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
@@ -20,6 +26,7 @@ import asyncHandler from "#middlewares/asyncHandler.js";
 // Utils
 import ResponseUtils from "#utils/responseUtils.js";
 import logger from "#utils/logger.js";
+import { paginateQuery } from "#utils/paginationUtils.js";
 
 // ─── Preference Groupings ─────────────────────────────────────────────────────
 
@@ -41,8 +48,9 @@ const SECURITY_ALERT_TYPES = new Set([NotificationTypes.SECURITY_ALERT]);
  * @access  Private
  */
 export const getNotifications = asyncHandler(async (req, res) => {
-  const notifications = await Notification.find({ user: req.user.id }).sort("-createdAt");
-  return ResponseUtils.success(res, notifications, HttpStatus.OK, { count: notifications.length });
+  const { pg, ps } = req.query;
+  const result = await paginateQuery(Notification, { user: req.user.id }, { pg, ps, sort: "-createdAt" });
+  return ResponseUtils.success(res, result);
 });
 
 /**
@@ -72,6 +80,31 @@ export const markAsRead = asyncHandler(async (req, res) => {
 export const markAllAsRead = asyncHandler(async (req, res) => {
   await Notification.updateMany({ user: req.user.id, is_read: false }, { is_read: true });
   return ResponseUtils.success(res, { message: SuccessMessages.NOTIFICATIONS_MARKED_READ });
+});
+
+/**
+ * @desc    Delete a single notification
+ * @route   DELETE /api/v1/notifications/:id
+ * @access  Private
+ */
+export const deleteNotification = asyncHandler(async (req, res) => {
+  const notification = await Notification.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+
+  if (!notification) {
+    return ResponseUtils.error(res, ErrorMessages.NOTIFICATION_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  return ResponseUtils.success(res, { message: SuccessMessages.NOTIFICATION_DELETED });
+});
+
+/**
+ * @desc    Delete all notifications for the current user
+ * @route   DELETE /api/v1/notifications
+ * @access  Private
+ */
+export const deleteAllNotifications = asyncHandler(async (req, res) => {
+  await Notification.deleteMany({ user: req.user.id });
+  return ResponseUtils.success(res, { message: SuccessMessages.ALL_NOTIFICATIONS_DELETED });
 });
 
 /**
@@ -163,8 +196,8 @@ export async function createNotification(userId, type, title, message, data = {}
           userName: user.name,
           alertTitle: title,
           alertMessage: message,
-          usedPercentage: data.usedPercentage || "80",
-          totalQuota: data.totalQuota || "10GB",
+          usedPercentage: data.usedPercentage || NotificationDefaults.USED_PERCENTAGE,
+          totalQuota: data.totalQuota || NotificationDefaults.TOTAL_QUOTA,
           actionUrl: `${config.APP_BASE_URL}/quota`,
         },
       }).catch((err) => logger.error(`[StorageAlert Email] Failed:`, err));

@@ -1,3 +1,13 @@
+/**
+ * Escape a string for safe use in a MongoDB $regex query.
+ * Prevents ReDoS by neutralising regex metacharacters supplied by user input.
+ * @param {string} str
+ * @returns {string}
+ */
+export function escapeRegex(str) {
+  return str.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+}
+
 export const applyAdvancedFilters = (queryObj, queryParams, isFolder = false) => {
   const { category, minSize, maxSize, startDate, endDate, tag } = queryParams;
 

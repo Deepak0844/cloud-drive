@@ -1,4 +1,9 @@
-const ApiBasePath = "/api/v1";
+export const ApiBasePath = "/api/v1";
+
+/**
+ * Sentinel ID used to represent the root folder throughout the web app.
+ */
+export const ROOT_FOLDER_ID = "root";
 const FilesBasePath = "/files";
 const AuthBasePath = "/auth";
 const FoldersBasePath = "/folders";
@@ -26,6 +31,8 @@ export const FileServiceUrls = {
   preview: `${FilesBasePath}/:id/preview`,
   stream: `${FilesBasePath}/:id/stream`,
   thumbnail: `${FilesBasePath}/:id/preview?thumbnail=true`,
+  playbackInfo: `${FilesBasePath}/:id/playback-info`,
+  hlsPlaylist: `${FilesBasePath}/:id/hls/master.m3u8`,
   initUpload: `${FilesBasePath}/upload/init`,
   uploadChunk: `${FilesBasePath}/upload/chunk`,
 };
@@ -102,5 +109,3 @@ export const TrashServiceUrls = {
   permanentlyDeleteItems: `${TrashBasePath}/permanent`,
   emptyTrash: `${TrashBasePath}/empty`,
 };
-
-export { ApiBasePath };
