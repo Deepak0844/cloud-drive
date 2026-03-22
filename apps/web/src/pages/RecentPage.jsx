@@ -22,6 +22,7 @@ import PageHeader from "@components/layout/PageHeader";
 import Loader from "@components/common/Loader";
 
 // Hooks
+import { useFavoriteActions } from "@hooks/files/useFavoriteActions";
 import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
 import { useListPageParams } from "@hooks/files/useListPageParams";
 import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
@@ -59,6 +60,8 @@ export default function RecentPage() {
     setPage,
     updateParams,
   });
+
+  const { handleToggleFileFavorite, isFileFavoriting } = useFavoriteActions();
 
   // Derived / computed variables
   const paginationData = recentData?.pagination || {};
@@ -194,6 +197,8 @@ export default function RecentPage() {
                             onShowInfo={() => {
                               setInfoItem({ ...file, id, type: "file" });
                             }}
+                            onToggleFavorite={handleToggleFileFavorite}
+                            isFavoriting={isFileFavoriting}
                             showParentContext={true}
                           />
                         );

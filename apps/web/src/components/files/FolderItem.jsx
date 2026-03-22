@@ -3,9 +3,6 @@ import React from "react";
 import { Folder as FolderIcon, MoreVertical, Star, Check } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Services (RTK Query hooks)
-import { useToggleFolderFavoriteMutation } from "@services/api/folderApi";
-
 // Utils
 import { buildItemMenuItems } from "@utils/menuUtils";
 import { cn } from "@lib/utils";
@@ -24,13 +21,12 @@ function FolderItem({
   onDelete,
   onMove,
   onCopy,
+  onToggleFavorite = () => {},
+  isFavoriting = false,
   viewMode = "grid",
   isTrashItem = false,
   showParentContext = false,
 }) {
-  // RTK Query hooks
-  const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFolderFavoriteMutation();
-
   // Custom & shared hooks
   const clickTimeoutRef = React.useRef(null);
 
@@ -74,7 +70,7 @@ function FolderItem({
     onMove,
     onCopy,
     onDelete,
-    toggleFavorite,
+    toggleFavorite: onToggleFavorite,
   });
 
   // Render
@@ -166,8 +162,16 @@ function FolderItem({
             ? "border-primary/60 bg-primary/10 shadow-glow"
             : "glass-card border-white/10 border-t-white/20 border-l-white/15 hover:border-primary/40 hover:shadow-glow bg-white/10 shadow-premium"
         )}
+        role="button"
+        tabIndex={0}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleClick(e);
+          }
+        }}
       >
         <CardContent className="p-3">
           {isSelected && (

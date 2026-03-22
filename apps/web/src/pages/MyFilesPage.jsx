@@ -12,6 +12,7 @@ import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 import { useDragDrop } from "@hooks/files/useDragDrop";
 import { useFileActions } from "@hooks/files/useFileActions";
+import { useFavoriteActions } from "@hooks/files/useFavoriteActions";
 import { useFolderCreation } from "@hooks/files/useFolderCreation";
 import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
 import { useListPageParams } from "@hooks/files/useListPageParams";
@@ -160,6 +161,10 @@ function MyFilesView() {
     isActionLoading,
   } = useFileActions({ folders, clearSelection });
 
+  // 5. Custom & shared hooks (continued)
+  const { handleToggleFileFavorite, handleToggleFolderFavorite, isFileFavoriting, isFolderFavoriting } =
+    useFavoriteActions();
+
   const {
     isFolderModalOpen,
     setIsFolderModalOpen,
@@ -232,6 +237,10 @@ function MyFilesView() {
             handleMoveTrigger={handleMoveTrigger}
             handleCopyTrigger={handleCopyTrigger}
             handleDownload={handleDownload}
+            handleToggleFileFavorite={handleToggleFileFavorite}
+            handleToggleFolderFavorite={handleToggleFolderFavorite}
+            isFileFavoriting={isFileFavoriting}
+            isFolderFavoriting={isFolderFavoriting}
             isDragging={isDragging}
           />
         </div>

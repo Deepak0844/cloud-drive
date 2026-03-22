@@ -6,9 +6,6 @@ import { motion } from "framer-motion";
 // Constants
 import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 
-// Services (RTK Query hooks)
-import { useToggleFileFavoriteMutation } from "@services/api/fileApi";
-
 // Utils
 import { UrlUtils } from "@shared-utils/utils";
 import { getFileInfo } from "@utils/fileDisplayUtils";
@@ -31,15 +28,14 @@ function FileItem({
   onMove,
   onCopy,
   handleDownload,
+  onToggleFavorite = () => {},
+  isFavoriting = false,
   viewMode = "grid",
   isTrashItem = false,
   showParentContext = false,
 }) {
   // Local state
   const [thumbnailSrc, setThumbnailSrc] = useState(null);
-
-  // RTK Query hooks
-  const [toggleFavorite, { isLoading: isFavoriting }] = useToggleFileFavoriteMutation();
 
   // Custom & shared hooks
   const clickTimeoutRef = React.useRef(null);
@@ -110,7 +106,7 @@ function FileItem({
     onMove,
     onCopy,
     onDelete,
-    toggleFavorite,
+    toggleFavorite: onToggleFavorite,
   });
 
   // Render
@@ -217,8 +213,16 @@ function FileItem({
             ? "border-primary/60 bg-primary/10 shadow-glow"
             : "glass-card border-white/10 border-t-white/20 border-l-white/15 hover:border-primary/40 hover:shadow-glow bg-white/10 shadow-premium"
         )}
+        role="button"
+        tabIndex={0}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleClick(e);
+          }
+        }}
       >
         <CardContent className="p-2">
           {isSelected && (

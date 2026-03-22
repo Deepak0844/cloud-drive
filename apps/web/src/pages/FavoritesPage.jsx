@@ -9,6 +9,7 @@ import { ItemTypes } from "@shared-constants/constants";
 
 // Hooks
 import { useFileActions } from "@hooks/files/useFileActions";
+import { useFavoriteActions } from "@hooks/files/useFavoriteActions";
 import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
 import { useListPageParams } from "@hooks/files/useListPageParams";
 import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
@@ -95,6 +96,10 @@ function FavoritesPage() {
     clearSelection,
     folders,
   });
+
+  // 5. Custom & shared hooks (continued)
+  const { handleToggleFileFavorite, handleToggleFolderFavorite, isFileFavoriting, isFolderFavoriting } =
+    useFavoriteActions();
 
   // 7. Derived / computed variables
 
@@ -193,6 +198,8 @@ function FavoritesPage() {
                           onDelete={handleDeleteTrigger}
                           onMove={handleMoveTrigger}
                           onCopy={handleCopyTrigger}
+                          onToggleFavorite={handleToggleFolderFavorite}
+                          isFavoriting={isFolderFavoriting}
                         />
                       </div>
                     );
@@ -229,6 +236,8 @@ function FavoritesPage() {
                           onDelete={handleDeleteTrigger}
                           onMove={handleMoveTrigger}
                           onCopy={handleCopyTrigger}
+                          onToggleFavorite={handleToggleFileFavorite}
+                          isFavoriting={isFileFavoriting}
                         />
                       </div>
                     );

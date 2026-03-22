@@ -17,7 +17,7 @@ async function sha256Hex(buffer) {
  * Send a single chunk as raw binary using XHR for real onUploadProgress events.
  * Metadata goes in query params — no FormData serialization.
  */
-export function uploadChunkRaw({ uploadId, chunkIndex, chunkHash, buffer, signal, onProgress, authToken }) {
+export function uploadChunkRaw({ uploadId, chunkIndex, chunkHash, buffer, signal, onProgress }) {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new Error("canceled"));
 
@@ -28,7 +28,7 @@ export function uploadChunkRaw({ uploadId, chunkIndex, chunkHash, buffer, signal
     )}&chunkIndex=${chunkIndex}${hashParam}`;
 
     xhr.open("POST", url);
-    xhr.setRequestHeader("Authorization", `Bearer ${authToken}`);
+    xhr.withCredentials = true;
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
 
     xhr.upload.onprogress = (e) => {
@@ -81,14 +81,7 @@ export async function uploadSingleFile({ httpClient, file, folderId, signal, onP
  * Orchestrate the chunked upload of a file.
  * Handles slicing, calling uploadChunkRaw, and updating state.
  */
-export async function uploadFileInChunks({
-  file,
-  state,
-  signal,
-  authToken,
-  onProgressFn,
-  chunkSize = UPLOAD_CHUNK_SIZE,
-}) {
+export async function uploadFileInChunks({ file, state, signal, onProgressFn, chunkSize = UPLOAD_CHUNK_SIZE }) {
   // On resume, state.uploadedChunkSet contains indices already confirmed by the server;
   // skip those chunks entirely so only missing chunks are re-sent.
   const uploadedChunkSet = state.uploadedChunkSet instanceof Set ? state.uploadedChunkSet : new Set();
@@ -122,7 +115,6 @@ export async function uploadFileInChunks({
       chunkHash,
       buffer,
       signal,
-      authToken,
       onProgress: (loaded) => {
         const totalSoFar = bytesBeforeThisChunk + loaded;
         const prog = Math.min(Math.round((totalSoFar / file.size) * 100), 99);

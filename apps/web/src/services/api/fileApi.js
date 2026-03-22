@@ -91,7 +91,6 @@ const uploadFileChunkedMutation = () => ({
   ) {
     const { signal } = _queryApi;
     const httpClient = HttpClientFactory.getInstance();
-    const authToken = httpClient.authToken;
 
     try {
       const safeChunkSize = UPLOAD_CHUNK_SIZE || DEFAULT_CHUNK_SIZE;
@@ -124,7 +123,6 @@ const uploadFileChunkedMutation = () => ({
         file,
         state,
         signal,
-        authToken,
         onProgressFn,
         chunkSize: safeChunkSize,
       });

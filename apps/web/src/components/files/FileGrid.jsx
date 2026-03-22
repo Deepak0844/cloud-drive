@@ -28,6 +28,10 @@ export default function FileGrid({
   handleMoveTrigger,
   handleCopyTrigger,
   handleDownload,
+  handleToggleFileFavorite = () => {},
+  handleToggleFolderFavorite = () => {},
+  isFileFavoriting = false,
+  isFolderFavoriting = false,
   isDragging,
 }) {
   // Render
@@ -67,6 +71,8 @@ export default function FileGrid({
                       onDelete={handleDeleteTrigger}
                       onMove={handleMoveTrigger}
                       onCopy={handleCopyTrigger}
+                      onToggleFavorite={handleToggleFolderFavorite}
+                      isFavoriting={isFolderFavoriting}
                     />
                   </div>
                 );
@@ -111,6 +117,8 @@ export default function FileGrid({
                       onMove={handleMoveTrigger}
                       onCopy={handleCopyTrigger}
                       handleDownload={handleDownload}
+                      onToggleFavorite={handleToggleFileFavorite}
+                      isFavoriting={isFileFavoriting}
                     />
                   </div>
                 );
