@@ -10,11 +10,44 @@ import config from "#config/env.js";
 
 // Constants
 import { Roles } from "@shared-constants/constants";
+import { SocketEvents, SystemMonitor } from "#constants/generalConstants.js";
+
+// Services
+import SystemService from "#services/systemService.js";
 
 // Utils
 import logger from "#utils/logger.js";
 
 let io = null;
+
+// Shared hardware-stats interval — one timer regardless of how many admins are watching
+let hardwareStatsInterval = null;
+let adminSocketCount = 0;
+
+function startHardwareStatsInterval() {
+  if (hardwareStatsInterval) {
+    return;
+  } // already running
+  hardwareStatsInterval = setInterval(async () => {
+    try {
+      const stats = await SystemService.getHardwareStats();
+      if (io) {
+        io.to("admins").emit(SocketEvents.HARDWARE_STATS, stats);
+      }
+    } catch (err) {
+      logger.error("Hardware stats push failed:", err.message);
+    }
+  }, SystemMonitor.STATS_INTERVAL_MS);
+  logger.info("📊 Hardware stats interval started");
+}
+
+function stopHardwareStatsInterval() {
+  if (hardwareStatsInterval) {
+    clearInterval(hardwareStatsInterval);
+    hardwareStatsInterval = null;
+    logger.info("📊 Hardware stats interval stopped (no admins connected)");
+  }
+}
 
 /**
  * Initialize Socket.io with the provided HTTP server
@@ -84,6 +117,8 @@ function init(server) {
     if (socket.userRole === Roles.ADMIN) {
       socket.join("admins");
       logger.info(`👨‍💼 Admin joined room: admins`);
+      adminSocketCount++;
+      startHardwareStatsInterval();
     }
 
     socket.on("error", (err) => {
@@ -92,6 +127,12 @@ function init(server) {
 
     socket.on("disconnect", (reason) => {
       logger.info(`❌ Socket disconnected: ${uId} (Reason: ${reason})`);
+      if (socket.userRole === Roles.ADMIN) {
+        adminSocketCount = Math.max(0, adminSocketCount - 1);
+        if (adminSocketCount === 0) {
+          stopHardwareStatsInterval();
+        }
+      }
     });
   });
 

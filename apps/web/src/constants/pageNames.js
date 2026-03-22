@@ -15,7 +15,9 @@ const PageNames = {
   TRASH: "Trash",
   PHOTOS: "Photos",
   SETTINGS: "Settings",
-  ADMIN: "Admin",
+  ADMIN: "Dashboard",
+  ADMIN_USERS: "Users",
+  ADMIN_QUOTA: "Quota Requests",
 
   // Other
   ERROR: "Error",

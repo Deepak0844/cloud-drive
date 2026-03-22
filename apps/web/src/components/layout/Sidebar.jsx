@@ -1,13 +1,15 @@
 // React core & third-party libraries
 import React from "react";
 import {
-  SlidersHorizontal,
+  LayoutDashboard,
   Trash2,
   FolderOpen,
   History,
   Image as ImageIcon,
   Settings,
   Star,
+  Users,
+  Zap,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -92,8 +94,22 @@ function Sidebar({ collapsed, setCollapsed, isMobile }) {
     },
     {
       key: PageUrls.AdminPage,
-      icon: <SlidersHorizontal size={20} strokeWidth={2.5} />,
+      icon: <LayoutDashboard size={20} strokeWidth={2.5} />,
       label: PageNames.ADMIN,
+      roles: [Roles.ADMIN],
+      activeClass: "sidebar-active-indigo",
+    },
+    {
+      key: PageUrls.AdminUsersPage,
+      icon: <Users size={20} strokeWidth={2.5} />,
+      label: PageNames.ADMIN_USERS,
+      roles: [Roles.ADMIN],
+      activeClass: "sidebar-active-indigo",
+    },
+    {
+      key: PageUrls.AdminQuotaPage,
+      icon: <Zap size={20} strokeWidth={2.5} />,
+      label: PageNames.ADMIN_QUOTA,
       roles: [Roles.ADMIN],
       activeClass: "sidebar-active-indigo",
     },

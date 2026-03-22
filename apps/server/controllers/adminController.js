@@ -1,5 +1,4 @@
 // Models
-import File from "#models/File.js";
 import QuotaRequest from "#models/QuotaRequest.js";
 import User from "#models/User.js";
 import { paginateQuery } from "#utils/paginationUtils.js";
@@ -82,21 +81,14 @@ export const updateUserQuota = asyncHandler(async (req, res) => {
  * @access  Private/Admin
  */
 export const getSystemStats = asyncHandler(async (req, res) => {
-  const [hardware, analytics] = await Promise.all([
+  const [hardware, dashboard] = await Promise.all([
     SystemService.getHardwareStats(),
-    SystemService.getStorageAnalytics(),
+    SystemService.getDashboardStats(),
   ]);
-
-  const userCount = await User.countDocuments();
-  const fileCount = await File.countDocuments({ is_deleted: false });
 
   return ResponseUtils.success(res, {
     system: hardware,
-    analytics: analytics,
-    counts: {
-      total_users: userCount,
-      total_files: fileCount,
-    },
+    ...dashboard,
   });
 });
 

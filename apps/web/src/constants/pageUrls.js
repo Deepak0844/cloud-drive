@@ -17,7 +17,9 @@ const PageUrls = {
   TrashPage: "/trash",
   PhotosPage: "/photos",
   SettingsPage: "/settings",
-  AdminPage: "/admin",
+  AdminPage: "/admin/dashboard",
+  AdminUsersPage: "/admin/users",
+  AdminQuotaPage: "/admin/quota",
 };
 
 export default PageUrls;

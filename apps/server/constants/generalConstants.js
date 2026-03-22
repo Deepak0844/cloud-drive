@@ -9,6 +9,14 @@ export const SocketEvents = {
   FILE_CHANGE: "FILE_CHANGE",
   FOLDER_CHANGE: "FOLDER_CHANGE",
   STORAGE_SYNC_COMPLETE: "STORAGE_SYNC_COMPLETE",
+  HARDWARE_STATS: "HARDWARE_STATS",
+};
+
+/**
+ * System monitor configuration
+ */
+export const SystemMonitor = {
+  STATS_INTERVAL_MS: 5000, // push hardware stats to admins every 5 seconds
 };
 
 /**

@@ -1,4 +1,5 @@
 import React from "react";
+import { Navigate } from "react-router-dom";
 
 // HOC
 import ProtectedRoute from "@components/hoc/ProtectedRoute";
@@ -16,6 +17,8 @@ import RecentPage from "@pages/RecentPage";
 import TrashPage from "@pages/TrashPage";
 import SettingsPage from "@pages/SettingsPage";
 import AdminDashboardPage from "@pages/AdminDashboardPage";
+import AdminUsersPage from "@pages/AdminUsersPage";
+import AdminQuotaPage from "@pages/AdminQuotaPage";
 
 // Layout
 import AppLayout from "@components/layout/AppLayout";
@@ -93,6 +96,30 @@ export const MainRoutes = {
       element: (
         <ProtectedRoute allowedRoles={ADMIN_ONLY}>
           <AdminDashboardPage />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: "/admin",
+      element: (
+        <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+          <Navigate to={PageUrls.AdminPage} replace />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: PageUrls.AdminUsersPage,
+      element: (
+        <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+          <AdminUsersPage />
+        </ProtectedRoute>
+      ),
+    },
+    {
+      path: PageUrls.AdminQuotaPage,
+      element: (
+        <ProtectedRoute allowedRoles={ADMIN_ONLY}>
+          <AdminQuotaPage />
         </ProtectedRoute>
       ),
     },
