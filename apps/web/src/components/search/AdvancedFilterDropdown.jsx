@@ -124,18 +124,24 @@ function AdvancedFilterDropdown({ onFilter, onClear, initialFilters = {}, trigge
                 <Input
                   type="date"
                   className="bg-surface-alt/30 border-white/5 rounded-xl h-10 text-xs"
-                  value={filters.startDate ? filters.startDate.split("T")[0] : ""}
+                  value={filters.startDate ? new Date(filters.startDate).toLocaleDateString("en-CA") : ""}
                   onChange={(e) =>
-                    updateFilter("startDate", e.target.value ? new Date(e.target.value).toISOString() : null)
+                    updateFilter(
+                      "startDate",
+                      e.target.value ? new Date(e.target.value + "T00:00:00").toISOString() : null
+                    )
                   }
                 />
                 <span className="text-label-tertiary opacity-50">-</span>
                 <Input
                   type="date"
                   className="bg-surface-alt/30 border-white/5 rounded-xl h-10 text-xs"
-                  value={filters.endDate ? filters.endDate.split("T")[0] : ""}
+                  value={filters.endDate ? new Date(filters.endDate).toLocaleDateString("en-CA") : ""}
                   onChange={(e) =>
-                    updateFilter("endDate", e.target.value ? new Date(e.target.value).toISOString() : null)
+                    updateFilter(
+                      "endDate",
+                      e.target.value ? new Date(e.target.value + "T23:59:59.999").toISOString() : null
+                    )
                   }
                 />
               </div>
