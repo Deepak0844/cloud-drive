@@ -1,3 +1,4 @@
+// React core & third-party libraries
 import { useRef, useState } from "react";
 
 export function useDragDrop() {

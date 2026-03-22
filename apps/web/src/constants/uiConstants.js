@@ -50,6 +50,25 @@ export const TIME_LABELS = {
 export const DEFAULT_CHUNK_SIZE = 10 * 1_000 * 1_000;
 
 /**
+ * RTK Query keepUnusedDataFor values (in seconds).
+ */
+export const CACHE_TIMES_SEC = {
+  PLAYBACK_INFO: 300,
+};
+
+/**
+ * Upload item lifecycle states.
+ */
+export const UploadStatus = {
+  IDLE: "idle",
+  UPLOADING: "uploading",
+  PAUSED: "paused",
+  SUCCESS: "success",
+  ERROR: "error",
+  CANCELLED: "cancelled",
+};
+
+/**
  * URL search-param keys specific to the Admin Dashboard page.
  */
 export const ADMIN_QUERY_PARAMS = {

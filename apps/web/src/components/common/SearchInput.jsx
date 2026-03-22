@@ -1,6 +1,6 @@
+// React core & third-party libraries
 import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Input } from "@components/ui/input";
 import { Search } from "lucide-react";
 
 // Hooks
@@ -8,6 +8,9 @@ import { useDebounce } from "@shared-hooks/hooks";
 
 // Constants
 import { QUERY_PARAMS_KEYS, TIMEOUTS } from "@shared-constants/constants";
+
+// Components
+import { Input } from "@components/ui/input";
 
 export default function SearchInput({
   placeholder = "Search",

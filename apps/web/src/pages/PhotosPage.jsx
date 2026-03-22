@@ -15,19 +15,18 @@ import { useFileActions } from "@hooks/files/useFileActions";
 
 // Constants
 import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
-
 import PageUrls from "@constants/pageUrls";
+import { FileCategories } from "@shared-constants/constants";
 
 // Utils
 import { UrlUtils } from "@shared-utils/utils";
 
 // Components
 import { Button } from "@components/ui/button";
+import FilePreviewModal from "@components/files/FilePreviewModal";
 import Loader from "@components/common/Loader";
 import PageHeader from "@components/layout/PageHeader";
-
 import { Skeleton } from "@components/ui/skeleton";
-import FilePreviewModal from "@components/files/FilePreviewModal";
 
 function PhotosPage() {
   const [previewFile, setPreviewFile] = useState(null);
@@ -40,7 +39,7 @@ function PhotosPage() {
     isLoading,
     isFetching,
   } = useGetFilesQuery({
-    category: "image",
+    category: FileCategories.IMAGE,
     recursive: true,
     pg: page,
     ps: pageSize,

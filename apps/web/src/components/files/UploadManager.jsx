@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { CloudUpload, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// App-local contexts
+// Hooks
 import { useUploadDetails } from "@contexts/UploadContext";
 
 // Components

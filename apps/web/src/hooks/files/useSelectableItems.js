@@ -1,3 +1,4 @@
+// React core & third-party libraries
 import { useCallback, useState } from "react";
 
 export function useSelectableItems() {

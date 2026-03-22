@@ -15,6 +15,7 @@ import {
 
 // Constants
 import { ItemTypes } from "@shared-constants/constants";
+import { VIEW_MODES } from "@constants/uiConstants";
 
 // Hooks
 import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
@@ -46,19 +47,16 @@ import {
 function TrashView() {
   // Local state
   const [infoItem, setInfoItem] = useState(null);
-  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState(VIEW_MODES.GRID);
+  const [confirmEmpty, setConfirmEmpty] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { clearSelection, isSelected, selectedItems, toggleSelect } = useSelectableItems();
   const { advancedFilters, debouncedSearch, page, pageSize, setPage, updateParams } = useListPageParams();
-
-  // Custom & shared hooks
 
   // RTK Query hooks
   const [emptyTrash, { isLoading: isEmptying }] = useEmptyTrashMutation();
   const [permanentlyDeleteItems, { isLoading: isDeleting }] = usePermanentlyDeleteItemsMutation();
   const [restoreItems, { isLoading: isRestoring }] = useRestoreItemsMutation();
-
-  const [confirmEmpty, setConfirmEmpty] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const {
     data: trashData,
@@ -186,7 +184,7 @@ function TrashView() {
               </h2>
               <div
                 className={
-                  viewMode === "grid"
+                  viewMode === VIEW_MODES.GRID
                     ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
                     : "flex flex-col gap-2"
                 }
@@ -223,7 +221,7 @@ function TrashView() {
               </h2>
               <div
                 className={
-                  viewMode === "grid"
+                  viewMode === VIEW_MODES.GRID
                     ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
                     : "flex flex-col gap-2"
                 }
@@ -241,7 +239,7 @@ function TrashView() {
                         viewMode={viewMode}
                         isSelected={isSelected(id)}
                         onToggleSelect={(fileId) => toggleSelect(fileId, ItemTypes.FILE)}
-                        onOpen={() => toggleSelect(id, "file")} // prevent preview in trash, just select
+                        onOpen={() => toggleSelect(id, ItemTypes.FILE)} // prevent preview in trash, just select
                         onShowInfo={setInfoItem}
                         isTrashItem={true}
                       />

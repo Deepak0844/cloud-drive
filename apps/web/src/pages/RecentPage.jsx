@@ -1,8 +1,8 @@
+// React core & third-party libraries
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Download, History } from "lucide-react";
 import { motion } from "framer-motion";
-import { FileUtils } from "@shared-utils/utils";
 
 // Services (RTK Query hooks)
 import { useGetRecentFilesQuery, useTouchFileMutation } from "@services/api/fileApi";
@@ -11,6 +11,9 @@ import { useGetRecentFilesQuery, useTouchFileMutation } from "@services/api/file
 import { ApiBasePath, BulkServiceUrls } from "@constants/serviceUrls";
 import { VIEW_MODES, TIME_LABELS } from "@constants/uiConstants";
 import { ItemTypes } from "@shared-constants/constants";
+
+// Utils
+import { FileUtils } from "@shared-utils/utils";
 
 // Components
 import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
@@ -188,7 +191,7 @@ export default function RecentPage() {
                             viewMode={viewMode}
                             isSelected={selectedItems.some((i) => String(i.id) === id)}
                             onToggleSelect={() => {
-                              toggleSelect(id, "file");
+                              toggleSelect(id, ItemTypes.FILE);
                             }}
                             onOpen={() => {
                               setPreviewFile(file);

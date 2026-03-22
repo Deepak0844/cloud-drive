@@ -1,4 +1,7 @@
+// React core & third-party libraries
 import { useRef, useCallback } from "react";
+
+// Constants
 import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 export function useUploadHandler({ addUpload, currentFolderId, handleDragEnter, handleDragLeave, handleDrop }) {
@@ -15,7 +18,7 @@ export function useUploadHandler({ addUpload, currentFolderId, handleDragEnter, 
     if (!files) return;
 
     Array.from(files).forEach((file) => {
-      addUpload(file, currentFolderId === "root" ? null : currentFolderId);
+      addUpload(file, currentFolderId === ROOT_FOLDER_ID ? null : currentFolderId);
     });
 
     // Clear the input so the same files can be selected again

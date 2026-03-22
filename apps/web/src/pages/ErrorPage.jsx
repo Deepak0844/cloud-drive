@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 
 // Constants
 import PageUrls from "@constants/pageUrls";
+import { HttpStatus } from "@shared-constants/constants";
 
 // Components
 import { Button } from "@components/ui/button";
@@ -28,7 +29,7 @@ function ErrorPage({ forcedStatus, forcedMessage }) {
   // 2. location.state (from manual redirects/middleware)
   // 3. routeError (from errorElement catches)
   // 4. Fallback defaults
-  const status = forcedStatus || location.state?.status || routeError?.status || 500;
+  const status = forcedStatus || location.state?.status || routeError?.status || HttpStatus.SERVER_ERROR;
 
   const message =
     forcedMessage ||
@@ -43,15 +44,15 @@ function ErrorPage({ forcedStatus, forcedMessage }) {
   }
 
   function getErrorIcon(code) {
-    if (code === 404) return <FileSearch className="text-primary" size={64} />;
-    if (code === 403) return <ShieldAlert className="text-warning" size={64} />;
+    if (code === HttpStatus.NOT_FOUND) return <FileSearch className="text-primary" size={64} />;
+    if (code === HttpStatus.FORBIDDEN) return <ShieldAlert className="text-warning" size={64} />;
     return <AlertTriangle className="text-error" size={64} />;
   }
 
   function getStatusType(code) {
-    if (code === 404) return "Not Found";
-    if (code === 403) return "Access Denied";
-    if (code >= 500) return "Server Error";
+    if (code === HttpStatus.NOT_FOUND) return "Not Found";
+    if (code === HttpStatus.FORBIDDEN) return "Access Denied";
+    if (code >= HttpStatus.SERVER_ERROR) return "Server Error";
     return "Something Went Wrong";
   }
 

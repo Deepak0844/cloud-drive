@@ -1,10 +1,12 @@
 // React core & third-party libraries
 import React from "react";
 import { CloudUpload, Folder } from "lucide-react";
-import { cn } from "@lib/utils";
 
 // Constants
 import { ItemTypes } from "@shared-constants/constants";
+
+// Utils
+import { cn } from "@lib/utils";
 
 // Components
 import FileItem from "@components/files/FileItem";

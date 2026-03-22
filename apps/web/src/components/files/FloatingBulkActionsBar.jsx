@@ -1,3 +1,4 @@
+// React core & third-party libraries
 import React from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";

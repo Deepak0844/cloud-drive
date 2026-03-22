@@ -14,7 +14,7 @@ import MathUtils from "@utils/mathUtils";
 
 // Constants
 import { ADMIN_QUERY_PARAMS } from "@constants/uiConstants";
-import { DefaultPagination } from "@shared-constants/constants";
+import { DefaultPagination, Roles } from "@shared-constants/constants";
 
 // Components
 import { Button } from "@components/ui/button";
@@ -50,34 +50,6 @@ export default function AdminUsersPage() {
   // Derived / computed variables
   const users = usersData?.data || [];
   const userPagination = usersData?.pagination;
-
-  // Event handlers
-  function handleEdit(user) {
-    setEditingUser(user);
-    setIsModalOpen(true);
-  }
-
-  async function handleUserStatusToggle(userId, isActive) {
-    try {
-      await updateUserStatus({ id: userId, is_active: isActive }).unwrap();
-      toast.success(`User has been ${isActive ? "enabled" : "disabled"}`);
-    } catch (_err) {
-      toast.error("Failed to update user status");
-    }
-  }
-
-  async function handleSyncStorage(userId = null) {
-    const toastId = "reanalyze";
-    try {
-      toast.loading(userId ? "Re-analyzing user storage..." : "Re-analyzing all users storage...", { id: toastId });
-      await runReanalysis({ userId }).unwrap();
-      toast.success(userId ? "User storage re-analyzed successfully" : "All storage re-analyzed successfully", {
-        id: toastId,
-      });
-    } catch (_err) {
-      toast.error("Storage re-analysis failed", { id: toastId });
-    }
-  }
 
   const userColumns = [
     {
@@ -120,7 +92,7 @@ export default function AdminUsersPage() {
       title: "Storage Used",
       key: "usage",
       render: (_, record) => {
-        if (record.role === "ADMIN") {
+        if (record.role === Roles.ADMIN) {
           return <span className="text-xs text-label-tertiary italic">Unlimited</span>;
         }
 
@@ -147,7 +119,7 @@ export default function AdminUsersPage() {
       title: "Actions",
       key: "action",
       render: (_, record) =>
-        record.role !== "ADMIN" && (
+        record.role !== Roles.ADMIN && (
           <div className="flex gap-3">
             <TooltipProvider>
               <Tooltip>
@@ -198,6 +170,34 @@ export default function AdminUsersPage() {
         ),
     },
   ];
+
+  // Event handlers
+  function handleEdit(user) {
+    setEditingUser(user);
+    setIsModalOpen(true);
+  }
+
+  async function handleUserStatusToggle(userId, isActive) {
+    try {
+      await updateUserStatus({ id: userId, is_active: isActive }).unwrap();
+      toast.success(`User has been ${isActive ? "enabled" : "disabled"}`);
+    } catch (_err) {
+      toast.error("Failed to update user status");
+    }
+  }
+
+  async function handleSyncStorage(userId = null) {
+    const toastId = "reanalyze";
+    try {
+      toast.loading(userId ? "Re-analyzing user storage..." : "Re-analyzing all users storage...", { id: toastId });
+      await runReanalysis({ userId }).unwrap();
+      toast.success(userId ? "User storage re-analyzed successfully" : "All storage re-analyzed successfully", {
+        id: toastId,
+      });
+    } catch (_err) {
+      toast.error("Storage re-analysis failed", { id: toastId });
+    }
+  }
 
   return (
     <motion.div

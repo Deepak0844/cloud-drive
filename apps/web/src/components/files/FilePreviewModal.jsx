@@ -17,7 +17,7 @@ import VideoPlayer from "@components/media/VideoPlayer";
 import AudioPlayer from "@components/media/AudioPlayer";
 import ItemDetailsContent from "./ItemDetailsContent";
 
-// Services
+// Services (RTK Query hooks)
 import { useGetPlaybackInfoQuery } from "@services/api/fileApi";
 
 export default function FilePreviewModal({
@@ -45,8 +45,21 @@ export default function FilePreviewModal({
   const canGoNext = hasMultipleFiles && currentIndex < allFiles.length - 1;
   const canGoPrev = hasMultipleFiles && currentIndex > 0;
 
+  // RTK Query hooks
+  // Fetch HLS/native playback strategy for video and audio files
+  const {
+    data: playbackInfoResponse,
+    isLoading: isPlaybackInfoLoading,
+    isError: isPlaybackInfoError,
+  } = useGetPlaybackInfoQuery(fileId, {
+    skip: !fileId || !isMediaFile || !open,
+  });
+
+  const playbackInfo = playbackInfoResponse?.data;
+
+  // Event handlers
   const handleNext = useCallback(
-    (e) => {
+    function handleNext(e) {
       e?.stopPropagation();
       if (canGoNext) onNavigate?.(currentIndex + 1);
     },
@@ -54,14 +67,14 @@ export default function FilePreviewModal({
   );
 
   const handlePrev = useCallback(
-    (e) => {
+    function handlePrev(e) {
       e?.stopPropagation();
       if (canGoPrev) onNavigate?.(currentIndex - 1);
     },
     [canGoPrev, currentIndex, onNavigate]
   );
 
-  // Keyboard shortcuts
+  // Effects
   useEffect(() => {
     if (!open) return;
 
@@ -88,17 +101,6 @@ export default function FilePreviewModal({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, handleNext, handlePrev, onClose]);
-
-  // Fetch HLS/native playback strategy for video and audio files
-  const {
-    data: playbackInfoResponse,
-    isLoading: isPlaybackInfoLoading,
-    isError: isPlaybackInfoError,
-  } = useGetPlaybackInfoQuery(fileId, {
-    skip: !fileId || !isMediaFile || !open,
-  });
-
-  const playbackInfo = playbackInfoResponse?.data;
 
   // Derive preview URL for images and PDFs
   useEffect(() => {

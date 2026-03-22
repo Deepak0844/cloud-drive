@@ -1,3 +1,4 @@
+// React core & third-party libraries
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 

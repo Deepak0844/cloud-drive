@@ -1,24 +1,22 @@
 // React core & third-party libraries
 import React, { useState, useEffect } from "react";
-
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Bell, Lock, Cloud, Image as ImageIcon, PlayCircle, Mic, FileText, Archive, File, Send } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Schemas
+// Utils
 import { profileFormSchema } from "@schemas/settingsSchemas";
+import { formatBytes } from "@shared-utils/utils";
 
 // Services (RTK Query hooks)
 import { useGetMeQuery, useUpdateProfileMutation } from "@services/api/authApi";
 import { useGetQuotaBreakdownQuery, useGetQuotaUsageQuery } from "@services/api/quotaApi";
 
-// Utils
-import { formatBytes } from "@shared-utils/utils";
-
 // Constants
 import { CATEGORY_CONFIG } from "@constants/uiConstants";
+import { Roles } from "@shared-constants/constants";
 
 // Components
 import ChangePasswordModal from "@components/settings/ChangePasswordModal";
@@ -53,7 +51,7 @@ function SettingsPage() {
 
   // Derived / computed variables
   const user = userResponse?.data;
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = user?.role === Roles.ADMIN;
 
   // RTK Query hooks
   const { data: breakdown, isLoading: breakdownLoading } = useGetQuotaBreakdownQuery(undefined, { skip: isAdmin });
@@ -73,18 +71,6 @@ function SettingsPage() {
 
   // Derived / computed variables
   const sortedBreakdown = [...(breakdown?.data || [])].sort((a, b) => b.total_size_bytes - a.total_size_bytes);
-
-  useEffect(() => {
-    if (user) {
-      form.reset({
-        name: user.name || "",
-        email: user.email || "",
-        email_notifications: user.notification_preferences?.email_notifications ?? true,
-        storage_alerts: user.notification_preferences?.storage_alerts ?? true,
-        security_alerts: user.notification_preferences?.security_alerts ?? true,
-      });
-    }
-  }, [user, form]);
 
   // Event handlers
   async function handleUpdateProfile(values, showToast = true) {
@@ -116,7 +102,19 @@ function SettingsPage() {
     setQuotaModalVisible(true);
   }
 
-  // Render
+  // Effects
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        name: user.name || "",
+        email: user.email || "",
+        email_notifications: user.notification_preferences?.email_notifications ?? true,
+        storage_alerts: user.notification_preferences?.storage_alerts ?? true,
+        security_alerts: user.notification_preferences?.security_alerts ?? true,
+      });
+    }
+  }, [user, form]);
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-8 pb-32">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

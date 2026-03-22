@@ -16,6 +16,9 @@ import { Separator } from "@components/ui/separator";
 import { Badge } from "@components/ui/badge";
 import { Input } from "@components/ui/input";
 
+// Constants
+import PageNames from "@constants/pageNames";
+
 function getFileInfo(type, isFolder) {
   if (isFolder) {
     return { icon: <Folder size={32} />, color: "text-primary", bg: "bg-primary/10" };
@@ -37,6 +40,11 @@ export default function ItemDetailsContent({ item, className }) {
   const [tags, setTags] = useState([]);
   const [newTag, setNewTag] = useState("");
 
+  // RTK Query hooks
+  const [updateFileTags, { isLoading: savingFileTags }] = useUpdateFileTagsMutation();
+  const [updateFolderTags, { isLoading: savingFolderTags }] = useUpdateFolderTagsMutation();
+
+  // Effects
   useEffect(() => {
     if (item?.tags) {
       setTags(item.tags);
@@ -44,10 +52,6 @@ export default function ItemDetailsContent({ item, className }) {
       setTags([]);
     }
   }, [item]);
-
-  // RTK Query hooks
-  const [updateFileTags, { isLoading: savingFileTags }] = useUpdateFileTagsMutation();
-  const [updateFolderTags, { isLoading: savingFolderTags }] = useUpdateFolderTagsMutation();
 
   if (!item) return null;
 
@@ -109,16 +113,16 @@ export default function ItemDetailsContent({ item, className }) {
   }
 
   function PropertiesTab() {
-    let displayPath = "My Files";
+    let displayPath = PageNames.MY_FILES;
 
     if (item.virtualPath) {
       displayPath = item.virtualPath;
     } else if (isFolder) {
       if (Array.isArray(item.path)) {
-        displayPath = `My Files / ${item.path.map((p) => p.name).join(" / ")}`;
+        displayPath = `${PageNames.MY_FILES} / ${item.path.map((p) => p.name).join(" / ")}`;
       } else if (typeof item.path === "string") {
         const cleanPath = item.path.replace(/^\/+/, "").replace(/\/+$/, "");
-        displayPath = cleanPath ? `My Files / ${cleanPath}` : "My Files";
+        displayPath = cleanPath ? `${PageNames.MY_FILES} / ${cleanPath}` : PageNames.MY_FILES;
       }
     }
 

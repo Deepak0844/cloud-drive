@@ -1,8 +1,8 @@
-import { toast } from "sonner";
+// React core & third-party libraries
 import { useState } from "react";
-import { FileUtils } from "@shared-utils/utils";
+import { toast } from "sonner";
 
-// RTK Query hooks
+// Services (RTK Query hooks)
 import {
   useDeleteFolderMutation,
   useMoveFolderMutation,
@@ -20,6 +20,9 @@ import { useBulkCopyMutation, useBulkDeleteMutation, useBulkMoveMutation } from 
 // Constants
 import { ItemTypes } from "@shared-constants/constants";
 import { ApiBasePath, FileServiceUrls, BulkServiceUrls, ROOT_FOLDER_ID } from "@constants/serviceUrls";
+
+// Utils
+import { FileUtils } from "@shared-utils/utils";
 
 export function useFileActions({ folders, clearSelection }) {
   // Dialog states

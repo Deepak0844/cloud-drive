@@ -9,7 +9,10 @@ import { useGetFolderContentsQuery, useGetFolderDetailsQuery } from "@services/a
 // Constants
 import { QUERY_PARAMS_KEYS, STORAGE, DefaultSort } from "@shared-constants/constants";
 import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
+import { VIEW_MODES } from "@constants/uiConstants";
+import PageNames from "@constants/pageNames";
 
+// Hooks
 import { useDragDrop } from "@hooks/files/useDragDrop";
 import { useFileActions } from "@hooks/files/useFileActions";
 import { useFavoriteActions } from "@hooks/files/useFavoriteActions";
@@ -19,8 +22,6 @@ import { useListPageParams } from "@hooks/files/useListPageParams";
 import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
 import { useSelectableItems } from "@hooks/files/useSelectableItems";
 import { useUploadHandler } from "@hooks/files/useUploadHandler";
-
-// Contexts
 import { useUploadDetails } from "@contexts/UploadContext";
 
 // Components
@@ -47,13 +48,13 @@ function MyFilesView() {
   const [previewFile, setPreviewFile] = useState(null);
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
   const [quotaRequestModalVisible, setQuotaRequestModalVisible] = useState(false);
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState(VIEW_MODES.GRID);
   const { clearSelection, selectedItems, toggleSelect: toggleSelectBase } = useSelectableItems();
   const { advancedFilters, debouncedSearch, page, pageSize, searchParams, setSearchParams, setPage, updateParams } =
     useListPageParams();
 
   // Derived / computed variables
-  const currentFolderId = searchParams.get("folder") || ROOT_FOLDER_ID;
+  const currentFolderId = searchParams.get(QUERY_PARAMS_KEYS.FOLDER_ID) || ROOT_FOLDER_ID;
 
   const sortBy = searchParams.get(QUERY_PARAMS_KEYS.SORT_BY) || DefaultSort.FIELD;
   const sortOrder = searchParams.get(QUERY_PARAMS_KEYS.SORT_ORDER) || DefaultSort.ORDER;
@@ -90,9 +91,9 @@ function MyFilesView() {
   function setCurrentFolderId(id) {
     const newParams = new URLSearchParams(searchParams);
     if (id === ROOT_FOLDER_ID || !id) {
-      newParams.delete("folder");
+      newParams.delete(QUERY_PARAMS_KEYS.FOLDER_ID);
     } else {
-      newParams.set("folder", id);
+      newParams.set(QUERY_PARAMS_KEYS.FOLDER_ID, id);
     }
     setSearchParams(newParams);
   }
@@ -129,7 +130,9 @@ function MyFilesView() {
       setInfoItem(item);
     } else {
       const virtualPath =
-        breadcrumbs && breadcrumbs.length > 0 ? `My Files / ${breadcrumbs.map((b) => b.name).join(" / ")}` : "My Files";
+        breadcrumbs && breadcrumbs.length > 0
+          ? `${PageNames.MY_FILES} / ${breadcrumbs.map((b) => b.name).join(" / ")}`
+          : PageNames.MY_FILES;
       setInfoItem({ ...item, virtualPath });
     }
   }

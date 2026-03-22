@@ -1,6 +1,7 @@
+// React core & third-party libraries
 import { useEffect, useState } from "react";
 
-// Socket
+// Utils
 import SocketClient from "@services/socketClient";
 
 // The event name matches SocketEvents.HARDWARE_STATS on the server

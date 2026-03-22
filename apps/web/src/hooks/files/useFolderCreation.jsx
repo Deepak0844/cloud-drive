@@ -1,6 +1,11 @@
+// React core & third-party libraries
 import { useState } from "react";
 import { toast } from "sonner";
+
+// Services (RTK Query hooks)
 import { useCreateFolderMutation } from "@services/api/folderApi";
+
+// Constants
 import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 export function useFolderCreation({ currentFolderId }) {

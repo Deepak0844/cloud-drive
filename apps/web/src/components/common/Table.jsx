@@ -1,3 +1,4 @@
+// React core & third-party libraries
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /**

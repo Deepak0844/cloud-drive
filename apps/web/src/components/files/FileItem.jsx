@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 
 // Constants
 import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
+import { VIEW_MODES } from "@constants/uiConstants";
+import { FileCategories, TIMEOUTS } from "@shared-constants/constants";
 
 // Utils
 import { UrlUtils } from "@shared-utils/utils";
@@ -30,39 +32,45 @@ function FileItem({
   handleDownload,
   onToggleFavorite = () => {},
   isFavoriting = false,
-  viewMode = "grid",
+  viewMode = VIEW_MODES.GRID,
   isTrashItem = false,
   showParentContext = false,
 }) {
   // Local state
   const [thumbnailSrc, setThumbnailSrc] = useState(null);
 
-  // Custom & shared hooks
+  // Refs
   const clickTimeoutRef = React.useRef(null);
 
   // Derived / computed variables
   const isFavorite = file.is_favorite;
 
   const hasThumbnail =
-    file.type === "image" ||
-    file.category === "image" ||
+    file.type === FileCategories.IMAGE ||
+    file.category === FileCategories.IMAGE ||
     file?.mime_type?.startsWith("image/") ||
-    file.type === "video" ||
-    file.category === "video" ||
+    file.type === FileCategories.VIDEO ||
+    file.category === FileCategories.VIDEO ||
     file?.mime_type?.startsWith("video/") ||
-    file.type === "audio" ||
-    file.category === "audio" ||
+    file.type === FileCategories.AUDIO ||
+    file.category === FileCategories.AUDIO ||
     file?.mime_type?.startsWith("audio/");
 
-  useEffect(() => {
-    if (hasThumbnail) {
-      const fileId = file.id || file._id;
-      const url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.thumbnail}`, { id: fileId });
-      setThumbnailSrc(url);
-    } else {
-      setThumbnailSrc(null);
-    }
-  }, [file, hasThumbnail]);
+  const menuItems = MenuUtils.buildItemMenuItems({
+    item: file,
+    isFolder: false,
+    isTrashItem,
+    isFavorite,
+    isFavoriting,
+    onOpen,
+    onDownload: () => handleDownload?.(file),
+    onShowInfo,
+    onRename,
+    onMove,
+    onCopy,
+    onDelete,
+    toggleFavorite: onToggleFavorite,
+  });
 
   // Event handlers
   function handleClick(e) {
@@ -77,7 +85,7 @@ function FileItem({
     clickTimeoutRef.current = setTimeout(() => {
       onToggleSelect(file.id || file._id, e.metaKey || e.ctrlKey);
       clickTimeoutRef.current = null;
-    }, 250);
+    }, TIMEOUTS.DOUBLE_CLICK_MS);
   }
 
   function handleDoubleClick(e) {
@@ -89,28 +97,19 @@ function FileItem({
     onOpen?.(file);
   }
 
-  function onDownload() {
-    handleDownload?.(file);
-  }
-
-  const menuItems = MenuUtils.buildItemMenuItems({
-    item: file,
-    isFolder: false,
-    isTrashItem,
-    isFavorite,
-    isFavoriting,
-    onOpen,
-    onDownload,
-    onShowInfo,
-    onRename,
-    onMove,
-    onCopy,
-    onDelete,
-    toggleFavorite: onToggleFavorite,
-  });
+  // Effects
+  useEffect(() => {
+    if (hasThumbnail) {
+      const fileId = file.id || file._id;
+      const url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.thumbnail}`, { id: fileId });
+      setThumbnailSrc(url);
+    } else {
+      setThumbnailSrc(null);
+    }
+  }, [file, hasThumbnail]);
 
   // Render
-  if (viewMode === "list") {
+  if (viewMode === VIEW_MODES.LIST) {
     return (
       <div
         className={cn(

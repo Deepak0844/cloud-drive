@@ -1,13 +1,15 @@
 // React core & third-party libraries
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-// Retained for global message/toast until P8 sonner swap
 import { Lock, User } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
+// Utils
 import { loginSchema } from "@schemas/authSchemas";
 
+// Components
 import { Card } from "@components/ui/card";
 import { Input } from "@components/ui/input";
 import { Checkbox } from "@components/ui/checkbox";
@@ -19,8 +21,6 @@ import PageUrls from "@constants/pageUrls";
 
 // Hooks
 import { useAuth } from "@hooks/useAuth";
-
-// Components
 
 function LoginPage() {
   // Router hooks & params
@@ -42,7 +42,7 @@ function LoginPage() {
 
   // Derived / computed variables
   // Redirect back to the page the user came from, or to the dashboard
-  const from = location.state?.from?.pathname ?? "/";
+  const from = location.state?.from?.pathname ?? PageUrls.DashboardPage;
 
   // Event handlers
 

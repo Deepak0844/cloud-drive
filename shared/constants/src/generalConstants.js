@@ -31,6 +31,7 @@ export const QUERY_PARAMS_KEYS = {
   MIN_SIZE: "min",
   MAX_SIZE: "max",
   TAG: "tag",
+  FOLDER_ID: "folder",
 };
 
 /**
@@ -40,7 +41,9 @@ export const TIMEOUTS = {
   DEBOUNCE_MS: 300,
   API_REQUEST_MS: 10000,
   TOAST_MS: 3000,
+  TOAST_PERSIST_MS: 5000,
   NOTIFICATION_POLL_MS: 60000,
+  DOUBLE_CLICK_MS: 250,
 };
 
 /**

@@ -6,6 +6,9 @@ import { LayoutDashboard, Users, Zap } from "lucide-react";
 // Services (RTK Query hooks)
 import { useGetSystemStatsQuery } from "@services/api/adminApi";
 
+// Constants
+import { TIMEOUTS } from "@shared-constants/constants";
+
 // Hooks
 import useHardwareLiveStats from "@hooks/useHardwareLiveStats";
 
@@ -18,7 +21,7 @@ const AdminAnalytics = lazy(() => import("@components/admin/AdminAnalytics"));
 export default function AdminDashboardPage() {
   // RTK Query hooks
   const { data: statsData, isLoading: statsLoading } = useGetSystemStatsQuery(undefined, {
-    pollingInterval: 60000,
+    pollingInterval: TIMEOUTS.NOTIFICATION_POLL_MS,
   });
 
   // Live hardware stats via socket (seeded by REST response)

@@ -5,6 +5,7 @@ import { cn } from "@lib/utils";
 
 // Constants
 import { DefaultPagination, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
+import { VIEW_MODES } from "@constants/uiConstants";
 
 // Components
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";
@@ -160,10 +161,10 @@ export default function FileToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setViewMode("grid")}
+                onClick={() => setViewMode(VIEW_MODES.GRID)}
                 className={cn(
                   "w-8 h-8 rounded-lg transition-all",
-                  viewMode === "grid"
+                  viewMode === VIEW_MODES.GRID
                     ? "bg-primary text-white shadow-glow-sm hover:bg-primary/90"
                     : "text-label-tertiary hover:bg-white/5 hover:text-label-secondary"
                 )}
@@ -181,10 +182,10 @@ export default function FileToolbar({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setViewMode("list")}
+                onClick={() => setViewMode(VIEW_MODES.LIST)}
                 className={cn(
                   "w-8 h-8 rounded-lg transition-all",
-                  viewMode === "list"
+                  viewMode === VIEW_MODES.LIST
                     ? "bg-primary text-white shadow-glow-sm hover:bg-primary/90"
                     : "text-label-tertiary hover:bg-white/5 hover:text-label-secondary"
                 )}

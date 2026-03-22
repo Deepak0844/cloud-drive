@@ -1,8 +1,10 @@
+// React core & third-party libraries
 import { createApi } from "@reduxjs/toolkit/query/react";
 
-// custom base query
+// Services
 import customBaseQuery from "@services/customBaseQuery";
 
+// Constants
 import { TagTypes } from "@constants/apiTags";
 import { ApiBasePath } from "@constants/serviceUrls";
 

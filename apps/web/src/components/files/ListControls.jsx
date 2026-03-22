@@ -1,9 +1,12 @@
+// React core & third-party libraries
 import React from "react";
 import { LayoutGrid, List, Filter } from "lucide-react";
-import { cn } from "@lib/utils";
 
 // Constants
 import { DefaultPagination, QUERY_PARAMS_KEYS } from "@shared-constants/constants";
+
+// Utils
+import { cn } from "@lib/utils";
 
 // Components
 import AdvancedFilterDropdown from "@components/search/AdvancedFilterDropdown";

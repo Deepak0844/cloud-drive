@@ -1,4 +1,7 @@
+// React core & third-party libraries
 import React from "react";
+
+// Components
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
 

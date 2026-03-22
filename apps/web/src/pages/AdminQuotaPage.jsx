@@ -12,7 +12,7 @@ import { formatBytes } from "@shared-utils/utils";
 
 // Constants
 import { ADMIN_QUERY_PARAMS } from "@constants/uiConstants";
-import { DefaultPagination } from "@shared-constants/constants";
+import { DefaultPagination, QuotaStatus } from "@shared-constants/constants";
 
 // Components
 import { Button } from "@components/ui/button";
@@ -40,17 +40,7 @@ export default function AdminQuotaPage() {
   // Derived / computed variables
   const requests = requestsData?.data || [];
   const requestPagination = requestsData?.pagination;
-  const pendingCount = requests.filter((r) => r.status === "PENDING").length;
-
-  // Event handlers
-  async function handleRequestStatus(id, status) {
-    try {
-      await handleQuotaRequest({ id, status }).unwrap();
-      toast.success(`Request ${status.toLowerCase()} successfully`);
-    } catch (_err) {
-      toast.error("Failed to update quota request");
-    }
-  }
+  const pendingCount = requests.filter((r) => r.status === QuotaStatus.PENDING).length;
 
   const quotaColumns = [
     {
@@ -88,11 +78,11 @@ export default function AdminQuotaPage() {
         let IconComp = Clock;
         let className = "bg-info/5 text-info border-info/20 shadow-glow-sm";
 
-        if (status === "APPROVED") {
+        if (status === QuotaStatus.APPROVED) {
           IconComp = CheckCircle2;
           className = "bg-success/10 text-success border-success/20 shadow-glow-sm cursor-default";
         }
-        if (status === "REJECTED") {
+        if (status === QuotaStatus.REJECTED) {
           IconComp = XCircle;
           className = "bg-destructive/10 text-destructive border-destructive/20 shadow-glow-sm cursor-default";
         }
@@ -136,6 +126,16 @@ export default function AdminQuotaPage() {
         ) : null,
     },
   ];
+
+  // Event handlers
+  async function handleRequestStatus(id, status) {
+    try {
+      await handleQuotaRequest({ id, status }).unwrap();
+      toast.success(`Request ${status.toLowerCase()} successfully`);
+    } catch (_err) {
+      toast.error("Failed to update quota request");
+    }
+  }
 
   return (
     <motion.div

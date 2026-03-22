@@ -1,4 +1,7 @@
+// Services (RTK Query hooks)
 import { useGetMeQuery } from "@services/api/authApi";
+
+// Constants
 import { Roles } from "@shared-constants/constants";
 
 /**

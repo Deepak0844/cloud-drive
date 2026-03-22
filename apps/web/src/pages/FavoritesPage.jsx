@@ -1,11 +1,16 @@
+// React core & third-party libraries
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Copy, Trash2, Move, Star, Download } from "lucide-react";
 
 // Constants
-
 import PageUrls from "@constants/pageUrls";
+import { VIEW_MODES } from "@constants/uiConstants";
 import { ItemTypes } from "@shared-constants/constants";
+
+// Services (RTK Query hooks)
+import { useGetFilesQuery } from "@services/api/fileApi";
+import { useGetFoldersQuery } from "@services/api/folderApi";
 
 // Hooks
 import { useFileActions } from "@hooks/files/useFileActions";
@@ -15,10 +20,7 @@ import { useListPageParams } from "@hooks/files/useListPageParams";
 import { useOutsideClickClear } from "@hooks/files/useOutsideClickClear";
 import { useSelectableItems } from "@hooks/files/useSelectableItems";
 
-// Services (RTK Query hooks)
-import { useGetFilesQuery } from "@services/api/fileApi";
-import { useGetFoldersQuery } from "@services/api/folderApi";
-
+// Components
 import FileItem from "@components/files/FileItem";
 import FilePreviewModal from "@components/files/FilePreviewModal";
 import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
@@ -36,7 +38,7 @@ function FavoritesPage() {
   const navigate = useNavigate();
   const [infoItem, setInfoItem] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
-  const [viewMode, setViewMode] = useState("grid");
+  const [viewMode, setViewMode] = useState(VIEW_MODES.GRID);
 
   const { clearSelection, selectedItems, toggleSelect } = useSelectableItems();
   const { advancedFilters, debouncedSearch, page, pageSize, setPage, updateParams } = useListPageParams();
@@ -178,7 +180,7 @@ function FavoritesPage() {
                 </h2>
                 <div
                   className={
-                    viewMode === "grid"
+                    viewMode === VIEW_MODES.GRID
                       ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
                       : "flex flex-col gap-2"
                   }
@@ -216,7 +218,7 @@ function FavoritesPage() {
                 </h2>
                 <div
                   className={
-                    viewMode === "grid"
+                    viewMode === VIEW_MODES.GRID
                       ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
                       : "flex flex-col gap-2"
                   }

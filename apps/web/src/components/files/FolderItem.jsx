@@ -7,6 +7,10 @@ import { motion } from "framer-motion";
 import MenuUtils from "@utils/menuUtils";
 import { cn } from "@lib/utils";
 
+// Constants
+import { VIEW_MODES } from "@constants/uiConstants";
+import { TIMEOUTS } from "@shared-constants/constants";
+
 // Components
 import Dropdown from "@components/common/Dropdown";
 import { Card, CardContent } from "@components/ui/card";
@@ -23,40 +27,15 @@ function FolderItem({
   onCopy,
   onToggleFavorite = () => {},
   isFavoriting = false,
-  viewMode = "grid",
+  viewMode = VIEW_MODES.GRID,
   isTrashItem = false,
   showParentContext = false,
 }) {
-  // Custom & shared hooks
+  // Refs
   const clickTimeoutRef = React.useRef(null);
 
   // Derived / computed variables
   const isFavorite = folder.is_favorite;
-
-  // Event handlers
-  function handleClick(e) {
-    e.stopPropagation();
-
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-      return;
-    }
-
-    clickTimeoutRef.current = setTimeout(() => {
-      onToggleSelect(folder.id, e.metaKey || e.ctrlKey);
-      clickTimeoutRef.current = null;
-    }, 250);
-  }
-
-  function handleDoubleClick(e) {
-    e.stopPropagation();
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-    }
-    onOpen?.(folder);
-  }
 
   const menuItems = MenuUtils.buildItemMenuItems({
     item: folder,
@@ -73,8 +52,33 @@ function FolderItem({
     toggleFavorite: onToggleFavorite,
   });
 
+  // Event handlers
+  function handleClick(e) {
+    e.stopPropagation();
+
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      return;
+    }
+
+    clickTimeoutRef.current = setTimeout(() => {
+      onToggleSelect(folder.id, e.metaKey || e.ctrlKey);
+      clickTimeoutRef.current = null;
+    }, TIMEOUTS.DOUBLE_CLICK_MS);
+  }
+
+  function handleDoubleClick(e) {
+    e.stopPropagation();
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+    onOpen?.(folder);
+  }
+
   // Render
-  if (viewMode === "list") {
+  if (viewMode === VIEW_MODES.LIST) {
     return (
       <div
         className={cn(

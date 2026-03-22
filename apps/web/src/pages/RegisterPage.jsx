@@ -1,17 +1,13 @@
 // React core & third-party libraries
 import React from "react";
 import { Link } from "react-router-dom";
-// Retained for global message/toast until P8 sonner swap
 import { Lock, Mail, User } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { registerSchema } from "@schemas/authSchemas";
 
-import { Card } from "@components/ui/card";
-import { Input } from "@components/ui/input";
-import { Button } from "@components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
+// Utils
+import { registerSchema } from "@schemas/authSchemas";
 
 // Constants
 import PageUrls from "@constants/pageUrls";
@@ -20,6 +16,10 @@ import PageUrls from "@constants/pageUrls";
 import { useAuth } from "@hooks/useAuth";
 
 // Components
+import { Card } from "@components/ui/card";
+import { Input } from "@components/ui/input";
+import { Button } from "@components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@components/ui/form";
 
 function RegisterPage() {
   // Custom & shared hooks

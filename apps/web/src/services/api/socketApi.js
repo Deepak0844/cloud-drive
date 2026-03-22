@@ -1,10 +1,10 @@
+// Utils
 import { toast } from "sonner";
+import SocketClient from "@services/socketClient";
 
 // Constants
 import { TagTypes } from "@constants/apiTags";
-
-// Socket
-import SocketClient from "@services/socketClient";
+import { TIMEOUTS } from "@shared-constants/constants";
 
 // Services
 import api from "./api";
@@ -54,7 +54,7 @@ const subscribeToSocketEventsQuery = () => ({
           const { title, message } = data;
           toast.info(title || "New Notification", {
             description: message || "You have a new update.",
-            duration: 5000,
+            duration: TIMEOUTS.TOAST_PERSIST_MS,
           });
         }
       };

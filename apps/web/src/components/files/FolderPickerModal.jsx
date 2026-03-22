@@ -8,6 +8,7 @@ import { useGetFoldersQuery } from "@services/api/folderApi";
 
 // Constants
 import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
+import PageNames from "@constants/pageNames";
 
 // Components
 import { Button } from "@components/ui/button";
@@ -36,7 +37,7 @@ function FolderPickerModal({
 }) {
   // Local state
   // Navigation history to avoid calling folder details API
-  const [history, setHistory] = useState([{ id: ROOT_FOLDER_ID, name: "My Files" }]);
+  const [history, setHistory] = useState([{ id: ROOT_FOLDER_ID, name: PageNames.MY_FILES }]);
 
   // Derived / computed variables
   const currentFolder = history[history.length - 1];
@@ -59,7 +60,7 @@ function FolderPickerModal({
   // Event handlers
   function handleNavigate(id, name) {
     if (id === ROOT_FOLDER_ID) {
-      setHistory([{ id: ROOT_FOLDER_ID, name: "My Files" }]);
+      setHistory([{ id: ROOT_FOLDER_ID, name: PageNames.MY_FILES }]);
     } else {
       setHistory((prev) => [...prev, { id, name }]);
     }
