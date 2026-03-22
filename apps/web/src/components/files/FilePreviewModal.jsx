@@ -108,10 +108,12 @@ export default function FilePreviewModal({
       return;
     }
 
+    let resolvedUrl = null;
     try {
       const id = currentFile.id || currentFile._id;
-      const url = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.preview}`, { id });
-      setPreviewSrc(`${url}${url.includes("?") ? "&" : "?"}_t=${Date.now()}`);
+      const base = UrlUtils.format(`${ApiBasePath}${FileServiceUrls.preview}`, { id });
+      resolvedUrl = `${base}${base.includes("?") ? "&" : "?"}_t=${Date.now()}`;
+      setPreviewSrc(resolvedUrl);
       setPreviewLoading(false);
     } catch (_err) {
       setHasError(true);
@@ -119,9 +121,9 @@ export default function FilePreviewModal({
     }
 
     return () => {
-      if (previewSrc?.startsWith("blob:")) URL.revokeObjectURL(previewSrc);
+      if (resolvedUrl?.startsWith("blob:")) URL.revokeObjectURL(resolvedUrl);
     };
-  }, [currentFile, open, isMediaFile, previewSrc]);
+  }, [currentFile, open, isMediaFile]);
 
   // Reset error state when the opened file changes
   useEffect(() => {
