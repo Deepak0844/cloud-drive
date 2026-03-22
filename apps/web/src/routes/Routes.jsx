@@ -16,6 +16,9 @@ import ErrorPage from "@pages/ErrorPage";
 import ForgotPasswordPage from "@pages/ForgotPasswordPage";
 import ResetPasswordPage from "@pages/ResetPasswordPage";
 
+// Layout
+import AuthLayout from "@components/layout/AuthLayout";
+
 // Utils
 import NavigationSetter from "@utils/NavigationSetter";
 
@@ -40,44 +43,46 @@ const Router = createBrowserRouter([
       MainRoutes,
 
       {
-        path: PageUrls.LoginPage,
-        element: (
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        ),
-      },
-
-      {
-        path: PageUrls.RegisterPage,
-        element: (
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        ),
+        element: <AuthLayout />,
+        children: [
+          {
+            path: PageUrls.LoginPage,
+            element: (
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            ),
+          },
+          {
+            path: PageUrls.RegisterPage,
+            element: (
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            ),
+          },
+          {
+            path: PageUrls.ForgotPasswordPage,
+            element: (
+              <PublicRoute>
+                <ForgotPasswordPage />
+              </PublicRoute>
+            ),
+          },
+          {
+            path: PageUrls.ResetPasswordPage,
+            element: (
+              <PublicRoute>
+                <ResetPasswordPage />
+              </PublicRoute>
+            ),
+          },
+        ],
       },
 
       {
         path: PageUrls.ErrorPage,
         element: <ErrorPage />,
-      },
-
-      {
-        path: PageUrls.ForgotPasswordPage,
-        element: (
-          <PublicRoute>
-            <ForgotPasswordPage />
-          </PublicRoute>
-        ),
-      },
-
-      {
-        path: PageUrls.ResetPasswordPage,
-        element: (
-          <PublicRoute>
-            <ResetPasswordPage />
-          </PublicRoute>
-        ),
       },
 
       // Catch-all route for 404s

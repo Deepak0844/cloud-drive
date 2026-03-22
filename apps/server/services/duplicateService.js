@@ -38,7 +38,7 @@ async function findAndNotifyDuplicates() {
 
   try {
     const duplicateHashes = await File.aggregate([
-      { $match: { is_deleted: false } },
+      { $match: { is_deleted: false, hash: { $exists: true, $ne: null } } },
       { $group: { _id: { user: "$user", hash: "$hash" }, count: { $sum: 1 }, files: { $push: "$name" } } },
       { $match: { count: { $gt: 1 } } },
     ]);

@@ -31,10 +31,11 @@ import logger from "#utils/logger.js";
 export const initChunkedUpload = asyncHandler(async (req, res) => {
   const { fileSize, totalChunks } = req.body;
 
-  // Quota check — req.user already populated by auth middleware
-  const { used_bytes, quota_bytes } = req.user;
-  if (used_bytes + fileSize > quota_bytes) {
-    return ResponseUtils.error(res, ErrorMessages.QUOTA_EXCEEDED, HttpStatus.BAD_REQUEST);
+  // Fresh DB quota check — avoids relying on req.user which was populated at
+  // auth time and may be stale if a concurrent upload just consumed quota.
+  const hasQuota = await FileService.checkQuota(req.user.id, fileSize);
+  if (!hasQuota) {
+    return ResponseUtils.error(res, ErrorMessages.QUOTA_EXCEEDED, HttpStatus.FORBIDDEN);
   }
 
   const uploadId = `${req.user.id}_${Date.now()}`;
@@ -56,8 +57,10 @@ export const initChunkedUpload = asyncHandler(async (req, res) => {
 export const uploadChunk = asyncHandler(async (req, res) => {
   const { uploadId, chunkIndex } = req.query;
 
-  if (!uploadId || chunkIndex === undefined) {
-    return ResponseUtils.error(res, "uploadId and chunkIndex are required", HttpStatus.BAD_REQUEST);
+  // Ownership guard: uploadId is generated as `<userId>_<timestamp>` in initChunkedUpload.
+  // Reject any ID that doesn't belong to the authenticated user.
+  if (!uploadId.startsWith(`${req.user.id}_`)) {
+    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
   const chunkBuffer = req.body;
@@ -87,6 +90,12 @@ export const uploadChunk = asyncHandler(async (req, res) => {
  */
 export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
   const { uploadId, fileName: name, folderId, mimeType, totalSize } = req.body;
+
+  // Ownership guard — same pattern as uploadChunk
+  if (!uploadId.startsWith(`${req.user.id}_`)) {
+    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
   const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
 
   if (!fs.existsSync(chunkDir)) {
@@ -139,7 +148,16 @@ export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
       return ResponseUtils.error(res, "File assembly failed: Size mismatch", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    // Re-check quota at finalize time — the user may have consumed more space
+    // via concurrent uploads since init was called.
     const totalSizeFinal = stats.size;
+    const hasQuota = await FileService.checkQuota(req.user.id, totalSizeFinal);
+    if (!hasQuota) {
+      if (fs.existsSync(tempCombinedPath)) {
+        await fs.promises.unlink(tempCombinedPath).catch(() => {});
+      }
+      return ResponseUtils.error(res, ErrorMessages.QUOTA_EXCEEDED, HttpStatus.FORBIDDEN);
+    }
     const extension = path.extname(name).replace(".", "");
     const effectiveMimeType = mimeType || MimeUtils.getMimeType(name);
     const category = MetadataService.getCategory(effectiveMimeType, name);

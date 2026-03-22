@@ -4,7 +4,7 @@ import { UrlUtils } from "@shared-utils/utils";
 
 // Constants
 import { TagIds, TagTypes } from "@constants/apiTags";
-import { FolderServiceUrls } from "@constants/serviceUrls";
+import { FolderServiceUrls, ROOT_FOLDER_ID } from "@constants/serviceUrls";
 import { HttpMethods } from "@shared-constants/constants/httpConstants";
 
 // Services
@@ -24,13 +24,13 @@ const getFoldersQuery = () => ({
 
 const getFolderContentsQuery = () => ({
   query: (arg) => {
-    const id = typeof arg === "string" ? arg : arg?.folderId || "root";
+    const id = typeof arg === "string" ? arg : arg?.folderId || ROOT_FOLDER_ID;
     const params = typeof arg === "object" ? { ...arg } : {};
     delete params.folderId;
 
     return {
       url:
-        id === "root" || !id
+        id === ROOT_FOLDER_ID || !id
           ? FolderServiceUrls.getRootFolderContents
           : UrlUtils.format(FolderServiceUrls.getFolderContents, { id }),
       params,
@@ -39,7 +39,7 @@ const getFolderContentsQuery = () => ({
   serializeQueryArgs: ApiUtils.serializeFolderContentsQueryArgs,
   merge: ApiUtils.mergePaginatedArrays(),
   providesTags: (result, error, arg) => {
-    const id = typeof arg === "string" ? arg : arg?.folderId || "root";
+    const id = typeof arg === "string" ? arg : arg?.folderId || ROOT_FOLDER_ID;
     return [
       ...ApiUtils.listTags(TagTypes.FOLDERS, id || "ROOT"),
       ...ApiUtils.listTags(TagTypes.FOLDERS, TagIds.CONTENTS),

@@ -1,15 +1,13 @@
 // React core & third-party libraries
 import React, { Component } from "react";
-import { Typography } from "antd";
-import { ReloadOutlined, WarningOutlined } from "@ant-design/icons";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { motion } from "framer-motion";
 
 // Components
-import Button from "@shared-components/components/button";
+import { Button } from "@components/ui/button";
 
 // Constants
 import PageUrls from "@constants/pageUrls";
-
-const { Title, Text } = Typography;
 
 class GlobalErrorBoundary extends Component {
   constructor(props) {
@@ -36,27 +34,44 @@ class GlobalErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-surface p-4">
-          <div className="max-w-lg w-full bg-white border border-line rounded-3xl p-8 md:p-12 shadow-2xl flex flex-col items-center text-center">
-            <div className="w-24 h-24 bg-danger-light text-danger rounded-full flex items-center justify-center text-5xl mb-6 shadow-sm">
-              <WarningOutlined />
-            </div>
+        <div className="min-h-screen w-full flex items-center justify-center bg-surface-dim p-4 overflow-hidden relative">
+          {/* Aurora Background Effects */}
+          <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-error/10 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-warning/5 rounded-full blur-[120px] pointer-events-none" />
 
-            <Title level={2} className="m-0 mb-3 text-label font-black tracking-tight">
-              Something went wrong
-            </Title>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 30 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="w-full max-w-xl bg-surface/60 backdrop-blur-2xl rounded-[40px] shadow-2xl border border-white/10 p-10 md:p-12 text-center relative z-10"
+          >
+            <motion.div
+              initial={{ rotate: -10, scale: 0.8 }}
+              animate={{ rotate: 0, scale: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 260,
+                damping: 20,
+                delay: 0.2,
+              }}
+              className="mx-auto w-24 h-24 rounded-3xl bg-error/10 flex items-center justify-center mb-8 shadow-inner border border-error/20"
+            >
+              <AlertTriangle className="text-error" size={48} />
+            </motion.div>
 
-            <Text className="text-label-secondary text-base mb-8 block max-w-sm">
+            <h2 className="text-3xl font-black text-label mb-3 tracking-tight">Something went wrong</h2>
+
+            <p className="text-label-secondary text-base mb-8 block max-w-sm mx-auto font-medium">
               We encountered an unexpected error while loading this page. Our team has been notified.
-            </Text>
+            </p>
 
             {/* eslint-disable-next-line turbo/no-undeclared-env-vars */}
             {import.meta.env.DEV && this.state.error && (
-              <div className="w-full bg-surface-dim p-4 rounded-xl border border-line-base mb-8 text-left overflow-hidden">
-                <Text type="danger" className="font-mono text-xs font-bold block mb-2 break-all">
+              <div className="w-full bg-surface-dim p-4 rounded-2xl border border-line/30 mb-8 text-left overflow-hidden shadow-inner">
+                <span className="text-error font-mono text-xs font-bold block mb-2 break-all">
                   {this.state.error.toString()}
-                </Text>
-                <div className="bg-surface p-3 rounded-lg border border-line-base overflow-x-auto">
+                </span>
+                <div className="bg-surface/50 p-3 rounded-xl border border-line/20 overflow-x-auto">
                   <pre className="text-[10px] text-label-tertiary m-0 font-mono whitespace-pre-wrap">
                     {this.state.errorInfo?.componentStack}
                   </pre>
@@ -64,25 +79,25 @@ class GlobalErrorBoundary extends Component {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
               <Button
-                type="primary"
-                size="large"
-                icon={<ReloadOutlined />}
+                variant="primary"
                 onClick={this.handleReload}
-                className="flex-1 h-12 rounded-xl font-bold text-base shadow-primary"
+                className="w-full sm:w-auto flex-1 h-14 rounded-[20px] font-black text-base shadow-glow hover:scale-[1.03] transition-all flex items-center justify-center gap-2 italic uppercase tracking-wider"
               >
+                <RefreshCw size={18} />
                 Reload Page
               </Button>
               <Button
-                size="large"
+                variant="ghost"
                 onClick={this.handleGoHome}
-                className="flex-1 h-12 rounded-xl font-bold text-base bg-surface-alt hover:bg-surface-dim border-none text-label"
+                className="w-full sm:w-auto flex-1 h-14 rounded-[20px] font-bold text-base text-label-secondary hover:text-label hover:bg-white/5 flex items-center justify-center gap-2"
               >
+                <Home size={18} />
                 Go Home
               </Button>
             </div>
-          </div>
+          </motion.div>
         </div>
       );
     }

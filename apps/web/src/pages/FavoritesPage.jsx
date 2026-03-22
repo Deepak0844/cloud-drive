@@ -1,19 +1,9 @@
-// React core & third-party libraries
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Breadcrumb, Input, Modal, Tooltip, Typography } from "antd";
-import {
-  CopyOutlined,
-  DeleteOutlined,
-  DragOutlined,
-  HomeOutlined,
-  StarFilled,
-  WarningOutlined,
-} from "@ant-design/icons";
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Copy, Trash2, Move, Star, Download } from "lucide-react";
 
 // Constants
-import PageNames from "@constants/pageNames";
+
 import PageUrls from "@constants/pageUrls";
 import { ItemTypes } from "@shared-constants/constants";
 
@@ -28,19 +18,18 @@ import { useSelectableItems } from "@hooks/files/useSelectableItems";
 import { useGetFilesQuery } from "@services/api/fileApi";
 import { useGetFoldersQuery } from "@services/api/folderApi";
 
-// Components
 import FileItem from "@components/files/FileItem";
 import FilePreviewModal from "@components/files/FilePreviewModal";
+import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
 import FolderItem from "@components/files/FolderItem";
 import FolderPickerModal from "@components/files/FolderPickerModal";
-import FloatingBulkActionsBar from "@components/files/FloatingBulkActionsBar";
 import InfoDrawer from "@components/files/InfoDrawer";
 import ListControls from "@components/files/ListControls";
 import PageHeader from "@components/layout/PageHeader";
-import Button from "@shared-components/components/button";
-import Loader from "@shared-components/components/loader";
-
-const { Text } = Typography;
+import Loader from "@components/common/Loader";
+import RenameModal from "@components/files/RenameModal";
+import DeleteModal from "@components/files/DeleteModal";
+import BulkDeleteModal from "@components/files/BulkDeleteModal";
 
 function FavoritesPage() {
   const navigate = useNavigate();
@@ -85,12 +74,14 @@ function FavoritesPage() {
     folderPicker,
     newName,
     renameItem,
+    bulkDeleteItems,
+    setBulkDeleteItems,
     setDeleteItem,
     setFolderPicker,
     setNewName,
     setRenameItem,
     handleBulkCopyTrigger,
-    handleBulkDelete,
+    handleBulkDeleteConfirm,
     handleBulkMoveTrigger,
     handleCopyTrigger,
     handleDeleteConfirm,
@@ -99,25 +90,13 @@ function FavoritesPage() {
     handleMoveTrigger,
     handleRenameConfirm,
     handleRenameTrigger,
+    handleBulkDownload,
   } = useFileActions({
     clearSelection,
     folders,
   });
 
   // 7. Derived / computed variables
-  const breadcrumbsList = [
-    {
-      title: (
-        <Link
-          to={PageUrls.DashboardPage}
-          className="flex items-center gap-2 text-primary font-semibold text-xs transition-colors"
-        >
-          <HomeOutlined className="text-[10px]" /> <span>{PageNames.MY_FILES}</span>
-        </Link>
-      ),
-    },
-    { title: <span className="font-bold text-xs opacity-60">{PageNames.FAVORITES}</span> },
-  ];
 
   // Event handlers
 
@@ -134,13 +113,8 @@ function FavoritesPage() {
 
   // Render
   return (
-    <div className="flex flex-col gap-4 pb-10">
+    <div className="flex flex-col gap-4 pb-10 bg-background min-h-full">
       <PageHeader
-        title={PageNames.FAVORITES}
-        icon={<StarFilled className="text-warning opacity-80" />}
-        breadcrumbNode={
-          <Breadcrumb separator={<span className="text-label-tertiary">/</span>} items={breadcrumbsList} />
-        }
         rightContent={
           <ListControls
             advancedFilters={advancedFilters}
@@ -154,51 +128,40 @@ function FavoritesPage() {
 
       <div className="h-4" />
 
-      {/* Bulk Actions Bar */}
-      {selectedItems.length > 0 && (
-        <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}>
-          <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
-            <Tooltip title="Move selection">
-              <Button
-                type="text"
-                icon={<DragOutlined />}
-                onClick={() => handleBulkMoveTrigger(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Move</span>
-              </Button>
-            </Tooltip>
-            <Tooltip title="Copy selection">
-              <Button
-                type="text"
-                icon={<CopyOutlined />}
-                onClick={() => handleBulkCopyTrigger(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-primary hover:bg-primary-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Copy</span>
-              </Button>
-            </Tooltip>
-            <Tooltip title="Delete selection">
-              <Button
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleBulkDelete(selectedItems)}
-                className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-14 text-danger hover:bg-danger-light border-none justify-center"
-              >
-                <span className="text-[10px] uppercase tracking-tighter">Delete</span>
-              </Button>
-            </Tooltip>
-          </FloatingBulkActionsBar>
-        </motion.div>
-      )}
+      <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
+        <BulkAction
+          icon={<Move size={16} />}
+          label="Move"
+          tooltip="Move selection"
+          onClick={() => handleBulkMoveTrigger(selectedItems)}
+        />
+        <BulkAction
+          icon={<Copy size={16} />}
+          label="Copy"
+          tooltip="Copy selection"
+          onClick={() => handleBulkCopyTrigger(selectedItems)}
+        />
+        <BulkAction
+          icon={<Download size={16} />}
+          label="Download"
+          tooltip="Download selection (files only)"
+          onClick={() => handleBulkDownload(selectedItems)}
+        />
+        <BulkAction
+          icon={<Trash2 size={16} />}
+          label="Delete"
+          tooltip="Move to Trash"
+          danger
+          onClick={() => setBulkDeleteItems(selectedItems)}
+        />
+      </FloatingBulkActionsBar>
 
       {/* Content Section */}
       <div className="space-y-6">
         {isLoading ? (
           <div className="py-24 flex flex-col items-center justify-center gap-4">
             <Loader size={32} />
-            <Text className="text-label-tertiary">Loading favorites...</Text>
+            <span className="text-label-tertiary font-medium">Loading favorites...</span>
           </div>
         ) : (
           <>
@@ -276,25 +239,27 @@ function FavoritesPage() {
                 <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
                   {filesFetching ? (
                     <>
-                      <Loader size={24} />
-                      <Text className="text-label-tertiary text-sm">Loading more files...</Text>
+                      <Loader size={20} />
+                      <span className="text-label-tertiary text-xs font-medium">Loading more files...</span>
                     </>
                   ) : paginationData?.hasNext ? (
-                    <Text className="text-label-tertiary text-sm italic">Scroll for more</Text>
+                    <span className="text-label-tertiary text-xs italic opacity-60">Scroll for more</span>
                   ) : (
-                    <Text className="text-label-tertiary text-sm italic">No more files</Text>
+                    <span className="text-label-tertiary text-xs italic opacity-40">No more files to show</span>
                   )}
                 </div>
               </div>
             )}
 
             {folders.length === 0 && files.length === 0 && (
-              <div className="py-24 flex flex-col items-center justify-center text-center opacity-60">
-                <div className="w-20 h-20 mb-6 rounded-full bg-surface-dim flex items-center justify-center border-2 border-dashed border-line">
-                  <StarFilled className="text-3xl text-label-tertiary" />
+              <div className="py-24 flex flex-col items-center justify-center text-center opacity-60 grayscale">
+                <div className="w-20 h-20 mb-6 rounded-full bg-surface-dim flex items-center justify-center border-2 border-dashed border-line shadow-inner">
+                  <Star className="text-3xl text-label-tertiary" size={32} />
                 </div>
                 <h2 className="text-lg font-bold text-label mb-1">No favorites found</h2>
-                <p className="text-label-secondary text-sm">Starred items will appear here for quick access.</p>
+                <p className="text-label-secondary text-sm font-medium">
+                  Starred items will appear here for quick access.
+                </p>
               </div>
             )}
           </>
@@ -304,7 +269,16 @@ function FavoritesPage() {
       {/* Shared Modals & Drawers */}
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
 
-      <FilePreviewModal file={previewFile} open={!!previewFile} onClose={() => setPreviewFile(null)} />
+      <FilePreviewModal
+        file={previewFile}
+        open={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+        allFiles={files}
+        currentIndex={
+          previewFile ? files.findIndex((f) => (f._id || f.id) === (previewFile._id || previewFile.id)) : -1
+        }
+        onNavigate={(index) => setPreviewFile(files[index])}
+      />
 
       <FolderPickerModal
         open={folderPicker.visible}
@@ -316,43 +290,29 @@ function FavoritesPage() {
           .concat(folderPicker.item ? [folderPicker.item.id || folderPicker.item._id] : [])}
       />
 
-      <Modal
-        title="Rename Item"
+      {/* Rename Modal */}
+      <RenameModal
         open={!!renameItem}
-        onOk={handleRenameConfirm}
-        onCancel={() => setRenameItem(null)}
-        className="premium-modal"
-        centered
-      >
-        <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="New name..."
-          className="premium-input mt-4"
-          onKeyDown={(e) => e.key === "Enter" && handleRenameConfirm()}
-        />
-      </Modal>
+        onClose={() => setRenameItem(null)}
+        name={newName}
+        onNameChange={(e) => setNewName(e.target.value)}
+        onConfirm={handleRenameConfirm}
+      />
 
-      <Modal
-        title={
-          <span className="text-danger flex items-center gap-2">
-            <WarningOutlined /> Delete Item
-          </span>
-        }
+      <DeleteModal
         open={!!deleteItem}
-        onOk={handleDeleteConfirm}
-        onCancel={() => setDeleteItem(null)}
-        okText="Move to Trash"
-        okButtonProps={{ danger: true, className: "rounded-lg" }}
-        cancelButtonProps={{ className: "rounded-lg" }}
-        className="premium-modal"
-        centered
-      >
-        <p className="mt-4 font-medium text-label-secondary">
-          Are you sure you want to move <span className="text-label font-bold">&quot;{deleteItem?.name}&quot;</span> to
-          the trash?
-        </p>
-      </Modal>
+        onClose={() => setDeleteItem(null)}
+        itemName={deleteItem?.name}
+        onConfirm={handleDeleteConfirm}
+      />
+
+      {/* Bulk Delete Modal */}
+      <BulkDeleteModal
+        open={!!bulkDeleteItems}
+        onClose={() => setBulkDeleteItems(null)}
+        count={bulkDeleteItems?.length}
+        onConfirm={handleBulkDeleteConfirm}
+      />
     </div>
   );
 }

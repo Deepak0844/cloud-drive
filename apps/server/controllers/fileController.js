@@ -36,7 +36,7 @@ import asyncHandler from "#middlewares/asyncHandler.js";
 import ResponseUtils from "#utils/responseUtils.js";
 import DbUtils from "#utils/dbUtils.js";
 import MediaUtils from "#utils/mediaUtils.js";
-import { applyAdvancedFilters } from "#utils/filterUtils.js";
+import { applyAdvancedFilters, escapeRegex } from "#utils/filterUtils.js";
 import logger from "#utils/logger.js";
 import { paginateQuery } from "#utils/paginationUtils.js";
 import StreamingUtils from "#utils/streamingUtils.js";
@@ -56,7 +56,7 @@ export const getFiles = asyncHandler(async (req, res) => {
   let query = { user: req.user.id, is_deleted: false };
 
   if (search && search !== "null" && search !== "undefined") {
-    query.name = { $regex: search, $options: "i" };
+    query.name = { $regex: escapeRegex(search), $options: "i" };
   }
 
   const isRecursive = recursive === "true" || recursive === true;
@@ -202,11 +202,14 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
 
-  // Update last opened timestamp
-  file.last_opened_at = new Date();
-  await file.save();
-
   const isThumbnail = req.query.thumbnail === "true";
+
+  // Update last opened timestamp — skip for thumbnail requests (grid/list view
+  // would otherwise continuously reset the "recent" sort order)
+  if (!isThumbnail) {
+    file.last_opened_at = new Date();
+    await file.save();
+  }
   const userId = file.user.toString();
   const fileId = file._id.toString();
 
@@ -215,7 +218,30 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     const thumbDir = FileService.getThumbnailDir(userId);
     const thumbPath = path.join(thumbDir, `${fileId}.jpg`);
 
-    if (!fs.existsSync(thumbPath)) {
+    // Minimum size for a valid encrypted thumbnail JPEG.  A correct 300×300
+    // thumbnail from our pipeline is 9–12 KB.  Anything below this threshold
+    // is a corrupt stub (e.g. a partial write or a stale 0-byte-rejected file
+    // that somehow got a small header written before the process crashed).
+    const MIN_THUMB_BYTES = 2000;
+
+    // Treat a cached file as valid only if:
+    //   1. It exists on disk with a size above the minimum threshold (guards
+    //      against corrupt 0-byte or truncated files), AND
+    //   2. We have the IV needed to decrypt it — without the IV the encrypted
+    //      bytes would be served as raw JPEG, producing a black/corrupt image.
+    const thumbSize = fs.existsSync(thumbPath) ? fs.statSync(thumbPath).size : 0;
+    const thumbExistsAndValid = thumbSize >= MIN_THUMB_BYTES && !!file.thumbnail_iv;
+    if (!thumbExistsAndValid && fs.existsSync(thumbPath)) {
+      // Remove the corrupt/undersized file and reset DB fields
+      fs.unlinkSync(thumbPath);
+      if (file.thumbnail_path || file.thumbnail_iv) {
+        file.thumbnail_path = null;
+        file.thumbnail_iv = null;
+        await file.save();
+      }
+    }
+
+    if (!thumbExistsAndValid) {
       if (!fs.existsSync(file.storage_path)) {
         return res.status(HttpStatus.ACCEPTED).send(""); // original missing, no thumb possible
       }
@@ -240,8 +266,12 @@ export const getFilePreview = asyncHandler(async (req, res) => {
           return res.status(HttpStatus.ACCEPTED).send("");
         }
 
-        // Verify temp file was actually created
-        if (fs.existsSync(tempThumbPath)) {
+        // Verify temp file was actually created and has content.
+        // A small or empty temp file means generation silently failed (e.g.
+        // HEVC seek overshoot, partial write) — treat it as a failure rather
+        // than caching a corrupt stub permanently.
+        const tempThumbSize = fs.existsSync(tempThumbPath) ? fs.statSync(tempThumbPath).size : 0;
+        if (tempThumbSize >= MIN_THUMB_BYTES) {
           // Encrypt temp thumb to final path
           const cipher = CryptoUtils.getCipherStream(plaintextKey, thumbIv);
           await new Promise((resolve, reject) => {
@@ -256,7 +286,12 @@ export const getFilePreview = asyncHandler(async (req, res) => {
           file.thumbnail_iv = thumbIv.toString("hex");
           await file.save();
         } else {
-          logger.warn(`[Preview] Thumbnail generation returned but file missing for ${fileId}`);
+          if (fs.existsSync(tempThumbPath)) {
+            fs.unlinkSync(tempThumbPath); // clean up corrupt/undersized temp
+          }
+          logger.warn(
+            `[Preview] Thumbnail generation produced undersized output (${tempThumbSize}B < ${MIN_THUMB_BYTES}B min) for ${fileId}`
+          );
           return res.status(HttpStatus.ACCEPTED).send("");
         }
       } catch (err) {
@@ -276,6 +311,15 @@ export const getFilePreview = asyncHandler(async (req, res) => {
       const decipherStream = CryptoUtils.getDecipherStream(plaintextKey, thumbIv);
 
       const stats = fs.statSync(thumbPath);
+      // Final sanity guard: if the cached encrypted thumb is somehow too small
+      // (corrupt stub), return 202 so the client retries on the next request.
+      if (stats.size < MIN_THUMB_BYTES) {
+        fs.unlinkSync(thumbPath);
+        file.thumbnail_path = null;
+        file.thumbnail_iv = null;
+        await file.save();
+        return res.status(HttpStatus.ACCEPTED).send("");
+      }
       res.set("Content-Type", "image/jpeg");
       res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_DAY}`);
       res.set("Content-Length", stats.size);
@@ -307,8 +351,8 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     const iv = Buffer.from(file.encryption_iv, "hex");
 
     // Serve the original file directly via HTTP Range to support seeking.
-    // Use video/mp4 for non-native containers (.mov, .avi, .mkv) to help browser compatibility.
-    const mimeType = MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)
+    // Use video/mp4 for non-native containers (.mov, .avi, .mkv, HEVC) to help browser compatibility.
+    const mimeType = MediaUtils.needsVideoPreview(file.storage_path, file.mime_type, file.metadata?.codec)
       ? VideoMimeTypes.MP4
       : file.mime_type;
     return StreamingUtils.serveWithRange(res, file.storage_path, mimeType, req.headers.range, plaintextKey, iv);
@@ -336,29 +380,33 @@ export const getFilePreview = asyncHandler(async (req, res) => {
       return ResponseUtils.error(res, ErrorMessages.PHYSICAL_FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const ext = path.extname(file.storage_path).toLowerCase();
-    const isHeic = ext === ".heic" || ext === ".heif";
-
-    if (isHeic) {
-      try {
-        const inputBuffer = await fs.promises.readFile(file.storage_path);
-        const heicConvert = (await import("heic-convert")).default;
-        const outputBuffer = await heicConvert({ buffer: inputBuffer, format: "JPEG", quality: 0.8 });
-        res.set("Content-Type", "image/jpeg");
-        res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
-        return res.send(Buffer.from(outputBuffer));
-      } catch (err) {
-        logger.error(`[Preview] HEIC conversion failed for ${fileId}: ${err.message}`);
-        // Fall through to direct serve
-      }
-    }
-
+    // Fetch the user key once; used by both the HEIC branch and the generic image path.
     const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
     if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
       return ResponseUtils.error(res, ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
     }
     const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
     const iv = Buffer.from(file.encryption_iv, "hex");
+
+    const ext = path.extname(file.storage_path).toLowerCase();
+    const isHeic = ext === ".heic" || ext === ".heif";
+
+    if (isHeic) {
+      try {
+        // Decrypt the stored ciphertext into a plain buffer before HEIC conversion.
+        const encryptedBuffer = await fs.promises.readFile(file.storage_path);
+        const decipher = CryptoUtils.getDecipherStream(plaintextKey, iv);
+        const decryptedBuffer = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+        const heicConvert = (await import("heic-convert")).default;
+        const outputBuffer = await heicConvert({ buffer: decryptedBuffer, format: "JPEG", quality: 0.8 });
+        res.set("Content-Type", "image/jpeg");
+        res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
+        return res.send(Buffer.from(outputBuffer));
+      } catch (err) {
+        logger.error(`[Preview] HEIC conversion failed for ${fileId}: ${err.message}`);
+        // Fall through to direct decrypted stream serve
+      }
+    }
 
     res.set("Content-Type", file.mime_type);
     res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
@@ -409,7 +457,11 @@ export const streamFile = asyncHandler(async (req, res) => {
   const iv = Buffer.from(file.encryption_iv, "hex");
 
   // Non-native video: on-the-fly transcode via ffmpeg pipe (zero disk usage)
-  if (file.category === FileCategories.VIDEO && MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)) {
+  // Pass codec so HEVC-in-MP4 (not browser-playable) is correctly transcoded
+  if (
+    file.category === FileCategories.VIDEO &&
+    MediaUtils.needsVideoPreview(file.storage_path, file.mime_type, file.metadata?.codec)
+  ) {
     logger.info(`[Stream] On-the-fly transcode ${file.mime_type} → MP4 pipe for file ${file._id}`);
     res.writeHead(HttpStatus.OK, {
       "Content-Type": "video/mp4",
@@ -529,9 +581,7 @@ export const deleteFile = asyncHandler(async (req, res) => {
  */
 export const bulkDelete = asyncHandler(async (req, res) => {
   const { items } = req.body;
-  for (const item of items) {
-    await DbUtils.softDeleteRecursive(item.type, item.id, req.user.id, true);
-  }
+  await Promise.all(items.map((item) => DbUtils.softDeleteRecursive(item.type, item.id, req.user.id, true)));
   SocketService.emitToUser(req.user.id, SocketEvents.FILE_CHANGE, { action: SocketActions.BULK_DELETE, items });
   return ResponseUtils.success(res, { message: SuccessMessages.ITEMS_TRASHED });
 });
@@ -552,7 +602,7 @@ export const getRecentFiles = asyncHandler(async (req, res) => {
   let query = { user: req.user.id, is_deleted: false };
 
   if (search && search !== "null" && search !== "undefined") {
-    query.name = { $regex: search, $options: "i" };
+    query.name = { $regex: escapeRegex(search), $options: "i" };
   }
 
   query = applyAdvancedFilters(query, req.query, false);
@@ -673,7 +723,9 @@ export const bulkMove = asyncHandler(async (req, res) => {
     }
   }
 
-  await FileService.bulkMove(req.user.id, items, targetFolderId);
+  // Use DbUtils.moveItem per item (same path as single moveFile and handleBulkOperation)
+  // so ancestor-cycle validation is applied uniformly.
+  await Promise.all(items.map((item) => DbUtils.moveItem(item.type, item.id, targetFolderId, req.user.id)));
   SocketService.emitToUser(req.user.id, SocketEvents.ITEM_BULK_CHANGE, {
     action: SocketActions.MOVE,
     items,
@@ -707,8 +759,9 @@ export const getPlaybackInfo = asyncHandler(async (req, res) => {
   const fileId = file._id.toString();
 
   // Determine if the browser can play this format natively (no HLS needed)
+  // Pass codec so HEVC-in-MP4 is detected as non-native (browsers cannot decode H.265)
   const nativePlayback = isVideo
-    ? !MediaUtils.needsVideoPreview(file.storage_path, file.mime_type)
+    ? !MediaUtils.needsVideoPreview(file.storage_path, file.mime_type, file.metadata?.codec)
     : MediaUtils.BROWSER_NATIVE_AUDIO_MIMES.has(file.mime_type);
 
   const playbackUrl = nativePlayback ? `/api/v1/files/${fileId}/preview` : `/api/v1/files/${fileId}/hls/master.m3u8`;
@@ -765,24 +818,113 @@ export const getHlsPlaylist = asyncHandler(async (req, res) => {
 
   // ── Fire background transcode (no-op if already in flight or done) ────────
   const alreadyTranscoded = await HlsCacheUtils.isPlaylistCached(baseStoragePath, fileId);
+
+  // When duration is unknown (raw bitstream e.g. Annex-B HEVC) the virtual
+  // playlist would have 0 segments, which makes the player error immediately.
+  // In that case: run the transcode synchronously so we can read the real
+  // timing data ffmpeg writes into playlist.m3u8.
+  const durationUnknown = mediaInfo.duration === 0;
+
   if (!alreadyTranscoded) {
-    logger.info(`[HLS Playlist] Starting background transcode for file ${fileId}`);
-    MediaUtils.transcodeToHls(
-      file.storage_path,
-      plaintextKey,
-      iv,
-      outputDir,
-      HlsConfig.SEGMENT_DURATION,
-      isAudioOnly
-    ).catch((err) => logger.error(`[HLS Playlist] Background transcode failed for ${fileId}: ${err.message}`));
+    if (durationUnknown) {
+      // Synchronous — we need the real playlist before we can respond
+      logger.info(`[HLS Playlist] Unknown duration — synchronous transcode for ${fileId}`);
+      try {
+        await MediaUtils.transcodeToHls(
+          file.storage_path,
+          plaintextKey,
+          iv,
+          outputDir,
+          HlsConfig.SEGMENT_DURATION,
+          isAudioOnly
+        );
+      } catch (err) {
+        logger.error(`[HLS Playlist] Sync transcode failed for ${fileId}: ${err.message}`);
+        return ResponseUtils.error(res, "HLS transcode failed", HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+    } else {
+      // Background — virtual playlist keeps the response fast for long videos
+      logger.info(`[HLS Playlist] Starting background transcode for file ${fileId}`);
+      MediaUtils.transcodeToHls(
+        file.storage_path,
+        plaintextKey,
+        iv,
+        outputDir,
+        HlsConfig.SEGMENT_DURATION,
+        isAudioOnly
+      ).catch((err) => logger.error(`[HLS Playlist] Background transcode failed for ${fileId}: ${err.message}`));
+    }
   }
 
-  // ── Build and return playlist immediately from probe data ─────────────────
+  // When the real playlist.m3u8 is already on disk (sync transcode just ran, or
+  // it was cached from a previous request), translate ffmpeg's relative segment
+  // names to our authenticated API URLs and serve that instead of the virtual one.
+  // This avoids building a 0-segment playlist for unknown-duration files, and
+  // gives accurate per-segment timing for all already-transcoded files.
+  const realPlaylistReady = durationUnknown || alreadyTranscoded;
+  if (realPlaylistReady) {
+    try {
+      const playlistPath = HlsCacheUtils.getPlaylistPath(baseStoragePath, fileId);
+      let rawPlaylist = await fs.promises.readFile(playlistPath, "utf8");
+
+      // Validate: a previous broken transcode (e.g. missing audio-filter crash
+      // before the -an fix) may have left a 0-segment playlist on disk.
+      // isPlaylistCached only checks file existence, not content, so we must
+      // guard here.  If empty, purge the stale cache and do a fresh sync
+      // transcode before responding.
+      const hasSegments = /^seg-\d+\.ts$/m.test(rawPlaylist);
+      if (!hasSegments) {
+        logger.warn(`[HLS Playlist] Cached playlist for ${fileId} has 0 segments — purging and re-transcoding`);
+        await fs.promises.rm(outputDir, { recursive: true, force: true }).catch(() => {});
+        try {
+          await MediaUtils.transcodeToHls(
+            file.storage_path,
+            plaintextKey,
+            iv,
+            outputDir,
+            HlsConfig.SEGMENT_DURATION,
+            isAudioOnly
+          );
+        } catch (err) {
+          logger.error(`[HLS Playlist] Re-transcode after empty cache failed for ${fileId}: ${err.message}`);
+          return ResponseUtils.error(res, "HLS transcode failed", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        rawPlaylist = await fs.promises.readFile(playlistPath, "utf8");
+      }
+
+      // Replace relative "seg-N.ts" lines with our authenticated API endpoint.
+      let translated = rawPlaylist.replace(/^(seg-\d+\.ts)$/gm, `/api/v1/files/${fileId}/hls/$1`);
+
+      // Inject #EXT-X-PLAYLIST-TYPE:VOD so HLS.js and other players treat this
+      // as on-demand rather than a live stream (which would hide the seek bar).
+      // ffmpeg doesn't add this tag by default, so we add it ourselves.
+      if (!translated.includes("#EXT-X-PLAYLIST-TYPE")) {
+        translated = translated.replace("#EXTM3U", "#EXTM3U\n#EXT-X-PLAYLIST-TYPE:VOD");
+      }
+
+      res.set("Content-Type", "application/vnd.apple.mpegurl");
+      res.set("Cache-Control", "no-cache");
+      return res.send(translated);
+    } catch (err) {
+      logger.error(`[HLS Playlist] Failed to read real playlist for ${fileId}: ${err.message}`);
+      return ResponseUtils.error(res, "HLS playlist unavailable", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  // ── Build and return virtual playlist immediately from probe data ─────────
   const { duration } = mediaInfo;
   const segDur = HlsConfig.SEGMENT_DURATION;
   const segmentCount = Math.ceil(duration / segDur);
 
-  const lines = ["#EXTM3U", "#EXT-X-VERSION:3", `#EXT-X-TARGETDURATION:${segDur}`, "#EXT-X-MEDIA-SEQUENCE:0"];
+  // #EXT-X-PLAYLIST-TYPE:VOD tells all HLS parsers this is a finite on-demand
+  // stream — prevents HLS.js from incorrectly showing a LIVE indicator.
+  const lines = [
+    "#EXTM3U",
+    "#EXT-X-PLAYLIST-TYPE:VOD",
+    "#EXT-X-VERSION:3",
+    `#EXT-X-TARGETDURATION:${segDur}`,
+    "#EXT-X-MEDIA-SEQUENCE:0",
+  ];
   for (let i = 0; i < segmentCount; i++) {
     const isLast = i === segmentCount - 1;
     const segActualDuration = isLast ? (duration - i * segDur).toFixed(3) : segDur.toFixed(3);
@@ -891,7 +1033,8 @@ export const bulkCopy = asyncHandler(async (req, res) => {
     }
   }
 
-  await FileService.bulkCopy(req.user.id, items, targetFolderId);
+  // Use DbUtils.copyRecursive per item (same path as single copyFile and handleBulkOperation).
+  await Promise.all(items.map((item) => DbUtils.copyRecursive(item.type, item.id, targetFolderId, req.user.id)));
   const user = await User.findById(req.user.id);
 
   SocketService.emitToUser(req.user.id, SocketEvents.QUOTA_UPDATE, {

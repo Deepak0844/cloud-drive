@@ -1,31 +1,52 @@
-import { useRef } from "react";
-import { ItemTypes } from "@shared-constants/constants";
+import { useRef, useCallback } from "react";
+import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
 export function useUploadHandler({ addUpload, currentFolderId, handleDragEnter, handleDragLeave, handleDrop }) {
-  const uploadRef = useRef(null);
+  const uploadInputRef = useRef(null);
 
   function handleUploadClick() {
-    if (uploadRef.current) {
-      const uploadInput = uploadRef.current.querySelector('input[type="file"]');
-      if (uploadInput) uploadInput.click();
+    if (uploadInputRef.current) {
+      uploadInputRef.current.click();
     }
   }
 
-  const uploadProps = {
-    name: ItemTypes.FILE,
-    multiple: true,
-    showUploadList: false,
-    beforeUpload: (file) => {
-      // By returning false, we completely disable Antd's default XHR POST
-      // and natively pipe the individual file directly into our Custom Upload Context
+  function handleFileChange(e) {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach((file) => {
       addUpload(file, currentFolderId === "root" ? null : currentFolderId);
-      return false;
+    });
+
+    // Clear the input so the same files can be selected again
+    e.target.value = null;
+  }
+
+  const onDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleDrop(e);
+
+      const files = e.dataTransfer.files;
+      if (files && files.length > 0) {
+        Array.from(files).forEach((file) => {
+          addUpload(file, currentFolderId === ROOT_FOLDER_ID ? null : currentFolderId);
+        });
+      }
     },
-    openFileDialogOnClick: false,
+    [addUpload, currentFolderId, handleDrop]
+  );
+
+  const dropzoneProps = {
     onDragEnter: handleDragEnter,
     onDragLeave: handleDragLeave,
-    onDrop: handleDrop,
+    onDragOver: (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    onDrop,
   };
 
-  return { uploadRef, handleUploadClick, uploadProps };
+  return { uploadInputRef, handleUploadClick, handleFileChange, dropzoneProps };
 }

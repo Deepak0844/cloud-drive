@@ -31,7 +31,7 @@ import validate from "#middlewares/validate.js";
 import uploadMiddleware from "#middlewares/uploadMiddleware.js";
 
 // Schemas
-import { finalizeChunkedUploadSchema, initChunkedUploadSchema } from "#schemas/chunked.schema.js";
+import { finalizeChunkedUploadSchema, initChunkedUploadSchema, uploadChunkSchema } from "#schemas/chunked.schema.js";
 import {
   moveFileSchema,
   renameFileSchema,
@@ -60,7 +60,8 @@ router.post("/upload/init", validate(initChunkedUploadSchema), initChunkedUpload
 // Raw binary middleware for chunk uploads — bypasses FormData serialization so
 // the browser can stream each chunk immediately without pre-reading the full file.
 const rawChunkMiddleware = express.raw({ type: "*/*", limit: "25mb" });
-router.post("/upload/chunk", rawChunkMiddleware, uploadChunk);
+// validate(uploadChunkSchema) runs after rawChunkMiddleware; it only touches req.query (not the binary body)
+router.post("/upload/chunk", rawChunkMiddleware, validate(uploadChunkSchema), uploadChunk);
 router.post("/upload/finalize", validate(finalizeChunkedUploadSchema), finalizeChunkedUpload);
 
 // File operation routes

@@ -28,6 +28,14 @@ export default [
   {
     files: ["**/*.js", "**/*.jsx", "**/*.mjs"],
   },
+  // Disable react-refresh warning for shadcn/ui generated files.
+  // These files intentionally export both components and utility functions (e.g. buttonVariants).
+  {
+    files: ["apps/web/src/components/ui/**/*.jsx"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
   {
     ignores: ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.turbo/**"],
   },

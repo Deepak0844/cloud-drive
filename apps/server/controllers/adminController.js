@@ -29,8 +29,15 @@ import FormatUtils from "#utils/formatUtils.js";
  * @access  Private/Admin
  */
 export const getUsers = asyncHandler(async (req, res) => {
-  const { pg, ps } = req.query;
+  const { pg, ps, search } = req.query;
   const queryFilter = { _id: { $ne: req.user.id } };
+
+  if (search) {
+    const escaped = search.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+    const regex = { $regex: escaped, $options: "i" };
+    queryFilter.$or = [{ name: regex }, { email: regex }];
+  }
+
   const result = await paginateQuery(User, queryFilter, { pg, ps, sort: "name", select: "-password" });
   return ResponseUtils.success(res, result);
 });
@@ -194,7 +201,7 @@ export const runStorageReanalysis = asyncHandler(async (req, res) => {
   const summary = await FileService.deepSyncStorage(userId);
 
   // Notify all admins via socket that sync is done (optional)
-  SocketService.emitToAdmins("STORAGE_SYNC_COMPLETE", { ...summary, targetUserId: userId });
+  SocketService.emitToAdmins(SocketEvents.STORAGE_SYNC_COMPLETE, { ...summary, targetUserId: userId });
 
   return ResponseUtils.success(res, summary, HttpStatus.OK, {
     message: userId

@@ -8,6 +8,7 @@ export const SocketEvents = {
   QUOTA_REQUEST: "QUOTA_REQUEST",
   FILE_CHANGE: "FILE_CHANGE",
   FOLDER_CHANGE: "FOLDER_CHANGE",
+  STORAGE_SYNC_COMPLETE: "STORAGE_SYNC_COMPLETE",
 };
 
 /**
@@ -105,6 +106,8 @@ export const SuccessMessages = {
   FAVORITE_TOGGLED: "Favorite status updated",
   QUOTA_REQUEST_SUBMITTED: "Quota request submitted successfully.",
   NOTIFICATIONS_MARKED_READ: "All notifications marked as read",
+  NOTIFICATION_DELETED: "Notification deleted",
+  ALL_NOTIFICATIONS_DELETED: "All notifications deleted",
   TRASH_EMPTIED: "Trash emptied successfully",
   PUSH_TOKEN_REGISTERED: "Push token registered successfully",
   PASSWORD_UPDATED: "Password updated successfully",

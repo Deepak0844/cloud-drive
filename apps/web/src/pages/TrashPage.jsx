@@ -1,8 +1,8 @@
 // React core & third-party libraries
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { App, Breadcrumb } from "antd";
-import { DeleteOutlined, HomeOutlined, RestOutlined, UndoOutlined } from "@ant-design/icons";
+import { useState } from "react";
+
+import { toast } from "sonner";
+import { Trash2, RotateCcw, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
@@ -15,8 +15,6 @@ import {
 
 // Constants
 import { ItemTypes } from "@shared-constants/constants";
-import PageNames from "@constants/pageNames";
-import PageUrls from "@constants/pageUrls";
 
 // Hooks
 import { useInfinitePaging } from "@hooks/files/useInfinitePaging";
@@ -26,13 +24,24 @@ import { useSelectableItems } from "@hooks/files/useSelectableItems";
 
 // Components
 import FileItem from "@components/files/FileItem";
-import FloatingBulkActionsBar from "@components/files/FloatingBulkActionsBar";
+import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBulkActionsBar";
 import FolderItem from "@components/files/FolderItem";
-import InfoDrawer from "@components/files/InfoDrawer";
 import ListControls from "@components/files/ListControls";
+import InfoDrawer from "@components/files/InfoDrawer";
+import { Button } from "@components/ui/button";
+import Loader from "@components/common/Loader";
 import PageHeader from "@components/layout/PageHeader";
-import Button from "@shared-components/components/button";
-import Loader from "@shared-components/components/loader";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@components/ui/alert-dialog";
 
 function TrashView() {
   // Local state
@@ -42,12 +51,14 @@ function TrashView() {
   const { advancedFilters, debouncedSearch, page, pageSize, setPage, updateParams } = useListPageParams();
 
   // Custom & shared hooks
-  const { message, modal } = App.useApp();
 
   // RTK Query hooks
   const [emptyTrash, { isLoading: isEmptying }] = useEmptyTrashMutation();
   const [permanentlyDeleteItems, { isLoading: isDeleting }] = usePermanentlyDeleteItemsMutation();
   const [restoreItems, { isLoading: isRestoring }] = useRestoreItemsMutation();
+
+  const [confirmEmpty, setConfirmEmpty] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const {
     data: trashData,
@@ -77,89 +88,46 @@ function TrashView() {
   });
 
   // useEffect
-  useEffect(() => {
-    // Handled by updateParams, but good for external URL changes
-  }, [debouncedSearch, advancedFilters]);
   useOutsideClickClear({ clearSelection });
 
-  function handleEmptyTrash() {
-    modal.confirm({
-      title: "Empty Trash",
-      icon: <RestOutlined className="text-danger" />,
-      content: "Are you sure you want to permanently delete all items in the trash? This action cannot be undone.",
-      okText: "Empty Trash",
-      okType: "danger",
-      cancelText: "Cancel",
-      className: "premium-modal",
-      centered: true,
-      onOk: async () => {
-        try {
-          await emptyTrash().unwrap();
-          message.success("Trash emptied successfully");
-          clearSelection();
-        } catch (_error) {
-          message.error("Failed to empty trash");
-        }
-      },
-    });
+  async function onEmptyTrashConfirm() {
+    try {
+      await emptyTrash().unwrap();
+      toast.success("Trash emptied successfully");
+      clearSelection();
+    } catch (_error) {
+      toast.error("Failed to empty trash");
+    } finally {
+      setConfirmEmpty(false);
+    }
   }
 
   async function handleBulkRestore() {
     if (selectedItems.length === 0) return;
     try {
       await restoreItems({ items: selectedItems }).unwrap();
-      message.success(`Restored ${selectedItems.length} items`);
+      toast.success(`Restored ${selectedItems.length} items`);
       clearSelection();
     } catch (_error) {
-      message.error("Failed to restore items");
+      toast.error("Failed to restore items");
     }
   }
 
-  function handleBulkDelete() {
-    if (selectedItems.length === 0) return;
-    modal.confirm({
-      title: "Delete Forever",
-      icon: <DeleteOutlined className="text-danger" />,
-      content: `Are you sure you want to permanently delete these ${selectedItems.length} items? This action cannot be undone.`,
-      okText: "Delete Forever",
-      okType: "danger",
-      cancelText: "Cancel",
-      className: "premium-modal",
-      centered: true,
-      onOk: async () => {
-        try {
-          await permanentlyDeleteItems({ items: selectedItems }).unwrap();
-          message.success(`Permanently deleted ${selectedItems.length} items`);
-          clearSelection();
-        } catch (_error) {
-          message.error("Failed to delete items");
-        }
-      },
-    });
+  async function onDeleteSelectedConfirm() {
+    try {
+      await permanentlyDeleteItems({ items: selectedItems }).unwrap();
+      toast.success(`Permanently deleted ${selectedItems.length} items`);
+      clearSelection();
+    } catch (_error) {
+      toast.error("Failed to delete items");
+    } finally {
+      setConfirmDelete(false);
+    }
   }
 
   return (
     <div className="flex flex-col gap-6 pb-24">
       <PageHeader
-        title={PageNames.TRASH}
-        icon={<RestOutlined className="text-danger opacity-80" />}
-        breadcrumbNode={
-          <Breadcrumb
-            items={[
-              {
-                title: (
-                  <Link
-                    to={PageUrls.DashboardPage}
-                    className="flex items-center gap-2 text-primary font-semibold text-xs transition-colors"
-                  >
-                    <HomeOutlined className="text-[10px]" /> <span>{PageNames.MY_FILES}</span>
-                  </Link>
-                ),
-              },
-              { title: <span className="text-label-secondary font-medium text-xs">{PageNames.TRASH}</span> },
-            ]}
-          />
-        }
         rightContent={
           <>
             <ListControls
@@ -174,13 +142,12 @@ function TrashView() {
             />
 
             <Button
-              danger
-              type="primary"
-              icon={<RestOutlined />}
-              onClick={handleEmptyTrash}
+              variant="destructive"
+              icon={<Trash2 size={16} />}
+              onClick={() => setConfirmEmpty(true)}
               disabled={folders.length === 0 && files.length === 0}
               loading={isEmptying}
-              className="rounded-xl h-10 shadow-lg font-bold hover:scale-[1.02] transition-transform active:scale-95"
+              className="rounded-xl h-10 shadow-glow-sm font-bold hover:scale-[1.02] transition-transform active:scale-95 px-6"
             >
               Empty Trash
             </Button>
@@ -188,50 +155,25 @@ function TrashView() {
         }
       />
 
-      {/* Bulk Actions Bar */}
-      {selectedItems.length > 0 && (
-        <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}>
-          <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
-            <Button
-              type="text"
-              icon={<UndoOutlined />}
-              onClick={handleBulkRestore}
-              loading={isRestoring}
-              className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-primary hover:bg-primary-light border-none justify-center"
-            >
-              <span className="text-[10px] uppercase tracking-tighter">Restore</span>
-            </Button>
-            <Button
-              type="text"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={handleBulkDelete}
-              loading={isDeleting}
-              className="rounded-xl font-bold flex flex-col items-center gap-0.5 h-12 w-16 text-danger hover:bg-danger-light border-none justify-center"
-            >
-              <span className="text-[10px] uppercase tracking-tighter">Delete</span>
-            </Button>
-          </FloatingBulkActionsBar>
-        </motion.div>
-      )}
+      <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
 
       {isLoading ? (
         <div className="py-20 flex justify-center w-full">
           <Loader size={32} />
         </div>
       ) : folders.length === 0 && files.length === 0 ? (
-        <div className="bg-surface rounded-3xl border border-line shadow-sm flex flex-col items-center justify-center py-24 px-8 mt-4 hover:border-primary/20 transition-colors">
+        <div className="glass-card rounded-[2.5rem] shadow-md flex flex-col items-center justify-center py-24 px-8 mt-4 bg-white/5 border-dashed border-white/10">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 16 }}
-            className="w-24 h-24 rounded-full bg-danger-light flex items-center justify-center mb-6 shadow-inner"
+            className="w-24 h-24 rounded-4xl glass-card flex items-center justify-center mb-8 shadow-inner border-[#dc2626]/20 crimson-glow"
           >
-            <DeleteOutlined style={{ fontSize: "2.5rem", color: "var(--danger)" }} className="opacity-80" />
+            <Trash2 size={44} className="text-[#dc2626] opacity-80" />
           </motion.div>
-          <h2 className="text-2xl font-bold text-label mb-2 tracking-tight">Your trash is empty</h2>
-          <p className="text-sm text-label-tertiary text-center max-w-xs leading-relaxed font-medium">
-            Items you delete will appear here and be permanently removed after 30 days.
+          <h2 className="text-3xl font-black text-label mb-3 tracking-tighter italic">Trash is Empty</h2>
+          <p className="text-sm text-label-tertiary text-center max-w-xs leading-relaxed font-medium opacity-70">
+            Deleted items stay here for 30 days before being permanently removed.
           </p>
         </div>
       ) : (
@@ -314,19 +256,85 @@ function TrashView() {
           <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
             {isFetching ? (
               <>
-                <Loader size={24} />
-                <span className="text-label-tertiary text-sm">Loading more items...</span>
+                <Loader size={20} />
+                <span className="text-label-tertiary text-xs font-medium">Loading more items...</span>
               </>
             ) : paginationData?.hasNext ? (
-              <span className="text-label-tertiary text-sm italic">Scroll for more</span>
+              <span className="text-label-tertiary text-xs italic opacity-60">Scroll for more</span>
             ) : (
-              <span className="text-label-tertiary text-sm italic">No more items in trash</span>
+              <span className="text-label-tertiary text-xs italic opacity-40">No more items in trash</span>
             )}
           </div>
         </div>
       )}
 
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
+
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={confirmEmpty} onOpenChange={setConfirmEmpty}>
+        <AlertDialogContent className="aurora-modal">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-error">
+              <AlertTriangle size={20} />
+              <span>Empty Trash</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-label-tertiary font-medium">
+              Are you sure you want to permanently delete all items in the trash? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onEmptyTrashConfirm}
+              className="rounded-xl font-bold bg-error hover:bg-error/90 text-white shadow-glow-sm"
+            >
+              Empty Trash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent className="aurora-modal">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-error">
+              <AlertTriangle size={20} />
+              <span>Delete Forever</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-label-tertiary font-medium">
+              Are you sure you want to permanently delete these {selectedItems.length} items? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onDeleteSelectedConfirm}
+              className="rounded-xl font-bold bg-error hover:bg-error/90 text-white shadow-glow-sm"
+            >
+              Delete Forever
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
+        <BulkAction
+          icon={<RotateCcw size={16} />}
+          label="Restore"
+          tooltip="Restore selection"
+          onClick={handleBulkRestore}
+          loading={isRestoring}
+        />
+        <BulkAction
+          icon={<Trash2 size={16} />}
+          label="Delete"
+          tooltip="Delete permanently"
+          danger
+          onClick={() => setConfirmDelete(true)}
+          loading={isDeleting}
+        />
+      </FloatingBulkActionsBar>
     </div>
   );
 }

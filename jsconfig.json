@@ -2,7 +2,6 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@shared-components/*": ["./shared/components/src/*"],
       "@shared-js-config/*": ["./shared/js-config/*"],
       "web/*": ["./apps/web/src/*"],
       "server/*": ["./apps/server/*"]

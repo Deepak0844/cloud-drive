@@ -333,6 +333,12 @@ async function copyFileInternal(userId, fileId, targetFolderId) {
     return;
   }
 
+  // Enforce quota before duplicating — a copy consumes as much space as the original.
+  const hasQuota = await checkQuota(userId, sourceFile.size_bytes);
+  if (!hasQuota) {
+    throw new Error(ErrorMessages.QUOTA_EXCEEDED);
+  }
+
   const uniqueName = await getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
   const ext = path.extname(sourceFile.original_name);
 
@@ -465,6 +471,25 @@ async function finalizeUploadedFile({
           `[Upload] Fast-start optimization failed for ${originalName}, continuing with original: ${err.message}`
         );
       }
+    }
+  }
+
+  // 1a. Extract metadata if caller did not supply any (e.g. chunked uploads skip this step).
+  //     This guarantees file.metadata.codec is populated for ALL uploads, which is crucial
+  //     for detecting HEVC-in-MP4 when needsVideoPreview is called later.
+  if (!metadata || Object.keys(metadata).length === 0) {
+    try {
+      const { metadata: extracted, extra: extractedExtra } = await MetadataService.extractMetadata(
+        finalUploadPath,
+        category
+      );
+      metadata = extracted;
+      // Merge extra fields (e.g. audio_metadata, gps, taken_at) so chunked uploads
+      // also benefit from these enrichments.
+      extra = { ...extractedExtra, ...extra };
+      logger.debug(`[Upload] Metadata extracted on-demand for ${originalName}: codec=${metadata?.codec ?? "n/a"}`);
+    } catch (metaErr) {
+      logger.warn(`[Upload] On-demand metadata extraction failed for ${originalName}: ${metaErr.message}`);
     }
   }
 

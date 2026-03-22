@@ -9,6 +9,7 @@ import { TagIds, TagTypes } from "@constants/apiTags";
 import { FileServiceUrls } from "@constants/serviceUrls";
 import { HttpMethods } from "@shared-constants/constants/httpConstants";
 import { UPLOAD_CHUNK_SIZE } from "@shared-constants/constants";
+import { DEFAULT_CHUNK_SIZE } from "@constants/uiConstants";
 
 // Services
 import api from "./api";
@@ -89,7 +90,7 @@ const uploadFileChunkedMutation = () => ({
     const authToken = httpClient.authToken;
 
     try {
-      const safeChunkSize = UPLOAD_CHUNK_SIZE || 10 * 1000 * 1000;
+      const safeChunkSize = UPLOAD_CHUNK_SIZE || DEFAULT_CHUNK_SIZE;
 
       if (file.size <= safeChunkSize) {
         await uploadSingleFile({ httpClient, file, folderId, signal, onProgressFn });

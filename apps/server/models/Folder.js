@@ -58,7 +58,12 @@ const folderSchema = new mongoose.Schema(
 );
 
 // Indexes
+// Unique constraint: a user cannot have two folders with the same name in the same parent
 folderSchema.index({ name: 1, user: 1, parent: 1 }, { unique: true });
+// Most folder queries filter on { user, is_deleted } — this compound index is essential
+folderSchema.index({ user: 1, is_deleted: 1 });
+// Browsing a folder's immediate children (the dominant read pattern)
+folderSchema.index({ user: 1, parent: 1, is_deleted: 1 });
 folderSchema.index({ tags: 1 });
 
 export default mongoose.model("Folder", folderSchema);

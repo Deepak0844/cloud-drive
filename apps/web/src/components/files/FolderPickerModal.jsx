@@ -1,16 +1,25 @@
 // React core & third-party libraries
 import React, { useState } from "react";
-import { Breadcrumb, List, Modal, Typography } from "antd";
-import { ArrowLeftOutlined, FolderFilled, FolderOpenFilled, HomeFilled } from "@ant-design/icons";
+import { ArrowLeft, Folder, FolderOpen, Home, Check } from "lucide-react";
+import { cn } from "@lib/utils";
 
 // Services (RTK Query hooks)
 import { useGetFoldersQuery } from "@services/api/folderApi";
 
-// Components
-import Button from "@shared-components/components/button";
-import Loader from "@shared-components/components/loader";
+// Constants
+import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 
-const { Text } = Typography;
+// Components
+import { Button } from "@components/ui/button";
+import Loader from "@components/common/Loader";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@components/ui/dialog";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@components/ui/breadcrumb";
 
 /**
  * A modal that allows users to browse their folder structure and select a target folder.
@@ -27,7 +36,7 @@ function FolderPickerModal({
 }) {
   // Local state
   // Navigation history to avoid calling folder details API
-  const [history, setHistory] = useState([{ id: "root", name: "My Files" }]);
+  const [history, setHistory] = useState([{ id: ROOT_FOLDER_ID, name: "My Files" }]);
 
   // Derived / computed variables
   const currentFolder = history[history.length - 1];
@@ -37,7 +46,7 @@ function FolderPickerModal({
   // Fetch only folders in the current directory (optimized)
   const { data: foldersData, isLoading: isFoldersLoading } = useGetFoldersQuery(
     {
-      parentId: currentFolderId === "root" ? null : currentFolderId,
+      parentId: currentFolderId === ROOT_FOLDER_ID ? null : currentFolderId,
     },
     { skip: !open }
   );
@@ -49,8 +58,8 @@ function FolderPickerModal({
 
   // Event handlers
   function handleNavigate(id, name) {
-    if (id === "root") {
-      setHistory([{ id: "root", name: "My Files" }]);
+    if (id === ROOT_FOLDER_ID) {
+      setHistory([{ id: ROOT_FOLDER_ID, name: "My Files" }]);
     } else {
       setHistory((prev) => [...prev, { id, name }]);
     }
@@ -66,120 +75,150 @@ function FolderPickerModal({
   }
 
   function handleConfirm() {
-    onConfirm(currentFolderId === "root" ? "root" : currentFolderId);
+    onConfirm(currentFolderId === ROOT_FOLDER_ID ? ROOT_FOLDER_ID : currentFolderId);
   }
 
   // Derived / computed variables
   const isSameFolder =
-    (currentFolderId === "root" && (currentParentId === null || currentParentId === "root")) ||
+    (currentFolderId === ROOT_FOLDER_ID && (currentParentId === null || currentParentId === ROOT_FOLDER_ID)) ||
     currentFolderId === currentParentId;
 
   // Render
   return (
-    <Modal
-      title={title}
-      open={open}
-      onCancel={onClose}
-      footer={[
-        <Button key="cancel" type="text" onClick={onClose} className="rounded-xl font-bold">
-          Cancel
-        </Button>,
-        <Button
-          key="confirm"
-          type="primary"
-          onClick={handleConfirm}
-          loading={loading}
-          disabled={isSameFolder}
-          className="rounded-xl px-6 font-bold shadow-primary"
-        >
-          {isSameFolder ? "Already Here" : confirmText}
-        </Button>,
-      ]}
-      className="premium-modal"
-      centered
-      width={480}
-    >
-      <div className="flex flex-col gap-4 py-2 min-h-[350px]">
-        {/* Navigation / Breadcrumbs */}
-        <div className="flex items-center gap-3 bg-surface-alt p-3 rounded-2xl border border-line">
-          <Button
-            type="text"
-            icon={<ArrowLeftOutlined />}
-            onClick={handleBack}
-            disabled={currentFolderId === "root"}
-            className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg"
-          />
-          <div className="flex-1 overflow-hidden">
-            <Breadcrumb
-              separator={<span className="text-label-tertiary">/</span>}
-              items={history.map((item, index) => ({
-                title: (
-                  <span
-                    className="cursor-pointer hover:text-primary transition-colors flex items-center gap-1"
-                    onClick={() => handleBreadcrumbClick(index)}
-                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleBreadcrumbClick(index)}
+    <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+      <DialogContent className="sm:max-w-[520px] p-0 overflow-hidden border-white/10 bg-surface/95 backdrop-blur-2xl rounded-[2.5rem] shadow-premium">
+        <DialogHeader className="px-8 pt-8 pb-4">
+          <DialogTitle className="text-2xl font-black text-label tracking-tight flex items-center justify-between">
+            {title}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-6 px-8 py-2 min-h-[400px]">
+          {/* Navigation / Breadcrumbs */}
+          <div className="flex items-center gap-4 bg-surface-alt/50 p-4 rounded-2xl border border-white/5 shadow-inner">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBack}
+              disabled={currentFolderId === ROOT_FOLDER_ID}
+              className="shrink-0 h-10 w-10 rounded-xl hover:bg-primary/10 text-label-secondary hover:text-primary transition-all disabled:opacity-30"
+            >
+              <ArrowLeft size={20} />
+            </Button>
+            <div className="flex-1 overflow-hidden">
+              <Breadcrumb>
+                <BreadcrumbList>
+                  {history.map((item, index) => {
+                    const isLast = index === history.length - 1;
+                    return (
+                      <React.Fragment key={item.id}>
+                        <BreadcrumbItem>
+                          <BreadcrumbLink
+                            className={cn(
+                              "cursor-pointer text-[13px] transition-all flex items-center gap-1.5",
+                              isLast
+                                ? "font-black text-primary"
+                                : "font-bold text-label-tertiary hover:text-label-secondary"
+                            )}
+                            onClick={() => handleBreadcrumbClick(index)}
+                          >
+                            {index === 0 && (
+                              <Home size={12} className={cn(isLast ? "text-primary" : "text-label-tertiary")} />
+                            )}
+                            <span className="truncate max-w-[100px]">{item.name}</span>
+                          </BreadcrumbLink>
+                        </BreadcrumbItem>
+                        {!isLast && <BreadcrumbSeparator className="text-white/10" />}
+                      </React.Fragment>
+                    );
+                  })}
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+          </div>
+
+          {/* Folder List */}
+          <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
+            {isFoldersLoading ? (
+              <div className="py-24 flex justify-center w-full">
+                <Loader size={40} />
+              </div>
+            ) : visibleFolders.length === 0 ? (
+              <div className="py-24 flex flex-col items-center justify-center text-center">
+                <div className="w-20 h-20 bg-surface-alt rounded-3xl flex items-center justify-center mb-4 opacity-50">
+                  <FolderOpen size={32} className="text-label-tertiary" />
+                </div>
+                <h4 className="text-base font-bold text-label-secondary">No subfolders found</h4>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {visibleFolders.map((folder) => (
+                  <div
+                    key={String(folder._id || folder.id)}
+                    className="group flex items-center gap-4 px-4 py-3 rounded-2xl hover:bg-primary/5 cursor-pointer transition-all border border-transparent hover:border-primary/10"
+                    onClick={() => handleNavigate(String(folder._id || folder.id), folder.name)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        handleNavigate(String(folder._id || folder.id), folder.name);
+                      }
+                    }}
                     role="button"
                     tabIndex={0}
                   >
-                    {index === 0 && <HomeFilled className="text-[10px]" />}
-                    <span
-                      className={`text-xs ${index === history.length - 1 ? "font-bold text-primary" : "font-medium"}`}
-                    >
-                      {item.name}
-                    </span>
-                  </span>
-                ),
-              }))}
-            />
+                    <div className="w-12 h-12 rounded-[1.25rem] bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 group-hover:bg-primary transition-all duration-300 group-hover:text-white">
+                      <Folder size={22} className="fill-current" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="block truncate text-sm font-black text-label group-hover:text-primary transition-colors">
+                        {folder.name}
+                      </span>
+                      <span className="text-[11px] font-bold text-label-tertiary uppercase tracking-tighter">
+                        {folder.itemCount || 0} items
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0 shadow-glow">
+              <Check size={16} className="text-white stroke-3" />
+            </div>
+            <div className="flex-1">
+              <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest block mb-0.5">
+                Selection
+              </span>
+              <span className="text-sm font-black text-primary truncate block">{currentFolder.name}</span>
+            </div>
           </div>
         </div>
 
-        {/* Folder List */}
-        <div className="flex-1 overflow-y-auto pr-1">
-          {isFoldersLoading ? (
-            <div className="py-20 flex justify-center w-full">
-              <Loader size={32} />
-            </div>
-          ) : visibleFolders.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center text-center opacity-60">
-              <FolderOpenFilled className="text-4xl text-label-tertiary mb-3" />
-              <Text className="text-sm font-bold text-label">No subfolders found</Text>
-            </div>
-          ) : (
-            <List
-              dataSource={visibleFolders}
-              renderItem={(folder) => (
-                <List.Item
-                  className="px-3 py-3 rounded-xl hover:bg-surface-alt cursor-pointer transition-colors group border-none mb-1"
-                  onClick={() => handleNavigate(String(folder._id || folder.id), folder.name)}
-                >
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="w-10 h-10 rounded-lg bg-primary-light text-primary flex items-center justify-center text-lg shrink-0 group-hover:scale-105 transition-transform">
-                      <FolderFilled />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Text strong className="block truncate text-sm">
-                        {folder.name}
-                      </Text>
-                      <Text type="secondary" className="text-[11px]">
-                        {folder.itemCount || 0} items
-                      </Text>
-                    </div>
-                  </div>
-                </List.Item>
-              )}
-            />
-          )}
-        </div>
-
-        <div className="bg-primary/5 p-3 rounded-xl border border-primary/10">
-          <Text className="text-[11px] text-primary font-medium flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            Selection: {currentFolder.name}
-          </Text>
-        </div>
-      </div>
-    </Modal>
+        <DialogFooter className="px-8 pb-8 pt-4 gap-3 bg-linear-to-t from-surface to-transparent sm:justify-end">
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="rounded-2xl font-black text-label-secondary hover:text-label hover:bg-surface-alt transition-all px-6"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirm}
+            disabled={isSameFolder || loading}
+            className={cn(
+              "rounded-2xl px-8 font-black transition-all shadow-glow",
+              isSameFolder
+                ? "bg-surface-alt text-label-tertiary cursor-not-allowed"
+                : "bg-primary text-white hover:scale-105"
+            )}
+          >
+            {loading ? <Loader size={16} className="mr-2" /> : null}
+            {isSameFolder ? "Already Here" : confirmText}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

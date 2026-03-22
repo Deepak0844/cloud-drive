@@ -17,8 +17,10 @@ async function getHardwareStats() {
     // Format CPU load
     const cpuLoad = cpu.currentLoad.toFixed(2);
 
-    // Get primary disk (usually the first one or one matching a path)
-    const mainDisk = disk[0] || { use: 0, size: 0, used: 0 };
+    // Get the disk mounted at '/' (root), falling back to the largest disk
+    const mainDisk =
+      disk.find((d) => d.mount === "/") ||
+      disk.reduce((a, b) => (a.size > b.size ? a : b), { use: 0, size: 0, used: 0 });
 
     return {
       cpu: {
@@ -57,7 +59,11 @@ async function getStorageAnalytics() {
           used_bytes: 1,
           quota_bytes: 1,
           usage_percent: {
-            $multiply: [{ $divide: ["$used_bytes", "$quota_bytes"] }, 100],
+            $cond: [
+              { $gt: ["$quota_bytes", 0] },
+              { $multiply: [{ $divide: ["$used_bytes", "$quota_bytes"] }, 100] },
+              0,
+            ],
           },
         },
       },
