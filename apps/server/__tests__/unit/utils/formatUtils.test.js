@@ -1,5 +1,5 @@
 // Utils
-import { formatStorageSize, bytesToGB, bytesToMB, gbToBytes } from "../../../utils/formatUtils.js";
+import { formatStorageSize, bytesToGB, bytesToMB, gbToBytes } from "#utils/formatUtils.js";
 
 describe("FormatUtils", () => {
   describe("formatStorageSize", () => {

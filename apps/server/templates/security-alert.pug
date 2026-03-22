@@ -1,23 +1,23 @@
 extends layout
 
 block content
-  h2(style="color: #c9d1d9; margin-top: 0;") #{alertTitle}
+  h2(style="color: #ffffff; margin-top: 0; font-weight: 800; letter-spacing: -0.02em;") #{alertTitle}
   p Hello #{userName || 'User'},
   p #{alertMessage}
   
   if session
-    div(style="margin: 30px 0; padding: 20px; background-color: #0d1117; border-radius: 8px; border: 1px solid #30363d;")
-      h3(style="color: #58a6ff; font-size: 14px; text-transform: uppercase; margin-top: 0; margin-bottom: 15px;") Session Details
+    div(style="margin: 30px 0; padding: 24px; background-color: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);")
+      h3(style="color: #818cf8; font-size: 12px; text-transform: uppercase; margin-top: 0; margin-bottom: 20px; font-weight: 800; letter-spacing: 0.1em;") Session Details
       table(style="width: 100%; font-size: 14px; border-collapse: collapse;")
         tr
-          td(style="padding: 5px 0; color: #8b949e; width: 100px;") Device
-          td(style="padding: 5px 0; color: #c9d1d9;") #{session.device}
+          td(style="padding: 8px 0; color: #64748b; width: 120px; font-weight: 600;") Device
+          td(style="padding: 8px 0; color: #f1f5f9; font-weight: 600;") #{session.device}
         tr
-          td(style="padding: 5px 0; color: #8b949e;") IP Address
-          td(style="padding: 5px 0; color: #c9d1d9;") #{session.ip}
+          td(style="padding: 8px 0; color: #64748b; font-weight: 600;") IP Address
+          td(style="padding: 8px 0; color: #f1f5f9; font-weight: 600;") #{session.ip}
         tr
-          td(style="padding: 5px 0; color: #8b949e;") Time
-          td(style="padding: 5px 0; color: #c9d1d9;") #{session.timestamp}
+          td(style="padding: 8px 0; color: #64748b; font-weight: 600;") Time
+          td(style="padding: 8px 0; color: #f1f5f9; font-weight: 600;") #{session.timestamp}
 
   if alertType === 'login'
     .alert-box.alert-warning

@@ -1,3 +1,6 @@
+// Utils
+import UrlUtils from "./urlUtils";
+
 /**
  * ------------------------------------------------------------------------------
  * convertBinaryToBlobUrl - Convert binary data to a Base64 string for embedding (PDF example)
@@ -73,6 +76,51 @@ async function convertBinaryToBase64StringImage(binaryString = "") {
   return data;
 }
 
+/**
+ * ------------------------------------------------------------------------------
+ * startFileDownload - Trigger browser download for a file by id
+ * @param {{id?: string, _id?: string, name?: string}} file - File metadata
+ * @param {string} downloadUrlTemplate - URL template including :id
+ * @returns {void}
+ */
+function startFileDownload(file = {}, downloadUrlTemplate = "") {
+  const fileId = file.id || file._id;
+  if (!fileId || !downloadUrlTemplate) return;
+
+  const downloadUrl = UrlUtils.format(downloadUrlTemplate, { id: fileId });
+  const anchor = document.createElement("a");
+  anchor.href = downloadUrl;
+  anchor.download = file.name || "download";
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+}
+
+/**
+ * ------------------------------------------------------------------------------
+ * triggerPostDownload - Trigger browser download for a POST request using a hidden form.
+ * This allows the browser to handle the response as a stream, saving it directly to disk.
+ * @param {string} url - The download endpoint URL
+ * @param {Object} data - The POST body data (e.g., { items: [...] })
+ * @returns {void}
+ */
+function triggerPostDownload(url, data = {}) {
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = url;
+  form.style.display = "none";
+
+  const input = document.createElement("input");
+  input.type = "hidden";
+  input.name = "payload"; // The server should expect the JSON in this field or similar
+  input.value = JSON.stringify(data);
+  form.appendChild(input);
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
+
 // Exports
 // --------------------------------------------------------------------
 const FileUtils = {
@@ -80,6 +128,8 @@ const FileUtils = {
   blobToBase64,
   base64ToFile,
   convertBinaryToBase64StringImage,
+  startFileDownload,
+  triggerPostDownload,
 };
 
 export default FileUtils;

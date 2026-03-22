@@ -2,15 +2,15 @@ import { jest } from "@jest/globals";
 import request from "supertest";
 
 // App
-import app from "../../app.js";
+import app from "#app";
 
 // Models
-import File from "../../models/File.js";
-import Folder from "../../models/Folder.js";
+import File from "#models/File.js";
+import Folder from "#models/Folder.js";
 
 // Helpers
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createTestUser, getAuthHeader } from "#test-helpers/auth.helper.js";
 
 describe("Trash API", () => {
   let user;
@@ -50,7 +50,7 @@ describe("Trash API", () => {
       const response = await request(app).get("/api/v1/trash").set(authHeader).expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.length).toBe(1);
+      expect(response.body.data.files.length).toBe(1);
     });
   });
 
@@ -68,9 +68,9 @@ describe("Trash API", () => {
       });
 
       const response = await request(app)
-        .post(`/api/v1/trash/${file._id}/restore`)
+        .post(`/api/v1/trash/restore`)
         .set(authHeader)
-        .send({ type: "file" })
+        .send({ items: [{ id: file._id, type: "file" }] })
         .expect(200);
 
       expect(response.body.success).toBe(true);
@@ -92,7 +92,11 @@ describe("Trash API", () => {
         mime_type: "text/plain",
       });
 
-      await request(app).delete(`/api/v1/trash/${file._id}`).set(authHeader).send({ type: "file" }).expect(200);
+      await request(app)
+        .delete(`/api/v1/trash/permanent`)
+        .set(authHeader)
+        .send({ items: [{ id: file._id, type: "file" }] })
+        .expect(200);
 
       const deleted = await File.findById(file._id);
       expect(deleted).toBeNull();
@@ -135,7 +139,11 @@ describe("Trash API", () => {
       });
 
       // Restore file
-      await request(app).post(`/api/v1/trash/${file._id}/restore`).set(authHeader).send({ type: "file" }).expect(200);
+      await request(app)
+        .post(`/api/v1/trash/restore`)
+        .set(authHeader)
+        .send({ items: [{ id: file._id, type: "file" }] })
+        .expect(200);
 
       const restored = await File.findById(file._id);
       expect(restored.is_deleted).toBe(false);

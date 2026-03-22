@@ -3,15 +3,15 @@ import { jest } from "@jest/globals";
 import request from "supertest";
 
 // App
-import app from "../../app.js";
+import app from "#app";
 
 // Models
-import File from "../../models/File.js";
-import Folder from "../../models/Folder.js";
+import File from "#models/File.js";
+import Folder from "#models/Folder.js";
 
 // Helpers
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createTestUser, getAuthHeader } from "#test-helpers/auth.helper.js";
 
 describe("File API", () => {
   let user;
@@ -182,10 +182,10 @@ describe("File API", () => {
         },
       ]);
 
-      const response = await request(app).get("/api/v1/files?pn=2&ps=2").set(authHeader).expect(200);
+      const response = await request(app).get("/api/v1/files?pg=2&ps=2").set(authHeader).expect(200);
 
       expect(response.body.data.length).toBe(2);
-      expect(response.body.page).toBe(2);
+      expect(response.body.pagination.page).toBe(2);
     });
   });
 

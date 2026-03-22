@@ -1,14 +1,15 @@
+// React core & third-party libraries
 import { useNavigate } from "react-router-dom";
 
 // api
-import { useLoginMutation, useLogoutMutation, useRegisterMutation } from "../store/api/authApi";
+import { useLoginMutation, useLogoutMutation, useRegisterMutation } from "@services/api/authApi";
 
 // utils
-import AuthUtils from "../utils/authUtils";
+import AuthUtils from "@utils/authUtils";
 
 // constants
-import PageUrls from "../constants/pageUrls";
-import { Roles } from "../constants/generalConstants";
+import PageUrls from "@constants/pageUrls";
+import { Roles } from "@shared-constants/constants";
 
 /**
  * Custom hook for Authentication related actions.
@@ -31,20 +32,14 @@ export function useAuth() {
    * (only for regular users; admins always land on their dashboard).
    */
   async function login(credentials, redirectTo = PageUrls.MyFilesPage, options = {}) {
-    try {
-      await loginMutation({ ...credentials, ...options }).unwrap();
+    await loginMutation({ ...credentials, ...options }).unwrap();
 
-      // Role is now stored in localStorage by authApi's onQueryStarted
-      const role = AuthUtils.getUserRole();
-      if (role === Roles.ADMIN) {
-        navigate(PageUrls.AdminPage, { replace: true });
-      } else {
-        navigate(redirectTo, { replace: true });
-      }
-    } catch (err) {
-      // Errors are surfaced via the hook's isLoginError / loginError state
-      console.error("Login hook error:", err);
-      throw err; // Re-throw so the page component can catch it
+    // Role is now stored in localStorage by authApi's onQueryStarted
+    const role = AuthUtils.getUserRole();
+    if (role === Roles.ADMIN) {
+      navigate(PageUrls.AdminPage, { replace: true });
+    } else {
+      navigate(redirectTo, { replace: true });
     }
   }
 
@@ -55,9 +50,9 @@ export function useAuth() {
     try {
       await registerMutation({ ...userData, ...options }).unwrap();
       // Redirect to login after successful registration
-      navigate("/login", { replace: true });
-    } catch (err) {
-      console.error("Register hook error:", err);
+      navigate(PageUrls.LoginPage, { replace: true });
+    } catch (_err) {
+      // Errors are surfaced via the hook's isRegisterError / registerError state
     }
   }
 
@@ -67,9 +62,9 @@ export function useAuth() {
   async function logout() {
     try {
       await logoutMutation().unwrap();
-      navigate("/login", { replace: true });
-    } catch (err) {
-      console.error("Logout hook error:", err);
+      navigate(PageUrls.LoginPage, { replace: true });
+    } catch (_err) {
+      // Errors are surfaced via the hook's isLogoutError state
     }
   }
 

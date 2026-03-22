@@ -1,0 +1,211 @@
+// Models
+import User from "#models/User.js";
+
+// Services
+import EmailService from "#services/emailService.js";
+
+// Controllers
+import { createNotification } from "#controllers/notificationController.js";
+
+// Constants
+import {
+  ErrorMessages,
+  SuccessMessages,
+  NotificationTypes,
+  AUTH_COOKIE_NAME,
+  CookieConfig,
+} from "#constants/generalConstants.js";
+import { HttpStatus, Roles } from "@shared-constants/constants";
+
+// Config
+import config from "#config/env.js";
+
+// Middleware
+import asyncHandler from "#middlewares/asyncHandler.js";
+
+// Utils
+import { AppError } from "#utils/errorUtils.js";
+import ResponseUtils from "#utils/responseUtils.js";
+import logger from "#utils/logger.js";
+import SecurityUtils from "#utils/securityUtils.js";
+import { sendTokenResponse } from "#utils/authUtils.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
+
+// ─── Local Helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Helper to send an email for security events if the user's preferences allow it.
+ * @param {Object} user - User document
+ * @param {String} subject - Email subject
+ * @param {String} message - Email body message
+ */
+async function sendSecurityEmail(user, subject, message, alertType = "security", sessionMetadata = null) {
+  try {
+    const prefs = user.notification_preferences ?? {};
+    if (prefs.security_alerts !== false && user.email) {
+      await EmailService.sendTemplateEmail({
+        email: user.email,
+        subject,
+        templateName: "security-alert",
+        plainTextMessage: message,
+        data: {
+          userName: user.name,
+          alertTitle: subject,
+          alertMessage: message,
+          alertType, // 'login' or 'security'
+          actionUrl: `${config.APP_BASE_URL}/settings`,
+          session: sessionMetadata,
+        },
+      });
+      logger.info(`[Security Email] Sent HTML "${subject}" to ${user.email}`);
+    } else {
+      logger.debug(`[Security Email] Skipped "${subject}" to ${user.email} (Setting disabled)`);
+    }
+  } catch (err) {
+    logger.error(`[Security Email] Failed to send to ${user.email}:`, err);
+  }
+}
+
+/**
+ * @desc    Register user
+ * @route   POST /api/v1/auth/register
+ * @access  Public
+ */
+export const register = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
+
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    throw new AppError(ErrorMessages.USER_ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
+  }
+
+  // Generate AES-256-GCM wrapped User Data Encryption Key
+  const { wrappedKey } = CryptoUtils.generateAndWrapUserKey();
+
+  const user = await User.create({
+    name,
+    email,
+    password,
+    encryption_key_wrapped: wrappedKey,
+  });
+
+  // Welcome email
+  EmailService.sendTemplateEmail({
+    email: user.email,
+    subject: "Welcome to Cloud Drive!",
+    templateName: "welcome-email",
+    plainTextMessage: `Welcome to Cloud Drive, ${user.name}! We're excited to have you on board.`,
+    data: {
+      userName: user.name,
+      actionUrl: `${config.APP_BASE_URL}/files`,
+    },
+  }).catch((err) => logger.error("[Welcome Email] Failed:", err));
+
+  return sendTokenResponse(user, HttpStatus.CREATED, res, SuccessMessages.REGISTRATION_SUCCESS);
+});
+
+/**
+ * @desc    Login user
+ * @route   POST /api/v1/auth/login
+ * @access  Public
+ */
+export const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email }).select("+password");
+  if (!user || !(await user.matchPassword(password))) {
+    throw new AppError(ErrorMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
+  }
+
+  // Check if account is active
+  if (!user.is_active) {
+    throw new AppError(ErrorMessages.ACCOUNT_DEACTIVATED, HttpStatus.FORBIDDEN);
+  }
+
+  // Send security email and in-app notification
+  sendSecurityEmail(
+    user,
+    "New login to your Cloud Drive account",
+    "We noticed a new login to your Cloud Drive account. If this was you, you can safely ignore this email. If you did not log in, please reset your password immediately and contact support.",
+    "login",
+    SecurityUtils.getSessionMetadata(req)
+  );
+
+  createNotification(
+    user._id,
+    NotificationTypes.SECURITY_ALERT,
+    "New Login Detected",
+    "A new login was detected on your account. If this wasn't you, please change your password immediately."
+  ).catch(() => {});
+
+  sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.LOGIN_SUCCESS);
+});
+
+/**
+ * @desc    Logout user
+ * @route   GET /api/v1/auth/logout
+ * @access  Private
+ */
+export const logout = (req, res) => {
+  res.clearCookie(AUTH_COOKIE_NAME, { httpOnly: CookieConfig.HTTP_ONLY, sameSite: CookieConfig.SAME_SITE });
+  return ResponseUtils.success(res, {}, HttpStatus.OK, { message: SuccessMessages.LOGOUT_SUCCESS });
+};
+
+/**
+ * @desc    Get current logged in user
+ * @route   GET /api/v1/auth/me
+ * @access  Private
+ */
+export const getMe = asyncHandler(async (req, res) => {
+  // used_bytes is kept in sync after every upload/delete/copy/trash operation;
+  // running a full DB aggregation on every profile load is unnecessary overhead.
+  const userDoc = await User.findById(req.user.id);
+  const user = userDoc.toObject();
+
+  if (user.role === Roles.ADMIN) {
+    delete user.quota_bytes;
+    delete user.used_bytes;
+  }
+
+  return ResponseUtils.success(res, user, HttpStatus.OK, SuccessMessages.PROFILE_LOADED);
+});
+
+/**
+ * @desc    Update user profile
+ * @route   PUT /api/v1/auth/me
+ * @access  Private
+ */
+export const updateProfile = asyncHandler(async (req, res) => {
+  const { name, email, notification_preferences } = req.body;
+
+  const update = {};
+  if (name !== undefined) {
+    update.name = name;
+  }
+  if (email !== undefined) {
+    update.email = email;
+  }
+
+  if (notification_preferences) {
+    if (notification_preferences.email_notifications !== undefined) {
+      update["notification_preferences.email_notifications"] = notification_preferences.email_notifications;
+    }
+    if (notification_preferences.storage_alerts !== undefined) {
+      update["notification_preferences.storage_alerts"] = notification_preferences.storage_alerts;
+    }
+    if (notification_preferences.security_alerts !== undefined) {
+      update["notification_preferences.security_alerts"] = notification_preferences.security_alerts;
+    }
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { $set: update },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  return ResponseUtils.success(res, user, HttpStatus.OK, SuccessMessages.PROFILE_UPDATED);
+});

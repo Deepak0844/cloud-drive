@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
 // Utils
-import AuthUtils from "@/utils/authUtils";
+import AuthUtils from "@utils/authUtils";
 
 /**
  * Socket.io client singleton.
@@ -17,8 +17,7 @@ let socket = null;
  * Called automatically by customBaseQuery on each HTTP request.
  */
 function ensureConnected() {
-  const token = AuthUtils.getToken();
-  if (!token) return; // Not authenticated — do nothing
+  if (!AuthUtils.isUserAuthenticated()) return; // Not authenticated — do nothing
 
   // If socket exists (even if still connecting), do not recreate it
   if (socket) return;
@@ -28,7 +27,8 @@ function ensureConnected() {
   // We only disconnect/recreate explicitly on auth token changes (logout/login).
 
   socket = io("/", {
-    auth: { token },
+    // We no longer pass the token explicitly in 'auth' because the app
+    // uses HttpOnly cookies, which are automatically sent by the browser.
     transports: ["websocket", "polling"],
     reconnectionAttempts: 10,
     reconnectionDelay: 2000,

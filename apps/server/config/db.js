@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 
 // Config
-import EnvConfig from "./env.js";
+import EnvConfig from "#config/env.js";
 
 // Utils
-import logger from "../utils/logger.js";
+import logger from "#utils/logger.js";
 
 export default async function connectToDatabase() {
   try {

@@ -1,5 +1,5 @@
 // Constants
-import { STORAGE_KEYS } from "../constants/generalConstants";
+import { STORAGE_KEYS } from "@shared-constants/constants";
 
 // Utils
 import LocalStorage from "./localStorageUtils";
@@ -24,8 +24,16 @@ function isUserAuthenticated() {
  * Stores the logged-in user's profile in localStorage (for UI use only — NOT the token).
  */
 function storeUserInfoInLocalStorage(data) {
-  const { user } = data;
-  if (user) LocalStorage.set(STORAGE_KEYS.USER, user);
+  const { name, role, email, _id, id } = data.user || data;
+  const user = {
+    id: _id || id,
+    name,
+    role,
+    email,
+  };
+  if (user && user.id) {
+    LocalStorage.set(STORAGE_KEYS.USER, user);
+  }
 }
 
 function clearSession() {

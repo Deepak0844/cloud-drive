@@ -1,35 +1,51 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useUploadFileChunkedMutation } from "@/store/api/fileApi";
-import { useUploadDetails } from "@/contexts/UploadContext";
-import { Progress, Tooltip } from "antd";
+// React core & third-party libraries
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  PauseCircleFilled,
-  PlayCircleFilled,
-  CloseCircleFilled,
-  CheckCircleFilled,
-  ExclamationCircleFilled,
-  ReloadOutlined,
-  FileImageOutlined,
-  FilePdfOutlined,
-  FileTextOutlined,
-  FileZipOutlined,
-  FileOutlined,
-  FileUnknownOutlined,
-} from "@ant-design/icons";
-import { formatBytes } from "@shared-utils/utils";
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  FileText,
+  FileImage,
+  FileArchive,
+  FileVideo,
+  FileAudio,
+  File as FileIcon,
+  Pause,
+  Play,
+  RotateCw,
+} from "lucide-react";
 import { motion } from "framer-motion";
+
+// Utils
+import { formatBytes } from "@shared-utils/utils";
+import { cn } from "@lib/utils";
+
+// Constants
+import { UPLOAD_CHUNK_SIZE, SPEED_WINDOW_MS, UPLOAD_COMPLETE_DELAY_MS } from "@shared-constants/constants";
+import { DEFAULT_CHUNK_SIZE } from "@constants/uiConstants";
+
+// App-local contexts
+import { useUploadDetails } from "@contexts/UploadContext";
+
+// Services (RTK Query hooks)
+import { useUploadFileChunkedMutation } from "@services/api/fileApi";
+
+// Components
+import { Progress } from "@components/ui/progress";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 
 /* ─── helpers ─────────────────────────────────────────────────────────── */
 
 const getFileIcon = (fileType) => {
-  if (!fileType) return <FileUnknownOutlined className="text-gray-500" />;
-  if (fileType.startsWith("image/")) return <FileImageOutlined className="text-blue-400" />;
-  if (fileType === "application/pdf") return <FilePdfOutlined className="text-red-400" />;
-  if (fileType.startsWith("text/")) return <FileTextOutlined className="text-green-400" />;
-  if (fileType.startsWith("video/")) return <FileOutlined className="text-purple-400" />;
+  if (!fileType) return <FileIcon className="text-label-tertiary" />;
+  if (fileType.startsWith("image/")) return <FileImage className="text-blue-500" />;
+  if (fileType === "application/pdf") return <FileText className="text-red-500" />;
+  if (fileType.startsWith("text/")) return <FileText className="text-green-500" />;
+  if (fileType.startsWith("video/")) return <FileVideo className="text-purple-500" />;
+  if (fileType.startsWith("audio/")) return <FileAudio className="text-pink-500" />;
   if (fileType.includes("zip") || fileType.includes("compressed") || fileType.includes("tar"))
-    return <FileZipOutlined className="text-orange-400" />;
-  return <FileUnknownOutlined className="text-gray-500" />;
+    return <FileArchive className="text-orange-500" />;
+  return <FileIcon className="text-label-tertiary" />;
 };
 
 /**
@@ -66,20 +82,24 @@ const UploadStatus = {
   CANCELLED: "cancelled",
 };
 
-const UploadItem = ({ upload }) => {
+function UploadItem({ upload }) {
+  // Local state
+  const [error, setError] = useState(null);
+  const [eta, setEta] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [speed, setSpeed] = useState(0);
+  const [status, setStatus] = useState(UploadStatus.IDLE);
+
+  // RTK Query hooks
+  const [uploadFileChunked] = useUploadFileChunkedMutation();
+
+  // Custom & shared hooks
   const { id, file, folderId, initPromise } = upload;
   const { removeUpload } = useUploadDetails();
 
-  const [uploadFileChunked] = useUploadFileChunkedMutation();
-
-  const [status, setStatus] = useState(UploadStatus.IDLE);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState(null);
-  const [speed, setSpeed] = useState(0);
-  const [eta, setEta] = useState(null);
-
-  const uploadPromiseRef = useRef(null);
+  const hasStartedRef = useRef(false);
   const speedWindowRef = useRef([]);
+  const uploadPromiseRef = useRef(null);
 
   const stateRef = useRef({
     uploadId: null,
@@ -88,13 +108,14 @@ const UploadItem = ({ upload }) => {
     uploadedBytes: 0,
   });
 
+  // Event handlers
   const updateSpeed = useCallback(
     (totalBytesUploadedSoFar) => {
       const now = Date.now();
       const window = speedWindowRef.current;
       window.push({ t: now, b: totalBytesUploadedSoFar });
 
-      const cutoff = now - 5000;
+      const cutoff = now - SPEED_WINDOW_MS;
       while (window.length > 1 && window[0].t < cutoff) window.shift();
 
       if (window.length >= 2) {
@@ -115,7 +136,8 @@ const UploadItem = ({ upload }) => {
   const executeUpload = useCallback(async () => {
     try {
       let initData = null;
-      if (!stateRef.current.uploadId && file.size > 10 * 1000 * 1000) {
+      const safeChunkSize = UPLOAD_CHUNK_SIZE || DEFAULT_CHUNK_SIZE;
+      if (!stateRef.current.uploadId && file.size > safeChunkSize) {
         initData = await initPromise;
       }
 
@@ -142,7 +164,7 @@ const UploadItem = ({ upload }) => {
         setProgress(100);
         setSpeed(0);
         setEta(null);
-        setTimeout(() => removeUpload(id), 3000);
+        setTimeout(() => removeUpload(id), UPLOAD_COMPLETE_DELAY_MS);
       }
     } catch (err) {
       if (err.name === "AbortError" || err.message === "canceled" || err.message === "Aborted") {
@@ -191,8 +213,12 @@ const UploadItem = ({ upload }) => {
     setEta(null);
   }, []);
 
-  const hasStartedRef = useRef(false);
+  function handleCancel() {
+    cancel();
+    removeUpload(id);
+  }
 
+  // useEffect
   useEffect(() => {
     if (!hasStartedRef.current) {
       hasStartedRef.current = true;
@@ -201,151 +227,156 @@ const UploadItem = ({ upload }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleCancel = () => {
-    cancel();
-    removeUpload(id);
-  };
-
+  // Derived / computed variables
   const fileIcon = useMemo(() => getFileIcon(file.type), [file.type]);
 
   const isUploading = status === UploadStatus.UPLOADING;
   const isPaused = status === UploadStatus.PAUSED;
   const isError = status === UploadStatus.ERROR;
   const isSuccess = status === UploadStatus.SUCCESS;
-  const isActive = isUploading || isPaused;
 
   const speedLabel = formatSpeed(speed);
   const etaLabel = formatEta(eta);
 
+  // Render
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2 }}
-      className={`mb-2 rounded-xl border overflow-hidden shadow-sm transition-colors ${
-        isError
-          ? "bg-red-50/60 border-red-200 dark:bg-red-900/20 dark:border-red-800"
-          : isSuccess
-            ? "bg-green-50/60 border-green-200 dark:bg-green-900/20 dark:border-green-800"
-            : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700"
-      }`}
-    >
-      {/* Top row: icon · filename · filesize */}
-      <div className="flex items-center gap-2.5 px-3 pt-2.5 pb-1">
-        {/* Icon */}
-        <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-lg shrink-0">
-          {isSuccess ? (
-            <CheckCircleFilled className="text-green-500" />
-          ) : isError ? (
-            <ExclamationCircleFilled className="text-red-500" />
-          ) : (
-            fileIcon
-          )}
-        </div>
-
-        {/* File name + size */}
-        <div className="flex-1 min-w-0">
-          <p
-            className="text-xs font-semibold text-gray-800 dark:text-gray-100 truncate leading-tight"
-            title={file.name}
-          >
-            {file.name}
-          </p>
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 leading-tight mt-0.5">{formatBytes(file.size)}</p>
-        </div>
-
-        {/* Action buttons — always visible */}
-        <div className="flex items-center gap-0.5 shrink-0">
-          {isUploading && (
-            <Tooltip title="Pause">
-              <button
-                onClick={pause}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-yellow-500 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 hover:text-yellow-600 transition-colors"
-              >
-                <PauseCircleFilled style={{ fontSize: 18 }} />
-              </button>
-            </Tooltip>
-          )}
-
-          {(isPaused || isError) && (
-            <Tooltip title={isError ? "Retry" : "Resume"}>
-              <button
-                onClick={resume}
-                className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
-                  isError
-                    ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600"
-                    : "text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600"
-                }`}
-              >
-                {isError ? <ReloadOutlined style={{ fontSize: 16 }} /> : <PlayCircleFilled style={{ fontSize: 18 }} />}
-              </button>
-            </Tooltip>
-          )}
-
-          {(isActive || isError) && (
-            <Tooltip title="Cancel">
-              <button
-                onClick={handleCancel}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-500 transition-colors"
-              >
-                <CloseCircleFilled style={{ fontSize: 18 }} />
-              </button>
-            </Tooltip>
-          )}
-        </div>
-      </div>
-
-      {/* Progress bar + percentage */}
-      {!isSuccess && (
-        <div className="px-3 pb-1">
-          <div className="flex items-center gap-2">
-            <Progress
-              percent={progress}
-              size={["100%", 5]}
-              showInfo={false}
-              status={isError ? "exception" : isPaused ? "normal" : "active"}
-              strokeColor={isError ? "#ef4444" : isPaused ? "#f59e0b" : { "0%": "#3b82f6", "100%": "#6366f1" }}
-              className="m-0 flex-1"
-            />
-            <span
-              className={`text-[10px] font-bold w-8 text-right shrink-0 ${
-                isError ? "text-red-500" : isPaused ? "text-yellow-500" : "text-gray-500 dark:text-gray-400"
-              }`}
+    <TooltipProvider>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className={cn(
+          "p-4 rounded-2xl border transition-all duration-300",
+          isError
+            ? "bg-destructive/5 border-destructive/20"
+            : isSuccess
+              ? "bg-green-500/5 border-green-500/20"
+              : "bg-surface border-white/5 shadow-sm"
+        )}
+      >
+        <div className="flex items-center gap-4">
+          {/* Progress / Status Circle/Icon */}
+          <div className="relative flex items-center justify-center shrink-0">
+            <div
+              className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                isError ? "bg-destructive/10" : isSuccess ? "bg-green-500/10" : "bg-surface-alt"
+              )}
             >
-              {progress}%
-            </span>
+              {isSuccess ? (
+                <CheckCircle2 size={20} className="text-green-500" />
+              ) : isError ? (
+                <AlertCircle size={20} className="text-destructive" />
+              ) : (
+                fileIcon
+              )}
+            </div>
+          </div>
+
+          {/* File Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-bold text-label truncate" title={file.name}>
+                {file.name}
+              </span>
+              <span className="text-[10px] font-black text-label-tertiary opacity-50 ml-2">
+                {formatBytes(file.size)}
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            {!isSuccess && (
+              <div className="flex items-center gap-3">
+                <Progress
+                  value={progress}
+                  className="h-1.5 flex-1"
+                  indicatorClassName={cn(
+                    "transition-all duration-300",
+                    isError ? "bg-destructive" : isPaused ? "bg-warning" : "bg-primary"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-[10px] font-black w-7 text-right",
+                    isError ? "text-destructive" : isPaused ? "text-warning" : "text-primary"
+                  )}
+                >
+                  {Math.round(progress)}%
+                </span>
+              </div>
+            )}
+
+            {/* Status Footer */}
+            <div className="flex items-center justify-between mt-2">
+              <div className="flex items-center gap-2">
+                {isUploading && (
+                  <>
+                    <span className="text-[10px] font-bold text-primary flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-primary animate-pulse" />
+                      {speedLabel || "Calculating..."}
+                    </span>
+                    {etaLabel && <span className="text-[10px] font-medium text-label-tertiary">{etaLabel} left</span>}
+                  </>
+                )}
+                {isPaused && (
+                  <span className="text-[10px] font-bold text-warning uppercase tracking-widest">Paused</span>
+                )}
+                {isError && (
+                  <span className="text-[10px] font-bold text-destructive truncate max-w-[150px]">
+                    {error || "Failed"}
+                  </span>
+                )}
+                {isSuccess && (
+                  <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Complete</span>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1">
+                {isUploading && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={pause}
+                        className="p-1 rounded-lg hover:bg-warning/10 text-warning transition-colors"
+                      >
+                        <Pause size={14} className="fill-current" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Pause</TooltipContent>
+                  </Tooltip>
+                )}
+                {(isPaused || isError) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={resume}
+                        className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-colors"
+                      >
+                        {isError ? <RotateCw size={14} /> : <Play size={14} className="fill-current" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{isError ? "Retry" : "Resume"}</TooltipContent>
+                  </Tooltip>
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleCancel}
+                      className="p-1 rounded-lg hover:bg-destructive/10 text-label-tertiary hover:text-destructive transition-all"
+                    >
+                      <XCircle size={14} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Cancel</TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
           </div>
         </div>
-      )}
-
-      {/* Bottom status bar: speed + ETA  OR  status text */}
-      <div className="px-3 pb-2.5">
-        {isUploading && (speedLabel || etaLabel) && (
-          <div className="flex items-center gap-2 mt-0.5">
-            {speedLabel && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-500 dark:text-blue-400">
-                {/* bolt icon via SVG — tiny */}
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
-                {speedLabel}
-              </span>
-            )}
-            {etaLabel && <span className="text-[10px] text-gray-400 dark:text-gray-500">{etaLabel} remaining</span>}
-          </div>
-        )}
-
-        {isPaused && <p className="text-[10px] font-semibold text-yellow-500 mt-0.5">Upload paused</p>}
-
-        {isError && (
-          <p className="text-[10px] font-semibold text-red-500 mt-0.5 truncate">{error || "Upload failed"}</p>
-        )}
-
-        {isSuccess && <p className="text-[10px] font-semibold text-green-500">Upload complete</p>}
-      </div>
-    </motion.div>
+      </motion.div>
+    </TooltipProvider>
   );
-};
+}
 
 export default UploadItem;

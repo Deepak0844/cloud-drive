@@ -2,17 +2,17 @@ import { jest } from "@jest/globals";
 import request from "supertest";
 
 // App
-import app from "../../app.js";
+import app from "#app";
 
 // Models
-import User from "../../models/User.js";
+import User from "#models/User.js";
 
 // Services
-import EmailService from "../../services/email.service.js";
+import EmailService from "#services/emailService.js";
 
 // Helpers
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createTestUser, getAuthHeader } from "#test-helpers/auth.helper.js";
 
 describe("Auth API", () => {
   beforeAll(async () => {
@@ -127,7 +127,7 @@ describe("Auth API", () => {
   describe("POST /api/v1/auth/forgot-password", () => {
     it("should send reset email", async () => {
       const user = await createTestUser();
-      const sendEmailSpy = jest.spyOn(EmailService, "sendEmail").mockResolvedValue(true);
+      const sendEmailSpy = jest.spyOn(EmailService, "sendTemplateEmail").mockResolvedValue(true);
 
       const response = await request(app).post("/api/v1/auth/forgot-password").send({ email: user.email }).expect(200);
 
@@ -139,7 +139,7 @@ describe("Auth API", () => {
     });
 
     it("should fail for non-existent email", async () => {
-      await request(app).post("/api/v1/auth/forgotpassword").send({ email: "non@example.com" }).expect(404);
+      await request(app).post("/api/v1/auth/forgot-password").send({ email: "non@example.com" }).expect(200);
     });
   });
 

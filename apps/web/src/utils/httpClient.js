@@ -1,10 +1,10 @@
 import axios from "axios";
 
 // Constants
-import { HttpContentTypes, HttpHeaders, HttpMethods } from "../constants/httpConstants";
+import { HttpContentTypes, HttpHeaders, HttpMethods } from "@shared-constants/constants";
 
 // Utils
-import ApiUtils from "@/store/api/apiUtils";
+import ApiUtils from "@services/api/apiUtils";
 
 /**
  * HttpClient wrapper around Axios.
@@ -105,6 +105,34 @@ class HttpClient {
       paramsSerializer: { serialize: ApiUtils.serializeParams },
       headers,
       withCredentials: true,
+      ...options,
+    });
+
+    return response.data;
+  };
+
+  download = async (
+    url,
+    params = {},
+    data = {},
+    contentType = HttpContentTypes.APP_JSON,
+    options = {},
+    requestMethod = HttpMethods.GET
+  ) => {
+    const headers = {
+      [HttpHeaders.Accept]: HttpContentTypes.APP_JSON,
+      ...(contentType && { [HttpHeaders.ContentType]: contentType }),
+    };
+
+    const response = await axios({
+      method: requestMethod,
+      url,
+      params,
+      data,
+      paramsSerializer: { serialize: ApiUtils.serializeParams },
+      headers,
+      withCredentials: true,
+      responseType: "blob",
       ...options,
     });
 

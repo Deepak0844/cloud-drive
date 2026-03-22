@@ -1,5 +1,5 @@
 // Models
-import Folder from "../models/Folder.js";
+import Folder from "#models/Folder.js";
 
 /**
  * Generate breadcrumbs for a folder by traversing up the hierarchy

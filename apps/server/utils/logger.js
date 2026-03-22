@@ -1,7 +1,7 @@
 import pino from "pino";
 
 // Config
-import Env from "../config/env.js";
+import Env from "#config/env.js";
 
 // Logger
 const logger = pino({

@@ -2,15 +2,15 @@ import { jest } from "@jest/globals";
 import request from "supertest";
 
 // App
-import app from "../../app.js";
+import app from "#app";
 
 // Models
-import File from "../../models/File.js";
-import Folder from "../../models/Folder.js";
+import File from "#models/File.js";
+import Folder from "#models/Folder.js";
 
 // Helpers
-import { setupTests, teardownTests, resetTests } from "../helpers/db.helper.js";
-import { createTestUser, getAuthHeader } from "../helpers/auth.helper.js";
+import { setupTests, teardownTests, resetTests } from "#test-helpers/db.helper.js";
+import { createTestUser, getAuthHeader } from "#test-helpers/auth.helper.js";
 
 describe("Folder API", () => {
   let user;
@@ -87,11 +87,31 @@ describe("Folder API", () => {
         folder: folder._id,
         storage_path: "/tmp/f1",
         mime_type: "text/plain",
+        encryption_iv: "iv1",
       });
 
       const response = await request(app).get(`/api/v1/folders/${folder._id}`).set(authHeader).expect(200);
 
       expect(response.body.data.name).toBe("Details");
+    });
+
+    it("should get root folder contents successfully", async () => {
+      await File.create({
+        name: "root-file.txt",
+        original_name: "root-file.txt",
+        size_bytes: 10,
+        user: user._id,
+        folder: null,
+        storage_path: "/tmp/root-file",
+        mime_type: "text/plain",
+        encryption_iv: "iv-root",
+      });
+
+      const response = await request(app).get("/api/v1/folders/root/contents").set(authHeader).expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.files.length).toBe(1);
+      expect(response.body.data.files[0].name).toBe("root-file.txt");
     });
   });
 
@@ -156,6 +176,7 @@ describe("Folder API", () => {
         folder: parent._id,
         storage_path: "/tmp/c1",
         mime_type: "text/plain",
+        encryption_iv: "iv2",
       });
 
       // Soft delete parent

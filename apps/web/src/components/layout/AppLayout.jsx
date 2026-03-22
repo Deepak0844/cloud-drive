@@ -1,23 +1,30 @@
+// React core & third-party libraries
 import React, { useEffect } from "react";
-import { Outlet } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import MainLayout from "./MainLayout";
+import { Outlet } from "react-router-dom";
 
-import baseApi from "../../store/api/baseApi";
-import { useSubscribeToSocketEventsQuery } from "@/store/api/socketApi";
+// Services (RTK Query hooks)
+import baseApi from "@services/api/api";
+import { useSubscribeToSocketEventsQuery } from "@services/api/socketApi";
+
+// Components
+import MainLayout from "./MainLayout";
 
 /**
  * Layout wrapper for protected routes.
  * Wraps pages in MainLayout and provides an Outlet for nested routes.
  */
 function AppLayout() {
+  // Custom & shared hooks
   const dispatch = useDispatch();
 
+  // RTK Query hooks
   // Activate the RTK Query socket subscription.
   // This lives inside AppLayout (which is inside ProtectedRoute),
   // so the user token is guaranteed to be available.
   useSubscribeToSocketEventsQuery();
 
+  // useEffect
   useEffect(() => {
     return () => {
       // Reset all cached RTK Query data when the protected application unmounts (e.g., on logout)
@@ -25,6 +32,7 @@ function AppLayout() {
     };
   }, [dispatch]);
 
+  // Render
   return (
     <MainLayout>
       <Outlet />

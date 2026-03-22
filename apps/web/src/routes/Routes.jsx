@@ -1,23 +1,26 @@
 import { Outlet, createBrowserRouter } from "react-router-dom";
 
 // Constants
-import PageUrls from "@/constants/pageUrls";
+import PageUrls from "@constants/pageUrls";
 
 // Routes
 import { MainRoutes } from "./MainRoutes";
 
 // HOC
-import PublicRoute from "@/components/hoc/PublicRoute";
+import PublicRoute from "@components/hoc/PublicRoute";
 
 // Pages
-import LoginPage from "@/pages/login/LoginPage";
-import RegisterPage from "@/pages/register/RegisterPage";
-import ErrorPage from "@/pages/error/ErrorPage";
-import ForgotPasswordPage from "@/pages/forgot-password/ForgotPasswordPage";
-import ResetPasswordPage from "@/pages/reset-password/ResetPasswordPage";
+import LoginPage from "@pages/LoginPage";
+import RegisterPage from "@pages/RegisterPage";
+import ErrorPage from "@pages/ErrorPage";
+import ForgotPasswordPage from "@pages/ForgotPasswordPage";
+import ResetPasswordPage from "@pages/ResetPasswordPage";
+
+// Layout
+import AuthLayout from "@components/layout/AuthLayout";
 
 // Utils
-import NavigationSetter from "@/utils/NavigationSetter";
+import NavigationSetter from "@utils/NavigationSetter";
 
 function Root() {
   return (
@@ -40,44 +43,46 @@ const Router = createBrowserRouter([
       MainRoutes,
 
       {
-        path: PageUrls.LoginPage,
-        element: (
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        ),
-      },
-
-      {
-        path: PageUrls.RegisterPage,
-        element: (
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        ),
+        element: <AuthLayout />,
+        children: [
+          {
+            path: PageUrls.LoginPage,
+            element: (
+              <PublicRoute>
+                <LoginPage />
+              </PublicRoute>
+            ),
+          },
+          {
+            path: PageUrls.RegisterPage,
+            element: (
+              <PublicRoute>
+                <RegisterPage />
+              </PublicRoute>
+            ),
+          },
+          {
+            path: PageUrls.ForgotPasswordPage,
+            element: (
+              <PublicRoute>
+                <ForgotPasswordPage />
+              </PublicRoute>
+            ),
+          },
+          {
+            path: PageUrls.ResetPasswordPage,
+            element: (
+              <PublicRoute>
+                <ResetPasswordPage />
+              </PublicRoute>
+            ),
+          },
+        ],
       },
 
       {
         path: PageUrls.ErrorPage,
         element: <ErrorPage />,
-      },
-
-      {
-        path: PageUrls.ForgotPasswordPage,
-        element: (
-          <PublicRoute>
-            <ForgotPasswordPage />
-          </PublicRoute>
-        ),
-      },
-
-      {
-        path: PageUrls.ResetPasswordPage,
-        element: (
-          <PublicRoute>
-            <ResetPasswordPage />
-          </PublicRoute>
-        ),
       },
 
       // Catch-all route for 404s

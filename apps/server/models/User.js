@@ -4,15 +4,16 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
 // Config
-import Env from "../config/env.js";
+import Env from "#config/env.js";
 
 // Constants
-import { Roles } from "../constants/generalConstants.js";
+import { Roles } from "@shared-constants/constants";
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
+      required: [true, "Name is required"],
       trim: true,
     },
     email: {
@@ -58,6 +59,10 @@ const userSchema = new mongoose.Schema(
       security_alerts: { type: Boolean, default: true },
     },
     preferences: {},
+    encryption_key_wrapped: {
+      type: String,
+      select: false,
+    },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

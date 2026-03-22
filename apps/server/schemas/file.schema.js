@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { objectIdSchema } from "#schemas/common.schema.js";
 
 export const renameFileSchema = z.object({
   body: z.object({
@@ -30,7 +31,14 @@ export const uploadFileSchema = z.object({
 
 export const idParamSchema = z.object({
   params: z.object({
-    id: z.string().min(1, "ID is required"),
+    id: objectIdSchema,
+  }),
+});
+
+export const hlsSegmentSchema = z.object({
+  params: z.object({
+    id: objectIdSchema,
+    segment: z.string().min(1, "Segment is required"),
   }),
 });
 
@@ -57,6 +65,7 @@ export const getFilesSchema = z.object({
       .optional()
       .transform((val) => val === "true"),
     pn: z.string().optional(),
+    pg: z.string().optional(),
     ps: z.string().optional(),
   }),
 });
@@ -76,7 +85,7 @@ export const updateTagsSchema = z.object({
     id: z.string().min(1, "ID is required"),
   }),
   body: z.object({
-    tags: z.array(z.string()).min(1, "At least one tag is required"),
+    tags: z.array(z.string()).min(0),
   }),
 });
 
@@ -116,14 +125,19 @@ export const bulkMoveSchema = z.object({
 export const bulkCopySchema = bulkMoveSchema;
 
 export const bulkDownloadSchema = z.object({
-  body: z.object({
-    items: z
-      .array(
-        z.object({
-          type: z.enum(["file", "folder"]),
-          id: z.string(),
-        })
-      )
-      .min(1, "At least one item is required"),
-  }),
+  body: z
+    .object({
+      items: z
+        .array(
+          z.object({
+            type: z.enum(["file", "folder"]),
+            id: z.string(),
+          })
+        )
+        .optional(),
+      payload: z.string().optional(),
+    })
+    .refine((data) => data.items || data.payload, {
+      message: "At least one item or a payload is required",
+    }),
 });

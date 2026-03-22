@@ -1,65 +1,64 @@
-import { App as AntdApp, ConfigProvider, Drawer, Grid, Layout } from "antd";
+// React core & third-party libraries
 import React, { useState } from "react";
 
+// App-local contexts
+import { UploadProvider } from "@contexts/UploadContext";
+
+// Components
+import UploadManager from "@components/files/UploadManager";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
-import { UploadProvider } from "@/contexts/UploadContext";
-import UploadManager from "../files/UploadManager";
+import { Sheet, SheetContent } from "@components/ui/sheet";
 
-const { Content } = Layout;
-const { useBreakpoint } = Grid;
+// Hooks
+import { useIsMobile } from "@hooks/useMediaQuery";
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 function MainLayout({ children }) {
+  // Local state
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
-  const screens = useBreakpoint();
 
-  const isMobile = !screens.md && screens.xs !== undefined;
+  // Custom & shared hooks
+  const isMobile = useIsMobile();
 
+  // Render
   return (
-    <ConfigProvider
-      theme={{
-        token: {
-          colorPrimary: "#3b82f6",
-          borderRadius: 8,
-          fontFamily: "inherit",
-        },
-      }}
-    >
-      <AntdApp>
-        <Layout className="h-screen overflow-hidden bg-secondary">
-          {isMobile ? (
-            <Drawer
-              placement="left"
+    <div className="flex h-screen overflow-hidden bg-surface">
+      {/* Mobile slide-in drawer */}
+      {isMobile ? (
+        <Sheet open={drawerVisible} onOpenChange={setDrawerVisible}>
+          <SheetContent side="left" className="w-[260px] p-0 border-none sm:max-w-none">
+            <Sidebar
+              collapsed={false}
+              setCollapsed={() => {}}
+              isMobile={true}
               onClose={() => setDrawerVisible(false)}
-              open={drawerVisible}
-              size={260}
-              styles={{ body: { padding: 0 } }}
-              closable={false}
-            >
-              <Sidebar collapsed={false} setCollapsed={() => {}} isMobile={true} />
-            </Drawer>
-          ) : (
-            <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} isMobile={false} />
-          )}
-
-          <Layout className="transition-all duration-300 ease-in-out h-screen">
-            <Navbar
-              collapsed={collapsed}
-              setCollapsed={setCollapsed}
-              isMobile={isMobile}
-              setDrawerVisible={setDrawerVisible}
             />
-            <Content className="px-4 py-5 h-[calc(100vh-64px)] overflow-y-auto focus:outline-none">
-              <UploadProvider>
-                <div className="w-full max-w-7xl mx-auto">{children}</div>
-                <UploadManager />
-              </UploadProvider>
-            </Content>
-          </Layout>
-        </Layout>
-      </AntdApp>
-    </ConfigProvider>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} isMobile={false} />
+      )}
+
+      {/* Main content column */}
+      <div className="flex flex-col flex-1 h-screen overflow-hidden transition-all duration-300">
+        <Navbar
+          collapsed={collapsed}
+          setCollapsed={setCollapsed}
+          isMobile={isMobile}
+          setDrawerVisible={setDrawerVisible}
+        />
+        <main className="flex-1 overflow-y-auto px-4 py-5 focus:outline-none">
+          <UploadProvider>
+            <div className="w-full max-w-7xl mx-auto">{children}</div>
+            <UploadManager />
+          </UploadProvider>
+        </main>
+      </div>
+    </div>
   );
 }
 

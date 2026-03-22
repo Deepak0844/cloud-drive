@@ -1,11 +1,12 @@
+// React core & third-party libraries
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
-// utils
-import AuthUtils from "@/utils/authUtils";
+// Constants
+import PageUrls from "@constants/pageUrls";
 
-// constants
-import PageUrls from "@/constants/pageUrls";
+// Utils
+import AuthUtils from "@utils/authUtils";
 
 /**
  * Route guard that:
@@ -17,8 +18,10 @@ import PageUrls from "@/constants/pageUrls";
  *                                  If empty, any authenticated user can access.
  */
 function ProtectedRoute({ children, allowedRoles = [], loginPageUrl = PageUrls.LoginPage }) {
+  // Custom & shared hooks
   const location = useLocation();
 
+  // Render
   // 1. Not authenticated → go to login
   if (!AuthUtils.isUserAuthenticated()) {
     return <Navigate to={loginPageUrl} state={{ from: location }} replace />;
