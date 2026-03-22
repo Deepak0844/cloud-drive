@@ -1,15 +1,22 @@
 // React core & third-party libraries
-import React, { useState } from "react";
-import { Form, InputNumber, Modal, Skeleton, Space, Tabs, Tag, Typography, message as antdMessage } from "antd";
+import { useState } from "react";
+import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EditOutlined,
-  HourglassOutlined,
-  ReloadOutlined,
-  UserOutlined,
-} from "@ant-design/icons";
-import { motion } from "framer-motion";
+  Cpu,
+  HardDrive,
+  Server as ServerIcon,
+  Users,
+  User,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  RotateCw,
+  Edit2,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Services (RTK Query hooks)
 import {
@@ -17,46 +24,42 @@ import {
   useGetUsersQuery,
   useHandleQuotaRequestMutation,
   useRunStorageReanalysisMutation,
-  useUpdateUserQuotaMutation,
   useUpdateUserStatusMutation,
+  useGetSystemStatsQuery,
 } from "@services/api/adminApi";
 
 // Utils
 import { formatBytes } from "@shared-utils/utils";
+import MathUtils from "@utils/mathUtils";
 
 // Constants
-import PageNames from "@constants/pageNames";
-import { UI_COLORS } from "@constants/uiConstants";
+import { ADMIN_QUERY_PARAMS } from "@constants/uiConstants";
+import { DefaultPagination } from "@shared-constants/constants";
 
 // Components
-import Button from "@shared-components/components/button";
-import Table from "@shared-components/components/table";
-import TableActionButton from "@shared-components/components/table-action-button";
-
-const { Text, Title } = Typography;
-
-function bytesToGB(bytes) {
-  if (!bytes) return 0;
-  // Use decimal (1000) for consistency with Google Drive standards
-  return Number((bytes / (1000 * 1000 * 1000)).toFixed(0));
-}
-
-function calculatePercentage(used, total) {
-  if (!total) return 0;
-  return Math.min(100, Math.round((used / total) * 100));
-}
+import { Button } from "@components/ui/button";
+import Table from "@components/common/Table";
+import { Progress } from "@components/ui/progress";
+import { Skeleton } from "@components/ui/skeleton";
+import { Badge } from "@components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@components/ui/tooltip";
+import EditQuotaModal from "@components/admin/EditQuotaModal";
+import StatCard from "@components/admin/StatCard";
 
 export default function AdminDashboardPage() {
+  // URL params
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get(ADMIN_QUERY_PARAMS.TAB) || "users";
+  const userPage = Number(searchParams.get(ADMIN_QUERY_PARAMS.USER_PAGE)) || 1;
+  const requestPage = Number(searchParams.get(ADMIN_QUERY_PARAMS.REQUEST_PAGE)) || 1;
+
   // Local state
-  const [activeTab, setActiveTab] = useState("1");
   const [editingUser, setEditingUser] = useState(null);
-  const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [requestPage, setRequestPage] = useState(1);
-  const [userPage, setUserPage] = useState(1);
 
   // Derived / computed variables
-  const pageSize = 10;
+  const pageSize = DefaultPagination.pageSize;
 
   // RTK Query hooks
   const {
@@ -77,7 +80,10 @@ export default function AdminDashboardPage() {
     ps: pageSize,
   });
 
-  const [updateUserQuota] = useUpdateUserQuotaMutation();
+  const { data: statsData, isLoading: statsLoading } = useGetSystemStatsQuery(undefined, {
+    pollingInterval: 30000,
+  });
+
   const [updateUserStatus] = useUpdateUserStatusMutation();
   const [handleQuotaRequest] = useHandleQuotaRequestMutation();
   const [runReanalysis, { isLoading: reanalyzing }] = useRunStorageReanalysisMutation();
@@ -85,60 +91,44 @@ export default function AdminDashboardPage() {
   // Derived / computed variables
   const users = usersData?.data || [];
   const requests = requestsData?.data || [];
+  const stats = statsData?.data;
   const userPagination = usersData?.pagination;
   const requestPagination = requestsData?.pagination;
 
   // Event handlers
   function handleEdit(user) {
     setEditingUser(user);
-    const quotaGB = bytesToGB(user.quota_bytes);
-    form.setFieldsValue({ quota: quotaGB });
     setIsModalOpen(true);
-  }
-
-  async function handleUpdate() {
-    try {
-      const values = await form.validateFields();
-      const quotaBytes = values.quota * 1000 * 1000 * 1000;
-      await updateUserQuota({ id: editingUser._id, quota_bytes: quotaBytes }).unwrap();
-      antdMessage.success("Quota updated successfully");
-      setIsModalOpen(false);
-    } catch (_error) {
-      antdMessage.error("Failed to update quota");
-    }
   }
 
   async function handleUserStatusToggle(userId, isActive) {
     try {
       await updateUserStatus({ id: userId, is_active: isActive }).unwrap();
-      antdMessage.success(`User has been ${isActive ? "enabled" : "disabled"}`);
+      toast.success(`User has been ${isActive ? "enabled" : "disabled"}`);
     } catch (_err) {
-      antdMessage.error("Failed to update user status");
+      toast.error("Failed to update user status");
     }
   }
 
   async function handleRequestStatus(id, status) {
     try {
       await handleQuotaRequest({ id, status }).unwrap();
-      antdMessage.success(`Request ${status.toLowerCase()} successfully`);
+      toast.success(`Request ${status.toLowerCase()} successfully`);
     } catch (_err) {
-      antdMessage.error("Failed to update quota request");
+      toast.error("Failed to update quota request");
     }
   }
 
   async function handleSyncStorage(userId = null) {
+    const toastId = "reanalyze";
     try {
-      antdMessage.loading({
-        content: userId ? "Re-analyzing user storage..." : "Re-analyzing all users storage...",
-        key: "reanalyze",
-      });
+      toast.loading(userId ? "Re-analyzing user storage..." : "Re-analyzing all users storage...", { id: toastId });
       await runReanalysis({ userId }).unwrap();
-      antdMessage.success({
-        content: userId ? "User storage re-analyzed successfully" : "All storage re-analyzed successfully",
-        key: "reanalyze",
+      toast.success(userId ? "User storage re-analyzed successfully" : "All storage re-analyzed successfully", {
+        id: toastId,
       });
     } catch (_err) {
-      antdMessage.error({ content: "Storage re-analysis failed", key: "reanalyze" });
+      toast.error("Storage re-analysis failed", { id: toastId });
     }
   }
 
@@ -148,9 +138,16 @@ export default function AdminDashboardPage() {
       dataIndex: "name",
       key: "name",
       render: (text) => (
-        <div className="flex items-center gap-2">
-          <UserOutlined className="text-label-tertiary" />
-          <Text strong>{text}</Text>
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
+            <div className="relative w-12 h-12 rounded-2xl bg-surface-alt border border-white/10 flex items-center justify-center shadow-2xl overflow-hidden backdrop-blur-xl group-hover:border-primary/50 transition-all duration-500">
+              <User size={22} className="text-primary group-hover:scale-110 transition-transform duration-500" />
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-black text-label tracking-tighter text-lg select-text">{text}</span>
+          </div>
         </div>
       ),
     },
@@ -158,18 +155,18 @@ export default function AdminDashboardPage() {
       title: "Email",
       dataIndex: "email",
       key: "email",
-    },
-    {
-      title: "Role",
-      dataIndex: "role",
-      key: "role",
-      render: (role) => <Tag color={UI_COLORS.ROLES[role] || "blue"}>{role}</Tag>,
+      render: (email) => <span className="text-label-secondary font-medium select-text">{email}</span>,
     },
     {
       title: "Status",
       key: "status",
       render: (_, record) => (
-        <Tag color={record.is_active ? "green" : "red"}>{record.is_active ? "Active" : "Disabled"}</Tag>
+        <Badge
+          variant={record.is_active ? "success" : "destructive"}
+          className={`px-3 py-1 ${record.is_active ? "bg-success/10" : "bg-destructive/10"}`}
+        >
+          {record.is_active ? "Active" : "Disabled"}
+        </Badge>
       ),
     },
     {
@@ -177,43 +174,79 @@ export default function AdminDashboardPage() {
       key: "usage",
       render: (_, record) => {
         if (record.role === "ADMIN") {
-          return null;
+          return <span className="text-xs text-label-tertiary italic">Unlimited</span>;
         }
 
         const usedText = formatBytes(record.used_bytes);
         const totalText = formatBytes(record.quota_bytes);
-        const percent = calculatePercentage(record.used_bytes, record.quota_bytes);
+        const percent = MathUtils.calculatePercentage(record.used_bytes, record.quota_bytes);
 
         return (
-          <div>
-            <Text>
-              {usedText} / {totalText}
-            </Text>
-            <div className="text-xs text-label-secondary">{percent}% used</div>
+          <div className="flex flex-col gap-1 w-32">
+            <div className="flex justify-between text-[11px] font-bold">
+              <span className="text-label">{usedText}</span>
+              <span className="text-label-tertiary">{totalText}</span>
+            </div>
+            <Progress
+              value={percent}
+              className="h-1.5 bg-white/5"
+              indicatorClassName="bg-gradient-to-r from-primary to-info"
+            />
           </div>
         );
       },
     },
     {
-      title: "Action",
+      title: "Actions",
       key: "action",
       render: (_, record) =>
         record.role !== "ADMIN" && (
-          <div className="flex gap-2">
-            <TableActionButton icon={<EditOutlined />} onClick={() => handleEdit(record)} buttonText="Edit Quota" />
-            <TableActionButton
-              icon={<ReloadOutlined />}
-              popconfirmTitle="Re-analyze storage for this user?"
-              onConfirm={() => handleSyncStorage(record._id)}
-              buttonText="Re-sync"
-            />
-            <TableActionButton
-              danger={record.is_active}
-              type={record.is_active ? "default" : "primary"}
-              popconfirmTitle={`Are you sure you want to ${record.is_active ? "disable" : "enable"} this user?`}
-              onConfirm={() => handleUserStatusToggle(record._id, !record.is_active)}
-              buttonText={record.is_active ? "Disable" : "Enable"}
-            />
+          <div className="flex gap-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleEdit(record)}
+                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-label-secondary hover:bg-primary/20 hover:text-primary hover:border-primary/30 hover:shadow-glow-sm transition-all duration-300 group"
+                  >
+                    <Edit2 size={16} className="group-hover:scale-110 transition-transform" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Edit Quota</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleSyncStorage(record._id)}
+                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-label-secondary hover:bg-info/20 hover:text-info hover:border-info/30 hover:shadow-glow-info transition-all duration-300 group"
+                  >
+                    <RotateCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Re-sync Storage</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleUserStatusToggle(record._id, !record.is_active)}
+                    className={`w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center transition-all duration-300 group ${
+                      record.is_active
+                        ? "text-label-secondary hover:bg-destructive/20 hover:text-destructive hover:border-destructive/30 hover:shadow-glow-destructive"
+                        : "text-success hover:bg-success/20 hover:border-success/30 hover:shadow-glow-success"
+                    }`}
+                  >
+                    {record.is_active ? (
+                      <XCircle size={16} className="group-hover:scale-110 transition-transform" />
+                    ) : (
+                      <CheckCircle2 size={16} className="group-hover:scale-110 transition-transform" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{record.is_active ? "Disable User" : "Enable User"}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         ),
     },
@@ -224,41 +257,52 @@ export default function AdminDashboardPage() {
       title: "User",
       key: "user",
       render: (_, record) => (
-        <div>
-          <Text strong>{record.user?.name}</Text>
-          <div className="text-xs text-label-secondary">{record.user?.email}</div>
+        <div className="flex flex-col">
+          <span className="font-bold text-label select-text">{record.user?.name || "Unknown User"}</span>
+          <span className="text-xs text-label-secondary font-medium select-text">
+            {record.user?.email || "No Email"}
+          </span>
         </div>
       ),
     },
     {
       title: "Requested Amount",
       key: "amount",
-      render: (_, record) => <Text>{formatBytes(record.requested_bytes)}</Text>,
+      render: (_, record) => (
+        <span className="text-lg font-black text-gradient-primary italic tracking-tighter">
+          {formatBytes(record.requested_bytes)}
+        </span>
+      ),
     },
     {
       title: "Reason",
       dataIndex: "reason",
       key: "reason",
+      render: (reason) => (
+        <span className="text-label-secondary font-medium max-w-[200px] truncate block">{reason}</span>
+      ),
     },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       render: (status) => {
-        let color = UI_COLORS.STATUS.PENDING;
-        let icon = <HourglassOutlined />;
+        let IconComp = Clock;
+        let className = "bg-info/5 text-info border-info/20 shadow-glow-sm";
+
         if (status === "APPROVED") {
-          color = UI_COLORS.STATUS.APPROVED;
-          icon = <CheckCircleOutlined />;
+          IconComp = CheckCircle2;
+          className = "bg-success/10 text-success border-success/20 shadow-glow-sm cursor-default";
         }
         if (status === "REJECTED") {
-          color = UI_COLORS.STATUS.REJECTED;
-          icon = <CloseCircleOutlined />;
+          IconComp = XCircle;
+          className = "bg-destructive/10 text-destructive border-destructive/20 shadow-glow-sm cursor-default";
         }
         return (
-          <Tag color={color} icon={icon}>
+          <Badge variant="outline" className={`gap-2 px-4 py-1.5 font-black italic rounded-xl ${className}`}>
+            <IconComp size={14} strokeWidth={3} />
             {status}
-          </Tag>
+          </Badge>
         );
       },
     },
@@ -266,128 +310,216 @@ export default function AdminDashboardPage() {
       title: "Date",
       dataIndex: "createdAt",
       key: "date",
-      render: (date) => new Date(date).toLocaleDateString(),
+      render: (date) => <span className="text-label-tertiary font-medium">{new Date(date).toLocaleDateString()}</span>,
     },
     {
       title: "Actions",
       key: "actions",
       render: (_, record) =>
         record.status === "PENDING" ? (
-          <Space>
-            <TableActionButton
-              type="primary"
-              icon={<CheckCircleOutlined />}
-              popconfirmTitle="Approve storage request?"
-              onConfirm={() => handleRequestStatus(record._id, "APPROVED")}
-              buttonText="Approve"
-            />
-            <TableActionButton
-              danger
-              icon={<CloseCircleOutlined />}
-              popconfirmTitle="Reject storage request?"
-              onConfirm={() => handleRequestStatus(record._id, "REJECTED")}
-              buttonText="Reject"
-            />
-          </Space>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-4 rounded-lg bg-success/10 hover:bg-success/20 border-success/20 text-success font-bold text-xs"
+              onClick={() => handleRequestStatus(record._id, "APPROVED")}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-4 rounded-lg bg-destructive/10 hover:bg-destructive/20 border-destructive/20 text-destructive font-bold text-xs"
+              onClick={() => handleRequestStatus(record._id, "REJECTED")}
+            >
+              Reject
+            </Button>
+          </div>
         ) : null,
-    },
-  ];
-
-  const items = [
-    {
-      key: "1",
-      label: "User Management",
-      children: usersLoading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
-      ) : (
-        <Table
-          columns={userColumns}
-          dataSource={users}
-          rowKey="_id"
-          className="bg-surface rounded-xl shadow-sm"
-          loading={usersFetching}
-          pagination={{
-            current: userPage,
-            pageSize: pageSize,
-            total: userPagination?.totalItems || 0,
-            onChange: (p) => setUserPage(p),
-            showSizeChanger: false,
-          }}
-          scroll={{ x: "max-content", y: "calc(100vh - 320px)" }}
-        />
-      ),
-    },
-    {
-      key: "2",
-      label: "Quota Requests",
-      children: requestsLoading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
-      ) : (
-        <Table
-          columns={quotaColumns}
-          dataSource={requests}
-          rowKey="_id"
-          className="bg-surface rounded-xl shadow-sm"
-          loading={requestsFetching}
-          pagination={{
-            current: requestPage,
-            pageSize: pageSize,
-            total: requestPagination?.totalItems || 0,
-            onChange: (p) => setRequestPage(p),
-            showSizeChanger: false,
-          }}
-          scroll={{ x: "max-content", y: "calc(100vh - 320px)" }}
-        />
-      ),
     },
   ];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.3 }}
-      className="p-6 h-full flex flex-col"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="p-8 h-full flex flex-col bg-background overflow-y-auto"
     >
-      <div className="mb-6 shrink-0 flex items-center justify-between">
-        <div>
-          <Title level={2} className="mb-0!">
-            {PageNames.ADMIN}
-          </Title>
-          <Text type="secondary">Manage users and storage requests</Text>
+      {/* Header */}
+      <div className="mb-10 shrink-0 flex items-center justify-between">
+        <div className="space-y-1">
+          <p className="text-label-secondary font-medium flex items-center gap-2">
+            <ShieldCheck size={14} className="text-primary" />
+            System Administration & Analytics
+          </p>
         </div>
         <Button
-          icon={<ReloadOutlined />}
+          variant="aurora"
+          size="pill"
+          icon={<RotateCw size={16} />}
           loading={reanalyzing}
           onClick={() => handleSyncStorage()}
-          className="rounded-xl font-bold h-10 border-primary text-primary hover:bg-primary-light"
+          className="h-12 px-8 shadow-glow-lg font-black italic tracking-tight"
         >
           Re-analyze All Storage
         </Button>
       </div>
 
-      <Tabs activeKey={activeTab} onChange={setActiveTab} items={items} className="admin-tabs flex-1" />
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+        {/* CPU */}
+        <StatCard
+          title="CPU Usage"
+          value={`${stats?.system?.cpu?.load}%`}
+          subtext={`Temp: ${stats?.system?.cpu?.temp === "N/A" ? "N/A" : `${stats?.system?.cpu?.temp}°C`}`}
+          percentage={parseFloat(stats?.system?.cpu?.load) || 0}
+          icon={<Cpu size={18} />}
+          color="#7c3aed"
+          loading={statsLoading}
+        />
+        {/* Memory */}
+        <StatCard
+          title="Memory"
+          value={`${stats?.system?.memory?.usage_percent}%`}
+          subtext={`${formatBytes(stats?.system?.memory?.used)} / ${formatBytes(stats?.system?.memory?.total)}`}
+          percentage={parseFloat(stats?.system?.memory?.usage_percent) || 0}
+          icon={<ServerIcon size={18} />}
+          color="#06b6d4"
+          loading={statsLoading}
+        />
+        {/* Storage */}
+        <StatCard
+          title="System Storage"
+          value={`${stats?.system?.disk?.usage_percent}%`}
+          subtext={`${formatBytes(stats?.system?.disk?.used)} / ${formatBytes(stats?.system?.disk?.total)}`}
+          percentage={parseFloat(stats?.system?.disk?.usage_percent) || 0}
+          icon={<HardDrive size={18} />}
+          color="#f59e0b"
+          loading={statsLoading}
+        />
+        {/* Users */}
+        <StatCard
+          title="Total Users"
+          value={stats?.counts?.total_users || 0}
+          subtext="Registered Accounts"
+          percentage={100}
+          icon={<Users size={18} />}
+          color="#10b981"
+          isTotal
+          loading={statsLoading}
+        />
+      </div>
 
-      <Modal
-        title={`Edit Quota for ${editingUser?.name}`}
-        open={isModalOpen}
-        onOk={handleUpdate}
-        onCancel={() => setIsModalOpen(false)}
+      {/* Main Content Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) =>
+          setSearchParams((prev) => {
+            prev.set(ADMIN_QUERY_PARAMS.TAB, tab);
+            return prev;
+          })
+        }
+        className="flex-1 flex flex-col min-h-0"
       >
-        <Form form={form} layout="vertical">
-          <Form.Item
-            name="quota"
-            label="Storage Quota (GB)"
-            rules={[
-              { required: true, message: "Please enter quota" },
-              { type: "number", min: 1, max: 1000, message: "Quota must be between 1-1000 GB" },
-            ]}
+        <TabsList className="mb-6 w-fit h-14 p-1.5 glass-bar border-white/10 rounded-2xl items-center gap-2">
+          <TabsTrigger
+            value="users"
+            className="px-8 h-11 rounded-xl gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-glow-md font-bold transition-all hover:bg-white/5 active:scale-95"
           >
-            <InputNumber min={1} max={1000} step={1} className="w-full" precision={0} />
-          </Form.Item>
-        </Form>
-      </Modal>
+            <Users size={16} />
+            Users
+          </TabsTrigger>
+          <TabsTrigger
+            value="requests"
+            className="px-8 h-11 rounded-xl gap-2 data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-glow-md font-bold transition-all hover:bg-white/5 active:scale-95"
+          >
+            <Zap size={16} />
+            Quota Requests
+            {requests.filter((r) => r.status === "PENDING").length > 0 && (
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          <AnimatePresence mode="wait">
+            <TabsContent value="users" className="h-full m-0 p-0 focus-visible:ring-0 outline-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="h-full bg-surface/40 rounded-3xl border border-white/10 shadow-2xl overflow-hidden glass-card"
+              >
+                {usersLoading ? (
+                  <div className="p-8 space-y-6">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                  </div>
+                ) : (
+                  <Table
+                    columns={userColumns}
+                    dataSource={users}
+                    rowKey="_id"
+                    className="bg-transparent border-none admin-premium-table"
+                    loading={usersFetching}
+                    pagination={{
+                      current: userPage,
+                      pageSize: pageSize,
+                      total: userPagination?.totalItems || 0,
+                      onChange: (p) =>
+                        setSearchParams((prev) => {
+                          prev.set(ADMIN_QUERY_PARAMS.USER_PAGE, p);
+                          return prev;
+                        }),
+                      showSizeChanger: false,
+                    }}
+                    scroll={{ x: "max-content", y: "calc(100vh - 440px)" }}
+                  />
+                )}
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="requests" className="h-full m-0 p-0 focus-visible:ring-0 outline-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="h-full bg-surface/40 rounded-3xl border border-white/10 shadow-2xl overflow-hidden glass-card"
+              >
+                {requestsLoading ? (
+                  <div className="p-8 space-y-6">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                  </div>
+                ) : (
+                  <Table
+                    columns={quotaColumns}
+                    dataSource={requests}
+                    rowKey="_id"
+                    className="bg-transparent border-none admin-premium-table"
+                    loading={requestsFetching}
+                    pagination={{
+                      current: requestPage,
+                      pageSize: pageSize,
+                      total: requestPagination?.totalItems || 0,
+                      onChange: (p) =>
+                        setSearchParams((prev) => {
+                          prev.set(ADMIN_QUERY_PARAMS.REQUEST_PAGE, p);
+                          return prev;
+                        }),
+                      showSizeChanger: false,
+                    }}
+                    scroll={{ x: "max-content", y: "calc(100vh - 440px)" }}
+                  />
+                )}
+              </motion.div>
+            </TabsContent>
+          </AnimatePresence>
+        </div>
+      </Tabs>
+
+      {/* Quota Modal */}
+      <EditQuotaModal open={isModalOpen} onClose={() => setIsModalOpen(false)} user={editingUser} />
     </motion.div>
   );
 }

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 
 // Constants
 import { UPLOAD_CHUNK_SIZE } from "@shared-constants/constants";
+import { DEFAULT_CHUNK_SIZE } from "@constants/uiConstants";
 
 // Services
 import { useInitChunkedUploadMutation } from "@services/api/fileApi";
@@ -27,7 +28,7 @@ export function UploadProvider({ children }) {
 
       // For large files, pre-fire the init API using the standard mutation hook
       let initPromise = Promise.resolve(null);
-      const safeChunkSize = UPLOAD_CHUNK_SIZE || 10 * 1000 * 1000;
+      const safeChunkSize = UPLOAD_CHUNK_SIZE || DEFAULT_CHUNK_SIZE;
       if (file.size > safeChunkSize) {
         const totalChunks = Math.ceil(file.size / safeChunkSize);
         const body = {

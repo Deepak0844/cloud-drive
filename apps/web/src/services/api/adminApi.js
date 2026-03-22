@@ -60,7 +60,7 @@ const handleQuotaRequestMutation = () => ({
     method: HttpMethods.PATCH,
     body: { status },
   }),
-  invalidatesTags: [TagTypes.ADMIN_QUOTA_REQUESTS],
+  invalidatesTags: [TagTypes.ADMIN_QUOTA_REQUESTS, TagTypes.ADMIN_USERS, TagTypes.ADMIN_STATS, TagTypes.QUOTA],
 });
 
 const runStorageReanalysisMutation = () => ({

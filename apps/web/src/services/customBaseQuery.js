@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Utils
-import HttpClientFactory from "../utils/httpClientFactory";
+import HttpClientFactory from "@utils/httpClientFactory";
 
 /**
  * Custom Base Query for RTK Query.

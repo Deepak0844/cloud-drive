@@ -1,21 +1,18 @@
 // React core & third-party libraries
 import React from "react";
-import { Layout } from "antd";
-import { MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import { Menu } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 // Components
 import NotificationDropdown from "./NotificationDropdown";
 import UserProfileDropdown from "./UserProfileDropdown";
-import Button from "@shared-components/components/button";
+import { Button } from "@components/ui/button";
 
 // Constants
 import PageNames from "@constants/pageNames";
 import PageUrls from "@constants/pageUrls";
 
-const { Header } = Layout;
-
-function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
+function Navbar({ isMobile, setDrawerVisible }) {
   const { pathname } = useLocation();
 
   function getCurrentPageName() {
@@ -31,41 +28,28 @@ function Navbar({ isMobile, setDrawerVisible, collapsed, setCollapsed }) {
 
   // Render
   return (
-    <Header
-      className="backdrop-blur-md sticky top-0 z-40 w-full px-5 sm:px-8 flex justify-between items-center border-b border-line h-16 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-all text-label"
-      style={{ backgroundColor: "var(--bg-glass)", paddingInline: 0 }}
-    >
+    <header className="glass-bar sticky top-0 z-40 w-full flex justify-between items-center h-16 transition-all text-label px-4 sm:px-8">
       <div className="flex items-center gap-4 sm:gap-6">
-        {isMobile ? (
+        {isMobile && (
           <Button
             type="text"
-            icon={<MenuOutlined className="text-xl" />}
+            icon={<Menu size={20} />}
             onClick={() => setDrawerVisible(true)}
             className="flex items-center justify-center w-10 h-10 hover:bg-surface-alt rounded-xl transition-all"
           />
-        ) : (
-          <Button
-            type="text"
-            icon={
-              collapsed ? (
-                <MenuUnfoldOutlined className="text-xl text-label-secondary hover:text-primary transition-all delay-75" />
-              ) : (
-                <MenuFoldOutlined className="text-xl text-label-secondary hover:text-primary transition-all delay-75" />
-              )
-            }
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center justify-center w-10 h-10 hover:bg-surface-alt rounded-xl transition-all border border-transparent"
-          />
         )}
-        <span className="text-sm sm:text-base font-bold text-label tracking-tight">{getCurrentPageName()}</span>
+        <div className="flex items-center">
+          <span className="text-base sm:text-lg font-bold text-label-secondary tracking-tight select-none italic">
+            {getCurrentPageName()}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 sm:gap-5">
         <NotificationDropdown />
-        <div className="w-px h-6 bg-border-base mx-1 hidden sm:block"></div>
         <UserProfileDropdown isMobile={isMobile} />
       </div>
-    </Header>
+    </header>
   );
 }
 
