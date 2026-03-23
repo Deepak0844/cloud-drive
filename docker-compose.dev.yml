@@ -1,0 +1,67 @@
+# =============================================================================
+# docker-compose.dev.yml — Development overrides
+#
+# Extends docker-compose.yml with:
+#   - Local MongoDB container (instead of Atlas)
+#   - mongo-express UI at http://localhost:8081
+#   - Server source hot-reload via bind mount
+#   - Web runs locally via Vite (not in Docker)
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Then run the web app locally as usual:
+#   npm run web:dev
+# =============================================================================
+
+
+services:
+  server:
+    env_file:
+      - apps/server/env/.env.development    # your local dev env (not committed)
+    environment:
+      - NODE_ENV=development
+      # Override Atlas URI — point to the local mongo container
+      - MONGODB_URI=mongodb://mongo:27017/cloud-drive
+    depends_on:
+      - mongo
+    volumes:
+      # Bind-mount source for hot reload (no rebuild needed on code changes)
+      - ./apps/server:/app/apps/server
+      - ./shared:/app/shared
+      - nas_storage:/storage
+      # Preserve container's node_modules — don't overwrite with host's
+      - /app/apps/server/node_modules
+    # Use Node's built-in file watcher (Node 18+) — no nodemon needed
+    command: ["node", "--watch", "bin/www.js"]
+    # Inherit healthcheck from base compose so web container can start
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  # Visual MongoDB browser — http://localhost:8081
+  mongo-express:
+    image: mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongo
+      - ME_CONFIG_BASICAUTH=false
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  # Override NAS volume to use a local path in dev (PenDrive not needed)
+  nas_storage:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${NAS_HOST_PATH:-/tmp/cloud-drive-storage}

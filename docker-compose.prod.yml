@@ -1,0 +1,11 @@
+# =============================================================================
+# docker-compose.prod.yml — Production overrides
+#
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+# =============================================================================
+
+services:
+  server:
+    env_file:
+      - apps/server/env/.env.production     # never committed to git — copy from .env.production.example

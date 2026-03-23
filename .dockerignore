@@ -1,0 +1,39 @@
+# ── Dependencies ───────────────────────────────────────────────────────────────
+node_modules/
+.turbo/
+.git/
+
+# ── Build outputs ──────────────────────────────────────────────────────────────
+apps/web/dist/
+apps/web/.turbo/
+apps/server/.turbo/
+
+# ── Environment / secrets ──────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# ── Test artifacts ─────────────────────────────────────────────────────────────
+test-storage/
+__tests__/
+*.test.js
+jest.config.js
+coverage/
+
+# ── Dev tools ──────────────────────────────────────────────────────────────────
+.husky/
+.vscode/
+.prettierrc
+.prettierignore
+eslint.config.*
+.npmrc
+
+# ── OS files ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Misc ───────────────────────────────────────────────────────────────────────
+*.md
+*.log
+*.postman_collection.json

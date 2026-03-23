@@ -1,7 +1,12 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import { z } from "zod";
 
-dotenv.config({ quiet: true });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Load from env/ folder: apps/server/env/.env
+dotenv.config({ path: path.resolve(__dirname, "../env/.env"), quiet: true });
 
 /**
  * Environment Variable Schema

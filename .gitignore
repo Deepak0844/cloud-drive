@@ -5,12 +5,24 @@ node_modules
 .pnp
 .pnp.js
 
-# Local env files
+# Environment files — never commit real secrets
 .env
 .env.local
+.env.development
+.env.production
 .env.development.local
 .env.test.local
 .env.production.local
+# env/ subfolder secrets
+apps/server/env/.env
+apps/server/env/.env.development
+apps/server/env/.env.production
+# Allow example/template files
+!*.env.example
+!.env.example
+!apps/server/env/.env.example
+!apps/server/env/.env.development.example
+!apps/server/env/.env.production.example
 
 # Testing
 coverage

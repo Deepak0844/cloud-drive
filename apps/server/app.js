@@ -135,6 +135,11 @@ app.get("/", (req, res) => {
   ResponseUtils.success(res, { message: "Cloud Drive API is running", version: "0.0.1" });
 });
 
+// Health check endpoint
+app.get(`${baseUrl}/health`, (req, res) => {
+  res.status(HttpStatus.OK).json({ status: "ok", message: "Server is healthy" });
+});
+
 // catch 404 and forward to error handler
 app.use((_req, _res, next) => {
   next(createError(HttpStatus.NOT_FOUND, ErrorMessages.RESOURCE_NOT_FOUND));
