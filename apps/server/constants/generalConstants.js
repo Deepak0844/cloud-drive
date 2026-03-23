@@ -91,6 +91,9 @@ export const ErrorMessages = {
   PREVIEW_NOT_SUPPORTED: "Preview not supported for this file type",
   STREAMING_NOT_SUPPORTED: "Streaming not supported for this file type",
   INCORRECT_PASSWORD: "Incorrect current password",
+  CHUNK_HASH_MISMATCH: "Chunk integrity check failed: hash mismatch",
+  UPLOAD_SIZE_MISMATCH: "File assembly failed: size mismatch",
+  UPLOAD_FINALIZE_FAILED: "Failed to finalize upload",
 };
 
 /**

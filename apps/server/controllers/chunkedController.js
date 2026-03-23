@@ -1,28 +1,16 @@
-// Native modules
-import crypto from "crypto";
-import fs from "fs";
-import path from "path";
-import mongoose from "mongoose";
-
-// Models
-import User from "#models/User.js";
-
 // Services
-import FileService from "#services/fileService.js";
+import ChunkedService from "#services/chunkedService.js";
 import SocketService from "#services/socketService.js";
-import MetadataService from "#services/metadataService.js";
 
 // Constants
 import { HttpStatus } from "@shared-constants/constants";
-import { ErrorMessages, SocketEvents } from "#constants/generalConstants.js";
+import { SocketEvents } from "#constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "#middlewares/asyncHandler.js";
 
 // Utils
 import ResponseUtils from "#utils/responseUtils.js";
-import MimeUtils from "#utils/mimeUtils.js";
-import logger from "#utils/logger.js";
 
 /**
  * @desc    Initiate chunked upload
@@ -31,252 +19,51 @@ import logger from "#utils/logger.js";
  */
 export const initChunkedUpload = asyncHandler(async (req, res) => {
   const { fileSize, totalChunks } = req.body;
-
-  // Fresh DB quota check — avoids relying on req.user which was populated at
-  // auth time and may be stale if a concurrent upload just consumed quota.
-  const hasQuota = await FileService.checkQuota(req.user.id, fileSize);
-  if (!hasQuota) {
-    return ResponseUtils.error(res, ErrorMessages.QUOTA_EXCEEDED, HttpStatus.FORBIDDEN);
-  }
-
-  const uploadId = `${req.user.id}_${Date.now()}`;
-  const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
-
-  await fs.promises.mkdir(chunkDir, { recursive: true });
-
-  // Persist session metadata so finalize can verify all chunks arrived
-  await fs.promises.writeFile(path.join(chunkDir, "meta.json"), JSON.stringify({ totalChunks }));
-
-  return ResponseUtils.success(res, { uploadId, totalChunks });
+  const result = await ChunkedService.initUpload(req.user.id, fileSize, totalChunks);
+  return ResponseUtils.success(res, result);
 });
 
 /**
  * @desc    Upload a single chunk as raw binary body
  * @route   POST /api/v1/files/upload/chunk
  * @access  Private
- *
- * Chunk metadata is passed via query params: ?uploadId=<id>&chunkIndex=<n>
- * Body is raw binary (application/octet-stream), parsed by express.raw().
  */
 export const uploadChunk = asyncHandler(async (req, res) => {
   const { uploadId, chunkIndex, chunkHash } = req.query;
-
-  // Ownership guard: uploadId is generated as `<userId>_<timestamp>` in initChunkedUpload.
-  // Reject any ID that doesn't belong to the authenticated user.
-  if (!uploadId.startsWith(`${req.user.id}_`)) {
-    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
-  }
-
-  const chunkBuffer = req.body;
-
-  if (!Buffer.isBuffer(chunkBuffer) || chunkBuffer.length === 0) {
-    return ResponseUtils.error(res, ErrorMessages.NO_CHUNK_FILE, HttpStatus.BAD_REQUEST);
-  }
-
-  const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
-
-  if (!fs.existsSync(chunkDir)) {
-    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
-  }
-
-  const idx = parseInt(chunkIndex, 10);
-  const chunkPath = path.join(chunkDir, `chunk_${idx}`);
-
-  await fs.promises.writeFile(chunkPath, chunkBuffer);
-
-  // Optional per-chunk integrity check — client sends SHA-256 hex of the raw buffer
-  if (chunkHash) {
-    const computedHash = crypto.createHash("sha256").update(chunkBuffer).digest("hex");
-    if (computedHash !== chunkHash) {
-      await fs.promises.unlink(chunkPath).catch(() => {});
-      return ResponseUtils.error(res, `Chunk ${idx} integrity check failed: hash mismatch`, HttpStatus.BAD_REQUEST);
-    }
-  }
-
-  return ResponseUtils.success(res, { chunkIndex: idx, uploadId });
+  const result = await ChunkedService.saveChunk(req.user.id, uploadId, chunkIndex, req.body, chunkHash);
+  return ResponseUtils.success(res, result);
 });
 
 /**
  * @desc    Get the status of an in-progress chunked upload session
  * @route   GET /api/v1/files/upload/status
  * @access  Private
- *
- * Returns totalChunks from meta.json and the sorted list of chunk indices
- * already written to disk. The client uses this on page reload to resume
- * an interrupted upload without re-sending already-received chunks.
  */
 export const getUploadStatus = asyncHandler(async (req, res) => {
   const { uploadId } = req.query;
-
-  // Ownership guard — same pattern as uploadChunk
-  if (!uploadId.startsWith(`${req.user.id}_`)) {
-    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
-  }
-
-  const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
-
-  if (!fs.existsSync(chunkDir)) {
-    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
-  }
-
-  // Read expected total from meta.json written at init time
-  const metaPath = path.join(chunkDir, "meta.json");
-  let totalChunks = null;
-  if (fs.existsSync(metaPath)) {
-    try {
-      const meta = JSON.parse(await fs.promises.readFile(metaPath, "utf-8"));
-      totalChunks = typeof meta.totalChunks === "number" ? meta.totalChunks : null;
-    } catch {
-      // non-fatal
-    }
-  }
-
-  // Collect the indices of chunks already on disk
-  const chunkFiles = fs.readdirSync(chunkDir).filter((f) => /^chunk_\d+$/.test(f));
-  const uploadedChunks = chunkFiles.map((f) => parseInt(f.split("_")[1], 10)).sort((a, b) => a - b);
-
-  return ResponseUtils.success(res, { uploadId, totalChunks, uploadedChunks });
+  const result = await ChunkedService.getUploadStatus(req.user.id, uploadId);
+  return ResponseUtils.success(res, result);
 });
 
 /**
+ * @desc    Assemble all chunks and create the File record
  * @route   POST /api/v1/files/upload/finalize
  * @access  Private
  */
 export const finalizeChunkedUpload = asyncHandler(async (req, res) => {
   const { uploadId, fileName: name, folderId, mimeType, totalSize } = req.body;
 
-  // Ownership guard — same pattern as uploadChunk
-  if (!uploadId.startsWith(`${req.user.id}_`)) {
-    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
-  }
+  const { file, updatedUser } = await ChunkedService.assembleAndFinalize(req.user.id, uploadId, {
+    name,
+    folderId,
+    mimeType,
+    totalSize,
+  });
 
-  const chunkDir = path.join(FileService.getChunksDir(req.user.id), uploadId);
+  SocketService.emitToUser(req.user.id, SocketEvents.QUOTA_UPDATE, {
+    quota_bytes: updatedUser.quota_bytes,
+    used_bytes: updatedUser.used_bytes,
+  });
 
-  if (!fs.existsSync(chunkDir)) {
-    return ResponseUtils.error(res, ErrorMessages.UPLOAD_NOT_FOUND, HttpStatus.NOT_FOUND);
-  }
-
-  // Read session metadata written at init time
-  const metaPath = path.join(chunkDir, "meta.json");
-  let expectedTotalChunks = null;
-  if (fs.existsSync(metaPath)) {
-    try {
-      const meta = JSON.parse(await fs.promises.readFile(metaPath, "utf-8"));
-      expectedTotalChunks = typeof meta.totalChunks === "number" ? meta.totalChunks : null;
-    } catch {
-      // non-fatal — fall through to the chunk count check below
-    }
-  }
-
-  const chunks = fs
-    .readdirSync(chunkDir)
-    .filter((f) => /^chunk_\d+$/.test(f))
-    .sort((a, b) => {
-      const idxA = parseInt(a.split("_")[1], 10);
-      const idxB = parseInt(b.split("_")[1], 10);
-      return idxA - idxB;
-    });
-
-  if (chunks.length === 0) {
-    return ResponseUtils.error(res, "No chunks found for this upload", HttpStatus.BAD_REQUEST);
-  }
-
-  // Verify every expected chunk arrived — catch missing or duplicate indices
-  if (expectedTotalChunks !== null) {
-    if (chunks.length !== expectedTotalChunks) {
-      return ResponseUtils.error(
-        res,
-        `Upload incomplete: expected ${expectedTotalChunks} chunks but found ${chunks.length}`,
-        HttpStatus.BAD_REQUEST
-      );
-    }
-    const presentIndices = new Set(chunks.map((f) => parseInt(f.split("_")[1], 10)));
-    for (let i = 0; i < expectedTotalChunks; i++) {
-      if (!presentIndices.has(i)) {
-        return ResponseUtils.error(res, `Upload incomplete: chunk ${i} is missing`, HttpStatus.BAD_REQUEST);
-      }
-    }
-  }
-
-  const user = await User.findById(req.user.id).select("+encryption_key_wrapped");
-  if (!user || !user.encryption_key_wrapped) {
-    return ResponseUtils.error(res, "Encryption key missing", HttpStatus.INTERNAL_SERVER_ERROR);
-  }
-
-  // Pre-generate a stable MongoDB ObjectId so we can name the file after it
-  const fileId = new mongoose.Types.ObjectId();
-  const tempCombinedPath = path.join(chunkDir, "combined.tmp");
-
-  // Assemble chunks directly into the final temp file
-  try {
-    // 1. Assemble all chunks into a temporary file
-    const tempFileHandle = await fs.promises.open(tempCombinedPath, "a");
-    for (const chunk of chunks) {
-      const chunkPath = path.join(chunkDir, chunk);
-      const data = await fs.promises.readFile(chunkPath);
-      await tempFileHandle.appendFile(data);
-      await fs.promises.unlink(chunkPath); // delete chunk after appending
-    }
-    await tempFileHandle.close();
-
-    const stats = fs.statSync(tempCombinedPath);
-
-    // Robustness: Verification against client-reported totalSize if provided
-    if (totalSize && stats.size !== parseInt(totalSize, 10)) {
-      logger.error(`[Upload] Size mismatch for ${name}: Expected ${totalSize}, got ${stats.size}`);
-      // Cleanup the failed assembly
-      if (fs.existsSync(tempCombinedPath)) {
-        await fs.promises.unlink(tempCombinedPath);
-      }
-      return ResponseUtils.error(res, "File assembly failed: Size mismatch", HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    // Re-check quota at finalize time — the user may have consumed more space
-    // via concurrent uploads since init was called.
-    const totalSizeFinal = stats.size;
-    const hasQuota = await FileService.checkQuota(req.user.id, totalSizeFinal);
-    if (!hasQuota) {
-      if (fs.existsSync(tempCombinedPath)) {
-        await fs.promises.unlink(tempCombinedPath).catch(() => {});
-      }
-      return ResponseUtils.error(res, ErrorMessages.QUOTA_EXCEEDED, HttpStatus.FORBIDDEN);
-    }
-    const extension = path.extname(name).replace(".", "");
-    const effectiveMimeType = mimeType || MimeUtils.getMimeType(name);
-    const category = MetadataService.getCategory(effectiveMimeType, name);
-
-    // Use the shared finalization logic
-    const file = await FileService.finalizeUploadedFile({
-      userId: req.user.id,
-      folderId,
-      tempFilePath: tempCombinedPath,
-      originalName: name,
-      mimeType: effectiveMimeType,
-      size: totalSizeFinal,
-      category,
-      extension: extension || "bin",
-      fileId,
-    });
-
-    // Notify about quota and file change (though finalizeUploadedFile does some of this,
-    // chunked upload might need specific events if they differ, but we synced them)
-    const updatedUser = await User.findById(req.user.id);
-    SocketService.emitToUser(req.user.id, SocketEvents.QUOTA_UPDATE, {
-      quota_bytes: updatedUser.quota_bytes,
-      used_bytes: updatedUser.used_bytes,
-    });
-
-    // Clean up the chunk directory
-    await fs.promises.rm(chunkDir, { recursive: true, force: true }).catch(() => {});
-
-    return ResponseUtils.success(res, file, HttpStatus.CREATED);
-  } catch (err) {
-    logger.error(`[Upload] Finalization error for ${name}: ${err.message}`);
-    // Cleanup of physical final file is handled inside finalizeUploadedFile for most cases,
-    // but we should ensure tempCombinedPath is cleared if it still exists.
-    if (fs.existsSync(tempCombinedPath)) {
-      await fs.promises.unlink(tempCombinedPath).catch(() => {});
-    }
-    return ResponseUtils.error(res, "Failed to finalize upload", HttpStatus.INTERNAL_SERVER_ERROR);
-  }
+  return ResponseUtils.success(res, file, HttpStatus.CREATED);
 });
