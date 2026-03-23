@@ -5,7 +5,7 @@ import SocketService from "#services/socketService.js";
 import SystemService from "#services/systemService.js";
 
 // Constants
-import { SocketEvents } from "#constants/generalConstants.js";
+import { SocketEvents, SuccessMessages } from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
@@ -54,6 +54,6 @@ export const runStorageReanalysis = asyncHandler(async (req, res) => {
   return ResponseUtils.success(res, summary, HttpStatus.OK, {
     message: userId
       ? `Deep storage re-analysis for user ${userId} completed successfully`
-      : "Full deep storage re-analysis completed successfully",
+      : SuccessMessages.STORAGE_ANALYSIS_COMPLETE,
   });
 });

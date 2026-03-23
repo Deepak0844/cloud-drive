@@ -7,7 +7,7 @@ import NotificationService from "#services/notificationService.js";
 import SocketService from "#services/socketService.js";
 
 // Constants
-import { ErrorMessages, NotificationTypes, SocketEvents } from "#constants/generalConstants.js";
+import { ErrorMessages, NotificationMessages, NotificationTypes, SocketEvents } from "#constants/generalConstants.js";
 import { HttpStatus, QuotaStatus } from "@shared-constants/constants";
 
 // Utils
@@ -43,7 +43,7 @@ async function updateUserQuota(userId, quota_bytes) {
   await NotificationService.createNotification(
     user._id,
     NotificationTypes.QUOTA_CHANGE,
-    isIncrease ? "Quota Increased" : "Quota Decreased",
+    isIncrease ? NotificationMessages.QUOTA_INCREASED : NotificationMessages.QUOTA_DECREASED,
     `Your storage quota has been ${isIncrease ? "increased" : "decreased"} to ${FormatUtils.bytesToGB(quota_bytes)} GB`
   );
 
@@ -81,26 +81,26 @@ async function handleQuotaRequest(requestId, status, admin_note) {
     await NotificationService.createNotification(
       user._id,
       NotificationTypes.QUOTA_APPROVED,
-      "Quota Request Approved",
+      NotificationMessages.QUOTA_REQUEST_APPROVED,
       `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been approved.`
     );
 
     SocketService.emitToUser(String(user._id), SocketEvents.NOTIFICATION, {
       type: NotificationTypes.QUOTA_APPROVED,
-      title: "Quota Request Approved",
+      title: NotificationMessages.QUOTA_REQUEST_APPROVED,
       message: `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been approved.`,
     });
   } else {
     await NotificationService.createNotification(
       user._id,
       NotificationTypes.QUOTA_REJECTED,
-      "Quota Request Rejected",
+      NotificationMessages.QUOTA_REQUEST_REJECTED,
       `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been rejected.`
     );
 
     SocketService.emitToUser(String(user._id), SocketEvents.NOTIFICATION, {
       type: NotificationTypes.QUOTA_REJECTED,
-      title: "Quota Request Rejected",
+      title: NotificationMessages.QUOTA_REQUEST_REJECTED,
       message: `Your request for ${FormatUtils.bytesToGB(request.requested_bytes)} GB storage increase has been rejected.`,
     });
   }

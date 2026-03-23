@@ -5,7 +5,7 @@ import File from "#models/File.js";
 import NotificationService from "#services/notificationService.js";
 
 // Constants
-import { NotificationTypes } from "#constants/generalConstants.js";
+import { NotificationMessages, NotificationTypes } from "#constants/generalConstants.js";
 
 // Utils
 import logger from "#utils/logger.js";
@@ -66,7 +66,7 @@ async function findAndNotifyDuplicates() {
       await NotificationService.createNotification(
         userId,
         NotificationTypes.SYSTEM_ALERT,
-        "Duplicate Files Found",
+        NotificationMessages.DUPLICATE_FILES_FOUND,
         `We found ${totalFilesCount} duplicate files across ${totalDupSets} sets of content. View your files to optimize storage.`
       );
 

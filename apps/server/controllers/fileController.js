@@ -341,7 +341,7 @@ export const getRecentFiles = asyncHandler(async (req, res) => {
 
 export const touchFile = asyncHandler(async (req, res) => {
   await FileService.touchFile(req.user.id, req.params.id);
-  return ResponseUtils.success(res, { message: "File touched" });
+  return ResponseUtils.success(res, { message: SuccessMessages.FILE_TOUCHED });
 });
 
 export const toggleFavorite = asyncHandler(async (req, res) => {
@@ -362,17 +362,17 @@ export const downloadAsZip = asyncHandler(async (req, res) => {
     try {
       items = JSON.parse(payload).items;
     } catch (_err) {
-      return ResponseUtils.error(res, "Invalid payload format", HttpStatus.BAD_REQUEST);
+      return ResponseUtils.error(res, ErrorMessages.INVALID_PAYLOAD_FORMAT, HttpStatus.BAD_REQUEST);
     }
   }
 
   if (!items || !items.length) {
-    return ResponseUtils.error(res, "No items selected for download", HttpStatus.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.NO_ITEMS_SELECTED, HttpStatus.BAD_REQUEST);
   }
 
   const zipItems = await FileService.prepareZipPayload(req.user.id, items);
   if (zipItems.length === 0) {
-    return ResponseUtils.error(res, "No valid files found for download", HttpStatus.NOT_FOUND);
+    return ResponseUtils.error(res, ErrorMessages.NO_VALID_FILES, HttpStatus.NOT_FOUND);
   }
 
   res.attachment(`cloud-drive-download-${Date.now()}.zip`);
@@ -414,7 +414,7 @@ export const getHlsPlaylist = asyncHandler(async (req, res) => {
     mediaInfo = await MediaUtils.probeEncryptedMedia(file.storage_path, plaintextKey, iv);
   } catch (err) {
     logger.error(`[HLS Playlist] Probe failed for ${fileId}: ${err.message}`);
-    return ResponseUtils.error(res, "Could not read media file metadata", HttpStatus.INTERNAL_SERVER_ERROR);
+    return ResponseUtils.error(res, ErrorMessages.MEDIA_METADATA_FAILED, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   const alreadyTranscoded = await HlsCacheUtils.isPlaylistCached(baseStoragePath, fileId);
@@ -523,7 +523,7 @@ export const getHlsSegment = asyncHandler(async (req, res) => {
 
   const match = req.params.segment?.match(/^seg-(\d+)\.ts$/);
   if (!match) {
-    return ResponseUtils.error(res, "Invalid segment identifier", HttpStatus.BAD_REQUEST);
+    return ResponseUtils.error(res, ErrorMessages.INVALID_SEGMENT, HttpStatus.BAD_REQUEST);
   }
 
   const segmentIndex = parseInt(match[1], 10);

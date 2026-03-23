@@ -16,6 +16,7 @@ import config from "#config/env.js";
 import {
   NotificationTypes,
   ErrorMessages,
+  NotificationMessages,
   FileCategories,
   VideoExtensions,
   SocketEvents,
@@ -128,7 +129,7 @@ function getThumbnailDir(userId) {
 async function checkQuota(userId, incomingBytes) {
   const user = await User.findById(userId);
   if (!user) {
-    throw new Error("User not found");
+    throw new AppError(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
   return user.used_bytes + incomingBytes <= user.quota_bytes;
 }
@@ -162,7 +163,7 @@ async function recalculateUsedBytes(userId) {
       NotificationService.createNotification(
         userId,
         NotificationTypes.STORAGE_ALERT,
-        "Storage Almost Full",
+        NotificationMessages.STORAGE_ALMOST_FULL,
         `You've used ${usedPct}% of your storage quota. Consider requesting a quota increase or freeing up space.`,
         {
           usedPercentage: usedPct,
@@ -336,7 +337,7 @@ async function copyFileInternal(userId, fileId, targetFolderId) {
   // Enforce quota before duplicating — a copy consumes as much space as the original.
   const hasQuota = await checkQuota(userId, sourceFile.size_bytes);
   if (!hasQuota) {
-    throw new Error(ErrorMessages.QUOTA_EXCEEDED);
+    throw new AppError(ErrorMessages.QUOTA_EXCEEDED, HttpStatus.FORBIDDEN);
   }
 
   const uniqueName = await getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
@@ -499,7 +500,7 @@ async function finalizeUploadedFile({
   // 2. Setup encryption & storage
   const user = await User.findById(userId).select("+encryption_key_wrapped");
   if (!user || !user.encryption_key_wrapped) {
-    throw new Error("User encryption key missing");
+    throw new AppError(ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   const iv = CryptoUtils.generateFileIv();
@@ -582,7 +583,7 @@ async function processUpload(userId, folderId, fileObj) {
 async function prepareZipPayload(userId, items) {
   const user = await User.findById(userId).select("+encryption_key_wrapped");
   if (!user || !user.encryption_key_wrapped) {
-    throw new Error("User encryption key missing");
+    throw new AppError(ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
@@ -779,7 +780,7 @@ async function getPlaybackInfo(userId, fileId) {
   const isAudio = file.category === FileCategories.AUDIO;
 
   if (!isVideo && !isAudio) {
-    throw new AppError("Playback info is only available for video and audio files", HttpStatus.BAD_REQUEST);
+    throw new AppError(ErrorMessages.PLAYBACK_TYPE_UNSUPPORTED, HttpStatus.BAD_REQUEST);
   }
 
   const id = file._id.toString();

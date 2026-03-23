@@ -9,7 +9,13 @@ import NotificationService from "#services/notificationService.js";
 import config from "#config/env.js";
 
 // Constants
-import { ErrorMessages, NotificationTypes, AUTH_COOKIE_NAME, CookieConfig } from "#constants/generalConstants.js";
+import {
+  ErrorMessages,
+  NotificationMessages,
+  NotificationTypes,
+  AUTH_COOKIE_NAME,
+  CookieConfig,
+} from "#constants/generalConstants.js";
 import { HttpStatus, Roles } from "@shared-constants/constants";
 
 // Utils
@@ -62,7 +68,7 @@ async function register(name, email, password) {
 
   EmailService.sendTemplateEmail({
     email: user.email,
-    subject: "Welcome to Cloud Drive!",
+    subject: NotificationMessages.WELCOME_SUBJECT,
     templateName: "welcome-email",
     plainTextMessage: `Welcome to Cloud Drive, ${user.name}! We're excited to have you on board.`,
     data: { userName: user.name, actionUrl: `${config.APP_BASE_URL}/files` },
@@ -83,8 +89,8 @@ async function login(email, password, req) {
 
   sendSecurityEmail(
     user,
-    "New login to your Cloud Drive account",
-    "We noticed a new login to your Cloud Drive account. If this was you, you can safely ignore this email. If you did not log in, please reset your password immediately and contact support.",
+    NotificationMessages.NEW_LOGIN_TITLE,
+    NotificationMessages.NEW_LOGIN_BODY,
     "login",
     SecurityUtils.getSessionMetadata(req)
   );

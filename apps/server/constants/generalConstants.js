@@ -94,6 +94,13 @@ export const ErrorMessages = {
   CHUNK_HASH_MISMATCH: "Chunk integrity check failed: hash mismatch",
   UPLOAD_SIZE_MISMATCH: "File assembly failed: size mismatch",
   UPLOAD_FINALIZE_FAILED: "Failed to finalize upload",
+  INVALID_PAYLOAD_FORMAT: "Invalid payload format",
+  NO_ITEMS_SELECTED: "No items selected for download",
+  NO_VALID_FILES: "No valid files found for download",
+  MEDIA_METADATA_FAILED: "Could not read media file metadata",
+  INVALID_SEGMENT: "Invalid segment identifier",
+  PLAYBACK_TYPE_UNSUPPORTED: "Playback info is only available for video and audio files",
+  UNKNOWN_ERROR: "Unknown error",
 };
 
 /**
@@ -130,6 +137,27 @@ export const SuccessMessages = {
   ITEMS_RESTORED: "Items restored successfully",
   ITEMS_PERMANENTLY_DELETED: "Items permanently deleted",
   TRASH_ALREADY_EMPTY: "Trash is already empty",
+  FILE_TOUCHED: "File touched",
+  STORAGE_ANALYSIS_COMPLETE: "Full deep storage re-analysis completed successfully",
+};
+
+/**
+ * Notification & email content strings
+ * Used by services that create notifications or send emails.
+ */
+export const NotificationMessages = {
+  QUOTA_INCREASED: "Quota Increased",
+  QUOTA_DECREASED: "Quota Decreased",
+  QUOTA_REQUEST_APPROVED: "Quota Request Approved",
+  QUOTA_REQUEST_REJECTED: "Quota Request Rejected",
+  TRASH_CLEANUP_COMPLETE: "Trash Cleanup Complete",
+  STORAGE_ALMOST_FULL: "Storage Almost Full",
+  DUPLICATE_FILES_FOUND: "Duplicate Files Found",
+  WELCOME_SUBJECT: "Welcome to Cloud Drive!",
+  NEW_LOGIN_TITLE: "New login to your Cloud Drive account",
+  NEW_LOGIN_BODY:
+    "We noticed a new login to your Cloud Drive account. If this was you, you can safely ignore this email. If you did not log in, please reset your password immediately and contact support.",
+  TRASH_EMAIL_SUBJECT: "Your storage has been optimized 🧹",
 };
 
 /**
