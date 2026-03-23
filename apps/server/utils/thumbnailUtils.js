@@ -27,6 +27,19 @@ import {
   RAW_IMAGE_FORMATS,
   SHARP_NATIVE_FORMATS,
 } from "#utils/mediaCore.js";
+import { MediaProcessing } from "#constants/generalConstants.js";
+
+const {
+  THUMBNAIL_SIZE,
+  THUMBNAIL_JPEG_QUALITY,
+  HEIC_CONVERT_QUALITY,
+  FFMPEG_MAX_BUFFER,
+  FFMPEG_TIMEOUT_MS,
+  MIN_VALID_JPEG_BYTES,
+  VIDEO_SEEK_FRACTION,
+  VIDEO_SEEK_MIN_S,
+  VIDEO_SEEK_MAX_S,
+} = MediaProcessing;
 
 // ─── Image Thumbnails ──────────────────────────────────────────────────────────
 
@@ -38,7 +51,7 @@ function extractRawImageFrame(sourcePath, destPath) {
     execFile(
       resolvedFfmpegPath,
       ["-y", "-i", sourcePath, "-vframes", "1", "-q:v", "2", "-f", "mjpeg", destPath],
-      { maxBuffer: 10 * 1024 * 1024 },
+      { maxBuffer: FFMPEG_MAX_BUFFER },
       (err, _stdout, stderr) => {
         if (err) {
           reject(new Error(`RAW extraction failed: ${err.message}\n${stderr}`));
@@ -73,10 +86,10 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
     if (HEIC_FORMATS.has(ext)) {
       logger.debug(`[Thumbnail] HEIC/HEIF detected: ${sourcePath}`);
       const inputBuffer = await fsPromises.readFile(unencryptedSource);
-      const jpegBuffer = await heicConvert({ buffer: inputBuffer, format: "JPEG", quality: 0.85 });
+      const jpegBuffer = await heicConvert({ buffer: inputBuffer, format: "JPEG", quality: HEIC_CONVERT_QUALITY });
       await sharp(jpegBuffer)
-        .resize(300, 300, { fit: "cover", withoutEnlargement: false })
-        .toFormat("jpeg", { quality: 85 })
+        .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: "cover", withoutEnlargement: false })
+        .toFormat("jpeg", { quality: THUMBNAIL_JPEG_QUALITY })
         .toFile(destPath);
       logger.info(`[Thumbnail] HEIC thumbnail generated: ${destPath}`);
       return destPath;
@@ -89,8 +102,8 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
       try {
         await extractRawImageFrame(unencryptedSource, tempJpeg);
         await sharp(tempJpeg)
-          .resize(300, 300, { fit: "cover", withoutEnlargement: false })
-          .toFormat("jpeg", { quality: 85 })
+          .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: "cover", withoutEnlargement: false })
+          .toFormat("jpeg", { quality: THUMBNAIL_JPEG_QUALITY })
           .toFile(destPath);
         fs.unlinkSync(tempJpeg);
         logger.info(`[Thumbnail] RAW thumbnail generated: ${destPath}`);
@@ -108,8 +121,8 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
     if (ext === ".svg") {
       logger.debug(`[Thumbnail] SVG detected: ${sourcePath}`);
       await sharp(unencryptedSource, { density: 150 })
-        .resize(300, 300, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
-        .toFormat("jpeg", { quality: 85 })
+        .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
+        .toFormat("jpeg", { quality: THUMBNAIL_JPEG_QUALITY })
         .toFile(destPath);
       logger.info(`[Thumbnail] SVG thumbnail generated: ${destPath}`);
       return destPath;
@@ -121,8 +134,8 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
 
       try {
         await sharp(unencryptedSource)
-          .resize(300, 300, { fit: "cover", withoutEnlargement: false })
-          .toFormat("jpeg", { quality: 85 })
+          .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: "cover", withoutEnlargement: false })
+          .toFormat("jpeg", { quality: THUMBNAIL_JPEG_QUALITY })
           .toFile(destPath);
         logger.info(`[Thumbnail] AVIF thumbnail generated via sharp: ${destPath}`);
         return destPath;
@@ -141,20 +154,20 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
               "jpeg",
               "-s",
               "formatOptions",
-              "85",
+              String(THUMBNAIL_JPEG_QUALITY),
               "-Z",
-              "300",
+              String(THUMBNAIL_SIZE),
               unencryptedSource,
               "--out",
               sipsTempJpeg,
             ],
-            { timeout: 15000 },
+            { timeout: FFMPEG_TIMEOUT_MS },
             (err) => (err ? reject(err) : resolve())
           );
         });
         await sharp(sipsTempJpeg)
-          .resize(300, 300, { fit: "cover", withoutEnlargement: false })
-          .toFormat("jpeg", { quality: 85 })
+          .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: "cover", withoutEnlargement: false })
+          .toFormat("jpeg", { quality: THUMBNAIL_JPEG_QUALITY })
           .toFile(destPath);
         fs.unlinkSync(sipsTempJpeg);
         logger.info(`[Thumbnail] AVIF thumbnail generated via sips fallback: ${destPath}`);
@@ -170,8 +183,8 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
       try {
         await extractRawImageFrame(unencryptedSource, ffmpegTempJpeg);
         await sharp(ffmpegTempJpeg)
-          .resize(300, 300, { fit: "cover", withoutEnlargement: false })
-          .toFormat("jpeg", { quality: 85 })
+          .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: "cover", withoutEnlargement: false })
+          .toFormat("jpeg", { quality: THUMBNAIL_JPEG_QUALITY })
           .toFile(destPath);
         fs.unlinkSync(ffmpegTempJpeg);
         logger.info(`[Thumbnail] AVIF thumbnail generated via ffmpeg fallback: ${destPath}`);
@@ -188,8 +201,8 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
     // ── All other sharp-native formats (JPEG, PNG, WebP, TIFF, BMP, GIF) ────
     if (SHARP_NATIVE_FORMATS.has(ext) || ext === "") {
       await sharp(unencryptedSource)
-        .resize(300, 300, { fit: "cover", withoutEnlargement: false })
-        .toFormat("jpeg", { quality: 85 })
+        .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: "cover", withoutEnlargement: false })
+        .toFormat("jpeg", { quality: THUMBNAIL_JPEG_QUALITY })
         .toFile(destPath);
       logger.info(`[Thumbnail] Image thumbnail generated (${ext || "unknown"}): ${destPath}`);
       return destPath;
@@ -198,8 +211,8 @@ async function generateImageThumbnail(sourcePath, destPath, userKey, iv) {
     // ── Unknown format: attempt sharp anyway ─────────────────────────────────
     logger.warn(`[Thumbnail] Unknown image format (${ext}), attempting sharp fallback`);
     await sharp(unencryptedSource)
-      .resize(300, 300, { fit: "cover" })
-      .toFormat("jpeg", { quality: 85 })
+      .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: "cover" })
+      .toFormat("jpeg", { quality: THUMBNAIL_JPEG_QUALITY })
       .toFile(destPath);
     return destPath;
   } catch (error) {
@@ -221,7 +234,7 @@ function runVideoThumbnailAttempt(unencryptedPath, destPath, seekSeconds, withSc
   return new Promise((resolve, reject) => {
     const selectPrefix = frameOffset > 0 ? `select=gte(n\\,${frameOffset}),setpts=PTS-STARTPTS,` : "";
     const vf = withScale
-      ? `${selectPrefix}scale=300:300:force_original_aspect_ratio=increase,crop=300:300,format=yuv420p`
+      ? `${selectPrefix}scale=${THUMBNAIL_SIZE}:${THUMBNAIL_SIZE}:force_original_aspect_ratio=increase,crop=${THUMBNAIL_SIZE}:${THUMBNAIL_SIZE},format=yuv420p`
       : `${selectPrefix}format=yuv420p`;
 
     const args = ["-y"];
@@ -230,7 +243,7 @@ function runVideoThumbnailAttempt(unencryptedPath, destPath, seekSeconds, withSc
     }
     args.push("-i", unencryptedPath, "-vframes", "1", "-q:v", "2", "-vf", vf, "-f", "mjpeg", destPath);
 
-    execFile(resolvedFfmpegPath, args, { maxBuffer: 10 * 1024 * 1024 }, (err, _stdout, stderr) => {
+    execFile(resolvedFfmpegPath, args, { maxBuffer: FFMPEG_MAX_BUFFER }, (err, _stdout, stderr) => {
       if (err) {
         reject(
           new Error(
@@ -239,7 +252,6 @@ function runVideoThumbnailAttempt(unencryptedPath, destPath, seekSeconds, withSc
         );
         return;
       }
-      const MIN_VALID_JPEG_BYTES = 2000;
       const size = fs.existsSync(destPath) ? fs.statSync(destPath).size : 0;
       if (size < MIN_VALID_JPEG_BYTES) {
         reject(
@@ -286,7 +298,7 @@ async function generateVideoThumbnail(sourcePath, destFolder, filename, userKey,
 
     let attempts;
     if (duration > 0) {
-      const seekTime = Math.min(Math.max(duration * 0.1, 0.5), 30);
+      const seekTime = Math.min(Math.max(duration * VIDEO_SEEK_FRACTION, VIDEO_SEEK_MIN_S), VIDEO_SEEK_MAX_S);
       logger.debug(`[Thumbnail] Seek-capable file, target: ${seekTime.toFixed(1)}s`);
       attempts = [
         { seek: seekTime, scale: true, frameOffset: 5, label: `seek ${seekTime.toFixed(1)}s + frame5 + scale` },
@@ -350,7 +362,7 @@ function generateAudioWaveform(sourcePath, destPath) {
       destPath,
     ];
 
-    execFile(resolvedFfmpegPath, args, { maxBuffer: 10 * 1024 * 1024 }, (err, _stdout, stderr) => {
+    execFile(resolvedFfmpegPath, args, { maxBuffer: FFMPEG_MAX_BUFFER }, (err, _stdout, stderr) => {
       if (err) {
         logger.error(`[FFMPEG] Waveform error: ${err.message}\n${stderr.slice(-300)}`);
         reject(new Error(`Waveform generation failed: ${err.message}`));
@@ -387,7 +399,10 @@ async function extractAudioAlbumArt(sourcePath, destPath, userKey, iv) {
 
       if (metadata.common.picture && metadata.common.picture.length > 0) {
         const picture = metadata.common.picture[0];
-        await sharp(picture.data).resize(300, 300, { fit: "cover" }).toFormat("jpeg", { quality: 85 }).toFile(destPath);
+        await sharp(picture.data)
+          .resize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, { fit: "cover" })
+          .toFormat("jpeg", { quality: THUMBNAIL_JPEG_QUALITY })
+          .toFile(destPath);
         logger.info("[Thumbnail] Audio album art extracted:", destPath);
         return destPath;
       }

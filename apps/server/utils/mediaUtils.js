@@ -36,6 +36,9 @@ import ZipUtils from "#utils/zipUtils.js";
 
 // Utils
 import logger from "#utils/logger.js";
+import { MediaProcessing } from "#constants/generalConstants.js";
+
+const { TRANSCODE_CRF, TRANSCODE_AUDIO_BITRATE, FFMPEG_MAX_BUFFER, MOOV_RELOCATION_TIMEOUT_MS } = MediaProcessing;
 
 // ─── Media Probe (Encrypted) ──────────────────────────────────────────────────
 
@@ -94,13 +97,13 @@ function pipeTranscode(sourcePath, res) {
       "-c:v",
       "libx264",
       "-crf",
-      "23",
+      TRANSCODE_CRF,
       "-preset",
       "fast",
       "-c:a",
       "aac",
       "-b:a",
-      "128k",
+      TRANSCODE_AUDIO_BITRATE,
       "-pix_fmt",
       "yuv420p",
       "-vf",
@@ -166,13 +169,13 @@ function pipeTranscodeStream(sourceStream, res) {
       "-c:v",
       "libx264",
       "-crf",
-      "23",
+      TRANSCODE_CRF,
       "-preset",
       "fast",
       "-c:a",
       "aac",
       "-b:a",
-      "128k",
+      TRANSCODE_AUDIO_BITRATE,
       "-pix_fmt",
       "yuv420p",
       "-vf",
@@ -316,7 +319,7 @@ async function transcodeToHls(storagePath, userKey, iv, outputDir, segmentDurati
           "-c:a",
           "aac",
           "-b:a",
-          "128k",
+          TRANSCODE_AUDIO_BITRATE,
           "-f",
           "hls",
           "-hls_time",
@@ -345,13 +348,13 @@ async function transcodeToHls(storagePath, userKey, iv, outputDir, segmentDurati
             "-c:v",
             "libx264",
             "-crf",
-            "23",
+            TRANSCODE_CRF,
             "-preset",
             "fast",
             "-c:a",
             "aac",
             "-b:a",
-            "128k",
+            TRANSCODE_AUDIO_BITRATE,
             "-f",
             "hls",
             "-hls_time",
@@ -377,7 +380,7 @@ async function transcodeToHls(storagePath, userKey, iv, outputDir, segmentDurati
             "-c:v",
             "libx264",
             "-crf",
-            "23",
+            TRANSCODE_CRF,
             "-preset",
             "fast",
             "-an",
@@ -399,7 +402,7 @@ async function transcodeToHls(storagePath, userKey, iv, outputDir, segmentDurati
     logger.info(`[HLS] Full transcode started: ${resolvedFfmpegPath} ${args.join(" ")}`);
 
     await new Promise((resolve, reject) => {
-      execFile(resolvedFfmpegPath, args, { maxBuffer: 10 * 1024 * 1024 }, (err, _stdout, stderr) => {
+      execFile(resolvedFfmpegPath, args, { maxBuffer: FFMPEG_MAX_BUFFER }, (err, _stdout, stderr) => {
         if (err) {
           logger.error(`[HLS] Transcode failed:\n${stderr}`);
           reject(new Error(`HLS full transcode failed: ${err.message}`));
@@ -433,7 +436,7 @@ function relocateMoovAtom(sourcePath, destPath) {
     execFile(
       resolvedFfmpegPath,
       ["-y", "-i", sourcePath, "-c", "copy", "-map", "0:v?", "-map", "0:a?", "-movflags", "+faststart", destPath],
-      { timeout: 300000 },
+      { timeout: MOOV_RELOCATION_TIMEOUT_MS },
       (err, _stdout, stderr) => {
         if (err) {
           logger.error(`[FFMPEG] Moov relocation failed: ${stderr || err.message}`);
