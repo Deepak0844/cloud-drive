@@ -5,30 +5,25 @@ import User from "#models/User.js";
 
 // Services
 import EmailService from "#services/emailService.js";
-
-// Utils
-import logger from "#utils/logger.js";
-import DbUtils from "#utils/dbUtils.js";
-import FormatUtils from "#utils/formatUtils.js";
-
-// Config
-import config from "#config/env.js";
+import NotificationService from "#services/notificationService.js";
 
 // Constants
 import { NotificationTypes } from "#constants/generalConstants.js";
 import { ItemTypes } from "@shared-constants/constants";
 
-// Lazy import to avoid circular dependency
-async function _createNotification(...args) {
-  const { createNotification } = await import("#controllers/notificationController.js");
-  return createNotification(...args);
-}
+// Config
+import config from "#config/env.js";
+
+// Utils
+import DbUtils from "#utils/dbUtils.js";
+import FormatUtils from "#utils/formatUtils.js";
+import logger from "#utils/logger.js";
 
 /**
  * Trash Service
  * Handles automated cleanup and management of trashed items.
  */
-export const autoPurgeExpiredItems = async () => {
+async function autoPurgeExpiredItems() {
   logger.info("🧹 Initiating Smart Trash Cleanup...");
 
   try {
@@ -106,9 +101,11 @@ export const autoPurgeExpiredItems = async () => {
       const message = `We've permanently deleted ${stats.itemsCount} expired items from your trash, freeing up ${humanSize} of storage.`;
 
       // In-app notification
-      await _createNotification(userId, NotificationTypes.TRASH_CLEANUP, title, message).catch((err) => {
-        logger.error(`[Trash Cleanup] Notification failed for user ${userId}:`, err);
-      });
+      await NotificationService.createNotification(userId, NotificationTypes.TRASH_CLEANUP, title, message).catch(
+        (err) => {
+          logger.error(`[Trash Cleanup] Notification failed for user ${userId}:`, err);
+        }
+      );
 
       // Email notification
       if (user.email) {
@@ -133,7 +130,7 @@ export const autoPurgeExpiredItems = async () => {
     logger.error("❌ Smart Trash Cleanup failed:", err);
     throw err;
   }
-};
+}
 
 const TrashService = {
   autoPurgeExpiredItems,
