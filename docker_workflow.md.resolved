@@ -1,0 +1,123 @@
+# Docker Workflows: Dev vs Prod
+
+This document outlines how your Cloud Drive application runs in both Development and Production, including architecture flowcharts and the exact commands to manage them.
+
+---
+
+## 🛠️ Development Workflow
+
+In development, we use Docker for the backend services, but keep the Vite React frontend running locally on your Mac. This gives you instant hot-reloading for UI work while keeping the API and Database fully containerized.
+
+```mermaid
+graph TD
+    Developer([👨‍💻 You])
+    
+    subgraph "Local Mac (Outside Docker)"
+        Vite[⚡ Vite Dev Server\nPort: 3000\nHot Reload Enabled]
+    end
+    
+    subgraph "🐳 docker-compose.dev.yml"
+        Server[🟢 Node API\nPort: 9000\nBind-mounted code]
+        Mongo[(🍃 MongoDB\nPort: 27017)]
+        MongoExpress[📊 Mongo Express UI\nPort: 8081]
+    end
+    
+    LocalVolume[(📁 Local Dev Storage\n/tmp/cloud-drive-storage)]
+    
+    Developer -->|React Coding| Vite
+    Developer -->|View Database| MongoExpress
+    Vite -->|Proxy /api/v1| Server
+    Server -->|Reads/Writes| Mongo
+    Server -->|File I/O| LocalVolume
+```
+
+### Development Commands
+
+> **Important**: The dev stack requires [apps/server/env/.env.development](file:///Users/deepakram/Personal/cloud-drive/apps/server/env/.env.development) to exist.
+
+**Start the Stack:**
+```bash
+# 1. Start the Docker Backend (Mongo, Express Server)
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+
+# 2. Start the Frontend (in a separate terminal)
+npm run web:dev
+```
+
+**Stop the Stack:**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
+**View Logs:**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f server
+```
+
+---
+
+## 🚀 Production Workflow
+
+In production, the entire application is containerized. The [web](file:///Users/deepakram/Personal/cloud-drive/Dockerfile.web) container builds the React app into static files and serves them via Nginx. The [server](file:///Users/deepakram/Personal/cloud-drive/Dockerfile.server) connects to your remote MongoDB Atlas cluster and saves files directly to your connected USB PenDrive.
+
+```mermaid
+graph TD
+    User([🌍 End User])
+    
+    subgraph "🐳 docker-compose.prod.yml"
+        Nginx[🌐 Nginx Web Server\nPort: 80\nServes Static React Build]
+        Server[🟢 Node API\nPort: 9000]
+    end
+    
+    Atlas[(☁️ MongoDB Atlas\nRemote Cluster)]
+    Pendrive[(💾 Physical PenDrive\n/Volumes/PenDrive/cloud-drive-storage)]
+    
+    User -->|Accesses UI| Nginx
+    Nginx -->|Proxy /api/v1| Server
+    Server -->|Reads/Writes| Atlas
+    Server -->|File I/O| Pendrive
+```
+
+### Production Commands
+
+> **Important**: The prod stack requires [apps/server/env/.env.production](file:///Users/deepakram/Personal/cloud-drive/apps/server/env/.env.production) to exist with real credentials.
+
+**Start the Stack (Pointing to PenDrive):**
+```bash
+# Starts the stack and mounts the physical PenDrive
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+```
+
+**Stop the Stack:**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
+```
+
+**View Logs:**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f server
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f web
+```
+
+**Rebuild the Backend or Frontend (e.g. after pushing new code):**
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+---
+
+## 🧹 Docker Cleanup Commands
+
+If Docker ever starts acting weird or throwing cache errors, use these commands:
+
+```bash
+# Total wipe of all unused containers, networks, images (cache)
+docker system prune -a --volumes
+
+# View running docker processes
+docker ps
+
+# Restart the docker daemon (Mac terminal)
+killall Docker && open /Applications/Docker.app
+```
