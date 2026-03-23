@@ -35,7 +35,7 @@ export default function AudioPlayer({ playbackInfo, audioMetadata, fileId, onErr
     : { src: playbackUrl, type: "application/x-mpegURL" };
 
   return (
-    <div className="flex flex-col items-center gap-6 p-8 bg-surface-dim rounded-2xl w-full">
+    <div className="flex flex-col items-center gap-6 p-8 bg-surface-dim rounded-2xl w-[50%]">
       {/* Album art */}
       {thumbnailUrl ? (
         <img
