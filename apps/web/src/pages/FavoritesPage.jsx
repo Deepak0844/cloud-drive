@@ -43,9 +43,15 @@ function FavoritesPage() {
   const { clearSelection, selectedItems, toggleSelect } = useSelectableItems();
   const { advancedFilters, debouncedSearch, page, pageSize, setPage, updateParams } = useListPageParams();
 
-  const { data: foldersData, isLoading: foldersLoading } = useGetFoldersQuery({
+  const {
+    data: foldersData,
+    isLoading: foldersLoading,
+    isFetching: foldersFetching,
+  } = useGetFoldersQuery({
     isFavorite: "true",
     search: debouncedSearch || undefined,
+    pg: page,
+    ps: pageSize,
   });
 
   const {
@@ -59,15 +65,17 @@ function FavoritesPage() {
     ps: pageSize,
   });
 
+  const hasNextPage = filesData?.pagination?.hasNext || foldersData?.pagination?.hasNext || false;
+  const isFetchingMore = filesFetching || foldersFetching;
+
   const { loaderRef } = useInfinitePaging({
-    hasNext: filesData?.pagination?.hasNext || false,
-    isLoading: filesFetching,
+    hasNext: hasNextPage,
+    isLoading: isFetchingMore,
     page,
     setPage,
     updateParams,
   });
 
-  const paginationData = filesData?.pagination || {};
   const folders = foldersData?.data || [];
   const files = filesData?.data || [];
   const isLoading = foldersLoading || filesLoading;
@@ -245,20 +253,22 @@ function FavoritesPage() {
                     );
                   })}
                 </div>
+              </div>
+            )}
 
-                {/* Infinite Scroll Loader */}
-                <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
-                  {filesFetching ? (
-                    <>
-                      <Loader size={20} />
-                      <span className="text-label-tertiary text-xs font-medium">Loading more files...</span>
-                    </>
-                  ) : paginationData?.hasNext ? (
-                    <span className="text-label-tertiary text-xs italic opacity-60">Scroll for more</span>
-                  ) : (
-                    <span className="text-label-tertiary text-xs italic opacity-40">No more files to show</span>
-                  )}
-                </div>
+            {/* Infinite Scroll Loader — outside both sections so it's always visible */}
+            {(folders.length > 0 || files.length > 0) && (
+              <div ref={loaderRef} className="py-8 flex flex-col items-center justify-center gap-4 w-full">
+                {isFetchingMore ? (
+                  <>
+                    <Loader size={20} />
+                    <span className="text-label-tertiary text-xs font-medium">Loading more items...</span>
+                  </>
+                ) : hasNextPage ? (
+                  <span className="text-label-tertiary text-xs italic opacity-60">Scroll for more</span>
+                ) : (
+                  <span className="text-label-tertiary text-xs italic opacity-40">No more items to show</span>
+                )}
               </div>
             )}
 

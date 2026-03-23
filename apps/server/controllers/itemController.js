@@ -6,7 +6,7 @@ import DbUtils from "#utils/dbUtils.js";
 import SocketService from "#services/socketService.js";
 
 // Constants
-import { SocketEvents, BulkActions } from "#constants/generalConstants.js";
+import { ErrorMessages, SocketEvents, BulkActions } from "#constants/generalConstants.js";
 
 // Middleware
 import asyncHandler from "#middlewares/asyncHandler.js";
@@ -47,7 +47,7 @@ export const handleBulkOperation = asyncHandler(async (req, res) => {
     if (outcome.status === "fulfilled") {
       results.success.push(outcome.value);
     } else {
-      results.errors.push({ id: items[idx].id, error: outcome.reason?.message ?? "Unknown error" });
+      results.errors.push({ id: items[idx].id, error: outcome.reason?.message ?? ErrorMessages.UNKNOWN_ERROR });
     }
   });
 

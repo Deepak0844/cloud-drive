@@ -91,6 +91,16 @@ export const ErrorMessages = {
   PREVIEW_NOT_SUPPORTED: "Preview not supported for this file type",
   STREAMING_NOT_SUPPORTED: "Streaming not supported for this file type",
   INCORRECT_PASSWORD: "Incorrect current password",
+  CHUNK_HASH_MISMATCH: "Chunk integrity check failed: hash mismatch",
+  UPLOAD_SIZE_MISMATCH: "File assembly failed: size mismatch",
+  UPLOAD_FINALIZE_FAILED: "Failed to finalize upload",
+  INVALID_PAYLOAD_FORMAT: "Invalid payload format",
+  NO_ITEMS_SELECTED: "No items selected for download",
+  NO_VALID_FILES: "No valid files found for download",
+  MEDIA_METADATA_FAILED: "Could not read media file metadata",
+  INVALID_SEGMENT: "Invalid segment identifier",
+  PLAYBACK_TYPE_UNSUPPORTED: "Playback info is only available for video and audio files",
+  UNKNOWN_ERROR: "Unknown error",
 };
 
 /**
@@ -127,6 +137,27 @@ export const SuccessMessages = {
   ITEMS_RESTORED: "Items restored successfully",
   ITEMS_PERMANENTLY_DELETED: "Items permanently deleted",
   TRASH_ALREADY_EMPTY: "Trash is already empty",
+  FILE_TOUCHED: "File touched",
+  STORAGE_ANALYSIS_COMPLETE: "Full deep storage re-analysis completed successfully",
+};
+
+/**
+ * Notification & email content strings
+ * Used by services that create notifications or send emails.
+ */
+export const NotificationMessages = {
+  QUOTA_INCREASED: "Quota Increased",
+  QUOTA_DECREASED: "Quota Decreased",
+  QUOTA_REQUEST_APPROVED: "Quota Request Approved",
+  QUOTA_REQUEST_REJECTED: "Quota Request Rejected",
+  TRASH_CLEANUP_COMPLETE: "Trash Cleanup Complete",
+  STORAGE_ALMOST_FULL: "Storage Almost Full",
+  DUPLICATE_FILES_FOUND: "Duplicate Files Found",
+  WELCOME_SUBJECT: "Welcome to Cloud Drive!",
+  NEW_LOGIN_TITLE: "New login to your Cloud Drive account",
+  NEW_LOGIN_BODY:
+    "We noticed a new login to your Cloud Drive account. If this was you, you can safely ignore this email. If you did not log in, please reset your password immediately and contact support.",
+  TRASH_EMAIL_SUBJECT: "Your storage has been optimized 🧹",
 };
 
 /**
@@ -225,3 +256,34 @@ export const NotificationDefaults = {
  * Percentage multiplier
  */
 export const PERCENTAGE_MULTIPLIER = 100;
+
+/**
+ * Media processing constants — thumbnail dimensions, quality levels, and transcode settings.
+ * Centralised here so changing a single value updates all thumbnail/transcode code paths.
+ */
+export const MediaProcessing = {
+  // Thumbnail output — square JPEG at this dimension (pixels)
+  THUMBNAIL_SIZE: 300,
+  // sharp JPEG quality (0-100)
+  THUMBNAIL_JPEG_QUALITY: 85,
+  // heic-convert quality (0-1 float)
+  HEIC_CONVERT_QUALITY: 0.85,
+  // Maximum stdout buffer for execFile ffmpeg calls (10 MB)
+  FFMPEG_MAX_BUFFER: 10 * 1024 * 1024,
+  // Timeout for external thumbnailer processes (ms)
+  FFMPEG_TIMEOUT_MS: 15000,
+  // Minimum size (bytes) for a JPEG to be considered valid (rejects black frames)
+  MIN_VALID_JPEG_BYTES: 2000,
+  // Fraction of video duration to seek for thumbnail
+  VIDEO_SEEK_FRACTION: 0.1,
+  // Floor seek time (seconds) — avoid pure black intro frames
+  VIDEO_SEEK_MIN_S: 0.5,
+  // Ceiling seek time (seconds) — avoid nearly-end credits
+  VIDEO_SEEK_MAX_S: 30,
+  // H.264 Constant Rate Factor (lower = better quality, larger file; 23 = visually lossless)
+  TRANSCODE_CRF: "23",
+  // Audio bitrate for all transcode outputs
+  TRANSCODE_AUDIO_BITRATE: "128k",
+  // Timeout for the moov-atom relocation pass (5 minutes — large files can be slow)
+  MOOV_RELOCATION_TIMEOUT_MS: 300_000,
+};

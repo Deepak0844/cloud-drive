@@ -16,6 +16,7 @@ import config from "#config/env.js";
 import {
   NotificationTypes,
   ErrorMessages,
+  NotificationMessages,
   FileCategories,
   VideoExtensions,
   SocketEvents,
@@ -30,14 +31,14 @@ import MetadataService from "#services/metadataService.js";
 import CryptoUtils from "#utils/cryptoUtils.js";
 import MediaUtils from "#utils/mediaUtils.js";
 import SocketService from "#services/socketService.js";
+import DbUtils from "#utils/dbUtils.js";
+import { applyAdvancedFilters, escapeRegex } from "#utils/filterUtils.js";
+import { paginateQuery } from "#utils/paginationUtils.js";
+import { AppError } from "#utils/errorUtils.js";
+import { HttpStatus, ItemTypes, DefaultPagination } from "@shared-constants/constants";
 
 // ─── Circular-dependency-safe lazy import ────────────────────────────────────
-// notificationController.js <-> fileService.js would be circular if imported
-// at module level, so we use a dynamic import inside the function body.
-async function _createNotification(...args) {
-  const { createNotification } = await import("#controllers/notificationController.js");
-  return createNotification(...args);
-}
+import NotificationService from "#services/notificationService.js";
 
 /**
  * Root storage dir for a user's files.
@@ -128,7 +129,7 @@ function getThumbnailDir(userId) {
 async function checkQuota(userId, incomingBytes) {
   const user = await User.findById(userId);
   if (!user) {
-    throw new Error("User not found");
+    throw new AppError(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
   return user.used_bytes + incomingBytes <= user.quota_bytes;
 }
@@ -159,10 +160,10 @@ async function recalculateUsedBytes(userId) {
     // Only notify on the crossing (was below, now at or above)
     if (prevPercent < THRESHOLD && newPercent >= THRESHOLD) {
       const usedPct = newPercent.toFixed(1);
-      _createNotification(
+      NotificationService.createNotification(
         userId,
         NotificationTypes.STORAGE_ALERT,
-        "Storage Almost Full",
+        NotificationMessages.STORAGE_ALMOST_FULL,
         `You've used ${usedPct}% of your storage quota. Consider requesting a quota increase or freeing up space.`,
         {
           usedPercentage: usedPct,
@@ -336,7 +337,7 @@ async function copyFileInternal(userId, fileId, targetFolderId) {
   // Enforce quota before duplicating — a copy consumes as much space as the original.
   const hasQuota = await checkQuota(userId, sourceFile.size_bytes);
   if (!hasQuota) {
-    throw new Error(ErrorMessages.QUOTA_EXCEEDED);
+    throw new AppError(ErrorMessages.QUOTA_EXCEEDED, HttpStatus.FORBIDDEN);
   }
 
   const uniqueName = await getUniqueFilename(userId, targetFolderId, sourceFile.original_name);
@@ -405,19 +406,22 @@ async function copyFolderInternal(userId, folderId, targetFolderId) {
 // ─── Bulk Operations ──────────────────────────────────────────────────────────
 
 async function bulkMove(userId, items, targetFolderId) {
-  for (const item of items) {
-    if (item.type === "file") {
-      await File.findOneAndUpdate({ _id: item.id, user: userId }, { folder: targetFolderId || null });
-    } else if (item.type === "folder") {
-      if (item.id === targetFolderId) {
-        continue;
-      }
-      await Folder.findOneAndUpdate({ _id: item.id, user: userId }, { parent: targetFolderId || null });
+  if (targetFolderId) {
+    const folder = await Folder.findOne({ _id: targetFolderId, user: userId });
+    if (!folder) {
+      throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
   }
+  await Promise.all(items.map((item) => DbUtils.moveItem(item.type, item.id, targetFolderId, userId)));
 }
 
 async function bulkCopy(userId, items, targetFolderId) {
+  if (targetFolderId) {
+    const folder = await Folder.findOne({ _id: targetFolderId, user: userId });
+    if (!folder) {
+      throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+  }
   for (const item of items) {
     if (item.type === "file") {
       await copyFileInternal(userId, item.id, targetFolderId);
@@ -496,7 +500,7 @@ async function finalizeUploadedFile({
   // 2. Setup encryption & storage
   const user = await User.findById(userId).select("+encryption_key_wrapped");
   if (!user || !user.encryption_key_wrapped) {
-    throw new Error("User encryption key missing");
+    throw new AppError(ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   const iv = CryptoUtils.generateFileIv();
@@ -549,7 +553,7 @@ async function processUpload(userId, folderId, fileObj) {
   const hasQuota = await checkQuota(userId, fileObj.size);
   if (!hasQuota) {
     FileUtils.cleanupFile(fileObj.path);
-    throw new Error(ErrorMessages.QUOTA_EXCEEDED);
+    throw new AppError(ErrorMessages.QUOTA_EXCEEDED, HttpStatus.FORBIDDEN);
   }
 
   const extension = FileUtils.getFileExtension(fileObj.originalname);
@@ -579,7 +583,7 @@ async function processUpload(userId, folderId, fileObj) {
 async function prepareZipPayload(userId, items) {
   const user = await User.findById(userId).select("+encryption_key_wrapped");
   if (!user || !user.encryption_key_wrapped) {
-    throw new Error("User encryption key missing");
+    throw new AppError(ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 
   const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
@@ -634,6 +638,198 @@ async function collectFolderFilesEncrypted(folderId, userId, parentPath, zipItem
 
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
+// ─── Query helpers ────────────────────────────────────────────────────────────
+
+async function getFiles(userId, queryParams) {
+  const { folderId, search, extension, isFavorite, recursive, pg, pn, ps, category } = queryParams;
+
+  let query = { user: userId, is_deleted: false };
+
+  if (search && search !== "null" && search !== "undefined") {
+    query.name = { $regex: escapeRegex(search), $options: "i" };
+  }
+
+  const isRecursive = recursive === "true" || recursive === true;
+  const isFav = isFavorite === "true" || isFavorite === true;
+
+  if (folderId && folderId !== "null" && folderId !== "undefined") {
+    if (!(search && isRecursive)) {
+      query.folder = folderId;
+    }
+  } else if (!search && !isRecursive && !isFav && !category) {
+    query.folder = null;
+  }
+
+  if (extension) {
+    query.extension = extension.toLowerCase();
+  }
+  if (isFav) {
+    query.is_favorite = true;
+  }
+
+  query = applyAdvancedFilters(query, queryParams, false);
+
+  const page = pg || pn;
+  const sort = isFav ? "-favorited_at" : "-createdAt";
+
+  return paginateQuery(File, query, { pg: page, ps, sort, populate: { path: "folder", select: "name" } });
+}
+
+async function getRecentFiles(userId, queryParams) {
+  const { limit, search, pg, pn, ps } = queryParams;
+
+  let query = { user: userId, is_deleted: false };
+
+  if (search && search !== "null" && search !== "undefined") {
+    query.name = { $regex: escapeRegex(search), $options: "i" };
+  }
+
+  query = applyAdvancedFilters(query, queryParams, false);
+
+  const page = pg || pn;
+  const pageSize = ps || limit || DefaultPagination.pageSize;
+
+  return paginateQuery(File, query, {
+    pg: page,
+    ps: pageSize,
+    sort: "-last_opened_at",
+    populate: { path: "folder", select: "name" },
+  });
+}
+
+// ─── File CRUD ────────────────────────────────────────────────────────────────
+
+async function renameFile(userId, fileId, name) {
+  const file = await File.findOneAndUpdate({ _id: fileId, user: userId }, { name }, { new: true });
+  if (!file) {
+    throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+  return file;
+}
+
+async function moveFile(userId, fileId, folderId) {
+  if (folderId) {
+    const folder = await Folder.findOne({ _id: folderId, user: userId });
+    if (!folder) {
+      throw new AppError(ErrorMessages.FOLDER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+  }
+  const file = await DbUtils.moveItem(ItemTypes.FILE, fileId, folderId, userId);
+  if (!file) {
+    throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+  return file;
+}
+
+async function copyFile(userId, fileId, folderId) {
+  const file = await DbUtils.copyRecursive(ItemTypes.FILE, fileId, folderId, userId);
+  if (!file) {
+    throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+  return file;
+}
+
+async function deleteFile(userId, fileId) {
+  const file = await File.findOne({ _id: fileId, user: userId });
+  if (!file) {
+    throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+  await DbUtils.softDeleteRecursive(ItemTypes.FILE, fileId, userId, true);
+}
+
+async function bulkDelete(userId, items) {
+  await Promise.all(items.map((item) => DbUtils.softDeleteRecursive(item.type, item.id, userId, true)));
+}
+
+async function touchFile(userId, fileId) {
+  const file = await File.findOne({ _id: fileId, user: userId });
+  if (!file) {
+    throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+  file.last_opened_at = new Date();
+  await file.save();
+  return file;
+}
+
+async function toggleFileFavorite(userId, fileId) {
+  const file = await File.findOne({ _id: fileId, user: userId });
+  if (!file) {
+    throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+  file.is_favorite = !file.is_favorite;
+  file.favorited_at = file.is_favorite ? new Date() : null;
+  await file.save();
+  return file;
+}
+
+async function updateFileTags(userId, fileId, tags) {
+  const file = await File.findOneAndUpdate({ _id: fileId, user: userId }, { tags }, { new: true });
+  if (!file) {
+    throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+  return file;
+}
+
+async function getPlaybackInfo(userId, fileId) {
+  const file = await File.findOne({ _id: fileId, user: userId });
+  if (!file) {
+    throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  const isVideo = file.category === FileCategories.VIDEO;
+  const isAudio = file.category === FileCategories.AUDIO;
+
+  if (!isVideo && !isAudio) {
+    throw new AppError(ErrorMessages.PLAYBACK_TYPE_UNSUPPORTED, HttpStatus.BAD_REQUEST);
+  }
+
+  const id = file._id.toString();
+  const nativePlayback = isVideo
+    ? !MediaUtils.needsVideoPreview(file.storage_path, file.mime_type, file.metadata?.codec)
+    : MediaUtils.BROWSER_NATIVE_AUDIO_MIMES.has(file.mime_type);
+
+  const playbackUrl = nativePlayback ? `/api/v1/files/${id}/preview` : `/api/v1/files/${id}/hls/master.m3u8`;
+
+  return {
+    fileId: id,
+    mimeType: file.mime_type,
+    category: file.category,
+    nativePlayback,
+    playbackUrl,
+    audioMetadata: file.audio_metadata || null,
+  };
+}
+
+// ─── Streaming auth helper ────────────────────────────────────────────────────
+
+/**
+ * Fetch file record and decryption credentials for a user.
+ * Used by controllers that need to stream/decrypt file bytes.
+ */
+async function getFileWithKey(userId, fileId) {
+  const file = await File.findOne({ _id: fileId, user: userId });
+  if (!file) {
+    throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+
+  const user = await User.findById(userId).select("+encryption_key_wrapped");
+  if (!user || !user.encryption_key_wrapped || !file.encryption_iv) {
+    throw new AppError(ErrorMessages.ENCRYPTION_KEYS_MISSING, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
+  const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+  const iv = Buffer.from(file.encryption_iv, "hex");
+  return { file, user, plaintextKey, iv };
+}
+
+async function getUserQuota(userId) {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError(ErrorMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+  }
+  return { quota_bytes: user.quota_bytes, used_bytes: user.used_bytes };
+}
+
 const FileService = {
   getUserDir,
   getPhysicalFilePath,
@@ -649,6 +845,23 @@ const FileService = {
   prepareZipPayload,
   processUpload,
   finalizeUploadedFile,
+
+  // Query helpers
+  getFiles,
+  getRecentFiles,
+
+  // File CRUD
+  renameFile,
+  moveFile,
+  copyFile,
+  deleteFile,
+  bulkDelete,
+  touchFile,
+  toggleFileFavorite,
+  updateFileTags,
+  getPlaybackInfo,
+  getFileWithKey,
+  getUserQuota,
 };
 
 export default FileService;

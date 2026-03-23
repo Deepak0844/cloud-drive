@@ -19,6 +19,8 @@ const getFoldersQuery = () => ({
     url: FolderServiceUrls.getFolderList,
     params,
   }),
+  serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
+  merge: ApiUtils.mergePaginatedArrays(),
   providesTags: ApiUtils.paginatedTags(TagTypes.FOLDERS),
 });
 
