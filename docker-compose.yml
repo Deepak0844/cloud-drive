@@ -15,14 +15,14 @@
 # ── Reusable build arg anchors ─────────────────────────────────────────────────
 x-server-build: &server-build
   context: .
-  dockerfile: Dockerfile.server
+  dockerfile: apps/server/Dockerfile
   args:
     NODE_VERSION: "22"        # Debian — required for @tensorflow/tfjs-node + canvas
     SERVER_PORT: "9000"
 
 x-web-build: &web-build
   context: .
-  dockerfile: Dockerfile.web
+  dockerfile: apps/web/Dockerfile
   args:
     NODE_VERSION: "22-alpine" # Alpine OK — Vite has no native addons
     NGINX_VERSION: "alpine"

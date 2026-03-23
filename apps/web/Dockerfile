@@ -41,6 +41,6 @@ FROM nginx:${NGINX_VERSION}
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 
 # Copy Nginx config (handles SPA routing + API proxy to server container)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
