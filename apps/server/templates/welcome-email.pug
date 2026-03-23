@@ -1,15 +1,15 @@
 extends layout
 
 block content
-  h2(style="color: #ffffff; margin-top: 0; font-weight: 800; letter-spacing: -0.02em;") Welcome to Cloud Drive!
-  p(style="font-size: 18px; color: #818cf8; font-weight: 600;") We're excited to have you on board, #{userName}!
+  h2.heading-text Welcome to Cloud Drive!
+  p.subtitle-text We're excited to have you on board, #{userName}!
   
   p Your account has been successfully created. You can now start uploading, sharing, and managing your files with ease.
   
-  .alert-box(style="background-color: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); color: #a5b4fc;")
+  .alert-box.alert-info
     strong Pro Tip: 
     | You can enable security alerts in your settings to stay informed about your account activity.
   
   a.button(href=actionUrl || '#') Go to My Files
   
-  p(style="margin-top: 30px; font-size: 14px;") If you have any questions, feel free to reply to this email or visit our help center.
+  p.small-text If you have any questions, feel free to reply to this email or visit our help center.

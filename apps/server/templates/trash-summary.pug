@@ -1,12 +1,12 @@
 extends layout
 
 block content
-  h2(style="color: #ffffff; margin-top: 0; font-weight: 800; letter-spacing: -0.02em;") Storage Freed!
+  h2.heading-text Storage Freed!
   p Hello #{userName || 'User'},
   
   p Our automated systems have performed a routine cleanup of your trash to keep your account running smoothly.
   
-  .alert-box(style="background-color: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); color: #34d399;")
+  .alert-box.alert-success
     strong Recovery Status: 
     | We've permanently deleted #{itemCount} expired items, recovering 
     strong #{freedAmount} 
@@ -16,4 +16,4 @@ block content
   
   a.button(href=actionUrl || '#') Manage Storage
   
-  p(style="margin-top: 30px; font-size: 14px; color: #8b949e;") If you'd like to adjust your trash settings or keep items for longer, please visit your account dashboard.
+  p.small-text If you'd like to adjust your trash settings or keep items for longer, please visit your account dashboard.
