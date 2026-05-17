@@ -1,44 +1,33 @@
 # =============================================================================
-# docker-compose.yml — Production
+# docker-compose.yml — Shared base (never run this alone)
 #
-# Usage:
-#   docker-compose up --build -d
+# Dev:  docker-compose -f docker-compose.yml -f docker-compose.dev.yml \
+#         --env-file .env.dev up
 #
-# Override build args on CLI:
-#   docker-compose build --build-arg NODE_VERSION=20
-#
-# Override ports or NAS path via env vars (or a root .env file):
-#   SERVER_PORT=9001 WEB_PORT=443 NAS_HOST_PATH=/mnt/storage docker-compose up
+# Prod: docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
+#         --env-file .env.prod up --build -d
 # =============================================================================
 
-
-# ── Reusable build arg anchors ─────────────────────────────────────────────────
 x-server-build: &server-build
   context: .
   dockerfile: apps/server/Dockerfile
   args:
-    NODE_VERSION: "22"        # Debian — required for @tensorflow/tfjs-node + canvas
+    NODE_VERSION: "22"
     SERVER_PORT: "9000"
 
 x-web-build: &web-build
   context: .
   dockerfile: apps/web/Dockerfile
   args:
-    NODE_VERSION: "22-alpine" # Alpine OK — Vite has no native addons
+    NODE_VERSION: "22-alpine"
     NGINX_VERSION: "alpine"
 
-# ── Services ───────────────────────────────────────────────────────────────────
 services:
   server:
     build:
       <<: *server-build
     ports:
       - "${SERVER_PORT:-9000}:9000"
-    environment:
-      - NODE_ENV=production
-      - NAS_STORAGE_PATH=/storage
-    volumes:
-      - nas_storage:/storage
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:9000/api/v1/health"]
@@ -47,22 +36,3 @@ services:
       retries: 3
       start_period: 40s
 
-  web:
-    build:
-      <<: *web-build
-    ports:
-      - "${WEB_PORT:-80}:80"
-    depends_on:
-      server:
-        condition: service_healthy
-    restart: unless-stopped
-
-# ── Volumes ────────────────────────────────────────────────────────────────────
-volumes:
-  nas_storage:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      # Set NAS_HOST_PATH env var to your actual NAS mount path
-      device: ${NAS_HOST_PATH:-/Volumes/PenDrive/cloud-drive-storage}

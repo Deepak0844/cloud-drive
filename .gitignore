@@ -13,6 +13,11 @@ node_modules
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Docker Environment Files
+.env.dev
+.env.prod
+
 # env/ subfolder secrets
 apps/server/env/.env
 apps/server/env/.env.development
@@ -41,7 +46,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # User storage
-apps/server/storage/*
+data/storage/*
+!data/storage/.gitkeep
 
 # Misc
 .DS_Store

@@ -22,7 +22,7 @@ graph TD
         MongoExpress[📊 Mongo Express UI\nPort: 8081]
     end
     
-    LocalVolume[(📁 Local Dev Storage\n/tmp/cloud-drive-storage)]
+    LocalVolume[(📁 Local Dev Storage\n./data/storage)]
     
     Developer -->|React Coding| Vite
     Developer -->|View Database| MongoExpress
@@ -38,7 +38,7 @@ graph TD
 **Start the Stack:**
 ```bash
 # 1. Start the Docker Backend (Mongo, Express Server)
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev up --build -d
 
 # 2. Start the Frontend (in a separate terminal)
 npm run web:dev
@@ -51,7 +51,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
 
 **View Logs:**
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f server
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.dev logs -f server
 ```
 
 ---
@@ -85,7 +85,7 @@ graph TD
 **Start the Stack (Pointing to PenDrive):**
 ```bash
 # Starts the stack and mounts the physical PenDrive
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up --build -d
 ```
 
 **Stop the Stack:**
@@ -95,14 +95,14 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
 
 **View Logs:**
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f server
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml logs -f web
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod logs -f server
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod logs -f web
 ```
 
 **Rebuild the Backend or Frontend (e.g. after pushing new code):**
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod build --no-cache
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
 ```
 
 ---

@@ -2,10 +2,30 @@
 # docker-compose.prod.yml — Production overrides
 #
 # Usage:
-#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+#   docker-compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     --env-file .env.prod up --build -d
 # =============================================================================
 
 services:
   server:
     env_file:
-      - apps/server/env/.env.production     # never committed to git — copy from .env.production.example
+      - apps/server/env/.env.production
+    environment:
+      - NODE_ENV=production
+      - NAS_STORAGE_PATH=/storage
+    volumes:
+      - ${NAS_HOST_PATH}:/storage
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NODE_VERSION: "22-alpine"
+        NGINX_VERSION: "alpine"
+    ports:
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
