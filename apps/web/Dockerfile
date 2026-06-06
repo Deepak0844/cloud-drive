@@ -19,14 +19,18 @@ FROM node:${NODE_VERSION} AS builder
 WORKDIR /app
 
 # Layer 1: workspace manifests (cached unless package files change)
-# Must copy ALL workspace package.json files — the root lockfile references all of them
+# Must copy ALL workspace package.json files — the root lockfile references every workspace.
+# apps/server/package.json is needed for npm ci workspace resolution even though we only build web.
 COPY package.json package-lock.json turbo.json ./
 COPY shared/ ./shared/
 COPY apps/web/package.json ./apps/web/
 COPY apps/server/package.json ./apps/server/
 
-# npm install (not npm ci) — lockfile is mac-generated; npm install re-resolves for Linux
-RUN npm install --workspace=cloud-drive-web --include-workspace-root
+# npm ci strictly respects the lockfile without mutating it.
+# --ignore-scripts is intentionally omitted: esbuild and rollup require their postinstall
+# hooks to select the correct Linux native binary; without them, npm run build fails.
+RUN npm ci --workspace=cloud-drive-web --include-workspace-root
+
 
 # Layer 2: application source (only web — don't copy server source)
 COPY apps/web/ ./apps/web/
@@ -36,6 +40,14 @@ RUN npm run build --workspace=cloud-drive-web
 
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
 FROM nginx:${NGINX_VERSION}
+
+# Install openssl and generate a self-signed certificate for LAN HTTPS
+RUN apk add --no-cache openssl && \
+    mkdir -p /etc/nginx/ssl && \
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/nginx.key \
+    -out /etc/nginx/ssl/nginx.crt \
+    -subj "/C=US/ST=State/L=City/O=CloudDrive/CN=localhost"
 
 # Copy built assets from builder stage
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
