@@ -23,9 +23,12 @@ services:
     volumes:
       - ./apps/server:/app/apps/server
       - ./shared:/app/shared
-      - ${NAS_HOST_PATH}:/storage
+      # :? guard — Docker Compose fails fast with a clear error if this is unset
+      # rather than silently mounting the host root filesystem (/) into the container.
+      - ${NAS_HOST_PATH:?NAS_HOST_PATH must be set in .env.dev}:/storage
       - /app/apps/server/node_modules
     command: ["node", "--watch", "bin/www.js"]
+    networks: [app-net]
 
   mongo:
     image: mongo:7
@@ -34,18 +37,29 @@ services:
     volumes:
       - mongo_data:/data/db
     restart: unless-stopped
+    networks: [app-net]
 
- # Visual MongoDB browser — http://localhost:8081
+  # Visual MongoDB browser — http://localhost:8081
+  # Credentials set via .env.dev (MONGO_EXPRESS_USER / MONGO_EXPRESS_PASS).
+  # Never disable basicauth — any device on the LAN can reach this port.
   mongo-express:
     image: mongo-express
     ports:
       - "8081:8081"
     environment:
       - ME_CONFIG_MONGODB_SERVER=mongo
-      - ME_CONFIG_BASICAUTH=false
+      - ME_CONFIG_BASICAUTH_USERNAME=${MONGO_EXPRESS_USER:-admin}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_EXPRESS_PASS:?MONGO_EXPRESS_PASS must be set in .env.dev}
     depends_on:
       - mongo
     restart: unless-stopped
+    networks: [app-net]
 
 volumes:
   mongo_data:
+
+# app-net is declared in docker-compose.yml (base) — listed here so dev services
+# can join it without re-declaring the driver.
+networks:
+  app-net:
+

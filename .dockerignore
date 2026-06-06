@@ -35,5 +35,12 @@ Thumbs.db
 
 # ── Misc ───────────────────────────────────────────────────────────────────────
 *.md
+*.resolved
 *.log
 *.postman_collection.json
+
+# ── Local dev storage ──────────────────────────────────────────────────────────
+# Excludes the local NAS bind-mount directory used in dev (NAS_HOST_PATH=./data/storage).
+# Without this, every docker build sends all uploaded files to the Docker daemon,
+# making builds progressively slower as storage grows.
+data/

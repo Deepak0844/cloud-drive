@@ -12,13 +12,17 @@ x-server-build: &server-build
   context: .
   dockerfile: apps/server/Dockerfile
   args:
-    NODE_VERSION: "22"
+    # Pinned to Debian slim — smaller image (~300MB saved) while keeping glibc
+    # required by canvas, @tensorflow/tfjs-node, sharp, heic-convert.
+    # Update patch version here when upgrading Node.
+    NODE_VERSION: "22-bookworm-slim"
     SERVER_PORT: "9000"
 
 x-web-build: &web-build
   context: .
   dockerfile: apps/web/Dockerfile
   args:
+    # Alpine is safe for the web builder — no native addons in the web workspace.
     NODE_VERSION: "22-alpine"
     NGINX_VERSION: "alpine"
 
@@ -35,4 +39,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks: [app-net]
+
+# Explicit named network shared by all services across dev and prod overlays.
+# Keeps inter-container DNS predictable and makes future services (e.g. Redis)
+# easy to add without hunting for the auto-generated default network name.
+networks:
+  app-net:
+    driver: bridge
 

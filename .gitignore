@@ -59,5 +59,8 @@ package-lock.json
 .gemini
 
 .agent
+.agents
 
 .github
+.claude
+CLAUDE.md

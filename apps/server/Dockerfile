@@ -7,7 +7,7 @@
 #   docker build --build-arg NODE_VERSION=20 --build-arg SERVER_PORT=9001 .
 # =============================================================================
 
-ARG NODE_VERSION=22
+ARG NODE_VERSION=22-bookworm-slim
 ARG SERVER_PORT=9000
 
 FROM node:${NODE_VERSION}
@@ -23,9 +23,11 @@ COPY shared/ ./shared/
 COPY apps/server/package.json ./apps/server/
 
 # ── Layer 2: install deps ─────────────────────────────────────────────────────
-# npm install (not npm ci) — lockfile is mac-generated with platform-specific
-# native binaries; npm install re-resolves correctly for Linux
-RUN npm install --workspace=cloud-drive-server --include-workspace-root
+# npm ci --ignore-scripts strictly respects the lockfile without mutating it.
+# npm rebuild then explicitly compiles the required Linux native binaries.
+RUN npm ci --workspace=cloud-drive-server --include-workspace-root --ignore-scripts \
+ && npm rebuild canvas @tensorflow/tfjs-node sharp
+
 
 # ── Layer 3: application source ───────────────────────────────────────────────
 COPY apps/server/ ./apps/server/
