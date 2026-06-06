@@ -37,6 +37,10 @@ import { paginateQuery } from "#utils/paginationUtils.js";
 import { AppError } from "#utils/errorUtils.js";
 import { HttpStatus, ItemTypes, DefaultPagination } from "@shared-constants/constants";
 
+// External
+import { fileTypeFromFile } from "file-type";
+import { ALLOWED_MIME_TYPES } from "#middlewares/uploadMiddleware.js";
+
 // ─── Circular-dependency-safe lazy import ────────────────────────────────────
 import NotificationService from "#services/notificationService.js";
 
@@ -443,7 +447,7 @@ async function finalizeUploadedFile({
   originalName,
   mimeType,
   size,
-  category,
+  category: _category, // caller-supplied; overridden by finalCategory after magic-bytes verification
   extension,
   fileId = new mongoose.Types.ObjectId(),
   metadata = {},
@@ -451,12 +455,40 @@ async function finalizeUploadedFile({
   extra = {},
 }) {
   let finalSize = size;
-  const finalMimeType = mimeType;
+  let finalMimeType = mimeType;
   const finalExtension = extension;
   let finalUploadPath = tempFilePath;
 
+  // 0. Verify magic bytes to prevent MIME spoofing
+  const fileTypeResult = await fileTypeFromFile(finalUploadPath);
+
+  if (!fileTypeResult) {
+    // file-type returned null: text/XML/JSON/SVG have no binary signature and are expected here.
+    // Any other claimed type is rejected unless it is in the allowlist.
+    if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+      logger.warn(
+        `[Upload] Rejected ${originalName}: no magic bytes detected and '${mimeType}' is not in the allowlist.`
+      );
+      await fs.promises.unlink(finalUploadPath).catch(() => {});
+      throw new AppError(ErrorMessages.FILE_TYPE_NOT_ALLOWED, HttpStatus.BAD_REQUEST);
+    }
+  } else {
+    if (!ALLOWED_MIME_TYPES.has(fileTypeResult.mime)) {
+      logger.warn(
+        `[Upload] Rejected ${originalName}: Magic byte detected ${fileTypeResult.mime} which is not allowed.`
+      );
+      await fs.promises.unlink(finalUploadPath).catch(() => {});
+      throw new AppError(ErrorMessages.FILE_TYPE_NOT_ALLOWED, HttpStatus.BAD_REQUEST);
+    }
+    finalMimeType = fileTypeResult.mime;
+  }
+
+  // Recompute category from the verified MIME — the caller's category may have been
+  // derived from a fallback MIME (e.g. application/octet-stream) before detection ran.
+  const finalCategory = MetadataService.getCategory(finalMimeType, originalName);
+
   // 1. Optimize video (Fast Start) before encryption if needed
-  if (category === FileCategories.VIDEO) {
+  if (finalCategory === FileCategories.VIDEO) {
     const lowerExt = extension.toLowerCase();
     if (lowerExt === VideoExtensions.MP4 || lowerExt === VideoExtensions.MOV) {
       const optimizedPath = path.join(
@@ -485,7 +517,7 @@ async function finalizeUploadedFile({
     try {
       const { metadata: extracted, extra: extractedExtra } = await MetadataService.extractMetadata(
         finalUploadPath,
-        category
+        finalCategory
       );
       metadata = extracted;
       // Merge extra fields (e.g. audio_metadata, gps, taken_at) so chunked uploads
@@ -533,7 +565,7 @@ async function finalizeUploadedFile({
     original_name: originalName,
     mime_type: finalMimeType,
     extension: finalExtension,
-    category,
+    category: finalCategory,
     size_bytes: finalSize,
     storage_path: stablePath,
     encryption_iv: iv.toString("hex"),
