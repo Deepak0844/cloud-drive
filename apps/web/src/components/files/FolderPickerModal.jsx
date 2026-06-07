@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useState } from "react";
 import { ArrowLeft, Folder, FolderOpen, Home, Check } from "lucide-react";
 import { cn } from "@lib/utils";
@@ -222,5 +223,16 @@ function FolderPickerModal({
     </Dialog>
   );
 }
+
+FolderPickerModal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+  title: PropTypes.string,
+  confirmText: PropTypes.string,
+  loading: PropTypes.bool,
+  excludeIds: PropTypes.array,
+  currentParentId: PropTypes.string,
+};
 
 export default FolderPickerModal;

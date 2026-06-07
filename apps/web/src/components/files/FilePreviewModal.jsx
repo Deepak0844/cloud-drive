@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useEffect, useState, useCallback } from "react";
 import { Download, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -281,3 +282,13 @@ export default function FilePreviewModal({
     </AnimatePresence>
   );
 }
+
+FilePreviewModal.propTypes = {
+  file: PropTypes.object,
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  handleDownload: PropTypes.func,
+  allFiles: PropTypes.array,
+  currentIndex: PropTypes.number,
+  onNavigate: PropTypes.func,
+};

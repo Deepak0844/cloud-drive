@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 // Utils
@@ -35,6 +36,9 @@ function CustomLegend({ payload }) {
     </ul>
   );
 }
+
+CustomTooltip.propTypes = { active: PropTypes.bool, payload: PropTypes.array };
+CustomLegend.propTypes = { payload: PropTypes.array };
 
 export default function FileCategoryDonut({ distribution = [], loading }) {
   const data = distribution.map((d) => ({
@@ -78,3 +82,8 @@ export default function FileCategoryDonut({ distribution = [], loading }) {
     </Card>
   );
 }
+
+FileCategoryDonut.propTypes = {
+  distribution: PropTypes.array,
+  loading: PropTypes.bool.isRequired,
+};

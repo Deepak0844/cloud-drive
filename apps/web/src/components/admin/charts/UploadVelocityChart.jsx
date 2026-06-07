@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 // Components
@@ -17,7 +18,9 @@ function CustomTooltip({ active, payload, label }) {
 
 const COLORS = ["#818cf8", "#7c3aed", "#4f46e5"];
 
-export default function UploadVelocityChart({ fileStats, loading }) {
+CustomTooltip.propTypes = { active: PropTypes.bool, payload: PropTypes.array, label: PropTypes.string };
+
+export default function UploadVelocityChart({ fileStats = null, loading = false }) {
   const data = [
     { label: "Last 24h", value: fileStats?.uploads_last_24h ?? 0 },
     { label: "Last 7d", value: fileStats?.uploads_last_7d ?? 0 },
@@ -58,3 +61,8 @@ export default function UploadVelocityChart({ fileStats, loading }) {
     </Card>
   );
 }
+
+UploadVelocityChart.propTypes = {
+  fileStats: PropTypes.object,
+  loading: PropTypes.bool,
+};

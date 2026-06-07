@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { LayoutGrid, List, Filter } from "lucide-react";
 
@@ -16,14 +17,14 @@ import SearchInput from "@components/common/SearchInput";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 
 export default function ListControls({
-  advancedFilters,
-  placeholder,
+  advancedFilters = {},
+  placeholder = "Search...",
   searchClassName = "h-10 w-full",
   showSearchContainer = true,
   searchContainerClassName = "w-56 flex-none",
   updateParams,
-  viewMode,
-  setViewMode,
+  viewMode = "grid",
+  setViewMode = () => {},
   gridValue = VIEW_MODES.GRID,
   listValue = VIEW_MODES.LIST,
   variant = "default",
@@ -192,3 +193,17 @@ export default function ListControls({
     </TooltipProvider>
   );
 }
+
+ListControls.propTypes = {
+  advancedFilters: PropTypes.object,
+  placeholder: PropTypes.string,
+  searchClassName: PropTypes.string,
+  showSearchContainer: PropTypes.bool,
+  searchContainerClassName: PropTypes.string,
+  updateParams: PropTypes.func,
+  viewMode: PropTypes.string,
+  setViewMode: PropTypes.func,
+  gridValue: PropTypes.string,
+  listValue: PropTypes.string,
+  variant: PropTypes.string,
+};

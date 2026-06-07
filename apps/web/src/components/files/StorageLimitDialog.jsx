@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import React from "react";
 import { AlertTriangle, Cloud, Send } from "lucide-react";
 
@@ -65,5 +66,11 @@ function StorageLimitDialog({ open, onOpenChange, onRequestQuota }) {
     </Dialog>
   );
 }
+
+StorageLimitDialog.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onOpenChange: PropTypes.func.isRequired,
+  onRequestQuota: PropTypes.func.isRequired,
+};
 
 export default StorageLimitDialog;

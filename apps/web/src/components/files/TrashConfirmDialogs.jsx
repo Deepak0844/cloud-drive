@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import React from "react";
 import { AlertTriangle } from "lucide-react";
 
@@ -72,5 +73,15 @@ function TrashConfirmDialogs({
     </>
   );
 }
+
+TrashConfirmDialogs.propTypes = {
+  confirmEmpty: PropTypes.bool.isRequired,
+  onConfirmEmptyChange: PropTypes.func.isRequired,
+  onEmptyConfirm: PropTypes.func.isRequired,
+  confirmDelete: PropTypes.bool.isRequired,
+  onConfirmDeleteChange: PropTypes.func.isRequired,
+  onDeleteConfirm: PropTypes.func.isRequired,
+  selectedCount: PropTypes.number.isRequired,
+};
 
 export default TrashConfirmDialogs;

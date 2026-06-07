@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -221,5 +222,9 @@ function UploadItem({ upload }) {
     />
   );
 }
+
+UploadItem.propTypes = {
+  upload: PropTypes.object.isRequired,
+};
 
 export default UploadItem;

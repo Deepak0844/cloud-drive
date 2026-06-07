@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import React from "react";
 import { AlertCircle, CheckCircle2, Pause, Play, RotateCw, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
@@ -12,14 +13,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@compo
 
 function UploadItemView({
   file,
-  progress,
+  progress = 0,
   isSuccess,
   isError,
   isUploading,
   isPaused,
-  error,
-  speedLabel,
-  etaLabel,
+  error = null,
+  speedLabel = null,
+  etaLabel = null,
   fileIcon,
   onPause,
   onResume,
@@ -164,5 +165,21 @@ function UploadItemView({
     </TooltipProvider>
   );
 }
+
+UploadItemView.propTypes = {
+  file: PropTypes.object.isRequired,
+  progress: PropTypes.number,
+  isSuccess: PropTypes.bool,
+  isError: PropTypes.bool,
+  isUploading: PropTypes.bool,
+  isPaused: PropTypes.bool,
+  error: PropTypes.string,
+  speedLabel: PropTypes.string,
+  etaLabel: PropTypes.string,
+  fileIcon: PropTypes.node,
+  onPause: PropTypes.func.isRequired,
+  onResume: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+};
 
 export default UploadItemView;

@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { motion } from "framer-motion";
 
 /**
@@ -40,3 +41,10 @@ export default function MiniRing({ percentage, color = "currentColor", size = 48
     </div>
   );
 }
+
+MiniRing.propTypes = {
+  percentage: PropTypes.number.isRequired,
+  color: PropTypes.string,
+  size: PropTypes.number,
+  strokeWidth: PropTypes.number,
+};

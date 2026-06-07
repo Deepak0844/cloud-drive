@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 // Components
@@ -17,7 +18,9 @@ function CustomTooltip({ active, payload }) {
 
 const COLORS = ["#10b981", "#ef4444"];
 
-export default function UserStatusDonut({ userStats, loading }) {
+CustomTooltip.propTypes = { active: PropTypes.bool, payload: PropTypes.array };
+
+export default function UserStatusDonut({ userStats = null, loading = false }) {
   const data = [
     { name: "Active", value: userStats?.active ?? 0 },
     { name: "Inactive", value: userStats?.inactive ?? 0 },
@@ -76,3 +79,8 @@ export default function UserStatusDonut({ userStats, loading }) {
     </Card>
   );
 }
+
+UserStatusDonut.propTypes = {
+  userStats: PropTypes.object,
+  loading: PropTypes.bool,
+};

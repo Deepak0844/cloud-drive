@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 
 // Components
@@ -45,3 +46,15 @@ export default function Modal({
     </Dialog>
   );
 }
+
+Modal.propTypes = {
+  open: PropTypes.bool,
+  modalTitle: PropTypes.string,
+  modalWidth: PropTypes.number,
+  btnText: PropTypes.string,
+  btnLoading: PropTypes.bool,
+  cancelText: PropTypes.string,
+  handleSubmit: PropTypes.func,
+  handleCloseModal: PropTypes.func,
+  children: PropTypes.node.isRequired,
+};

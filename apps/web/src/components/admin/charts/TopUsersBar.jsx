@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 // Utils
@@ -22,6 +23,8 @@ function CustomTooltip({ active, payload, label }) {
     </div>
   );
 }
+
+CustomTooltip.propTypes = { active: PropTypes.bool, payload: PropTypes.array, label: PropTypes.string };
 
 export default function TopUsersBar({ topUsers = [], loading }) {
   const data = topUsers.map((u) => ({
@@ -73,3 +76,8 @@ export default function TopUsersBar({ topUsers = [], loading }) {
     </Card>
   );
 }
+
+TopUsersBar.propTypes = {
+  topUsers: PropTypes.array,
+  loading: PropTypes.bool.isRequired,
+};

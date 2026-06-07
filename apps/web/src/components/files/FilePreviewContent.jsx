@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import React from "react";
 import { AlertCircle, Download, File, FileText } from "lucide-react";
 import { motion } from "framer-motion";
@@ -14,12 +15,12 @@ import VideoPlayer from "@components/media/VideoPlayer";
 function FilePreviewContent({
   file,
   type,
-  previewSrc,
-  previewLoading,
-  hasError,
-  isPlaybackInfoError,
-  playbackInfo,
-  isPlaybackInfoLoading,
+  previewSrc = null,
+  previewLoading = false,
+  hasError = false,
+  isPlaybackInfoError = false,
+  playbackInfo = null,
+  isPlaybackInfoLoading = false,
   onDownload,
   fileId,
   onError,
@@ -141,5 +142,19 @@ function FilePreviewContent({
     </div>
   );
 }
+
+FilePreviewContent.propTypes = {
+  file: PropTypes.object,
+  type: PropTypes.string,
+  previewSrc: PropTypes.string,
+  previewLoading: PropTypes.bool,
+  hasError: PropTypes.bool,
+  isPlaybackInfoError: PropTypes.bool,
+  playbackInfo: PropTypes.object,
+  isPlaybackInfoLoading: PropTypes.bool,
+  onDownload: PropTypes.func,
+  fileId: PropTypes.string,
+  onError: PropTypes.func,
+};
 
 export default FilePreviewContent;

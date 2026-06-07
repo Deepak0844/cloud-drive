@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { LogOut, Settings, User } from "lucide-react";
@@ -50,6 +51,10 @@ export default function UserProfileDropdown({ isMobile }) {
       // Errors handled by hook
     }
   }
+
+  UserProfileDropdown.propTypes = {
+    isMobile: PropTypes.bool.isRequired,
+  };
 
   // Render
   return (

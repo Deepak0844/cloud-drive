@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +30,15 @@ export function BulkAction({ icon, label, onClick, tooltip, danger, loading }) {
   );
 }
 
+BulkAction.propTypes = {
+  icon: PropTypes.node.isRequired,
+  label: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired,
+  tooltip: PropTypes.string,
+  danger: PropTypes.bool,
+  loading: PropTypes.bool,
+};
+
 export default function FloatingBulkActionsBar({ selectedCount, clearSelection, children }) {
   return (
     <AnimatePresence>
@@ -40,7 +50,7 @@ export default function FloatingBulkActionsBar({ selectedCount, clearSelection, 
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
           className="fixed bottom-10 left-1/2 z-50 pointer-events-auto"
         >
-          <div className="glass-card rounded-[2.5rem] p-2 flex items-center gap-2 shadow-premium bg-[#1a1c1e]/80 border-white/10 px-6 h-16 min-w-[420px] active-glow">
+          <div className="glass-card rounded-[2.5rem] p-2 flex items-center gap-2 shadow-premium bg-[#1a1c1e]/80 border-white/10 px-6 h-16 min-w-105 active-glow">
             <div className="flex items-center gap-4 pr-4 border-r border-white/10">
               <Button
                 variant="ghost"
@@ -65,3 +75,9 @@ export default function FloatingBulkActionsBar({ selectedCount, clearSelection, 
     </AnimatePresence>
   );
 }
+
+FloatingBulkActionsBar.propTypes = {
+  selectedCount: PropTypes.number.isRequired,
+  clearSelection: PropTypes.func.isRequired,
+  children: PropTypes.node,
+};

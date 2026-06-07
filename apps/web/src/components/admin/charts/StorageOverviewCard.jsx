@@ -1,3 +1,6 @@
+// React core & third-party libraries
+import PropTypes from "prop-types";
+
 // Utils
 import { formatBytes } from "@shared-utils/utils";
 
@@ -5,7 +8,7 @@ import { formatBytes } from "@shared-utils/utils";
 import { Card, CardContent } from "@components/ui/card";
 import { Skeleton } from "@components/ui/skeleton";
 
-export default function StorageOverviewCard({ storageOverview, fileStats, loading }) {
+export default function StorageOverviewCard({ storageOverview = null, fileStats = null, loading = false }) {
   const utilPercent = parseFloat(storageOverview?.utilization_percent ?? "0");
 
   const rows = [
@@ -71,3 +74,9 @@ export default function StorageOverviewCard({ storageOverview, fileStats, loadin
     </Card>
   );
 }
+
+StorageOverviewCard.propTypes = {
+  storageOverview: PropTypes.object,
+  fileStats: PropTypes.object,
+  loading: PropTypes.bool,
+};

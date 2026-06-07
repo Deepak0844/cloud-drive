@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -113,5 +114,10 @@ function QuotaRequestModal({ open, onClose }) {
     </Modal>
   );
 }
+
+QuotaRequestModal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+};
 
 export default QuotaRequestModal;

@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { AlertTriangle, Trash2 } from "lucide-react";
 
 // Components
@@ -46,3 +47,10 @@ export default function BulkDeleteModal({ open, onClose, count, onConfirm }) {
     </Dialog>
   );
 }
+
+BulkDeleteModal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  count: PropTypes.number.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+};

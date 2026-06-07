@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { PieChart, Pie, Cell } from "recharts";
 
 // Components
@@ -77,3 +78,13 @@ export default function HardwareGaugeCard({ title, percent, subtext, icon, color
     </Card>
   );
 }
+
+HardwareGaugeCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  percent: PropTypes.number,
+  subtext: PropTypes.string,
+  icon: PropTypes.node,
+  color: PropTypes.string,
+  loading: PropTypes.bool.isRequired,
+  isLive: PropTypes.bool,
+};

@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { X, Filter } from "lucide-react";
 import React, { useState } from "react";
 
@@ -204,5 +205,13 @@ function AdvancedFilterDropdown({ onFilter, onClear, initialFilters = {}, trigge
     </Popover>
   );
 }
+
+AdvancedFilterDropdown.propTypes = {
+  onFilter: PropTypes.func.isRequired,
+  onClear: PropTypes.func.isRequired,
+  initialFilters: PropTypes.object,
+  trigger: PropTypes.node,
+  align: PropTypes.string,
+};
 
 export default AdvancedFilterDropdown;

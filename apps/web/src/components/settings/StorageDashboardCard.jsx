@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import React from "react";
 import { Cloud, Send, Image as ImageIcon, PlayCircle, Mic, FileText, Archive, File } from "lucide-react";
 import { motion } from "framer-motion";
@@ -23,7 +24,14 @@ const CATEGORY_ICONS = {
   other: <File size={14} />,
 };
 
-function StorageDashboardCard({ usage, usageLoading, sortedBreakdown, breakdownLoading, isAdmin, onRequestQuota }) {
+function StorageDashboardCard({
+  usage,
+  usageLoading = false,
+  sortedBreakdown = [],
+  breakdownLoading = false,
+  isAdmin,
+  onRequestQuota,
+}) {
   return (
     <div className="lg:col-span-4 flex flex-col gap-6">
       <Card className="glass-card rounded-4xl border-transparent relative overflow-hidden p-8 bg-sidebar-nav-active-bg/30 shadow-glow-sm">
@@ -142,5 +150,14 @@ function StorageDashboardCard({ usage, usageLoading, sortedBreakdown, breakdownL
     </div>
   );
 }
+
+StorageDashboardCard.propTypes = {
+  usage: PropTypes.object,
+  usageLoading: PropTypes.bool,
+  sortedBreakdown: PropTypes.array,
+  breakdownLoading: PropTypes.bool,
+  isAdmin: PropTypes.bool,
+  onRequestQuota: PropTypes.func,
+};
 
 export default StorageDashboardCard;

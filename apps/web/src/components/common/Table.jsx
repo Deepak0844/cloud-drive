@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /**
@@ -182,3 +183,22 @@ export default function Table({
     </div>
   );
 }
+
+const columnShape = PropTypes.shape({
+  key: PropTypes.string,
+  title: PropTypes.node,
+  dataIndex: PropTypes.string,
+  render: PropTypes.func,
+  width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  align: PropTypes.string,
+});
+
+Table.propTypes = {
+  columns: PropTypes.arrayOf(columnShape),
+  dataSource: PropTypes.array,
+  rowKey: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+  className: PropTypes.string,
+  loading: PropTypes.bool,
+  pagination: PropTypes.object,
+  scroll: PropTypes.object,
+};
