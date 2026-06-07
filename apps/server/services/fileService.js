@@ -45,7 +45,6 @@ import {
 import { fileTypeFromFile } from "file-type";
 import { ALLOWED_MIME_TYPES } from "#middlewares/uploadMiddleware.js";
 
-// ─── Circular-dependency-safe lazy import ────────────────────────────────────
 import NotificationService from "#services/notificationService.js";
 
 /**

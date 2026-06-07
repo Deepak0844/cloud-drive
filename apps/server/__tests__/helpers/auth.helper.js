@@ -7,7 +7,7 @@ export async function createTestUser(userData = {}) {
   const defaultUser = {
     name: "Test User",
     email: "test@example.com",
-    password: "password123",
+    password: "TestPass@123!",
     role: "USER",
     quota_bytes: 5 * 1000 * 1000 * 1000, // 5GB
     used_bytes: 0,
