@@ -28,7 +28,7 @@ const envSchema = z.object({
   SMTP_PORT: z.string().optional(),
   SMTP_EMAIL: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
-  JWT_EXPIRES_IN: z.string().default("7d"), // Must align with CookieConfig.MAX_AGE_MS (7 days)
+  JWT_EXPIRES_IN: z.string().default("15m"), // Access token lifetime — must be shorter than REFRESH_COOKIE_NAME cookie (REFRESH_MAX_AGE_MS = 7 days)
   FROM_NAME: z.string().default("Cloud Drive"),
   FROM_EMAIL: z.string().default("noreply@cloud-drive.com"),
   DEFAULT_QUOTA_BYTES: z.string().transform(Number).default("10000000000"),

@@ -1,8 +1,11 @@
+// Native modules
+import crypto from "crypto";
+
 // Services
 import AuthService from "#services/authService.js";
 
 // Constants
-import { SuccessMessages } from "#constants/generalConstants.js";
+import { SuccessMessages, REFRESH_COOKIE_NAME } from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
@@ -20,7 +23,7 @@ import { sendTokenResponse } from "#utils/authUtils.js";
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
   const user = await AuthService.register(name, email, password);
-  return sendTokenResponse(user, HttpStatus.CREATED, res, SuccessMessages.REGISTRATION_SUCCESS);
+  return await sendTokenResponse(user, HttpStatus.CREATED, res, SuccessMessages.REGISTRATION_SUCCESS);
 });
 
 /**
@@ -30,18 +33,35 @@ export const register = asyncHandler(async (req, res) => {
  */
 export const login = asyncHandler(async (req, res) => {
   const user = await AuthService.login(req.body.email, req.body.password, req);
-  return sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.LOGIN_SUCCESS);
+  return await sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.LOGIN_SUCCESS);
 });
 
 /**
  * @desc    Logout user
  * @route   POST /api/v1/auth/logout
- * @access  Private
+ * @access  Public (access token may be expired)
  */
 export const logout = (req, res) => {
+  const plainRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
   AuthService.clearAuthCookie(res);
+
+  if (plainRefreshToken) {
+    const hash = crypto.createHash("sha256").update(plainRefreshToken).digest("hex");
+    AuthService.clearRefreshTokenByHash(hash);
+  }
+
   return ResponseUtils.success(res, {}, HttpStatus.OK, { message: SuccessMessages.LOGOUT_SUCCESS });
 };
+
+/**
+ * @desc    Refresh access token using refresh token cookie
+ * @route   POST /api/v1/auth/refresh
+ * @access  Public (no access token required)
+ */
+export const refreshToken = asyncHandler(async (req, res) => {
+  const user = await AuthService.refreshAccessToken(req.cookies?.[REFRESH_COOKIE_NAME]);
+  return await sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.LOGIN_SUCCESS);
+});
 
 /**
  * @desc    Get current logged in user

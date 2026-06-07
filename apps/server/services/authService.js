@@ -1,3 +1,6 @@
+// Native modules
+import crypto from "crypto";
+
 // Models
 import User from "#models/User.js";
 
@@ -9,7 +12,7 @@ import NotificationService from "#services/notificationService.js";
 import config from "#config/env.js";
 
 // Constants
-import { ErrorMessages, NotificationMessages, AUTH_COOKIE_NAME, CookieConfig } from "#constants/generalConstants.js";
+import { ErrorMessages, NotificationMessages, AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME, CookieConfig } from "#constants/generalConstants.js";
 import { HttpStatus, Roles, NotificationTypes } from "@shared-constants/constants";
 
 // Utils
@@ -17,6 +20,7 @@ import { AppError } from "#utils/errorUtils.js";
 import CryptoUtils from "#utils/cryptoUtils.js";
 import SecurityUtils from "#utils/securityUtils.js";
 import logger from "#utils/logger.js";
+import { clearRefreshCookie } from "#utils/authUtils.js";
 
 // ─── Service Functions ────────────────────────────────────────────────────────
 
@@ -206,8 +210,39 @@ async function resetPassword(token, password) {
   return user;
 }
 
+async function refreshAccessToken(plainToken) {
+  if (!plainToken) {
+    throw new AppError(ErrorMessages.INVALID_TOKEN, HttpStatus.UNAUTHORIZED);
+  }
+
+  const hash = crypto.createHash("sha256").update(plainToken).digest("hex");
+  const user = await User.findOne({
+    refreshToken: hash,
+    refreshTokenExpire: { $gt: Date.now() },
+  }).select("+refreshToken +refreshTokenExpire");
+
+  if (!user) {
+    throw new AppError(ErrorMessages.INVALID_TOKEN, HttpStatus.UNAUTHORIZED);
+  }
+
+  if (user.is_active === false) {
+    throw new AppError(ErrorMessages.ACCOUNT_DEACTIVATED, HttpStatus.FORBIDDEN);
+  }
+
+  return user;
+}
+
+async function clearRefreshTokenByHash(hash) {
+  try {
+    await User.findOneAndUpdate({ refreshToken: hash }, { $unset: { refreshToken: 1, refreshTokenExpire: 1 } });
+  } catch (ex) {
+    logger.error("[Auth] Failed to clear refresh token from DB:", ex);
+  }
+}
+
 function clearAuthCookie(res) {
   res.clearCookie(AUTH_COOKIE_NAME, { httpOnly: CookieConfig.HTTP_ONLY, sameSite: CookieConfig.SAME_SITE });
+  clearRefreshCookie(res);
 }
 
 function buildProfileUpdate(body) {
@@ -244,6 +279,8 @@ const AuthService = {
   updatePassword,
   forgotPassword,
   resetPassword,
+  refreshAccessToken,
+  clearRefreshTokenByHash,
   clearAuthCookie,
   buildProfileUpdate,
   sendSecurityEmail,
