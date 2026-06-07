@@ -26,13 +26,25 @@ services:
       args:
         NODE_VERSION: "22-alpine"
         NGINX_VERSION: "alpine"
+        # Controls nginx server_name, the HTTP redirect target, and the cert CN.
+        # Set SERVER_NAME in .env.prod (e.g. raspberrypi.local).
+        SERVER_NAME: "${SERVER_NAME:-localhost}"
+        # 31536000 (1 year) default — requires a stable cert in prod.
+        # Override to 300 in .env.prod if using a self-signed cert that may be rebuilt.
+        HSTS_MAX_AGE: "${HSTS_MAX_AGE:-31536000}"
     ports:
-      # WEB_PORT and HTTPS_PORT are documented in .env.prod.
+      # WEB_PORT and HTTPS_PORT are documented in .env.prod.example.
       - "${WEB_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     depends_on:
       server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
     networks: [app-net]
 

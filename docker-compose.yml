@@ -18,20 +18,10 @@ x-server-build: &server-build
     NODE_VERSION: "22-bookworm-slim"
     SERVER_PORT: "9000"
 
-x-web-build: &web-build
-  context: .
-  dockerfile: apps/web/Dockerfile
-  args:
-    # Alpine is safe for the web builder — no native addons in the web workspace.
-    NODE_VERSION: "22-alpine"
-    NGINX_VERSION: "alpine"
-
 services:
   server:
     build:
       <<: *server-build
-    ports:
-      - "${SERVER_PORT:-9000}:9000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:9000/api/v1/health"]

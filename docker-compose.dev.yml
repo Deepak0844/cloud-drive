@@ -13,6 +13,10 @@ services:
   server:
     env_file:
       - apps/server/env/.env.development
+    ports:
+      # Exposed on host for direct API access (Postman, curl) during development.
+      # Absent in staging and prod — only nginx should reach the server there.
+      - "${SERVER_PORT:-9000}:9000"
     environment:
       # These override values from env_file
       - NODE_ENV=development
