@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { useDispatch } from "react-redux";
 
@@ -110,3 +111,7 @@ export function UploadProvider({ children }) {
 
   return <UploadContext.Provider value={{ uploads, addUpload, removeUpload }}>{children}</UploadContext.Provider>;
 }
+
+UploadProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
