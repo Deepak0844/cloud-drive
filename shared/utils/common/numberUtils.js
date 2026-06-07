@@ -44,10 +44,20 @@ function formatFixedDecimals(value, decimals = 2) {
   return value.toFixed(decimals);
 }
 
+/**
+ * Returns the percentage of `used` out of `total`, clamped to [0, 100].
+ * Returns 0 when total is falsy to avoid division by zero.
+ */
+function calculatePercentage(used, total) {
+  if (!total) return 0;
+  return Math.min(100, Math.round((used / total) * 100));
+}
+
 const NumberUtils = {
   roundToNearestInteger,
   formatRoundedNumber,
   formatFixedDecimals,
+  calculatePercentage,
 };
 
 export default NumberUtils;

@@ -9,7 +9,7 @@ import { STORAGE_KEYS } from "@shared-constants/constants";
 import PageUrls from "@constants/pageUrls";
 
 // Utils
-import LocalStorage from "@utils/localStorageUtils";
+import { LocalStorageUtils } from "@shared-utils/utils";
 
 // Hooks
 import { useAuth } from "@hooks/useAuth";
@@ -37,7 +37,7 @@ export default function UserProfileDropdown({ isMobile }) {
 
   // Derived / computed variables (part 1)
   // Prefer server-authoritative data; fall back to localStorage during initial load
-  const localUser = LocalStorage.get(STORAGE_KEYS.USER);
+  const localUser = LocalStorageUtils.get(STORAGE_KEYS.USER);
   const displayName = serverUser?.name ?? localUser?.name ?? "User";
   const displayEmail = serverUser?.email ?? localUser?.email ?? "";
 

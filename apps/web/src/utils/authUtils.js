@@ -2,7 +2,7 @@
 import { STORAGE_KEYS } from "@shared-constants/constants";
 
 // Utils
-import LocalStorage from "./localStorageUtils";
+import { LocalStorageUtils } from "@shared-utils/utils";
 
 /**
  * Authentication and Authorization related Utilities.
@@ -16,7 +16,7 @@ function isUserAuthenticated() {
   // On the client side, we infer the session is alive if the user object exists.
   // If the cookie has expired the next API call returns 401 and the error
   // middleware clears the session and redirects to login.
-  const user = LocalStorage.get(STORAGE_KEYS.USER);
+  const user = LocalStorageUtils.get(STORAGE_KEYS.USER);
   return !!user;
 }
 
@@ -32,19 +32,19 @@ function storeUserInfoInLocalStorage(data) {
     email,
   };
   if (user && user.id) {
-    LocalStorage.set(STORAGE_KEYS.USER, user);
+    LocalStorageUtils.set(STORAGE_KEYS.USER, user);
   }
 }
 
 function clearSession() {
-  LocalStorage.clear(STORAGE_KEYS.USER);
+  LocalStorageUtils.remove(STORAGE_KEYS.USER);
 }
 
 /**
  * Returns the current user's role from localStorage, or null if not found.
  */
 function getUserRole() {
-  const user = LocalStorage.get(STORAGE_KEYS.USER);
+  const user = LocalStorageUtils.get(STORAGE_KEYS.USER);
   return user?.role ?? null;
 }
 
