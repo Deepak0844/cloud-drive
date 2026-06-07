@@ -97,12 +97,23 @@ const uploadLimiter = rateLimit({
   message: "Upload limit reached, please pause and resume later",
 });
 
+// Strict per-IP limiter for login — brute-force protection
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Env.NODE_ENV === "production" ? 10 : 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: "Too many login attempts from this IP, please try again after 15 minutes",
+});
+
 // view engine setup
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
 
 app.use(limiter); // Apply global limiter
 app.use(`${baseUrl}/files/upload`, uploadLimiter); // Apply upload-specific limiter
+app.use(`${baseUrl}/auth/login`, loginLimiter); // Apply login brute-force limiter
 
 // Logging Middleware (Pino)
 function logRequest(req, res, next) {
