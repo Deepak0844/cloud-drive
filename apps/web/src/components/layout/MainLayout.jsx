@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useState } from "react";
 
 // App-local contexts
@@ -61,5 +62,9 @@ function MainLayout({ children }) {
     </div>
   );
 }
+
+MainLayout.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 export default MainLayout;

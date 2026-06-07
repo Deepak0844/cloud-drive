@@ -1,26 +1,11 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  FileText,
-  FileImage,
-  FileArchive,
-  FileVideo,
-  FileAudio,
-  File as FileIcon,
-  Pause,
-  Play,
-  RotateCw,
-} from "lucide-react";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
-import { cn } from "@lib/utils";
 import UploadSessionStore from "@utils/uploadSessionStore";
+import { getFileIcon, formatSpeed, formatEta } from "@utils/uploadItemUtils.jsx";
 
 // Constants
 import { UPLOAD_CHUNK_SIZE, SPEED_WINDOW_MS, UPLOAD_COMPLETE_DELAY_MS } from "@shared-constants/constants";
@@ -33,47 +18,7 @@ import { useUploadDetails } from "@contexts/UploadContext";
 import { useUploadFileChunkedMutation } from "@services/api/fileApi";
 
 // Components
-import { Progress } from "@components/ui/progress";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
-
-/* ─── helpers ─────────────────────────────────────────────────────────── */
-
-const getFileIcon = (fileType) => {
-  if (!fileType) return <FileIcon className="text-label-tertiary" />;
-  if (fileType.startsWith("image/")) return <FileImage className="text-blue-500" />;
-  if (fileType === "application/pdf") return <FileText className="text-red-500" />;
-  if (fileType.startsWith("text/")) return <FileText className="text-green-500" />;
-  if (fileType.startsWith("video/")) return <FileVideo className="text-purple-500" />;
-  if (fileType.startsWith("audio/")) return <FileAudio className="text-pink-500" />;
-  if (fileType.includes("zip") || fileType.includes("compressed") || fileType.includes("tar"))
-    return <FileArchive className="text-orange-500" />;
-  return <FileIcon className="text-label-tertiary" />;
-};
-
-/**
- * Format bytes/s → human-readable speed string (e.g. "12.4 MB/s")
- */
-const formatSpeed = (bps) => {
-  if (!bps || bps <= 0) return null;
-  if (bps >= 1000 * 1000) return `${(bps / 1000 / 1000).toFixed(1)} MB/s`;
-  if (bps >= 1000) return `${(bps / 1000).toFixed(0)} KB/s`;
-  return `${Math.round(bps)} B/s`;
-};
-
-/**
- * Format seconds → "42 s" or "3 min 12 s"
- */
-const formatEta = (seconds) => {
-  if (!seconds || seconds <= 0) return null;
-  if (seconds >= 60) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `~${m} min${s > 0 ? ` ${s} s` : ""}`;
-  }
-  return `~${seconds} s`;
-};
-
-/* ─── component ───────────────────────────────────────────────────────── */
+import UploadItemView from "@components/files/UploadItemView";
 
 function UploadItem({ upload }) {
   // Local state
@@ -259,145 +204,27 @@ function UploadItem({ upload }) {
   const speedLabel = formatSpeed(speed);
   const etaLabel = formatEta(eta);
 
-  // Render
   return (
-    <TooltipProvider>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className={cn(
-          "p-4 rounded-2xl border transition-all duration-300",
-          isError
-            ? "bg-destructive/5 border-destructive/20"
-            : isSuccess
-              ? "bg-green-500/5 border-green-500/20"
-              : "bg-surface border-white/5 shadow-sm"
-        )}
-      >
-        <div className="flex items-center gap-4">
-          {/* Progress / Status Circle/Icon */}
-          <div className="relative flex items-center justify-center shrink-0">
-            <div
-              className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                isError ? "bg-destructive/10" : isSuccess ? "bg-green-500/10" : "bg-surface-alt"
-              )}
-            >
-              {isSuccess ? (
-                <CheckCircle2 size={20} className="text-green-500" />
-              ) : isError ? (
-                <AlertCircle size={20} className="text-destructive" />
-              ) : (
-                fileIcon
-              )}
-            </div>
-          </div>
-
-          {/* File Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-bold text-label truncate" title={file.name}>
-                {file.name}
-              </span>
-              <span className="text-[10px] font-black text-label-tertiary opacity-50 ml-2">
-                {formatBytes(file.size)}
-              </span>
-            </div>
-
-            {/* Progress Bar */}
-            {!isSuccess && (
-              <div className="flex items-center gap-3">
-                <Progress
-                  value={progress}
-                  className="h-1.5 flex-1"
-                  indicatorClassName={cn(
-                    "transition-all duration-300",
-                    isError ? "bg-destructive" : isPaused ? "bg-warning" : "bg-primary"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-[10px] font-black w-7 text-right",
-                    isError ? "text-destructive" : isPaused ? "text-warning" : "text-primary"
-                  )}
-                >
-                  {Math.round(progress)}%
-                </span>
-              </div>
-            )}
-
-            {/* Status Footer */}
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-2">
-                {isUploading && (
-                  <>
-                    <span className="text-[10px] font-bold text-primary flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-primary animate-pulse" />
-                      {speedLabel || "Calculating..."}
-                    </span>
-                    {etaLabel && <span className="text-[10px] font-medium text-label-tertiary">{etaLabel} left</span>}
-                  </>
-                )}
-                {isPaused && (
-                  <span className="text-[10px] font-bold text-warning uppercase tracking-widest">Paused</span>
-                )}
-                {isError && (
-                  <span className="text-[10px] font-bold text-destructive truncate max-w-[150px]">
-                    {error || "Failed"}
-                  </span>
-                )}
-                {isSuccess && (
-                  <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Complete</span>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1">
-                {isUploading && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={pause}
-                        className="p-1 rounded-lg hover:bg-warning/10 text-warning transition-colors"
-                      >
-                        <Pause size={14} className="fill-current" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Pause</TooltipContent>
-                  </Tooltip>
-                )}
-                {(isPaused || isError) && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={resume}
-                        className="p-1 rounded-lg hover:bg-primary/10 text-primary transition-colors"
-                      >
-                        {isError ? <RotateCw size={14} /> : <Play size={14} className="fill-current" />}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{isError ? "Retry" : "Resume"}</TooltipContent>
-                  </Tooltip>
-                )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleCancel}
-                      className="p-1 rounded-lg hover:bg-destructive/10 text-label-tertiary hover:text-destructive transition-all"
-                    >
-                      <XCircle size={14} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Cancel</TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </TooltipProvider>
+    <UploadItemView
+      file={file}
+      progress={progress}
+      isSuccess={isSuccess}
+      isError={isError}
+      isUploading={isUploading}
+      isPaused={isPaused}
+      error={error}
+      speedLabel={speedLabel}
+      etaLabel={etaLabel}
+      fileIcon={fileIcon}
+      onPause={pause}
+      onResume={resume}
+      onCancel={handleCancel}
+    />
   );
 }
+
+UploadItem.propTypes = {
+  upload: PropTypes.object.isRequired,
+};
 
 export default UploadItem;

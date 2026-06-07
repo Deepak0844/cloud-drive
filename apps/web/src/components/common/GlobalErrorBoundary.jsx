@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { Component } from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { motion } from "framer-motion";
@@ -107,5 +108,9 @@ class GlobalErrorBoundary extends Component {
     return this.props.children;
   }
 }
+
+GlobalErrorBoundary.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 export default GlobalErrorBoundary;

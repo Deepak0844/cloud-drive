@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import {
   LayoutDashboard,
@@ -230,5 +231,11 @@ function Sidebar({ collapsed, setCollapsed, isMobile }) {
     </aside>
   );
 }
+
+Sidebar.propTypes = {
+  collapsed: PropTypes.bool.isRequired,
+  setCollapsed: PropTypes.func.isRequired,
+  isMobile: PropTypes.bool.isRequired,
+};
 
 export default Sidebar;

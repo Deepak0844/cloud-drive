@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { Fragment } from "react";
 
 // Components
@@ -43,5 +44,11 @@ function PageHeader({ breadcrumbItems = [], breadcrumbNode = null, rightContent 
     </div>
   );
 }
+
+PageHeader.propTypes = {
+  breadcrumbItems: PropTypes.array,
+  breadcrumbNode: PropTypes.node,
+  rightContent: PropTypes.node,
+};
 
 export default PageHeader;

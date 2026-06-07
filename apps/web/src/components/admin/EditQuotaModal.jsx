@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -88,5 +89,16 @@ function EditQuotaModal({ open, onClose, user }) {
     </Modal>
   );
 }
+
+EditQuotaModal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  user: PropTypes.shape({
+    _id: PropTypes.string,
+    name: PropTypes.string,
+    email: PropTypes.string,
+    quota_bytes: PropTypes.number,
+  }).isRequired,
+};
 
 export default EditQuotaModal;

@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { LayoutGrid, List, Plus, Upload, ChevronDown, ArrowUpDown, Filter } from "lucide-react";
 import { cn } from "@lib/utils";
@@ -240,3 +241,14 @@ export default function FileToolbar({
     </TooltipProvider>
   );
 }
+
+FileToolbar.propTypes = {
+  advancedFilters: PropTypes.object.isRequired,
+  updateParams: PropTypes.func.isRequired,
+  sortBy: PropTypes.string.isRequired,
+  sortOrder: PropTypes.string.isRequired,
+  viewMode: PropTypes.string.isRequired,
+  setViewMode: PropTypes.func.isRequired,
+  handleUploadClick: PropTypes.func.isRequired,
+  handleCreateFolder: PropTypes.func.isRequired,
+};

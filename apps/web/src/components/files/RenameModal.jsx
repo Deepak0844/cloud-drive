@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { Info } from "lucide-react";
 
 // Components
@@ -45,3 +46,11 @@ export default function RenameModal({ open, onClose, name, onNameChange, onConfi
     </Dialog>
   );
 }
+
+RenameModal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  name: PropTypes.string.isRequired,
+  onNameChange: PropTypes.func.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+};

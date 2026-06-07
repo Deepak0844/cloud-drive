@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { LogOut, Settings, User } from "lucide-react";
@@ -9,7 +10,7 @@ import { STORAGE_KEYS } from "@shared-constants/constants";
 import PageUrls from "@constants/pageUrls";
 
 // Utils
-import LocalStorage from "@utils/localStorageUtils";
+import { LocalStorageUtils } from "@shared-utils/utils";
 
 // Hooks
 import { useAuth } from "@hooks/useAuth";
@@ -37,7 +38,7 @@ export default function UserProfileDropdown({ isMobile }) {
 
   // Derived / computed variables (part 1)
   // Prefer server-authoritative data; fall back to localStorage during initial load
-  const localUser = LocalStorage.get(STORAGE_KEYS.USER);
+  const localUser = LocalStorageUtils.get(STORAGE_KEYS.USER);
   const displayName = serverUser?.name ?? localUser?.name ?? "User";
   const displayEmail = serverUser?.email ?? localUser?.email ?? "";
 
@@ -50,6 +51,10 @@ export default function UserProfileDropdown({ isMobile }) {
       // Errors handled by hook
     }
   }
+
+  UserProfileDropdown.propTypes = {
+    isMobile: PropTypes.bool.isRequired,
+  };
 
   // Render
   return (

@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 
 // Components
@@ -47,3 +48,18 @@ export default function Dropdown({ menu, children }) {
     </DropdownMenu>
   );
 }
+
+const menuItemShape = PropTypes.shape({
+  key: PropTypes.string,
+  label: PropTypes.node,
+  icon: PropTypes.node,
+  onClick: PropTypes.func,
+  danger: PropTypes.bool,
+  disabled: PropTypes.bool,
+  type: PropTypes.string,
+});
+
+Dropdown.propTypes = {
+  menu: PropTypes.shape({ items: PropTypes.arrayOf(menuItemShape) }).isRequired,
+  children: PropTypes.node.isRequired,
+};

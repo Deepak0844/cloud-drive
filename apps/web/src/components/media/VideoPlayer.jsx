@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { isHLSProvider, MediaPlayer, MediaProvider } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 
@@ -51,3 +52,8 @@ export default function VideoPlayer({ playbackInfo, onError }) {
     </MediaPlayer>
   );
 }
+
+VideoPlayer.propTypes = {
+  playbackInfo: PropTypes.object,
+  onError: PropTypes.func,
+};

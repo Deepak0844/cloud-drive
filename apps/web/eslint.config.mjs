@@ -4,4 +4,9 @@ import { config as reactInternalConfig } from "@shared-eslint/config/react-inter
 export default [
   { ignores: ["dist/**"] },
   ...reactInternalConfig,
+  {
+    rules: {
+      "react/prop-types": "warn",
+    },
+  },
 ];

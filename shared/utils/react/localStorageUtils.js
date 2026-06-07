@@ -1,26 +1,40 @@
-// Set / Add in LocalStorage
-function set(key, val) {
-  localStorage.setItem(key, val);
-}
-
-// Get from LocalStorage
 function get(key) {
-  return localStorage.getItem(key);
+  try {
+    const value = localStorage.getItem(key);
+    if (value === null) return null;
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
-// Remove from LocalStorage
+function set(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Silently fail (e.g. storage quota exceeded)
+  }
+}
+
 function remove(key) {
-  localStorage.removeItem(key);
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Silently fail
+  }
 }
 
-// Clear LocalStorage
 function clear() {
-  localStorage.clear();
+  try {
+    localStorage.clear();
+  } catch {
+    // Silently fail
+  }
 }
 
 const LocalStorageUtils = {
-  set,
   get,
+  set,
   remove,
   clear,
 };

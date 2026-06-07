@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { X } from "lucide-react";
 
@@ -36,5 +37,11 @@ function InfoDrawer({ item, open, onClose }) {
     </Sheet>
   );
 }
+
+InfoDrawer.propTypes = {
+  item: PropTypes.object,
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+};
 
 export default InfoDrawer;

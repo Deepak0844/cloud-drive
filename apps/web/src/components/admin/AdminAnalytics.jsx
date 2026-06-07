@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { Cpu, HardDrive, Server as ServerIcon } from "lucide-react";
 
 // Utils
@@ -17,7 +18,7 @@ import UploadVelocityChart from "./charts/UploadVelocityChart";
  *
  * @param {{ stats: object, liveSystem: object|null, isLive: boolean, statsLoading: boolean }} props
  */
-export default function AdminAnalytics({ stats, liveSystem, isLive, statsLoading }) {
+export default function AdminAnalytics({ stats, liveSystem = null, isLive = false, statsLoading = false }) {
   const system = liveSystem ?? stats?.system;
 
   return (
@@ -69,3 +70,10 @@ export default function AdminAnalytics({ stats, liveSystem, isLive, statsLoading
     </div>
   );
 }
+
+AdminAnalytics.propTypes = {
+  stats: PropTypes.object.isRequired,
+  liveSystem: PropTypes.object,
+  isLive: PropTypes.bool,
+  statsLoading: PropTypes.bool,
+};

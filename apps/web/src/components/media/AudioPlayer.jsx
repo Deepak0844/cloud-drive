@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { MediaPlayer, MediaProvider } from "@vidstack/react";
 import { DefaultAudioLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 
@@ -23,7 +24,7 @@ import "@vidstack/react/player/styles/default/layouts/audio.css";
  *
  * @param {{ playbackInfo: object, audioMetadata: object|null, fileId: string, onError: function }} props
  */
-export default function AudioPlayer({ playbackInfo, audioMetadata, fileId, onError }) {
+export default function AudioPlayer({ playbackInfo, audioMetadata = null, fileId, onError }) {
   const thumbnailUrl = fileId ? UrlUtils.format(`${ApiBasePath}${FileServiceUrls.thumbnail}`, { id: fileId }) : null;
 
   if (!playbackInfo) return null;
@@ -72,3 +73,10 @@ export default function AudioPlayer({ playbackInfo, audioMetadata, fileId, onErr
     </div>
   );
 }
+
+AudioPlayer.propTypes = {
+  playbackInfo: PropTypes.object,
+  audioMetadata: PropTypes.object,
+  fileId: PropTypes.string,
+  onError: PropTypes.func,
+};

@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useState, useEffect } from "react";
 import { Calendar, X, Image as ImageIcon, File, FileText, Folder, FolderOpen, Star, Tags } from "lucide-react";
 import dayjs from "dayjs";
@@ -36,7 +37,7 @@ function getFileInfo(type, isFolder) {
   }
 }
 
-export default function ItemDetailsContent({ item, className }) {
+export default function ItemDetailsContent({ item, className = "" }) {
   // Local state
   const [tags, setTags] = useState([]);
   const [newTag, setNewTag] = useState("");
@@ -251,3 +252,8 @@ export default function ItemDetailsContent({ item, className }) {
     </div>
   );
 }
+
+ItemDetailsContent.propTypes = {
+  item: PropTypes.object,
+  className: PropTypes.string,
+};

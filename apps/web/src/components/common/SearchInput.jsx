@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";
@@ -82,3 +83,12 @@ export default function SearchInput({
     </div>
   );
 }
+
+SearchInput.propTypes = {
+  placeholder: PropTypes.string,
+  className: PropTypes.string,
+  queryKey: PropTypes.string,
+  allowClear: PropTypes.bool,
+  prefix: PropTypes.node,
+  suffix: PropTypes.node,
+};

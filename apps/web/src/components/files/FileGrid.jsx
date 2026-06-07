@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { CloudUpload, Folder } from "lucide-react";
 
@@ -184,3 +185,27 @@ export default function FileGrid({
     </div>
   );
 }
+
+FileGrid.propTypes = {
+  folders: PropTypes.array.isRequired,
+  files: PropTypes.array.isRequired,
+  isContentsLoading: PropTypes.bool.isRequired,
+  isContentsFetching: PropTypes.bool.isRequired,
+  paginationData: PropTypes.object,
+  loaderRef: PropTypes.object.isRequired,
+  viewMode: PropTypes.string.isRequired,
+  selectedItems: PropTypes.array.isRequired,
+  toggleSelect: PropTypes.func.isRequired,
+  handleOpen: PropTypes.func.isRequired,
+  handleShowInfo: PropTypes.func.isRequired,
+  handleRenameTrigger: PropTypes.func.isRequired,
+  handleDeleteTrigger: PropTypes.func.isRequired,
+  handleMoveTrigger: PropTypes.func.isRequired,
+  handleCopyTrigger: PropTypes.func.isRequired,
+  handleDownload: PropTypes.func.isRequired,
+  handleToggleFileFavorite: PropTypes.func,
+  handleToggleFolderFavorite: PropTypes.func,
+  isFileFavoriting: PropTypes.bool,
+  isFolderFavoriting: PropTypes.bool,
+  isDragging: PropTypes.bool.isRequired,
+};

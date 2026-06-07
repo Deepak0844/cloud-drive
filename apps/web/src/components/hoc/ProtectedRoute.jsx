@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
@@ -50,5 +51,11 @@ function ProtectedRoute({ children, allowedRoles = [], loginPageUrl = PageUrls.L
 
   return children;
 }
+
+ProtectedRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+  allowedRoles: PropTypes.arrayOf(PropTypes.string),
+  loginPageUrl: PropTypes.string,
+};
 
 export default ProtectedRoute;

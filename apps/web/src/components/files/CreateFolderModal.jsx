@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { FolderOpen } from "lucide-react";
 
 // Components
@@ -46,3 +47,11 @@ export default function CreateFolderModal({ open, onClose, folderName, onFolderN
     </Dialog>
   );
 }
+
+CreateFolderModal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  folderName: PropTypes.string.isRequired,
+  onFolderNameChange: PropTypes.func.isRequired,
+  onConfirm: PropTypes.func.isRequired,
+};

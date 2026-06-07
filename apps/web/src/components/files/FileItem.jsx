@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React, { useEffect, useState } from "react";
 import { Check, MoreVertical, Star } from "lucide-react";
 import { motion } from "framer-motion";
@@ -309,5 +310,23 @@ function FileItem({
     </motion.div>
   );
 }
+
+FileItem.propTypes = {
+  file: PropTypes.object.isRequired,
+  isSelected: PropTypes.bool.isRequired,
+  onToggleSelect: PropTypes.func.isRequired,
+  onOpen: PropTypes.func,
+  onShowInfo: PropTypes.func,
+  onRename: PropTypes.func,
+  onDelete: PropTypes.func,
+  onMove: PropTypes.func,
+  onCopy: PropTypes.func,
+  handleDownload: PropTypes.func,
+  onToggleFavorite: PropTypes.func,
+  isFavoriting: PropTypes.bool,
+  viewMode: PropTypes.string,
+  isTrashItem: PropTypes.bool,
+  showParentContext: PropTypes.bool,
+};
 
 export default FileItem;

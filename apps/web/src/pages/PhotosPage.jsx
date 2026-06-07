@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Calendar, Download, ImageIcon, Clock, Maximize2, History } from "lucide-react";
@@ -197,6 +198,17 @@ function PhotosPage() {
     </motion.div>
   );
 }
+
+PhotoCard.propTypes = {
+  photo: PropTypes.shape({
+    thumbnailUrl: PropTypes.string,
+    name: PropTypes.string,
+    createdAt: PropTypes.string,
+    previewUrl: PropTypes.string,
+  }).isRequired,
+  handleDownload: PropTypes.func,
+  onPreview: PropTypes.func,
+};
 
 function PhotoCard({ photo, handleDownload, onPreview }) {
   return (

@@ -9,8 +9,7 @@ import { motion } from "framer-motion";
 import { useGetUsersQuery, useRunStorageReanalysisMutation, useUpdateUserStatusMutation } from "@services/api/adminApi";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
-import MathUtils from "@utils/mathUtils";
+import { formatBytes, NumberUtils } from "@shared-utils/utils";
 
 // Constants
 import { ADMIN_QUERY_PARAMS } from "@constants/uiConstants";
@@ -98,7 +97,7 @@ export default function AdminUsersPage() {
 
         const usedText = formatBytes(record.used_bytes);
         const totalText = formatBytes(record.quota_bytes);
-        const percent = MathUtils.calculatePercentage(record.used_bytes, record.quota_bytes);
+        const percent = NumberUtils.calculatePercentage(record.used_bytes, record.quota_bytes);
 
         return (
           <div className="flex flex-col gap-1 w-32">

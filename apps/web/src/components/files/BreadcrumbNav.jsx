@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { Home } from "lucide-react";
 
@@ -59,3 +60,8 @@ export default function BreadcrumbNav({ breadcrumbs, setCurrentFolderId }) {
     </Breadcrumb>
   );
 }
+
+BreadcrumbNav.propTypes = {
+  breadcrumbs: PropTypes.array,
+  setCurrentFolderId: PropTypes.func.isRequired,
+};

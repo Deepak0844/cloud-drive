@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 // Components
@@ -32,7 +33,10 @@ function CustomLegend({ payload }) {
   );
 }
 
-export default function QuotaRequestsChart({ quotaRequests, loading }) {
+CustomTooltip.propTypes = { active: PropTypes.bool, payload: PropTypes.array, label: PropTypes.string };
+CustomLegend.propTypes = { payload: PropTypes.array };
+
+export default function QuotaRequestsChart({ quotaRequests = null, loading = false }) {
   const data = [
     {
       label: "All Time",
@@ -81,3 +85,8 @@ export default function QuotaRequestsChart({ quotaRequests, loading }) {
     </Card>
   );
 }
+
+QuotaRequestsChart.propTypes = {
+  quotaRequests: PropTypes.object,
+  loading: PropTypes.bool,
+};

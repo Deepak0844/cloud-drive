@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import { AlertTriangle, Trash2 } from "lucide-react";
 
 // Components
@@ -47,3 +48,10 @@ export default function DeleteModal({ open, onClose, itemName, onConfirm }) {
     </Dialog>
   );
 }
+
+DeleteModal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  itemName: PropTypes.string,
+  onConfirm: PropTypes.func.isRequired,
+};

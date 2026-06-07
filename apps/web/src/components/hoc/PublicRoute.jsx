@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { Navigate } from "react-router-dom";
 
@@ -20,5 +21,10 @@ function PublicRoute({ children, dashboardUrl = PageUrls.DashboardPage }) {
 
   return children;
 }
+
+PublicRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+  dashboardUrl: PropTypes.string,
+};
 
 export default PublicRoute;

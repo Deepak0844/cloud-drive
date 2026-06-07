@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { Menu } from "lucide-react";
 import { useLocation } from "react-router-dom";
@@ -52,5 +53,10 @@ function Navbar({ isMobile, setDrawerVisible }) {
     </header>
   );
 }
+
+Navbar.propTypes = {
+  isMobile: PropTypes.bool.isRequired,
+  setDrawerVisible: PropTypes.func.isRequired,
+};
 
 export default Navbar;

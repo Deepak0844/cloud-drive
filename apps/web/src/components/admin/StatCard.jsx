@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 
 // Components
@@ -9,7 +10,7 @@ import MiniRing from "./MiniRing";
 /**
  * Stat card used in the admin dashboard stats grid.
  */
-export default function StatCard({ title, value, subtext, percentage, icon, color, loading, isTotal = false }) {
+export default function StatCard({ title, value, subtext, percentage, icon, color, loading = false, isTotal = false }) {
   return (
     <Card className="glass-card border-white/10 hover:border-white/20 transition-all duration-300 group relative overflow-hidden h-40">
       <div
@@ -54,3 +55,14 @@ export default function StatCard({ title, value, subtext, percentage, icon, colo
     </Card>
   );
 }
+
+StatCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  subtext: PropTypes.string,
+  percentage: PropTypes.number,
+  icon: PropTypes.node,
+  color: PropTypes.string,
+  loading: PropTypes.bool,
+  isTotal: PropTypes.bool,
+};

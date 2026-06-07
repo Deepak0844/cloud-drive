@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import PropTypes from "prop-types";
 import React from "react";
 import { useLocation, useNavigate, useRouteError } from "react-router-dom";
 import { FileSearch, ShieldAlert, AlertTriangle, Home, RefreshCw } from "lucide-react";
@@ -113,5 +114,10 @@ function ErrorPage({ forcedStatus, forcedMessage }) {
     </div>
   );
 }
+
+ErrorPage.propTypes = {
+  forcedStatus: PropTypes.number,
+  forcedMessage: PropTypes.string,
+};
 
 export default ErrorPage;
