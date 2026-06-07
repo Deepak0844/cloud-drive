@@ -97,6 +97,8 @@ export default function RecentPage() {
     return groups;
   }, [filteredItems]);
 
+  useOutsideClickClear({ clearSelection });
+
   // Event handlers
 
   function handleBulkDownload() {
@@ -116,8 +118,6 @@ export default function RecentPage() {
       toast.error("Failed to initiate bulk download");
     }
   }
-
-  useOutsideClickClear({ clearSelection });
 
   // Render
   return (

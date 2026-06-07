@@ -1,13 +1,13 @@
 // React core & third-party libraries
 import { useEffect, useState } from "react";
-import { Cloud, Copy, Trash2, Download, Move, Send, AlertTriangle } from "lucide-react";
+import { Copy, Trash2, Download, Move } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
 import { useGetFolderContentsQuery, useGetFolderDetailsQuery } from "@services/api/folderApi";
 
 // Constants
-import { QUERY_PARAMS_KEYS, STORAGE, DefaultSort } from "@shared-constants/constants";
+import { QUERY_PARAMS_KEYS, DefaultSort } from "@shared-constants/constants";
 import { ROOT_FOLDER_ID } from "@constants/serviceUrls";
 import { VIEW_MODES } from "@constants/uiConstants";
 import PageNames from "@constants/pageNames";
@@ -38,10 +38,8 @@ import RenameModal from "@components/files/RenameModal";
 import DeleteModal from "@components/files/DeleteModal";
 import BulkDeleteModal from "@components/files/BulkDeleteModal";
 import CreateFolderModal from "@components/files/CreateFolderModal";
-import { Button } from "@components/ui/button";
-import { Dialog, DialogContent } from "@components/ui/dialog";
+import StorageLimitDialog from "@components/files/StorageLimitDialog";
 
-// Remove Dragger
 function MyFilesView() {
   // Local state
   const [infoItem, setInfoItem] = useState(null);
@@ -49,13 +47,14 @@ function MyFilesView() {
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
   const [quotaRequestModalVisible, setQuotaRequestModalVisible] = useState(false);
   const [viewMode, setViewMode] = useState(VIEW_MODES.GRID);
+
+  // Custom & shared hooks
   const { clearSelection, selectedItems, toggleSelect: toggleSelectBase } = useSelectableItems();
   const { advancedFilters, debouncedSearch, page, pageSize, searchParams, setSearchParams, setPage, updateParams } =
     useListPageParams();
 
   // Derived / computed variables
   const currentFolderId = searchParams.get(QUERY_PARAMS_KEYS.FOLDER_ID) || ROOT_FOLDER_ID;
-
   const sortBy = searchParams.get(QUERY_PARAMS_KEYS.SORT_BY) || DefaultSort.FIELD;
   const sortOrder = searchParams.get(QUERY_PARAMS_KEYS.SORT_ORDER) || DefaultSort.ORDER;
 
@@ -87,6 +86,76 @@ function MyFilesView() {
   const breadcrumbs = currentFolderId === ROOT_FOLDER_ID ? [] : detailsData?.data?.breadcrumbs || [];
   const paginationData = contentsData?.pagination || {};
 
+  // Custom & shared hooks (continued)
+  const { loaderRef } = useInfinitePaging({
+    hasNext: paginationData?.hasNext || false,
+    isLoading: isContentsFetching,
+    page,
+    setPage,
+    updateParams,
+  });
+
+  const {
+    renameItem,
+    setRenameItem,
+    newName,
+    setNewName,
+    deleteItem,
+    setDeleteItem,
+    bulkDeleteItems,
+    setBulkDeleteItems,
+    folderPicker,
+    setFolderPicker,
+    handleRenameTrigger,
+    handleRenameConfirm,
+    handleDeleteTrigger,
+    handleDeleteConfirm,
+    handleBulkDeleteTrigger,
+    handleBulkDeleteConfirm,
+    handleMoveTrigger,
+    handleCopyTrigger,
+    handleBulkMoveTrigger,
+    handleBulkCopyTrigger,
+    handleFolderPickerConfirm,
+    handleDownload,
+    handleBulkDownload,
+    isActionLoading,
+  } = useFileActions({ folders, clearSelection });
+
+  const { handleToggleFileFavorite, handleToggleFolderFavorite, isFileFavoriting, isFolderFavoriting } =
+    useFavoriteActions();
+
+  const {
+    isFolderModalOpen,
+    setIsFolderModalOpen,
+    newFolderName,
+    setNewFolderName,
+    handleCreateFolderClick,
+    handleCreateFolderConfirm,
+  } = useFolderCreation({ currentFolderId });
+
+  const { addUpload } = useUploadDetails();
+  const { isDragging, handleDragEnter, handleDragLeave, handleDrop } = useDragDrop();
+  const { uploadInputRef, handleUploadClick, handleFileChange, dropzoneProps } = useUploadHandler({
+    addUpload,
+    currentFolderId,
+    handleDragEnter,
+    handleDragLeave,
+    handleDrop,
+  });
+
+  useOutsideClickClear({ clearSelection });
+
+  useEffect(() => {
+    function handleOpenQuota() {
+      setQuotaModalVisible(true);
+    }
+    window.addEventListener("openQuotaModal", handleOpenQuota);
+    return () => {
+      window.removeEventListener("openQuotaModal", handleOpenQuota);
+    };
+  }, []);
+
   // Event handlers
   function setCurrentFolderId(id) {
     const newParams = new URLSearchParams(searchParams);
@@ -97,15 +166,6 @@ function MyFilesView() {
     }
     setSearchParams(newParams);
   }
-
-  // Custom & shared hooks
-  const { loaderRef } = useInfinitePaging({
-    hasNext: paginationData?.hasNext || false,
-    isLoading: isContentsFetching,
-    page,
-    setPage,
-    updateParams,
-  });
 
   function toggleSelect(id, type) {
     toggleSelectBase(String(id), type);
@@ -136,68 +196,6 @@ function MyFilesView() {
       setInfoItem({ ...item, virtualPath });
     }
   }
-
-  const {
-    renameItem,
-    setRenameItem,
-    newName,
-    setNewName,
-    deleteItem,
-    setDeleteItem,
-    bulkDeleteItems,
-    setBulkDeleteItems,
-    folderPicker,
-    setFolderPicker,
-    handleRenameTrigger,
-    handleRenameConfirm,
-    handleDeleteTrigger,
-    handleDeleteConfirm,
-    handleBulkDeleteTrigger,
-    handleBulkDeleteConfirm,
-    handleMoveTrigger,
-    handleCopyTrigger,
-    handleBulkMoveTrigger,
-    handleBulkCopyTrigger,
-    handleFolderPickerConfirm,
-    handleDownload,
-    handleBulkDownload,
-    isActionLoading,
-  } = useFileActions({ folders, clearSelection });
-
-  // 5. Custom & shared hooks (continued)
-  const { handleToggleFileFavorite, handleToggleFolderFavorite, isFileFavoriting, isFolderFavoriting } =
-    useFavoriteActions();
-
-  const {
-    isFolderModalOpen,
-    setIsFolderModalOpen,
-    newFolderName,
-    setNewFolderName,
-    handleCreateFolderClick,
-    handleCreateFolderConfirm,
-  } = useFolderCreation({ currentFolderId });
-  const { addUpload } = useUploadDetails();
-  const { isDragging, handleDragEnter, handleDragLeave, handleDrop } = useDragDrop();
-  const { uploadInputRef, handleUploadClick, handleFileChange, dropzoneProps } = useUploadHandler({
-    addUpload,
-    currentFolderId,
-    handleDragEnter,
-    handleDragLeave,
-    handleDrop,
-  });
-
-  // useEffect
-  useOutsideClickClear({ clearSelection });
-
-  useEffect(() => {
-    function handleOpenQuota() {
-      setQuotaModalVisible(true);
-    }
-    window.addEventListener("openQuotaModal", handleOpenQuota);
-    return () => {
-      window.removeEventListener("openQuotaModal", handleOpenQuota);
-    };
-  }, []);
 
   // Render
   return (
@@ -248,59 +246,11 @@ function MyFilesView() {
           />
         </div>
 
-        <Dialog open={quotaModalVisible} onOpenChange={setQuotaModalVisible}>
-          <DialogContent className="max-w-[420px] p-0 overflow-hidden border-none aurora-modal">
-            <div className="py-8 px-6 flex flex-col items-center text-center gap-6">
-              <div className="w-20 h-20 bg-warning/10 text-warning rounded-3xl flex items-center justify-center border border-warning/20 shadow-glow-sm">
-                <AlertTriangle size={40} />
-              </div>
-
-              <div className="space-y-2">
-                <h2 className="text-2xl font-black text-label tracking-tight italic">Storage Limit Reached</h2>
-                <p className="text-label-tertiary text-sm px-4 font-medium leading-relaxed">
-                  You&apos;ve used all of your available {STORAGE.TOTAL_QUOTA_GB} GB. Request an increase to keep saving
-                  your files.
-                </p>
-              </div>
-
-              <div className="w-full bg-surface-dim/50 p-4 rounded-2xl border border-line/30 flex items-center justify-between gap-4 shadow-inner">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center border border-primary/20">
-                    <Cloud size={18} />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-black text-label leading-none uppercase tracking-wide">Current Plan</p>
-                    <p className="text-[10px] text-label-tertiary mt-1 uppercase tracking-widest font-bold">
-                      Free NAS Account
-                    </p>
-                  </div>
-                </div>
-                <span className="text-sm font-black text-primary italic">
-                  {STORAGE.TOTAL_QUOTA_GB}.0 GB / {STORAGE.TOTAL_QUOTA_GB}.0 GB
-                </span>
-              </div>
-
-              <div className="flex flex-col w-full gap-3 mt-2">
-                <Button
-                  variant="primary"
-                  size="large"
-                  icon={<Send size={18} />}
-                  onClick={handleRequestQuota}
-                  className="w-full rounded-2xl h-14 font-black shadow-glow text-base uppercase tracking-wider"
-                >
-                  Request Increase
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => setQuotaModalVisible(false)}
-                  className="w-full rounded-2xl h-12 text-label-tertiary font-bold hover:text-label transition-colors"
-                >
-                  Later
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <StorageLimitDialog
+          open={quotaModalVisible}
+          onOpenChange={setQuotaModalVisible}
+          onRequestQuota={handleRequestQuota}
+        />
       </div>
 
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
@@ -359,7 +309,6 @@ function MyFilesView() {
         loading={isActionLoading}
       />
 
-      {/* Rename Modal */}
       <RenameModal
         open={!!renameItem}
         onClose={() => setRenameItem(null)}
@@ -375,7 +324,6 @@ function MyFilesView() {
         onConfirm={handleDeleteConfirm}
       />
 
-      {/* Bulk Delete Modal */}
       <BulkDeleteModal
         open={!!bulkDeleteItems}
         onClose={() => setBulkDeleteItems(null)}
@@ -383,7 +331,6 @@ function MyFilesView() {
         onConfirm={handleBulkDeleteConfirm}
       />
 
-      {/* Create Folder Modal */}
       <CreateFolderModal
         open={isFolderModalOpen}
         onClose={() => setIsFolderModalOpen(false)}

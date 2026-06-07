@@ -111,7 +111,7 @@ function FavoritesPage() {
   const { handleToggleFileFavorite, handleToggleFolderFavorite, isFileFavoriting, isFolderFavoriting } =
     useFavoriteActions();
 
-  // 7. Derived / computed variables
+  useOutsideClickClear({ clearSelection });
 
   // Event handlers
 
@@ -123,8 +123,6 @@ function FavoritesPage() {
       setPreviewFile(item);
     }
   }
-
-  useOutsideClickClear({ clearSelection });
 
   // Render
   return (

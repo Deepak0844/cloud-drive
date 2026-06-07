@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import React, { useEffect, useState, useCallback } from "react";
-import { Download, X, AlertCircle, FileText, File, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { Download, X, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Constants
@@ -13,10 +13,8 @@ import { cn } from "@lib/utils";
 
 // Components
 import { Button } from "@components/ui/button";
-import Loader from "@components/common/Loader";
-import VideoPlayer from "@components/media/VideoPlayer";
-import AudioPlayer from "@components/media/AudioPlayer";
 import ItemDetailsContent from "./ItemDetailsContent";
+import FilePreviewContent from "./FilePreviewContent";
 
 // Services (RTK Query hooks)
 import { useGetPlaybackInfoQuery } from "@services/api/fileApi";
@@ -133,131 +131,6 @@ export default function FilePreviewModal({
     setHasError(false);
   }, [fileId]);
 
-  // Renderers
-  function renderContent() {
-    if (hasError || isPlaybackInfoError) {
-      return (
-        <div className="flex flex-col items-center justify-center p-12 gap-6 text-center text-white">
-          <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center">
-            <AlertCircle size={32} className="text-destructive" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-bold">Preview Unavailable</h3>
-            <p className="text-white/60 max-w-xs text-sm">
-              We couldn&apos;t generate a preview for &quot;{currentFile?.name}&quot;.
-            </p>
-          </div>
-          <Button
-            onClick={() => handleDownload?.(currentFile)}
-            variant="aurora"
-            size="lg"
-            className="rounded-xl font-bold px-8 shadow-glow-sm"
-          >
-            <Download className="mr-2 h-5 w-5" />
-            Download Instead
-          </Button>
-        </div>
-      );
-    }
-
-    if (type === FileCategories.VIDEO) {
-      if (isPlaybackInfoLoading || !playbackInfo) {
-        return (
-          <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70 text-white">
-            <Loader size={32} />
-            <span className="text-sm font-semibold">Preparing video...</span>
-          </div>
-        );
-      }
-      return <VideoPlayer playbackInfo={playbackInfo} onError={() => setHasError(true)} />;
-    }
-
-    if (type === FileCategories.AUDIO) {
-      if (isPlaybackInfoLoading || !playbackInfo) {
-        return (
-          <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70 text-white">
-            <Loader size={32} />
-            <span className="text-sm font-semibold">Preparing audio...</span>
-          </div>
-        );
-      }
-      return (
-        <AudioPlayer
-          playbackInfo={playbackInfo}
-          audioMetadata={currentFile?.audio_metadata}
-          fileId={fileId}
-          onError={() => setHasError(true)}
-        />
-      );
-    }
-
-    if (previewLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center p-20 gap-4 opacity-70 text-white">
-          <Loader size={32} />
-          <span className="text-sm font-semibold">Loading preview...</span>
-        </div>
-      );
-    }
-
-    if (type === "image" || currentFile?.mime_type?.startsWith("image/")) {
-      return (
-        <div className="relative w-full h-full flex items-center justify-center p-4">
-          <motion.img
-            key={fileId}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            src={previewSrc}
-            alt={currentFile?.name}
-            className="max-w-full max-h-full rounded-lg shadow-2xl object-contain"
-            onError={() => setHasError(true)}
-          />
-        </div>
-      );
-    }
-
-    if (type === "pdf" || currentFile?.mime_type === "application/pdf") {
-      return (
-        <div className="w-full h-full max-h-[90vh] rounded-xl overflow-hidden shadow-inner border border-white/10 bg-white/5">
-          <object data={previewSrc} type="application/pdf" className="w-full h-full">
-            <div className="flex flex-col items-center justify-center h-full p-20 gap-6 text-center text-white">
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                <FileText size={32} className="text-primary" />
-              </div>
-              <h3 className="text-xl font-bold">PDF Support Missing</h3>
-              <p className="text-white/60 text-sm">Your browser doesn&apos;t support direct PDF viewing.</p>
-              <Button onClick={() => handleDownload?.(currentFile)} variant="aurora" size="lg" className="rounded-xl">
-                Download PDF
-              </Button>
-            </div>
-          </object>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col items-center justify-center p-20 gap-8 text-center text-white">
-        <div className="w-24 h-24 rounded-4xl bg-white/5 flex items-center justify-center border border-white/10 shadow-inner">
-          <File size={48} className="text-white/40" />
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-2xl font-bold">No Preview Available</h3>
-          <p className="text-white/40 uppercase tracking-[0.2em] font-black text-xs">
-            .{currentFile?.extension || "UNKNOWN"} FILE
-          </p>
-        </div>
-        <Button
-          onClick={() => handleDownload?.(currentFile)}
-          variant="aurora"
-          className="h-14 px-12 rounded-2xl font-black text-base shadow-glow uppercase"
-        >
-          Download File
-        </Button>
-      </div>
-    );
-  }
-
   if (!open) return null;
 
   return (
@@ -359,7 +232,19 @@ export default function FilePreviewModal({
 
           {/* Immersive Viewport */}
           <div className="flex-1 flex items-center justify-center relative bg-gradient-radial from-white/5 to-transparent">
-            {renderContent()}
+            <FilePreviewContent
+              file={currentFile}
+              type={type}
+              previewSrc={previewSrc}
+              previewLoading={previewLoading}
+              hasError={hasError}
+              isPlaybackInfoError={isPlaybackInfoError}
+              playbackInfo={playbackInfo}
+              isPlaybackInfoLoading={isPlaybackInfoLoading}
+              onDownload={handleDownload}
+              fileId={fileId}
+              onError={() => setHasError(true)}
+            />
           </div>
 
           {/* Collapsible Meta Sidebar */}
