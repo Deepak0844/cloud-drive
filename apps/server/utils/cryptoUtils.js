@@ -84,6 +84,25 @@ function unwrapUserKey(wrappedKey) {
 }
 
 /**
+ * Re-wrap a user's DEK from the current KEK to a new KEK.
+ * Used during master-key rotation — call unwrapUserKey (current KEK via Env),
+ * then re-encrypt the plaintext DEK with the provided newKek buffer.
+ *
+ * @param {string} wrappedKey - Existing wrapped key string from the User record
+ * @param {Buffer} newKek - The new 32-byte master key to wrap under
+ * @returns {string} New wrapped key string in "iv:authTag:encryptedKey" format
+ */
+function rewrapUserKey(wrappedKey, newKek) {
+  const plaintextKey = unwrapUserKey(wrappedKey);
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(WRAP_ALGORITHM, newKek, iv);
+  let encrypted = cipher.update(plaintextKey, null, "hex");
+  encrypted += cipher.final("hex");
+  const authTag = cipher.getAuthTag().toString("hex");
+  return `${iv.toString("hex")}:${authTag}:${encrypted}`;
+}
+
+/**
  * Generate a random 16-byte Initialization Vector for a single file.
  * @returns {Buffer}
  */
@@ -208,6 +227,7 @@ async function verifyFileHmac(userKey, filePath, storedHmac) {
 const CryptoUtils = {
   generateAndWrapUserKey,
   unwrapUserKey,
+  rewrapUserKey,
   generateFileIv,
   getCipherStream,
   getDecipherStream,

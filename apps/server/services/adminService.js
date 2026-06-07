@@ -12,7 +12,9 @@ import { HttpStatus, NotificationTypes, QuotaStatus } from "@shared-constants/co
 
 // Utils
 import { AppError } from "#utils/errorUtils.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
 import FormatUtils from "#utils/formatUtils.js";
+import logger from "#utils/logger.js";
 import { paginateQuery } from "#utils/paginationUtils.js";
 
 // ─── Service Functions ────────────────────────────────────────────────────────
@@ -127,12 +129,36 @@ async function getAllQuotaRequests(queryParams) {
   return paginateQuery(QuotaRequest, {}, { pg, ps, sort: "-createdAt", populate: "user" });
 }
 
+async function rotateEncryptionKey(newKeyHex) {
+  const newKek = Buffer.from(newKeyHex, "hex");
+  const users = await User.find({
+    encryption_key_wrapped: { $exists: true, $ne: null },
+  }).select("+encryption_key_wrapped");
+
+  let usersRotated = 0;
+  const failures = [];
+
+  for (const user of users) {
+    try {
+      user.encryption_key_wrapped = CryptoUtils.rewrapUserKey(user.encryption_key_wrapped, newKek);
+      await user.save({ validateBeforeSave: false });
+      usersRotated++;
+    } catch (ex) {
+      logger.error(`[KeyRotation] Failed for user ${user._id}:`, ex);
+      failures.push({ userId: user._id.toString(), reason: ex.message });
+    }
+  }
+
+  return { usersRotated, failures };
+}
+
 const AdminService = {
   getUsers,
   updateUserQuota,
   handleQuotaRequest,
   updateUserStatus,
   getAllQuotaRequests,
+  rotateEncryptionKey,
 };
 
 export default AdminService;
