@@ -109,12 +109,12 @@ async function getMe(userId, role) {
   const userDoc = await User.findById(userId);
   const user = userDoc.toObject();
 
-  if (role === Roles.ADMIN) {
-    delete user.quota_bytes;
-    delete user.used_bytes;
+  if (role !== Roles.ADMIN) {
+    return user;
   }
 
-  return user;
+  const { quota_bytes: _quota, used_bytes: _used, ...adminView } = user;
+  return adminView;
 }
 
 async function updateProfile(userId, fields) {
@@ -189,7 +189,8 @@ async function forgotPassword(email) {
         session: null,
       },
     });
-  } catch (_err) {
+  } catch (ex) {
+    logger.error("[ForgotPassword] Email send failed:", ex);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
     await user.save({ validateBeforeSave: false });
