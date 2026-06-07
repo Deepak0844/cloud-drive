@@ -1,8 +1,7 @@
 // React core & third-party libraries
 import { useState } from "react";
-
 import { toast } from "sonner";
-import { Trash2, RotateCcw, AlertTriangle } from "lucide-react";
+import { Trash2, RotateCcw } from "lucide-react";
 import { motion } from "framer-motion";
 
 // Services (RTK Query hooks)
@@ -29,20 +28,10 @@ import FloatingBulkActionsBar, { BulkAction } from "@components/files/FloatingBu
 import FolderItem from "@components/files/FolderItem";
 import ListControls from "@components/files/ListControls";
 import InfoDrawer from "@components/files/InfoDrawer";
+import TrashConfirmDialogs from "@components/files/TrashConfirmDialogs";
 import { Button } from "@components/ui/button";
 import Loader from "@components/common/Loader";
 import PageHeader from "@components/layout/PageHeader";
-
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@components/ui/alert-dialog";
 
 function TrashView() {
   // Local state
@@ -50,6 +39,8 @@ function TrashView() {
   const [viewMode, setViewMode] = useState(VIEW_MODES.GRID);
   const [confirmEmpty, setConfirmEmpty] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Custom & shared hooks
   const { clearSelection, isSelected, selectedItems, toggleSelect } = useSelectableItems();
   const { advancedFilters, debouncedSearch, page, pageSize, setPage, updateParams } = useListPageParams();
 
@@ -74,9 +65,6 @@ function TrashView() {
   const folders = trashData?.data?.folders || [];
   const files = trashData?.data?.files || [];
 
-  // Event handlers
-
-  // Custom & shared hooks
   const { loaderRef } = useInfinitePaging({
     hasNext: paginationData?.hasNext || false,
     isLoading: isFetching,
@@ -85,9 +73,9 @@ function TrashView() {
     updateParams,
   });
 
-  // useEffect
   useOutsideClickClear({ clearSelection });
 
+  // Event handlers
   async function onEmptyTrashConfirm() {
     try {
       await emptyTrash().unwrap();
@@ -153,8 +141,6 @@ function TrashView() {
         }
       />
 
-      <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
-
       {isLoading ? (
         <div className="py-20 flex justify-center w-full">
           <Loader size={32} />
@@ -202,7 +188,7 @@ function TrashView() {
                         viewMode={viewMode}
                         isSelected={isSelected(id)}
                         onToggleSelect={(folderId) => toggleSelect(folderId, ItemTypes.FOLDER)}
-                        onOpen={() => toggleSelect(id, ItemTypes.FOLDER)} // prevent navigation in trash, just select
+                        onOpen={() => toggleSelect(id, ItemTypes.FOLDER)}
                         onShowInfo={setInfoItem}
                         isTrashItem={true}
                       />
@@ -239,7 +225,7 @@ function TrashView() {
                         viewMode={viewMode}
                         isSelected={isSelected(id)}
                         onToggleSelect={(fileId) => toggleSelect(fileId, ItemTypes.FILE)}
-                        onOpen={() => toggleSelect(id, ItemTypes.FILE)} // prevent preview in trash, just select
+                        onOpen={() => toggleSelect(id, ItemTypes.FILE)}
                         onShowInfo={setInfoItem}
                         isTrashItem={true}
                       />
@@ -268,53 +254,15 @@ function TrashView() {
 
       <InfoDrawer item={infoItem} open={!!infoItem} onClose={() => setInfoItem(null)} />
 
-      {/* Confirmation Dialogs */}
-      <AlertDialog open={confirmEmpty} onOpenChange={setConfirmEmpty}>
-        <AlertDialogContent className="aurora-modal">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-error">
-              <AlertTriangle size={20} />
-              <span>Empty Trash</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-label-tertiary font-medium">
-              Are you sure you want to permanently delete all items in the trash? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={onEmptyTrashConfirm}
-              className="rounded-xl font-bold bg-error hover:bg-error/90 text-white shadow-glow-sm"
-            >
-              Empty Trash
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent className="aurora-modal">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-error">
-              <AlertTriangle size={20} />
-              <span>Delete Forever</span>
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-label-tertiary font-medium">
-              Are you sure you want to permanently delete these {selectedItems.length} items? This action cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={onDeleteSelectedConfirm}
-              className="rounded-xl font-bold bg-error hover:bg-error/90 text-white shadow-glow-sm"
-            >
-              Delete Forever
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <TrashConfirmDialogs
+        confirmEmpty={confirmEmpty}
+        onConfirmEmptyChange={setConfirmEmpty}
+        onEmptyConfirm={onEmptyTrashConfirm}
+        confirmDelete={confirmDelete}
+        onConfirmDeleteChange={setConfirmDelete}
+        onDeleteConfirm={onDeleteSelectedConfirm}
+        selectedCount={selectedItems.length}
+      />
 
       <FloatingBulkActionsBar selectedCount={selectedItems.length} clearSelection={clearSelection}>
         <BulkAction
