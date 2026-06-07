@@ -7,8 +7,8 @@ import NotificationService from "#services/notificationService.js";
 import SocketService from "#services/socketService.js";
 
 // Constants
-import { ErrorMessages, NotificationMessages, NotificationTypes, SocketEvents } from "#constants/generalConstants.js";
-import { HttpStatus, QuotaStatus } from "@shared-constants/constants";
+import { ErrorMessages, NotificationMessages, SocketEvents } from "#constants/generalConstants.js";
+import { HttpStatus, NotificationTypes, QuotaStatus } from "@shared-constants/constants";
 
 // Utils
 import { AppError } from "#utils/errorUtils.js";

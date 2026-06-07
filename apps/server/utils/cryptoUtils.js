@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import fs from "fs";
 import Env from "#config/env.js";
 import logger from "#utils/logger.js";
 
@@ -167,6 +168,43 @@ function getDecipherForRange(userKey, iv, startOffset) {
   return decipher;
 }
 
+/**
+ * Computes HMAC-SHA256 over the ciphertext bytes of a stored file.
+ * Keyed with the user's plaintext DEK so integrity is user-scoped.
+ *
+ * @param {Buffer} userKey - Unwrapped plaintext DEK (32 bytes)
+ * @param {string} filePath - Absolute path to the encrypted file on disk
+ * @returns {Promise<string>} Hex-encoded HMAC digest
+ */
+function computeFileHmac(userKey, filePath) {
+  return new Promise((resolve, reject) => {
+    const hmac = crypto.createHmac("sha256", userKey);
+    const stream = fs.createReadStream(filePath);
+    stream.on("data", (chunk) => hmac.update(chunk));
+    stream.on("end", () => resolve(hmac.digest("hex")));
+    stream.on("error", reject);
+  });
+}
+
+/**
+ * Verifies a stored HMAC against the current ciphertext on disk.
+ * Uses timingSafeEqual to prevent timing-oracle attacks.
+ *
+ * @param {Buffer} userKey - Unwrapped plaintext DEK (32 bytes)
+ * @param {string} filePath - Absolute path to the encrypted file on disk
+ * @param {string} storedHmac - Hex-encoded HMAC previously written to the DB
+ * @returns {Promise<boolean>} true if integrity holds, false if tampered
+ */
+async function verifyFileHmac(userKey, filePath, storedHmac) {
+  const computed = await computeFileHmac(userKey, filePath);
+  const storedBuf = Buffer.from(storedHmac, "hex");
+  const computedBuf = Buffer.from(computed, "hex");
+  if (storedBuf.length !== computedBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(storedBuf, computedBuf);
+}
+
 const CryptoUtils = {
   generateAndWrapUserKey,
   unwrapUserKey,
@@ -174,6 +212,8 @@ const CryptoUtils = {
   getCipherStream,
   getDecipherStream,
   getDecipherForRange,
+  computeFileHmac,
+  verifyFileHmac,
 };
 
 export default CryptoUtils;

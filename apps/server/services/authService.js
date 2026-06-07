@@ -9,14 +9,8 @@ import NotificationService from "#services/notificationService.js";
 import config from "#config/env.js";
 
 // Constants
-import {
-  ErrorMessages,
-  NotificationMessages,
-  NotificationTypes,
-  AUTH_COOKIE_NAME,
-  CookieConfig,
-} from "#constants/generalConstants.js";
-import { HttpStatus, Roles } from "@shared-constants/constants";
+import { ErrorMessages, NotificationMessages, AUTH_COOKIE_NAME, CookieConfig } from "#constants/generalConstants.js";
+import { HttpStatus, Roles, NotificationTypes } from "@shared-constants/constants";
 
 // Utils
 import { AppError } from "#utils/errorUtils.js";

@@ -7,7 +7,7 @@ import fs from "fs";
 import crypto from "crypto";
 
 import FileUtils from "#utils/fileUtils.js";
-import { FileCategories } from "#constants/generalConstants.js";
+import { FileCategories } from "@shared-constants/constants";
 import logger from "#utils/logger.js";
 
 // Prefer system ffprobe over npm-bundled binary (better codec support)

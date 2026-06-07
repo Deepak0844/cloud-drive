@@ -36,21 +36,6 @@ export const SocketActions = {
 };
 
 /**
- * Notification types
- */
-export const NotificationTypes = {
-  QUOTA_APPROVED: "QUOTA_APPROVED",
-  QUOTA_REJECTED: "QUOTA_REJECTED",
-  QUOTA_REQUEST: "QUOTA_REQUEST",
-  QUOTA_CHANGE: "QUOTA_CHANGE",
-  SYSTEM_ALERT: "SYSTEM_ALERT",
-  STORAGE_ALERT: "STORAGE_ALERT",
-  SECURITY_ALERT: "SECURITY_ALERT",
-  UPLOAD_COMPLETE: "UPLOAD_COMPLETE",
-  TRASH_CLEANUP: "TRASH_CLEANUP",
-};
-
-/**
  * Common Error Messages
  */
 export const ErrorMessages = {
@@ -161,18 +146,6 @@ export const NotificationMessages = {
 };
 
 /**
- * File Categories
- */
-export const FileCategories = {
-  IMAGE: "image",
-  VIDEO: "video",
-  AUDIO: "audio",
-  DOCUMENT: "document",
-  ARCHIVE: "archive",
-  OTHER: "other",
-};
-
-/**
  * Video Constants
  */
 export const VideoMimeTypes = {
@@ -187,17 +160,6 @@ export const VideoExtensions = {
   MOV: "mov",
   WEBM: "webm",
   M4V: "m4v",
-};
-
-/**
- * Bulk Actions
- */
-export const BulkActions = {
-  DELETE: "delete",
-  RESTORE: "restore",
-  PERMANENT_DELETE: "permanent_delete",
-  MOVE: "move",
-  COPY: "copy",
 };
 
 /**
@@ -231,31 +193,12 @@ export const HlsConfig = {
 };
 
 /**
- * Byte conversion multipliers
- */
-export const ByteMultipliers = {
-  KB: 1000,
-  MB: 1000 * 1000,
-  GB: 1000 * 1000 * 1000,
-};
-
-/**
- * Speed window cutoff for upload progress (ms)
- */
-export const SPEED_WINDOW_MS = 5000;
-
-/**
  * Default notification fallback values
  */
 export const NotificationDefaults = {
   USED_PERCENTAGE: "80",
   TOTAL_QUOTA: "10GB",
 };
-
-/**
- * Percentage multiplier
- */
-export const PERCENTAGE_MULTIPLIER = 100;
 
 /**
  * Media processing constants — thumbnail dimensions, quality levels, and transcode settings.

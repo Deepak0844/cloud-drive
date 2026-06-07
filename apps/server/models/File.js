@@ -116,6 +116,10 @@ const fileSchema = new mongoose.Schema(
       type: String,
       index: true,
     },
+    integrity_hmac: {
+      type: String,
+      select: false,
+    },
     last_opened_at: {
       type: Date,
       default: Date.now,

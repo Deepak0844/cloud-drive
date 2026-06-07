@@ -8,8 +8,8 @@ import EmailService from "#services/emailService.js";
 import NotificationService from "#services/notificationService.js";
 
 // Constants
-import { NotificationMessages, NotificationTypes } from "#constants/generalConstants.js";
-import { ItemTypes } from "@shared-constants/constants";
+import { NotificationMessages } from "#constants/generalConstants.js";
+import { ItemTypes, NotificationTypes } from "@shared-constants/constants";
 
 // Config
 import config from "#config/env.js";

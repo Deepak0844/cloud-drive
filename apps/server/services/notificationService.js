@@ -11,8 +11,8 @@ import SocketService from "#services/socketService.js";
 import config from "#config/env.js";
 
 // Constants
-import { ErrorMessages, NotificationDefaults, NotificationTypes, SocketEvents } from "#constants/generalConstants.js";
-import { HttpStatus } from "@shared-constants/constants";
+import { ErrorMessages, NotificationDefaults, SocketEvents } from "#constants/generalConstants.js";
+import { HttpStatus, NotificationTypes } from "@shared-constants/constants";
 
 // Utils
 import { AppError } from "#utils/errorUtils.js";
