@@ -4,6 +4,10 @@ import multer from "multer";
 
 // Constants
 import { ErrorMessages } from "#constants/generalConstants.js";
+import { HttpStatus } from "@shared-constants/constants";
+
+// Utils
+import { AppError } from "#utils/errorUtils.js";
 
 // ─── Allowed MIME Types ───────────────────────────────────────────────────────
 
@@ -84,7 +88,7 @@ const upload = multer({
     if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(ErrorMessages.FILE_TYPE_NOT_ALLOWED), false);
+      cb(new AppError(ErrorMessages.FILE_TYPE_NOT_ALLOWED, HttpStatus.BAD_REQUEST), false);
     }
   },
 });
