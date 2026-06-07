@@ -12,7 +12,7 @@ import NotificationService from "#services/notificationService.js";
 import config from "#config/env.js";
 
 // Constants
-import { ErrorMessages, NotificationMessages, AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME, CookieConfig } from "#constants/generalConstants.js";
+import { ErrorMessages, NotificationMessages, AUTH_COOKIE_NAME, CookieConfig } from "#constants/generalConstants.js";
 import { HttpStatus, Roles, NotificationTypes } from "@shared-constants/constants";
 
 // Utils
@@ -21,38 +21,9 @@ import CryptoUtils from "#utils/cryptoUtils.js";
 import SecurityUtils from "#utils/securityUtils.js";
 import logger from "#utils/logger.js";
 import { clearRefreshCookie } from "#utils/authUtils.js";
+import { sendSecurityEmail } from "#utils/securityEmailUtils.js";
 
 // ─── Service Functions ────────────────────────────────────────────────────────
-
-/**
- * Send a security-alert email if the user's preferences allow it.
- */
-async function sendSecurityEmail(user, subject, message, alertType = "security", sessionMetadata = null) {
-  try {
-    const prefs = user.notification_preferences ?? {};
-    if (prefs.security_alerts !== false && user.email) {
-      await EmailService.sendTemplateEmail({
-        email: user.email,
-        subject,
-        templateName: "security-alert",
-        plainTextMessage: message,
-        data: {
-          userName: user.name,
-          alertTitle: subject,
-          alertMessage: message,
-          alertType,
-          actionUrl: `${config.APP_BASE_URL}/settings`,
-          session: sessionMetadata,
-        },
-      });
-      logger.info(`[Security Email] Sent HTML "${subject}" to ${user.email}`);
-    } else {
-      logger.debug(`[Security Email] Skipped "${subject}" to ${user.email} (Setting disabled)`);
-    }
-  } catch (err) {
-    logger.error(`[Security Email] Failed to send to ${user.email}:`, err);
-  }
-}
 
 async function register(name, email, password) {
   const userExists = await User.findOne({ email });
