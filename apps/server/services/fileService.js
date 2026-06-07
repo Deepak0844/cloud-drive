@@ -464,6 +464,11 @@ async function finalizeUploadedFile({
 
   if (!fileTypeResult) {
     // file-type returned null: text/XML/JSON/SVG have no binary signature and are expected here.
+    // A zero-byte file has no content to detect — reject it regardless of claimed MIME.
+    if (finalSize === 0) {
+      await fs.promises.unlink(finalUploadPath).catch(() => {});
+      throw new AppError(ErrorMessages.FILE_TYPE_NOT_ALLOWED, HttpStatus.BAD_REQUEST);
+    }
     // Any other claimed type is rejected unless it is in the allowlist.
     if (!ALLOWED_MIME_TYPES.has(mimeType)) {
       logger.warn(

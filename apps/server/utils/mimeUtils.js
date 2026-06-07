@@ -34,7 +34,6 @@ function getMimeType(filename) {
     mkv: "video/x-matroska",
     wmv: "video/x-ms-wmv",
     flv: "video/x-flv",
-    ts: "video/mp2t",
     "3gp": "video/3gpp",
     m4v: "video/mp4",
 
