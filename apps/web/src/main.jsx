@@ -4,6 +4,9 @@ import ReactDOM from "react-dom/client";
 import { Provider } from "react-redux";
 import { RouterProvider } from "react-router-dom";
 
+// Interceptors
+import { setupAxiosInterceptors } from "@utils/axiosInterceptors";
+
 // Store
 import { store } from "./store";
 
@@ -29,5 +32,7 @@ export function App() {
     </Provider>
   );
 }
+
+setupAxiosInterceptors();
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
