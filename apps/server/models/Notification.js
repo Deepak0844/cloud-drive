@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 // Constants
-import { NotificationTypes } from "#constants/generalConstants.js";
+import { NotificationTypes } from "@shared-constants/constants";
 
 const notificationSchema = new mongoose.Schema(
   {

@@ -5,7 +5,8 @@ import File from "#models/File.js";
 import NotificationService from "#services/notificationService.js";
 
 // Constants
-import { NotificationMessages, NotificationTypes } from "#constants/generalConstants.js";
+import { NotificationMessages } from "#constants/generalConstants.js";
+import { NotificationTypes } from "@shared-constants/constants";
 
 // Utils
 import logger from "#utils/logger.js";

@@ -14,10 +14,8 @@ import config from "#config/env.js";
 
 // Constants
 import {
-  NotificationTypes,
   ErrorMessages,
   NotificationMessages,
-  FileCategories,
   VideoExtensions,
   SocketEvents,
   SocketActions,
@@ -35,7 +33,13 @@ import DbUtils from "#utils/dbUtils.js";
 import { applyAdvancedFilters, escapeRegex } from "#utils/filterUtils.js";
 import { paginateQuery } from "#utils/paginationUtils.js";
 import { AppError } from "#utils/errorUtils.js";
-import { HttpStatus, ItemTypes, DefaultPagination } from "@shared-constants/constants";
+import {
+  HttpStatus,
+  ItemTypes,
+  DefaultPagination,
+  NotificationTypes,
+  FileCategories,
+} from "@shared-constants/constants";
 
 // External
 import { fileTypeFromFile } from "file-type";
@@ -557,6 +561,9 @@ async function finalizeUploadedFile({
     cipher.on("error", reject);
   });
 
+  // 3a. Compute HMAC over the ciphertext for storage-integrity verification on download
+  const integrityHmac = await CryptoUtils.computeFileHmac(plaintextKey, stablePath);
+
   // 4. Cleanup final temp file
   await fs.promises.unlink(finalUploadPath).catch(() => {});
 
@@ -574,6 +581,7 @@ async function finalizeUploadedFile({
     size_bytes: finalSize,
     storage_path: stablePath,
     encryption_iv: iv.toString("hex"),
+    integrity_hmac: integrityHmac,
     metadata,
     hash,
     ...extra,
@@ -844,7 +852,7 @@ async function getPlaybackInfo(userId, fileId) {
  * Used by controllers that need to stream/decrypt file bytes.
  */
 async function getFileWithKey(userId, fileId) {
-  const file = await File.findOne({ _id: fileId, user: userId });
+  const file = await File.findOne({ _id: fileId, user: userId }).select("+integrity_hmac");
   if (!file) {
     throw new AppError(ErrorMessages.FILE_NOT_FOUND, HttpStatus.NOT_FOUND);
   }
@@ -855,6 +863,17 @@ async function getFileWithKey(userId, fileId) {
   }
 
   const plaintextKey = CryptoUtils.unwrapUserKey(user.encryption_key_wrapped);
+
+  if (file.integrity_hmac) {
+    const valid = await CryptoUtils.verifyFileHmac(plaintextKey, file.storage_path, file.integrity_hmac);
+    if (!valid) {
+      logger.error(`[FileService] HMAC verification failed for file ${file._id} — storage may be corrupted`);
+      throw new AppError("Storage integrity check failed", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  } else {
+    logger.warn(`[FileService] integrity_hmac absent for file ${file._id} — legacy file`);
+  }
+
   const iv = Buffer.from(file.encryption_iv, "hex");
   return { file, user, plaintextKey, iv };
 }

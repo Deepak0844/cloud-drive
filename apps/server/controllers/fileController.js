@@ -10,14 +10,13 @@ import SocketService from "#services/socketService.js";
 import {
   ErrorMessages,
   SuccessMessages,
-  FileCategories,
   VideoMimeTypes,
   SocketEvents,
   SocketActions,
   CacheDurations,
   HlsConfig,
 } from "#constants/generalConstants.js";
-import { HttpStatus, ItemTypes } from "@shared-constants/constants";
+import { HttpStatus, ItemTypes, FileCategories } from "@shared-constants/constants";
 
 // Middleware
 import asyncHandler from "#middlewares/asyncHandler.js";

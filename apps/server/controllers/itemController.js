@@ -6,7 +6,8 @@ import DbUtils from "#utils/dbUtils.js";
 import SocketService from "#services/socketService.js";
 
 // Constants
-import { ErrorMessages, SocketEvents, BulkActions } from "#constants/generalConstants.js";
+import { ErrorMessages, SocketEvents } from "#constants/generalConstants.js";
+import { BulkActions } from "@shared-constants/constants";
 
 // Middleware
 import asyncHandler from "#middlewares/asyncHandler.js";

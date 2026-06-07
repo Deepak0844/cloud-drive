@@ -10,15 +10,16 @@ import NotificationService from "#services/notificationService.js";
 import SocketService from "#services/socketService.js";
 
 // Constants
+import { ErrorMessages, SocketEvents } from "#constants/generalConstants.js";
 import {
+  HttpStatus,
+  QuotaStatus,
+  Roles,
   ByteMultipliers,
-  ErrorMessages,
   FileCategories,
   NotificationTypes,
   PERCENTAGE_MULTIPLIER,
-  SocketEvents,
-} from "#constants/generalConstants.js";
-import { HttpStatus, QuotaStatus, Roles } from "@shared-constants/constants";
+} from "@shared-constants/constants";
 
 // Utils
 import { AppError } from "#utils/errorUtils.js";
