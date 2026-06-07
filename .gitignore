@@ -17,17 +17,20 @@ node_modules
 # Docker Environment Files
 .env.dev
 .env.prod
+.env.staging
 
 # env/ subfolder secrets
 apps/server/env/.env
 apps/server/env/.env.development
 apps/server/env/.env.production
+apps/server/env/.env.staging
 # Allow example/template files
 !*.env.example
 !.env.example
 !apps/server/env/.env.example
 !apps/server/env/.env.development.example
 !apps/server/env/.env.production.example
+!apps/server/env/.env.staging.example
 
 # Testing
 coverage
