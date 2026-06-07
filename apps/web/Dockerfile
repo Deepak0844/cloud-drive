@@ -12,6 +12,8 @@
 
 ARG NODE_VERSION=22-alpine
 ARG NGINX_VERSION=alpine
+ARG SERVER_NAME=localhost
+ARG HSTS_MAX_AGE=300
 
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 FROM node:${NODE_VERSION} AS builder
@@ -41,18 +43,31 @@ RUN npm run build --workspace=cloud-drive-web
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
 FROM nginx:${NGINX_VERSION}
 
-# Install openssl and generate a self-signed certificate for LAN HTTPS
+# Re-declare build args — ARGs before FROM are not available after it.
+ARG SERVER_NAME=localhost
+ARG HSTS_MAX_AGE=300
+
+# Install openssl; generate a self-signed cert with SERVER_NAME as CN.
+# To use a real cert (Let's Encrypt, custom CA): mount it over
+# /etc/nginx/ssl at runtime via a compose volume (see staging/prod compose files).
 RUN apk add --no-cache openssl && \
     mkdir -p /etc/nginx/ssl && \
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
     -keyout /etc/nginx/ssl/nginx.key \
     -out /etc/nginx/ssl/nginx.crt \
-    -subj "/C=US/ST=State/L=City/O=CloudDrive/CN=localhost"
+    -subj "/C=US/ST=State/L=City/O=CloudDrive/CN=${SERVER_NAME}"
 
 # Copy built assets from builder stage
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 
-# Copy Nginx config (handles SPA routing + API proxy to server container)
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+# Substitute SERVER_NAME and HSTS_MAX_AGE into the nginx config template.
+# The explicit variable list '${SERVER_NAME} ${HSTS_MAX_AGE}' tells envsubst to
+# substitute only those two — nginx runtime variables ($uri, $host, etc.) are untouched.
+COPY apps/web/nginx.conf /tmp/nginx.conf.template
+RUN SERVER_NAME="${SERVER_NAME}" HSTS_MAX_AGE="${HSTS_MAX_AGE}" \
+    envsubst '${SERVER_NAME} ${HSTS_MAX_AGE}' \
+    < /tmp/nginx.conf.template \
+    > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
+EXPOSE 443

@@ -17,6 +17,20 @@ ARG SERVER_PORT=9000
 
 WORKDIR /app
 
+# System libraries required by canvas (node-canvas does not ship prebuilt binaries).
+# build-essential + python3 are needed at build time for node-gyp compilation.
+# The *-dev packages pull in their runtime counterparts (libcairo2, libpango-1.0-0,
+# etc.) as dependencies, so one install covers both build-time and runtime needs.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3 \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+ && rm -rf /var/lib/apt/lists/*
+
 # ── Layer 1: workspace manifests (cached unless package files change) ─────────
 COPY package.json package-lock.json turbo.json ./
 COPY shared/ ./shared/
