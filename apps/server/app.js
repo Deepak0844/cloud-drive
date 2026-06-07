@@ -105,10 +105,11 @@ app.use(limiter); // Apply global limiter
 app.use(`${baseUrl}/files/upload`, uploadLimiter); // Apply upload-specific limiter
 
 // Logging Middleware (Pino)
-app.use((req, res, next) => {
+function logRequest(req, res, next) {
   logger.info(`${req.method} ${req.url}`);
   next();
-});
+}
+app.use(logRequest);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -147,10 +148,7 @@ app.use((_req, _res, next) => {
 
 // error handler
 app.use((err, req, res, _next) => {
-  const statusCode =
-    err.status ||
-    err.statusCode ||
-    (err.message === ErrorMessages.FILE_TYPE_NOT_ALLOWED ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR);
+  const statusCode = err.status || err.statusCode || HttpStatus.INTERNAL_SERVER_ERROR;
   const message = err.message || ErrorMessages.SERVER_ERROR;
 
   // Log error
