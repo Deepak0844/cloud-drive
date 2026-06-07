@@ -55,10 +55,21 @@ function stopHardwareStatsInterval() {
  * @returns {Server} - The initialized socket.io server instance
  */
 function init(server) {
+  const allowedOrigins = config.ALLOWED_ORIGINS
+    ? config.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+    : ["http://localhost:3000", "http://localhost:9001"];
+
   io = new Server(server, {
     cors: {
-      origin: "*",
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error(`Socket CORS: Origin '${origin}' not allowed`));
+        }
+      },
       methods: ["GET", "POST"],
+      credentials: true,
     },
     pingTimeout: 60000,
     pingInterval: 25000,
