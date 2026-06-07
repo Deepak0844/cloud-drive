@@ -42,14 +42,14 @@ function UploadManager() {
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
             <CloudUpload size={18} className="text-primary animate-pulse" />
           </div>
-          <span className="font-black text-white tracking-tight">
+          <span className="font-black text-slate-900 tracking-tight">
             {totalUploads} Upload{totalUploads !== 1 ? "s" : ""}
           </span>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full hover:bg-white/10 text-white/50 hover:text-white transition-all"
+          className="h-8 w-8 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-900 transition-all"
           onClick={(e) => {
             e.stopPropagation();
             setMinimized(!minimized);

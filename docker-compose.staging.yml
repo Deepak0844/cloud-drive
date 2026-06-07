@@ -1,0 +1,75 @@
+# =============================================================================
+# docker-compose.staging.yml — Staging overlay
+#
+# Usage (standalone, default ports 8080/8443):
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml \
+#     --env-file .env.staging up -d --build
+#
+# Usage (alongside prod on same host — project name isolates networks/volumes):
+#   docker compose -p cloud-drive-staging \
+#     -f docker-compose.yml -f docker-compose.staging.yml \
+#     --env-file .env.staging up -d --build
+#
+# Copy .env.staging.example → .env.staging and fill in values before first run.
+# =============================================================================
+
+services:
+  server:
+    env_file:
+      - apps/server/env/.env.staging
+    environment:
+      - NODE_ENV=staging
+      - NAS_STORAGE_PATH=/storage
+    volumes:
+      - ${NAS_HOST_PATH:?NAS_HOST_PATH must be set in .env.staging}:/storage
+    networks: [app-net]
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NODE_VERSION: "22-alpine"
+        NGINX_VERSION: "alpine"
+        # SERVER_NAME controls nginx server_name, the HTTP redirect target, and
+        # the self-signed cert CN. Default is localhost; override in .env.staging
+        # to match the machine's hostname or IP when accessing remotely.
+        SERVER_NAME: "${SERVER_NAME:-localhost}"
+        # 300 s (5 min) HSTS is safe when the self-signed cert regenerates on each
+        # rebuild. Raise to 31536000 only after switching to a stable cert.
+        HSTS_MAX_AGE: "${HSTS_MAX_AGE:-300}"
+    ports:
+      # Non-standard ports so staging can coexist with prod on the same host.
+      # Override via .env.staging if staging is the only stack on this machine.
+      - "${WEB_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "--no-check-certificate", "https://localhost:443/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks: [app-net]
+    # ── Optional: mount a real cert instead of the baked self-signed one ───────
+    # Uncomment when a stable cert is available (Let's Encrypt, custom CA, etc.).
+    # volumes:
+    #   - ${CERT_DIR:?CERT_DIR must be set}:/etc/nginx/ssl:ro
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_staging_data:/data/db
+    restart: unless-stopped
+    networks: [app-net]
+
+volumes:
+  mongo_staging_data:
+
+# app-net is declared in docker-compose.yml (base) — listed here so staging
+# services can join it without re-declaring the driver.
+networks:
+  app-net:

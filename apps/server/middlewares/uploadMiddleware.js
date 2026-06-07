@@ -24,12 +24,15 @@ export const ALLOWED_MIME_TYPES = new Set([
   "video/webm",
   "video/quicktime",
   "video/x-msvideo",
+  "video/vnd.avi", // file-type v22 returns this for AVI, not video/x-msvideo
   "video/x-matroska",
+  "video/matroska", // file-type v22 returns this for MKV, not video/x-matroska
   "video/x-flv",
   "video/mpeg",
   "video/3gpp",
   "video/ogg",
   "video/x-ms-wmv",
+  "video/x-ms-asf", // file-type v22 returns this for WMV/ASF containers
   "video/mp2t",
   // Audio
   "audio/mpeg",
@@ -42,7 +45,9 @@ export const ALLOWED_MIME_TYPES = new Set([
   "audio/opus",
   "audio/webm",
   "audio/x-aiff",
+  "audio/aiff", // file-type v22 returns this for AIFF, not audio/x-aiff
   "audio/x-ms-wma",
+  "audio/x-ms-asf", // file-type v22 returns this for WMA/ASF containers
   // Documents
   "application/pdf",
   "application/msword",
@@ -60,8 +65,6 @@ export const ALLOWED_MIME_TYPES = new Set([
   "application/x-7z-compressed",
   "application/x-tar",
   "application/gzip",
-  // Chunked uploads
-  "application/octet-stream",
 ]);
 
 // ─── Multer — writes to OS temp dir; we rename to stable path after DB insert ─

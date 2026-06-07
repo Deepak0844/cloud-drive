@@ -5,12 +5,32 @@ node_modules
 .pnp
 .pnp.js
 
-# Local env files
+# Environment files — never commit real secrets
 .env
 .env.local
+.env.development
+.env.production
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Docker Environment Files
+.env.dev
+.env.prod
+.env.staging
+
+# env/ subfolder secrets
+apps/server/env/.env
+apps/server/env/.env.development
+apps/server/env/.env.production
+apps/server/env/.env.staging
+# Allow example/template files
+!*.env.example
+!.env.example
+!apps/server/env/.env.example
+!apps/server/env/.env.development.example
+!apps/server/env/.env.production.example
+!apps/server/env/.env.staging.example
 
 # Testing
 coverage
@@ -29,7 +49,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # User storage
-apps/server/storage/*
+data/storage/*
+!data/storage/.gitkeep
 
 # Misc
 .DS_Store
@@ -41,5 +62,9 @@ package-lock.json
 .gemini
 
 .agent
+.agents
 
 .github
+.claude
+CLAUDE.md
+work/

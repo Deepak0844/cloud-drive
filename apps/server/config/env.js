@@ -1,13 +1,18 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import { z } from "zod";
 
-dotenv.config({ quiet: true });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Load from env/ folder: apps/server/env/.env
+dotenv.config({ path: path.resolve(__dirname, "../env/.env"), quiet: true });
 
 /**
  * Environment Variable Schema
  */
 const envSchema = z.object({
-  PORT: z.string().default("9001"),
+  PORT: z.string().default("9000"),
   MONGODB_URI: z.string({
     required_error: "MONGODB_URI is required",
   }),
@@ -30,7 +35,7 @@ const envSchema = z.object({
   NAS_STORAGE_PATH: z.string({
     required_error: "NAS_STORAGE_PATH is required",
   }),
-  APP_BASE_URL: z.string().url().default("http://localhost:9001"),
+  APP_BASE_URL: z.string().url().default("http://localhost:9000"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   LOG_LEVEL: z.string().default("info"),
   TRASH_EXPIRY_DAYS: z.string().transform(Number).default("30"),

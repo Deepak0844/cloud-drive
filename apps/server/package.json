@@ -48,6 +48,7 @@
     "express": "^4.22.1",
     "express-rate-limit": "^8.2.1",
     "face-api.js": "^0.22.2",
+    "file-type": "^22.0.1",
     "heic-convert": "^2.1.0",
     "helmet": "^8.1.0",
     "http-errors": "~1.6.3",
@@ -67,9 +68,9 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@shared-constants/constants": "*",
     "@shared-eslint/config": "*",
     "@shared-js-config/config": "*",
-    "@shared-constants/constants": "*",
     "@types/archiver": "^7.0.0",
     "@types/jest": "^30.0.0",
     "jest": "^30.2.0",
