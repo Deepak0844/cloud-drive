@@ -1,6 +1,7 @@
 // Constants
 import { ApiBasePath, FileServiceUrls } from "@constants/serviceUrls";
 import { UPLOAD_CHUNK_SIZE } from "@shared-constants/constants";
+import { CSRF_HEADER, ensureCsrfToken } from "@utils/csrfUtils";
 
 /**
  * Compute SHA-256 of an ArrayBuffer and return a lowercase hex string.
@@ -17,7 +18,9 @@ async function sha256Hex(buffer) {
  * Send a single chunk as raw binary using XHR for real onUploadProgress events.
  * Metadata goes in query params — no FormData serialization.
  */
-export function uploadChunkRaw({ uploadId, chunkIndex, chunkHash, buffer, signal, onProgress }) {
+export async function uploadChunkRaw({ uploadId, chunkIndex, chunkHash, buffer, signal, onProgress }) {
+  const csrfToken = await ensureCsrfToken();
+
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(new Error("canceled"));
 
@@ -30,6 +33,9 @@ export function uploadChunkRaw({ uploadId, chunkIndex, chunkHash, buffer, signal
     xhr.open("POST", url);
     xhr.withCredentials = true;
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
+    if (csrfToken) {
+      xhr.setRequestHeader(CSRF_HEADER, csrfToken);
+    }
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) onProgress(e.loaded, e.total);

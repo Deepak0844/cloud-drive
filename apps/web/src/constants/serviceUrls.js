@@ -103,6 +103,11 @@ export const ItemServiceUrls = {
   performBulkOperation: `${ItemsBasePath}/bulk-operation`,
 };
 
+// CSRF Service Urls
+export const CsrfServiceUrls = {
+  getToken: "/csrf-token",
+};
+
 // Trash Service Urls
 export const TrashServiceUrls = {
   getTrashItems: `${TrashBasePath}`,

@@ -1,11 +1,26 @@
 import axios from "axios";
+
 import { ApiBasePath } from "@constants/serviceUrls";
+import { CSRF_HEADER, ensureCsrfToken } from "@utils/csrfUtils";
 
 const REFRESH_URL = `${ApiBasePath}/auth/refresh`;
+const MUTATING_METHODS = new Set(["post", "put", "patch", "delete"]);
 
 let refreshPromise = null;
 
 export function setupAxiosInterceptors() {
+  axios.interceptors.request.use(async (cfg) => {
+    if (!MUTATING_METHODS.has((cfg.method || "get").toLowerCase())) {
+      return cfg;
+    }
+    const token = await ensureCsrfToken();
+    if (token) {
+      cfg.headers = cfg.headers || {};
+      cfg.headers[CSRF_HEADER] = token;
+    }
+    return cfg;
+  });
+
   axios.interceptors.response.use(
     (response) => response,
     async (error) => {
