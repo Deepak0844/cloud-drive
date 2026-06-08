@@ -23,7 +23,7 @@ import { sendTokenResponse } from "#utils/authUtils.js";
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
   const user = await AuthService.register(name, email, password);
-  return await sendTokenResponse(user, HttpStatus.CREATED, res, SuccessMessages.REGISTRATION_SUCCESS);
+  return sendTokenResponse(user, HttpStatus.CREATED, res, SuccessMessages.REGISTRATION_SUCCESS);
 });
 
 /**
@@ -33,7 +33,7 @@ export const register = asyncHandler(async (req, res) => {
  */
 export const login = asyncHandler(async (req, res) => {
   const user = await AuthService.login(req.body.email, req.body.password, req);
-  return await sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.LOGIN_SUCCESS);
+  return sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.LOGIN_SUCCESS);
 });
 
 /**
@@ -60,7 +60,7 @@ export const logout = (req, res) => {
  */
 export const refreshToken = asyncHandler(async (req, res) => {
   const user = await AuthService.refreshAccessToken(req.cookies?.[REFRESH_COOKIE_NAME]);
-  return await sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.LOGIN_SUCCESS);
+  return sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.LOGIN_SUCCESS);
 });
 
 /**
