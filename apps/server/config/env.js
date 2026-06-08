@@ -5,8 +5,11 @@ import { z } from "zod";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Load from env/ folder: apps/server/env/.env
+// Load base vars, then overlay environment-specific vars (e.g. env/.env.development adds secrets).
+// Tests run with NODE_ENV=test but share the development secrets (in-memory DB; no real connection).
+const envSuffix = process.env.NODE_ENV === "test" ? "development" : process.env.NODE_ENV;
 dotenv.config({ path: path.resolve(__dirname, "../env/.env"), quiet: true });
+dotenv.config({ path: path.resolve(__dirname, `../env/.env.${envSuffix}`), quiet: true });
 
 /**
  * Environment Variable Schema

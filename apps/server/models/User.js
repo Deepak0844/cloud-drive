@@ -8,6 +8,7 @@ import Env from "#config/env.js";
 
 // Constants
 import { Roles } from "@shared-constants/constants";
+import { BCRYPT_COST } from "#constants/generalConstants.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -83,7 +84,7 @@ userSchema.pre("save", async function () {
     return;
   }
 
-  const salt = await bcrypt.genSalt(10);
+  const salt = await bcrypt.genSalt(BCRYPT_COST);
   this.password = await bcrypt.hash(this.password, salt);
 });
 

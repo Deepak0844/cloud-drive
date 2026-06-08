@@ -86,6 +86,7 @@ export const ErrorMessages = {
   INVALID_SEGMENT: "Invalid segment identifier",
   PLAYBACK_TYPE_UNSUPPORTED: "Playback info is only available for video and audio files",
   UNKNOWN_ERROR: "Unknown error",
+  CSRF_INVALID: "Invalid or missing CSRF token",
 };
 
 /**
@@ -167,6 +168,9 @@ export const VideoExtensions = {
  */
 export const AUTH_COOKIE_NAME = "token";
 export const REFRESH_COOKIE_NAME = "refresh_token";
+export const CSRF_COOKIE_NAME = "csrf_token";
+export const CSRF_HEADER_NAME = "x-csrf-token";
+export const BCRYPT_COST = 11;
 
 export const CookieConfig = {
   HTTP_ONLY: true,

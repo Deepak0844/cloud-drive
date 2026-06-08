@@ -22,6 +22,10 @@ import CronUtils from "#utils/cronUtils.js";
 import logger from "#utils/logger.js";
 import ResponseUtils from "#utils/responseUtils.js";
 
+// Middlewares
+import sanitizeMongo from "#middlewares/sanitizeMongo.js";
+import { issueCsrfToken, verifyCsrf } from "#middlewares/csrf.js";
+
 // Routes
 import authRoutes from "#routes/authRoutes.js";
 import fileRoutes from "#routes/fileRoutes.js";
@@ -47,16 +51,18 @@ if (Env.NODE_ENV !== "test") {
 }
 
 // Security Middlewares
+const isProd = Env.NODE_ENV === "production";
+const cspDirectives = {
+  ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+  "frame-ancestors": isProd ? ["'self'"] : ["'self'", "http://localhost:*"],
+};
+if (!isProd) {
+  cspDirectives["upgrade-insecure-requests"] = null; // allow http only in local dev
+}
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: {
-      directives: {
-        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        "frame-ancestors": ["'self'", "http://localhost:*"],
-        "upgrade-insecure-requests": null, // Allow http for local development
-      },
-    },
+    contentSecurityPolicy: { directives: cspDirectives },
   })
 );
 
@@ -125,6 +131,9 @@ app.use(logRequest);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(sanitizeMongo);
+app.get(`${baseUrl}/csrf-token`, issueCsrfToken); // must precede verifyCsrf
+app.use(verifyCsrf);
 app.use(express.static(path.join(__dirname, "public")));
 
 // Routes
