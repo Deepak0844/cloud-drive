@@ -885,6 +885,80 @@ async function getUserQuota(userId) {
   return { quota_bytes: user.quota_bytes, used_bytes: user.used_bytes };
 }
 
+const MIN_THUMB_BYTES = 2000;
+
+/**
+ * Ensures a valid encrypted thumbnail exists for the given file, generating
+ * one if needed. Returns { thumbPath, thumbIv } when ready, null otherwise.
+ */
+async function getOrGenerateThumbnail(file, plaintextKey, iv) {
+  const userId = file.user.toString();
+  const fileId = file._id.toString();
+  const thumbDir = getThumbnailDir(userId);
+  const thumbPath = path.join(thumbDir, `${fileId}.jpg`);
+
+  const thumbSize = fs.existsSync(thumbPath) ? fs.statSync(thumbPath).size : 0;
+  const thumbExistsAndValid = thumbSize >= MIN_THUMB_BYTES && !!file.thumbnail_iv;
+
+  if (!thumbExistsAndValid && fs.existsSync(thumbPath)) {
+    fs.unlinkSync(thumbPath);
+    if (file.thumbnail_path || file.thumbnail_iv) {
+      file.thumbnail_path = null;
+      file.thumbnail_iv = null;
+      await file.save();
+    }
+  }
+
+  if (!thumbExistsAndValid) {
+    if (!fs.existsSync(file.storage_path)) {
+      return null;
+    }
+    try {
+      const thumbIv = CryptoUtils.generateFileIv();
+      const tempThumbPath = `${thumbPath}.tmp`;
+
+      if (file.category === FileCategories.IMAGE || file.mime_type?.startsWith("image/")) {
+        await MediaUtils.generateImageThumbnail(file.storage_path, tempThumbPath, plaintextKey, iv);
+      } else if (file.category === FileCategories.VIDEO || file.mime_type?.startsWith("video/")) {
+        await MediaUtils.generateVideoThumbnail(file.storage_path, thumbDir, `${fileId}.jpg.tmp`, plaintextKey, iv);
+      } else if (file.category === FileCategories.AUDIO || file.mime_type?.startsWith("audio/")) {
+        await MediaUtils.extractAudioAlbumArt(file.storage_path, tempThumbPath, plaintextKey, iv);
+      } else {
+        return null;
+      }
+
+      const tempThumbSize = fs.existsSync(tempThumbPath) ? fs.statSync(tempThumbPath).size : 0;
+      if (tempThumbSize >= MIN_THUMB_BYTES) {
+        const cipher = CryptoUtils.getCipherStream(plaintextKey, thumbIv);
+        await new Promise((resolve, reject) => {
+          const readStream = fs.createReadStream(tempThumbPath);
+          const writeStream = fs.createWriteStream(thumbPath);
+          readStream.pipe(cipher).pipe(writeStream).on("finish", resolve).on("error", reject);
+        });
+        await fs.promises.unlink(tempThumbPath).catch(() => {});
+        file.thumbnail_path = thumbPath;
+        file.thumbnail_iv = thumbIv.toString("hex");
+        await file.save();
+      } else {
+        if (fs.existsSync(tempThumbPath)) {
+          fs.unlinkSync(tempThumbPath);
+        }
+        logger.warn(`[FileService] Thumbnail undersized (${tempThumbSize}B < ${MIN_THUMB_BYTES}B) for ${fileId}`);
+        return null;
+      }
+    } catch (err) {
+      logger.warn(`[FileService] Thumbnail generation failed for ${fileId}: ${err.message}`);
+      return null;
+    }
+  }
+
+  if (!file.thumbnail_iv) {
+    return null;
+  }
+
+  return { thumbPath, thumbIv: Buffer.from(file.thumbnail_iv, "hex") };
+}
+
 const FileService = {
   getUserDir,
   getPhysicalFilePath,
@@ -916,6 +990,7 @@ const FileService = {
   updateFileTags,
   getPlaybackInfo,
   getFileWithKey,
+  getOrGenerateThumbnail,
   getUserQuota,
 };
 
