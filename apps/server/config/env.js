@@ -45,6 +45,9 @@ const envSchema = z.object({
   CLEANUP_INTERVAL_HOURS: z.string().transform(Number).default("1"),
   TEMP_UPLOAD_EXPIRY_HOURS: z.string().transform(Number).default("24"),
   ALLOWED_ORIGINS: z.string().optional(), // Comma-separated list of allowed CORS origins
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_EMAIL: z.string().email().optional(),
 });
 
 // Validate environment variables

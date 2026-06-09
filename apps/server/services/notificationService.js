@@ -70,6 +70,23 @@ async function createNotification(userId, type, title, message, data = {}) {
       );
     }
 
+    if (user.web_push_subscriptions?.length > 0) {
+      const expiredEndpoints = await PushService.sendWebPushNotifications(user.web_push_subscriptions, {
+        title,
+        body: message,
+      }).catch((err) => {
+        logger.error("[WebPush] Batch error:", err);
+        return [];
+      });
+
+      if (expiredEndpoints.length > 0) {
+        User.updateOne(
+          { _id: userId },
+          { $pull: { web_push_subscriptions: { endpoint: { $in: expiredEndpoints } } } }
+        ).catch(() => {});
+      }
+    }
+
     if (type === NotificationTypes.STORAGE_ALERT && user.email) {
       EmailService.sendTemplateEmail({
         email: user.email,
@@ -134,6 +151,13 @@ async function registerPushToken(userId, token) {
   }
 }
 
+async function registerWebPushSubscription(userId, subscription) {
+  // Remove any existing entry for this endpoint, then push the fresh subscription.
+  // This handles re-subscriptions after a browser reset without accumulating duplicates.
+  await User.updateOne({ _id: userId }, { $pull: { web_push_subscriptions: { endpoint: subscription.endpoint } } });
+  await User.updateOne({ _id: userId }, { $push: { web_push_subscriptions: subscription } });
+}
+
 const NotificationService = {
   createNotification,
   getNotifications,
@@ -142,6 +166,7 @@ const NotificationService = {
   deleteNotification,
   deleteAllNotifications,
   registerPushToken,
+  registerWebPushSubscription,
 };
 
 export default NotificationService;

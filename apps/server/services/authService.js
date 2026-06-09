@@ -64,13 +64,6 @@ async function login(email, password, req) {
     SecurityUtils.getSessionMetadata(req)
   );
 
-  NotificationService.createNotification(
-    user._id,
-    NotificationTypes.SECURITY_ALERT,
-    "New Login Detected",
-    "A new login was detected on your account. If this wasn't you, please change your password immediately."
-  ).catch(() => {});
-
   return user;
 }
 

@@ -54,6 +54,17 @@ const userSchema = new mongoose.Schema(
         type: String,
       },
     ],
+    web_push_subscriptions: [
+      {
+        endpoint: { type: String, required: true },
+        expirationTime: { type: Number, default: null },
+        keys: {
+          p256dh: { type: String, required: true },
+          auth: { type: String, required: true },
+        },
+        _id: false,
+      },
+    ],
     notification_preferences: {
       email_notifications: { type: Boolean, default: true },
       storage_alerts: { type: Boolean, default: true },

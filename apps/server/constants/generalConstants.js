@@ -114,6 +114,7 @@ export const SuccessMessages = {
   ALL_NOTIFICATIONS_DELETED: "All notifications deleted",
   TRASH_EMPTIED: "Trash emptied successfully",
   PUSH_TOKEN_REGISTERED: "Push token registered successfully",
+  WEB_PUSH_SUBSCRIBED: "Web push subscription registered",
   PASSWORD_UPDATED: "Password updated successfully",
   PASSWORD_RESET: "Password reset success",
   FILE_TRASHED: "File moved to trash",

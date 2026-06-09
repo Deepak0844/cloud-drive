@@ -65,6 +65,7 @@
     "socket.io": "^4.8.3",
     "systeminformation": "^5.31.1",
     "ua-parser-js": "^2.0.9",
+    "web-push": "^3.6.7",
     "zod": "^4.3.6"
   },
   "devDependencies": {

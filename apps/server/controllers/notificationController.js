@@ -64,3 +64,8 @@ export const registerPushToken = asyncHandler(async (req, res) => {
   await NotificationService.registerPushToken(req.user.id, req.body.token);
   return ResponseUtils.success(res, { message: SuccessMessages.PUSH_TOKEN_REGISTERED });
 });
+
+export const registerWebPushSubscription = asyncHandler(async (req, res) => {
+  await NotificationService.registerWebPushSubscription(req.user.id, req.body);
+  return ResponseUtils.success(res, {}, 200, SuccessMessages.WEB_PUSH_SUBSCRIBED);
+});
