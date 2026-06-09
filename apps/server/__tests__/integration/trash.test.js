@@ -45,6 +45,7 @@ describe("Trash API", () => {
         deleted_directly: true,
         storage_path: "/tmp/d1",
         mime_type: "text/plain",
+        encryption_iv: "iv1",
       });
 
       const response = await request(app).get("/api/v1/trash").set(authHeader).expect(200);
@@ -65,6 +66,7 @@ describe("Trash API", () => {
         deleted_directly: true,
         storage_path: "/tmp/r1",
         mime_type: "text/plain",
+        encryption_iv: "iv2",
       });
 
       const response = await request(app)
@@ -90,6 +92,7 @@ describe("Trash API", () => {
         deleted_directly: true,
         storage_path: "/tmp/p1",
         mime_type: "text/plain",
+        encryption_iv: "iv3",
       });
 
       await request(app)
@@ -114,6 +117,7 @@ describe("Trash API", () => {
         deleted_directly: true,
         storage_path: "/tmp/t1",
         mime_type: "text/plain",
+        encryption_iv: "iv4",
       });
 
       const response = await request(app).delete("/api/v1/trash/empty").set(authHeader).expect(200);
@@ -136,6 +140,7 @@ describe("Trash API", () => {
         is_deleted: true,
         storage_path: "/tmp/c1",
         mime_type: "text/plain",
+        encryption_iv: "iv5",
       });
 
       // Restore file

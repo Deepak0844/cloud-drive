@@ -46,6 +46,7 @@ describe("Advanced Media API", () => {
         metadata: { width: 1920, height: 1080 },
         gps: { lat: 12.9716, lng: 77.5946 },
         taken_at: new Date(),
+        encryption_iv: "iv1",
       });
 
       const res = await request(app).get("/api/v1/files").set(authHeader).expect(200);
@@ -70,6 +71,7 @@ describe("Advanced Media API", () => {
           album: "Test Album",
           title: "Test Song",
         },
+        encryption_iv: "iv2",
       });
 
       const res = await request(app).get("/api/v1/files").set(authHeader).expect(200);
@@ -90,11 +92,12 @@ describe("Advanced Media API", () => {
         category: "document",
         size_bytes: 10000000,
         storage_path: "/tmp/doc.docx",
+        encryption_iv: "iv3",
       });
 
       const res = await request(app).get(`/api/v1/files/${file._id}/stream`).set(authHeader).expect(400);
 
-      expect(res.body.error).toContain("Streaming not supported for this file type");
+      expect(res.body.message).toContain("Streaming not supported for this file type");
     });
   });
 });

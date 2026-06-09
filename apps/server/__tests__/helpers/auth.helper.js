@@ -1,4 +1,5 @@
 import User from "#models/User.js";
+import CryptoUtils from "#utils/cryptoUtils.js";
 
 /**
  * Create a test user
@@ -14,7 +15,8 @@ export async function createTestUser(userData = {}) {
     is_active: true,
   };
 
-  const user = await User.create({ ...defaultUser, ...userData });
+  const { wrappedKey } = CryptoUtils.generateAndWrapUserKey();
+  const user = await User.create({ ...defaultUser, ...userData, encryption_key_wrapped: wrappedKey });
   return user;
 }
 
