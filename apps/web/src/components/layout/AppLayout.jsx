@@ -7,6 +7,9 @@ import { Outlet } from "react-router-dom";
 import baseApi from "@services/api/api";
 import { useSubscribeToSocketEventsQuery } from "@services/api/socketApi";
 
+// Hooks
+import { usePushNotification } from "@hooks/usePushNotification";
+
 // Components
 import MainLayout from "./MainLayout";
 
@@ -23,6 +26,7 @@ function AppLayout() {
   // This lives inside AppLayout (which is inside ProtectedRoute),
   // so the user token is guaranteed to be available.
   useSubscribeToSocketEventsQuery();
+  usePushNotification();
 
   // useEffect
   useEffect(() => {

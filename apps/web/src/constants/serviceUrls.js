@@ -89,6 +89,7 @@ export const NotificationServiceUrls = {
   getNotificationList: `${NotificationsBasePath}`,
   markAsRead: `${NotificationsBasePath}/:id/read`,
   markAllAsRead: `${NotificationsBasePath}/read-all`,
+  webPushSubscribe: `${NotificationsBasePath}/web-push-subscribe`,
 };
 
 // Quota Service Urls

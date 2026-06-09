@@ -37,6 +37,15 @@ const markAllAsReadMutation = () => ({
   invalidatesTags: [TagTypes.NOTIFICATIONS],
 });
 
+const registerWebPushSubscriptionMutation = () => ({
+  query: (subscription) => ({
+    url: NotificationServiceUrls.webPushSubscribe,
+    method: HttpMethods.POST,
+    body: subscription,
+    onError: { suppressGlobalError: true },
+  }),
+});
+
 // ---------------------------------------------------------------------------
 // Inject Endpoints
 // ---------------------------------------------------------------------------
@@ -46,10 +55,16 @@ export const notificationApi = api.injectEndpoints({
     getNotifications: builder.query(getNotificationsQuery()),
     markAsRead: builder.mutation(markAsReadMutation()),
     markAllAsRead: builder.mutation(markAllAsReadMutation()),
+    registerWebPushSubscription: builder.mutation(registerWebPushSubscriptionMutation()),
   }),
   overrideExisting: false,
 });
 
-export const { useGetNotificationsQuery, useMarkAsReadMutation, useMarkAllAsReadMutation } = notificationApi;
+export const {
+  useGetNotificationsQuery,
+  useMarkAsReadMutation,
+  useMarkAllAsReadMutation,
+  useRegisterWebPushSubscriptionMutation,
+} = notificationApi;
 
 export default notificationApi;
