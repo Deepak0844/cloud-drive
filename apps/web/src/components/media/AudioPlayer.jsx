@@ -1,6 +1,6 @@
 // React core & third-party libraries
 import PropTypes from "prop-types";
-import { MediaPlayer, MediaProvider } from "@vidstack/react";
+import { isHLSProvider, MediaPlayer, MediaProvider } from "@vidstack/react";
 import { DefaultAudioLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 
 // Constants
@@ -35,6 +35,29 @@ export default function AudioPlayer({ playbackInfo, audioMetadata = null, fileId
     ? { src: playbackUrl, type: mimeType }
     : { src: playbackUrl, type: "application/x-mpegURL" };
 
+  function onProviderChange(provider) {
+    if (isHLSProvider(provider)) {
+      provider.config = {
+        // Tolerate small PTS gaps from encoder delay during source→AAC transcoding
+        maxBufferHole: 0.5,
+        // The first segment request triggers an on-the-fly transcode; the server sends no
+        // bytes until that segment is cached. hls.js defaults to a 10s time-to-first-byte
+        // budget, which aborts seg-0 before a slow transcode finishes. Widen it to match the
+        // server's 120s segment poll window (getHlsSegment POLL_TIMEOUT_MS). The full default
+        // object is required: hls.js mergeConfig shallow-replaces fragLoadPolicy, so omitting
+        // the retry sub-objects would leave them undefined.
+        fragLoadPolicy: {
+          default: {
+            maxTimeToFirstByteMs: 120_000,
+            maxLoadTimeMs: 240_000,
+            timeoutRetry: { maxNumRetry: 4, retryDelayMs: 0, maxRetryDelayMs: 0 },
+            errorRetry: { maxNumRetry: 6, retryDelayMs: 1000, maxRetryDelayMs: 8000 },
+          },
+        },
+      };
+    }
+  }
+
   return (
     <div className="flex flex-col items-center gap-6 p-8 bg-surface-dim rounded-2xl w-[50%]">
       {/* Album art */}
@@ -66,7 +89,7 @@ export default function AudioPlayer({ playbackInfo, audioMetadata = null, fileId
       )}
 
       {/* Vidstack audio player */}
-      <MediaPlayer src={src} autoPlay className="w-full" onError={onError}>
+      <MediaPlayer src={src} autoPlay className="w-full" onProviderChange={onProviderChange} onError={onError}>
         <MediaProvider />
         <DefaultAudioLayout icons={defaultLayoutIcons} />
       </MediaPlayer>
