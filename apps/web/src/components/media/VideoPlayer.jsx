@@ -32,8 +32,24 @@ export default function VideoPlayer({ playbackInfo, onError }) {
 
   function onProviderChange(provider) {
     if (isHLSProvider(provider)) {
-      // Tolerate small PTS gaps caused by AAC encoder delay in Vorbis→AAC transcoding
-      provider.config = { maxBufferHole: 0.5 };
+      provider.config = {
+        // Tolerate small PTS gaps caused by AAC encoder delay in Vorbis→AAC transcoding
+        maxBufferHole: 0.5,
+        // The first segment request triggers an on-the-fly transcode; the server sends no
+        // bytes until that segment is cached. hls.js defaults to a 10s time-to-first-byte
+        // budget, which aborts seg-0 before a slow transcode finishes. Widen it to match the
+        // server's 120s segment poll window (getHlsSegment POLL_TIMEOUT_MS). The full default
+        // object is required: hls.js mergeConfig shallow-replaces fragLoadPolicy, so omitting
+        // the retry sub-objects would leave them undefined.
+        fragLoadPolicy: {
+          default: {
+            maxTimeToFirstByteMs: 120_000,
+            maxLoadTimeMs: 240_000,
+            timeoutRetry: { maxNumRetry: 4, retryDelayMs: 0, maxRetryDelayMs: 0 },
+            errorRetry: { maxNumRetry: 6, retryDelayMs: 1000, maxRetryDelayMs: 8000 },
+          },
+        },
+      };
     }
   }
 
