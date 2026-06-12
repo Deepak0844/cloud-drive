@@ -43,7 +43,17 @@ function RegisterPage() {
       await register({ name: values.name, email: values.email, password: values.password });
       toast.success("Account created! Please sign in with your credentials.");
     } catch (err) {
-      toast.error(err?.data?.message ?? "Registration failed. Please try again.");
+      const errorMessage =
+        err?.data?.error?.message ||
+        err?.data?.message ||
+        err?.data?.error ||
+        (typeof err?.data === "string" ? err.data : null);
+
+      if (errorMessage) {
+        form.setError("password", { type: "server", message: errorMessage });
+      } else {
+        toast.error("Registration failed. Please try again.");
+      }
     }
   }
 

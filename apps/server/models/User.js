@@ -8,6 +8,7 @@ import Env from "#config/env.js";
 
 // Constants
 import { Roles } from "@shared-constants/constants";
+import { BCRYPT_COST } from "#constants/generalConstants.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -26,7 +27,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      minlength: 6,
+      minlength: 12,
       select: false,
     },
     role: {
@@ -65,6 +66,14 @@ const userSchema = new mongoose.Schema(
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+    refreshToken: {
+      type: String,
+      select: false,
+    },
+    refreshTokenExpire: {
+      type: Date,
+      select: false,
+    },
   },
   { timestamps: true }
 );
@@ -75,7 +84,7 @@ userSchema.pre("save", async function () {
     return;
   }
 
-  const salt = await bcrypt.genSalt(10);
+  const salt = await bcrypt.genSalt(BCRYPT_COST);
   this.password = await bcrypt.hash(this.password, salt);
 });
 
@@ -103,6 +112,14 @@ userSchema.methods.getResetPasswordToken = function () {
   this.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
 
   return resetToken;
+};
+
+// Generate refresh token, hash it, store hash, return plain token
+userSchema.methods.getRefreshToken = function () {
+  const plainToken = crypto.randomBytes(40).toString("hex");
+  this.refreshToken = crypto.createHash("sha256").update(plainToken).digest("hex");
+  this.refreshTokenExpire = Date.now() + 7 * 24 * 60 * 60 * 1000;
+  return plainToken;
 };
 
 // Find user by plain reset password token

@@ -6,6 +6,7 @@ import {
   getSystemStats,
   getUsers,
   handleQuotaRequest,
+  rotateEncryptionKey,
   runStorageReanalysis,
   updateUserQuota,
   updateUserStatus,
@@ -19,6 +20,7 @@ import validate from "#middlewares/validate.js";
 import {
   getUsersQuerySchema,
   handleQuotaRequestSchema,
+  rotateKeySchema,
   updateUserQuotaSchema,
   updateUserStatusSchema,
 } from "#schemas/admin.schema.js";
@@ -36,5 +38,6 @@ router.get("/stats", getSystemStats);
 router.get("/quota-requests", getAllQuotaRequests);
 router.patch("/quota-requests/:id", validate(handleQuotaRequestSchema), handleQuotaRequest);
 router.post("/storage/re-analyze", runStorageReanalysis);
+router.post("/rotate-encryption-key", validate(rotateKeySchema), rotateEncryptionKey);
 
 export default router;

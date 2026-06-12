@@ -43,7 +43,7 @@ describe("System & Maintenance API", () => {
 
       expect(res.body.data.system).toBeDefined();
       expect(res.body.data.system.cpu).toBeDefined();
-      expect(res.body.data.analytics).toBeDefined();
+      expect(res.body.data.user_stats).toBeDefined();
     });
 
     it("should deny access to non-admin", async () => {
@@ -64,6 +64,7 @@ describe("System & Maintenance API", () => {
           storage_path: "/tmp/file1.txt",
           hash: "abc123hash",
           category: "document",
+          encryption_iv: "iv1",
         },
         {
           name: "file1_copy.txt",
@@ -74,6 +75,7 @@ describe("System & Maintenance API", () => {
           storage_path: "/tmp/file1_copy.txt",
           hash: "abc123hash",
           category: "document",
+          encryption_iv: "iv2",
         },
       ]);
 

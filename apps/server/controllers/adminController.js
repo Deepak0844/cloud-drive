@@ -57,3 +57,9 @@ export const runStorageReanalysis = asyncHandler(async (req, res) => {
       : SuccessMessages.STORAGE_ANALYSIS_COMPLETE,
   });
 });
+
+export const rotateEncryptionKey = asyncHandler(async (req, res) => {
+  const { newKey } = req.body;
+  const result = await AdminService.rotateEncryptionKey(newKey);
+  return ResponseUtils.success(res, result, HttpStatus.OK, `Rotated encryption key for ${result.usersRotated} users`);
+});

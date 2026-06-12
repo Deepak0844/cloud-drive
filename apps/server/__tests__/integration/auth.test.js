@@ -36,13 +36,13 @@ describe("Auth API", () => {
       const userData = {
         name: "Test User",
         email: "test@example.com",
-        password: "password123",
+        password: "TestPass@123!",
       };
 
       const response = await request(app).post("/api/v1/auth/register").send(userData).expect(201);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.token).toBeDefined();
+      expect(response.body.data.user).toBeDefined();
       expect(response.body.data.user.email).toBe(userData.email);
       expect(response.body.data.user.name).toBe(userData.name);
       expect(response.body.data.user.role).toBe("USER");
@@ -54,11 +54,29 @@ describe("Auth API", () => {
       expect(response.body.success).toBe(false);
     });
 
+    it("should fail with password shorter than 12 characters", async () => {
+      const response = await request(app)
+        .post("/api/v1/auth/register")
+        .send({ name: "Test User", email: "test@example.com", password: "Short@1" })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should fail with password missing complexity requirements", async () => {
+      const response = await request(app)
+        .post("/api/v1/auth/register")
+        .send({ name: "Test User", email: "test@example.com", password: "abcdefghijkl" })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
     it("should fail with existing email", async () => {
       await createTestUser({ email: "test@example.com" });
       const response = await request(app)
         .post("/api/v1/auth/register")
-        .send({ name: "Test User", email: "test@example.com", password: "password123" })
+        .send({ name: "Test User", email: "test@example.com", password: "TestPass@123!" })
         .expect(400);
 
       expect(response.body.success).toBe(false);
@@ -67,7 +85,7 @@ describe("Auth API", () => {
 
   describe("POST /api/v1/auth/login", () => {
     let user;
-    const password = "password123";
+    const password = "TestPass@123!";
 
     beforeEach(async () => {
       user = await createTestUser({ password });
@@ -77,7 +95,7 @@ describe("Auth API", () => {
       const response = await request(app).post("/api/v1/auth/login").send({ email: user.email, password }).expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.token).toBeDefined();
+      expect(response.body.data.user).toBeDefined();
     });
 
     it("should fail with invalid password", async () => {
@@ -124,6 +142,38 @@ describe("Auth API", () => {
     });
   });
 
+  describe("POST /api/v1/auth/refresh", () => {
+    it("test_refresh_valid_token: should issue new tokens when refresh cookie is valid", async () => {
+      const password = "TestPass@123!";
+      const loginRes = await request(app)
+        .post("/api/v1/auth/login")
+        .send({ email: (await createTestUser({ password })).email, password })
+        .expect(200);
+
+      const cookies = loginRes.headers["set-cookie"] ?? [];
+      const refreshCookie = cookies.find((c) => c.startsWith("refresh_token="));
+      expect(refreshCookie).toBeDefined();
+
+      const refreshRes = await request(app)
+        .post("/api/v1/auth/refresh")
+        .set("Cookie", refreshCookie)
+        .expect(200);
+
+      expect(refreshRes.body.success).toBe(true);
+      expect(refreshRes.body.data.user).toBeDefined();
+
+      const newCookies = refreshRes.headers["set-cookie"] ?? [];
+      expect(newCookies.some((c) => c.startsWith("token="))).toBe(true);
+      expect(newCookies.some((c) => c.startsWith("refresh_token="))).toBe(true);
+    });
+
+    it("test_refresh_invalid_token: should return 401 when no refresh cookie is present", async () => {
+      const response = await request(app).post("/api/v1/auth/refresh").expect(401);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+
   describe("POST /api/v1/auth/forgot-password", () => {
     it("should send reset email", async () => {
       const user = await createTestUser();
@@ -151,13 +201,13 @@ describe("Auth API", () => {
 
       const response = await request(app)
         .put("/api/v1/auth/reset-password")
-        .send({ token: resetToken, password: "newpassword123" })
+        .send({ token: resetToken, password: "NewPass@456!" })
         .expect(200);
 
       expect(response.body.success).toBe(true);
 
       // Verify login with new password
-      await request(app).post("/api/v1/auth/login").send({ email: user.email, password: "newpassword123" }).expect(200);
+      await request(app).post("/api/v1/auth/login").send({ email: user.email, password: "NewPass@456!" }).expect(200);
     });
 
     it("should fail with invalid token", async () => {

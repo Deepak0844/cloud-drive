@@ -34,6 +34,7 @@ describe("Advanced Trash & Tagging API", () => {
         size_bytes: 100,
         storage_path: "/tmp/test.txt",
         mime_type: "text/plain",
+        encryption_iv: "iv1",
       });
 
       await request(app).delete(`/api/v1/files/${file._id}`).set(authHeader).expect(200);
@@ -53,6 +54,7 @@ describe("Advanced Trash & Tagging API", () => {
         size_bytes: 100,
         storage_path: "/tmp/test.txt",
         mime_type: "text/plain",
+        encryption_iv: "iv2",
       });
 
       // Delete
@@ -80,6 +82,7 @@ describe("Advanced Trash & Tagging API", () => {
         size_bytes: 100,
         storage_path: "/tmp/test.txt",
         mime_type: "text/plain",
+        encryption_iv: "iv3",
       });
 
       // Delete file
@@ -109,6 +112,7 @@ describe("Advanced Trash & Tagging API", () => {
         size_bytes: 100,
         storage_path: "/tmp/work.doc",
         mime_type: "application/msword",
+        encryption_iv: "iv4",
       });
 
       // Add tags

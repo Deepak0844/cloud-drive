@@ -1,7 +1,7 @@
 import express from "express";
 
 // Controllers
-import { getMe, login, logout, register, updateProfile } from "#controllers/authController.js";
+import { getMe, login, logout, refreshToken, register, updateProfile } from "#controllers/authController.js";
 import { forgotPassword, resetPassword, updatePassword } from "#controllers/passwordController.js";
 
 // Middleware
@@ -24,6 +24,7 @@ const router = express.Router();
 router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), login);
 router.post("/logout", logout);
+router.post("/refresh", refreshToken);
 router.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
 router.put("/reset-password", validate(resetPasswordSchema), resetPassword);
 

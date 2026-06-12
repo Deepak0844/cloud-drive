@@ -58,6 +58,7 @@ describe("Smart Trash Cleanup Integration", () => {
       deleted_at: expiredDate,
       storage_path: "/tmp/expired.txt",
       mime_type: "text/plain",
+      encryption_iv: "iv1",
     });
 
     // 2. Create a recent trashed file (should NOT be deleted)
@@ -74,6 +75,7 @@ describe("Smart Trash Cleanup Integration", () => {
       deleted_at: recentDate,
       storage_path: "/tmp/recent.txt",
       mime_type: "text/plain",
+      encryption_iv: "iv2",
     });
 
     // 3. Run the cleanup service
@@ -125,6 +127,7 @@ describe("Smart Trash Cleanup Integration", () => {
       is_deleted: true,
       storage_path: "/tmp/f1",
       mime_type: "text/plain",
+      encryption_iv: "iv3",
     });
 
     // Run cleanup

@@ -1,8 +1,11 @@
+// Native modules
+import crypto from "crypto";
+
 // Services
 import AuthService from "#services/authService.js";
 
 // Constants
-import { SuccessMessages } from "#constants/generalConstants.js";
+import { SuccessMessages, REFRESH_COOKIE_NAME } from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
@@ -36,12 +39,29 @@ export const login = asyncHandler(async (req, res) => {
 /**
  * @desc    Logout user
  * @route   POST /api/v1/auth/logout
- * @access  Private
+ * @access  Public (access token may be expired)
  */
 export const logout = (req, res) => {
+  const plainRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
   AuthService.clearAuthCookie(res);
+
+  if (plainRefreshToken) {
+    const hash = crypto.createHash("sha256").update(plainRefreshToken).digest("hex");
+    AuthService.clearRefreshTokenByHash(hash);
+  }
+
   return ResponseUtils.success(res, {}, HttpStatus.OK, { message: SuccessMessages.LOGOUT_SUCCESS });
 };
+
+/**
+ * @desc    Refresh access token using refresh token cookie
+ * @route   POST /api/v1/auth/refresh
+ * @access  Public (no access token required)
+ */
+export const refreshToken = asyncHandler(async (req, res) => {
+  const user = await AuthService.refreshAccessToken(req.cookies?.[REFRESH_COOKIE_NAME]);
+  return sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.LOGIN_SUCCESS);
+});
 
 /**
  * @desc    Get current logged in user
