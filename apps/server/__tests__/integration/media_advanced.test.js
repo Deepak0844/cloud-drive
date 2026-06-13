@@ -290,7 +290,7 @@ describe("Advanced Media API", () => {
     // Criterion 1: master playlist served without transcoding any segment
     it("serves a complete VOD playlist without transcoding a segment", async () => {
       const fixture = await makeTestVideo(20);
-      const expectedSegments = Math.ceil((await probeDuration(fixture)) / HlsConfig.SEGMENT_DURATION);
+      const expectedSegments = Math.floor((await probeDuration(fixture)) / HlsConfig.SEGMENT_DURATION) || 1;
       const { file, auth } = await createEncryptedFixture("hls-playlist@example.com", fixture);
 
       const res = await request(app).get(`/api/v1/files/${file._id}/hls/master.m3u8`).set(auth).expect(200);

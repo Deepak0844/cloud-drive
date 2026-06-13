@@ -100,7 +100,7 @@ export default function AudioPlayer({ playbackInfo, audioMetadata = null, fileId
       )}
 
       {/* Vidstack audio player */}
-      <MediaPlayer src={src} autoPlay className="w-full" onProviderChange={onProviderChange} onError={onError}>
+      <MediaPlayer src={src} viewType="audio" autoPlay className="w-full" onProviderChange={onProviderChange} onError={onError}>
         <MediaProvider />
         <DefaultAudioLayout icons={defaultLayoutIcons} />
       </MediaPlayer>

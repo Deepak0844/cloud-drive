@@ -294,9 +294,10 @@ function needsVideoPreview(filePath, mimeType, codec) {
  * @param {number}  opts.anchorSegment   - Segment index this session starts at (K)
  * @param {number}  opts.segmentDuration - Segment length in seconds (D)
  * @param {boolean} opts.isAudioOnly     - Omit video options when true
+ * @param {boolean} [opts.hasAudio=true] - Source has an audio track; set false for video-only files
  * @returns {string[]} ffmpeg argv
  */
-function buildHlsSessionArgs({ sourcePath, cacheDir, anchorSegment, segmentDuration, isAudioOnly }) {
+function buildHlsSessionArgs({ sourcePath, cacheDir, anchorSegment, segmentDuration, isAudioOnly, hasAudio = true }) {
   const anchorSeconds = anchorSegment * segmentDuration;
   const segmentPattern = path.join(cacheDir, "seg-%d.ts");
   const sessionPlaylist = path.join(cacheDir, `session-${anchorSegment}.m3u8`);
@@ -345,6 +346,10 @@ function buildHlsSessionArgs({ sourcePath, cacheDir, anchorSegment, segmentDurat
     ];
   }
 
+  const audioArgs = hasAudio
+    ? ["-map", "0:a:0?", "-c:a", "aac", "-b:a", TRANSCODE_AUDIO_BITRATE, "-af", "asetpts=PTS-STARTPTS"]
+    : ["-an"];
+
   return [
     "-y",
     "-ss",
@@ -353,8 +358,7 @@ function buildHlsSessionArgs({ sourcePath, cacheDir, anchorSegment, segmentDurat
     sourcePath,
     "-map",
     "0:v:0",
-    "-map",
-    "0:a:0?",
+    ...audioArgs,
     "-c:v",
     "libx264",
     "-preset",
@@ -365,12 +369,6 @@ function buildHlsSessionArgs({ sourcePath, cacheDir, anchorSegment, segmentDurat
     "setpts=PTS-STARTPTS,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p",
     "-force_key_frames",
     `expr:gte(t,n_forced*${segmentDuration})`,
-    "-c:a",
-    "aac",
-    "-b:a",
-    TRANSCODE_AUDIO_BITRATE,
-    "-af",
-    "asetpts=PTS-STARTPTS",
     ...hlsTail,
   ];
 }

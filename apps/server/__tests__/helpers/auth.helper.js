@@ -16,7 +16,7 @@ export async function createTestUser(userData = {}) {
   };
 
   const { wrappedKey } = CryptoUtils.generateAndWrapUserKey();
-  const user = await User.create({ ...defaultUser, ...userData, encryption_key_wrapped: wrappedKey });
+  const user = await User.create({ ...defaultUser, encryption_key_wrapped: wrappedKey, ...userData });
   return user;
 }
 

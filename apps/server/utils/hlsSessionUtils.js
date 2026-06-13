@@ -249,9 +249,9 @@ function waitForSegment(baseStoragePath, fileId, segmentIndex, session) {
     session.diedWaiters.add(onDied);
 
     const poll = setInterval(async () => {
+      session.lastAccessAt = Date.now(); // heartbeat: keep the idle reaper from killing an active waiter
       const ready = await HlsCacheUtils.isSegmentCached(baseStoragePath, fileId, segmentIndex).catch(() => false);
       if (ready) {
-        session.lastAccessAt = Date.now();
         finish({ ready: true });
       }
     }, HlsConfig.SEGMENT_POLL_MS);
@@ -316,13 +316,32 @@ async function ensureSegment(baseStoragePath, fileId, segmentIndex, getSource, i
       session.lastAccessAt = Date.now();
     } else if (session) {
       // Seek outside the window (backward, or far ahead): restart, transferring the slot
-      session.superseded = true;
+      const oldSession = session;
+      oldSession.superseded = true;
       try {
-        session.proc.kill("SIGTERM");
+        oldSession.proc.kill("SIGTERM");
       } catch {
         // process may already be gone — its close handler handles cleanup
       }
-      const source = await getSource();
+      // Wait for the dying process to fully exit before starting the replacement.
+      // Both sessions share the same cacheDir + seg-%d.ts atomic-rename pattern; the
+      // dying ffmpeg could otherwise overwrite segments the new session has already produced.
+      await new Promise((resolve) => {
+        if (oldSession.proc.exitCode !== null) {
+          resolve();
+        } else {
+          oldSession.proc.once("close", resolve);
+        }
+      });
+      let source;
+      try {
+        source = await getSource();
+      } catch (err) {
+        // We took implicit ownership of the concurrency slot from the superseded session.
+        // Since we cannot start a replacement, return the slot so the pool is not drained.
+        oldSession.superseded = false; // allow cleanup() to releaseSlot() normally
+        throw err;
+      }
       session = startSession(baseStoragePath, fileId, segmentIndex, source, isAudioOnly);
     } else {
       // No session: acquire a slot then start one

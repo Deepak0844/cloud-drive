@@ -354,13 +354,13 @@ export const getHlsPlaylist = asyncHandler(async (req, res) => {
   }
 
   const segDur = HlsConfig.SEGMENT_DURATION;
-  const segmentCount = Math.ceil(duration / segDur);
+  const segmentCount = Math.floor(duration / segDur) || 1;
 
   const lines = [
     "#EXTM3U",
     "#EXT-X-PLAYLIST-TYPE:VOD",
     "#EXT-X-VERSION:3",
-    `#EXT-X-TARGETDURATION:${segDur}`,
+    `#EXT-X-TARGETDURATION:${segDur + 1}`,
     "#EXT-X-MEDIA-SEQUENCE:0",
   ];
   for (let i = 0; i < segmentCount; i++) {
@@ -415,7 +415,16 @@ export const getHlsSegment = asyncHandler(async (req, res) => {
     return ResponseUtils.error(res, "HLS segment not ready", 503);
   }
 
-  const buffer = await HlsCacheUtils.readSegment(baseStoragePath, fileId, segmentIndex);
+  let buffer;
+  try {
+    buffer = await HlsCacheUtils.readSegment(baseStoragePath, fileId, segmentIndex);
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      res.set("Retry-After", "2");
+      return ResponseUtils.error(res, "HLS segment not ready", 503);
+    }
+    throw err;
+  }
   res.set("Content-Type", "video/mp2t");
   res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
   return res.send(buffer);
