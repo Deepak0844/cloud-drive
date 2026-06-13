@@ -10,6 +10,7 @@ import User from "#models/User.js";
 import FileService from "#services/fileService.js";
 import CryptoUtils from "#utils/cryptoUtils.js";
 import HlsCacheUtils from "#utils/hlsCacheUtils.js";
+import HlsSessionUtils from "#utils/hlsSessionUtils.js";
 
 // Config
 import config from "#config/env.js";
@@ -157,6 +158,9 @@ async function permanentDeleteRecursive(type, id, userId) {
       // Remove all physical files associated with this record
       safeUnlink(file.storage_path);
       safeUnlink(file.thumbnail_path);
+
+      // Kill any running transcode session before removing the cache dir it writes into
+      HlsSessionUtils.killSession(file._id.toString());
 
       // Purge any cached HLS segments for this file
       await HlsCacheUtils.purgeFileCache(config.NAS_STORAGE_PATH, file._id.toString());
