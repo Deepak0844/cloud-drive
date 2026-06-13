@@ -19,7 +19,8 @@ function DropdownMenuTrigger({ asChild, render, children, nativeButton, ...props
   // of being nested inside base-ui's own <button>. Destructuring asChild also keeps it off the DOM.
   const renderProp = render ?? (asChild && React.isValidElement(children) ? children : undefined);
   if (renderProp) {
-    const computedNativeButton = nativeButton ?? (renderProp.type === "button");
+    const computedNativeButton =
+      nativeButton ?? (renderProp.type === "button" || typeof renderProp.type === "function");
     return (
       <MenuPrimitive.Trigger
         data-slot="dropdown-menu-trigger"
