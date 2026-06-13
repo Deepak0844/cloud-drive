@@ -10,8 +10,8 @@ A self-hosted personal cloud storage application with file management, photo org
 - **Chunked uploads** — large files upload in resumable chunks with MIME magic-byte verification
 - **Photo library** — automatic categorisation, EXIF metadata extraction, HEIC/HEIF conversion
 - **Face recognition** — face detection and grouping powered by face-api.js and TensorFlow.js
-- **Video streaming** — HLS adaptive streaming served through nginx; MP4 Fast-Start optimisation on upload
-- **Audio playback** — music metadata extraction, in-browser playback
+- **Video streaming** — on-demand HLS session transcoding with per-segment caching; AVI, MKV, and HEVC transcoded server-side; MP4 Fast-Start optimisation on upload
+- **Audio playback** — music metadata and album art extraction; HLS session transcoding for AAC, WMA, AIFF, and other non-native formats; direct in-browser playback for MP3, FLAC, WAV, OGG, and Opus
 - **Trash** — soft-delete with configurable expiry (default 30 days)
 - **Duplicate detection** — hash-based deduplication across your library
 - **Storage quotas** — per-user quota enforcement with admin override
