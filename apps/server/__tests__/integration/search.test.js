@@ -33,6 +33,7 @@ describe("Search & Indexing API", () => {
         category: "image",
         extension: "jpg",
         is_favorite: true,
+        encryption_iv: "iv1",
       },
       {
         name: "test.pdf",
@@ -43,6 +44,7 @@ describe("Search & Indexing API", () => {
         mime_type: "application/pdf",
         category: "document",
         extension: "pdf",
+        encryption_iv: "iv2",
       },
       {
         name: "movie.mp4",
@@ -53,6 +55,7 @@ describe("Search & Indexing API", () => {
         mime_type: "video/mp4",
         category: "video",
         extension: "mp4",
+        encryption_iv: "iv3",
       },
       {
         name: "notes.txt",
@@ -63,6 +66,7 @@ describe("Search & Indexing API", () => {
         mime_type: "text/plain",
         category: "document",
         extension: "txt",
+        encryption_iv: "iv4",
       },
     ]);
 

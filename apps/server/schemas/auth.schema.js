@@ -1,10 +1,16 @@
 import { z } from "zod";
 
+const PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()\-_=+[\]{};':"\\|,.<>/?]).+$/;
+const PASSWORD_RULES = z
+  .string()
+  .min(12, "Password must be at least 12 characters")
+  .regex(PASSWORD_REGEX, "Password must contain at least one uppercase letter, one number, and one special character");
+
 export const registerSchema = z.object({
   body: z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    password: PASSWORD_RULES,
   }),
 });
 
@@ -24,7 +30,7 @@ export const forgotPasswordSchema = z.object({
 export const resetPasswordSchema = z.object({
   body: z.object({
     token: z.string().min(1, "Token is required"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    password: PASSWORD_RULES,
   }),
 });
 
@@ -45,6 +51,6 @@ export const updateProfileSchema = z.object({
 export const updatePasswordSchema = z.object({
   body: z.object({
     currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(6, "New password must be at least 6 characters"),
+    newPassword: PASSWORD_RULES,
   }),
 });

@@ -99,6 +99,7 @@ describe("File API", () => {
           mime_type: "text/plain",
           extension: "txt",
           category: "document",
+          encryption_iv: "iv1",
         },
         {
           name: "file2.jpg",
@@ -109,6 +110,7 @@ describe("File API", () => {
           mime_type: "image/jpeg",
           extension: "jpg",
           category: "image",
+          encryption_iv: "iv2",
         },
         {
           name: "other.txt",
@@ -119,6 +121,7 @@ describe("File API", () => {
           mime_type: "text/plain",
           extension: "txt",
           category: "document",
+          encryption_iv: "iv3",
         },
       ]);
     });
@@ -149,6 +152,7 @@ describe("File API", () => {
         mime_type: "text/plain",
         extension: "txt",
         category: "document",
+        encryption_iv: "iv4",
       });
 
       const response = await request(app).get(`/api/v1/files?folderId=${folder._id}`).set(authHeader).expect(200);
@@ -166,6 +170,7 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/p1",
           mime_type: "text/plain",
+          encryption_iv: "iv5",
         },
         {
           name: "p2.txt",
@@ -174,6 +179,7 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/p2",
           mime_type: "text/plain",
+          encryption_iv: "iv6",
         },
         {
           name: "p3.txt",
@@ -182,6 +188,7 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/p3",
           mime_type: "text/plain",
+          encryption_iv: "iv7",
         },
       ]);
 
@@ -203,6 +210,7 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/f1",
           mime_type: "text/plain",
+          encryption_iv: "iv8",
         },
         {
           name: "f2",
@@ -211,6 +219,7 @@ describe("File API", () => {
           user: user._id,
           storage_path: "/tmp/f2",
           mime_type: "text/plain",
+          encryption_iv: "iv9",
         },
       ]);
     });
@@ -234,6 +243,7 @@ describe("File API", () => {
         user: user._id,
         storage_path: "/tmp/old",
         mime_type: "text/plain",
+        encryption_iv: "iv10",
       });
 
       const response = await request(app)
@@ -269,6 +279,7 @@ describe("File API", () => {
         mime_type: "text/plain",
         extension: "txt",
         category: "document",
+        encryption_iv: "iv11",
       });
 
       await request(app)
@@ -285,6 +296,7 @@ describe("File API", () => {
         user: user._id,
         storage_path: "/tmp/old",
         mime_type: "text/plain",
+        encryption_iv: "iv12",
       });
 
       await request(app).patch(`/api/v1/files/${file._id}`).set(otherHeader).send({ name: "hacked.txt" }).expect(404);
@@ -295,14 +307,14 @@ describe("File API", () => {
   });
 
   describe("Edge Cases", () => {
-    it("should allow uploading a zero-byte file", async () => {
+    it("should reject a zero-byte file", async () => {
       const response = await request(app)
         .post("/api/v1/files/upload")
         .set(authHeader)
         .attach("file", Buffer.alloc(0), "empty.txt")
-        .expect(201);
+        .expect(400);
 
-      expect(response.body.data.size_bytes).toBe(0);
+      expect(response.body.success).toBe(false);
     });
 
     it("should handle duplicate filenames (auto-rename should happen if implemented)", async () => {

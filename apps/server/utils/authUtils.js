@@ -1,32 +1,39 @@
 import config from "#config/env.js";
 
 // Constants
-import { AUTH_COOKIE_NAME, CookieConfig } from "#constants/generalConstants.js";
+import { AUTH_COOKIE_NAME, REFRESH_COOKIE_NAME, CookieConfig } from "#constants/generalConstants.js";
 
 // Utils
 import ResponseUtils from "#utils/responseUtils.js";
 
 /**
- * Helper to get token from model and send response
+ * Issues access + refresh cookies and returns user info in the response body.
+ * Saves the user document to persist the hashed refresh token.
  */
-export function sendTokenResponse(user, statusCode, res, message) {
-  const token = user.getSignedJwtToken();
+export async function sendTokenResponse(user, statusCode, res, message) {
+  const accessToken = user.getSignedJwtToken();
+  const plainRefreshToken = user.getRefreshToken();
 
-  const cookieOptions = {
+  await user.save({ validateBeforeSave: false });
+
+  const baseOptions = {
     httpOnly: CookieConfig.HTTP_ONLY,
     sameSite: CookieConfig.SAME_SITE,
-    maxAge: CookieConfig.MAX_AGE_MS,
     ...(config.NODE_ENV === "production" && { secure: true }),
   };
 
-  res.cookie(AUTH_COOKIE_NAME, token, cookieOptions);
+  res.cookie(AUTH_COOKIE_NAME, accessToken, { ...baseOptions, maxAge: CookieConfig.ACCESS_MAX_AGE_MS });
+  res.cookie(REFRESH_COOKIE_NAME, plainRefreshToken, { ...baseOptions, maxAge: CookieConfig.REFRESH_MAX_AGE_MS });
 
-  // Token is already set in the HttpOnly cookie above — do NOT include it in
-  // the response body to avoid leaking it into JS memory, logs, or localStorage.
+  // Tokens are in HttpOnly cookies — do NOT include them in the response body.
   return ResponseUtils.success(
     res,
     { user: { id: user._id, name: user.name, email: user.email, role: user.role } },
     statusCode,
     message
   );
+}
+
+export function clearRefreshCookie(res) {
+  res.clearCookie(REFRESH_COOKIE_NAME, { httpOnly: CookieConfig.HTTP_ONLY, sameSite: CookieConfig.SAME_SITE });
 }

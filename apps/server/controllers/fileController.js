@@ -99,99 +99,25 @@ export const getFilePreview = asyncHandler(async (req, res) => {
     await file.save();
   }
 
-  const userId = file.user.toString();
   const fileId = file._id.toString();
 
   // ── Thumbnail request ────────────────────────────────────────────────────────
   if (isThumbnail) {
-    const thumbDir = FileService.getThumbnailDir(userId);
-    const thumbPath = path.join(thumbDir, `${fileId}.jpg`);
-    const MIN_THUMB_BYTES = 2000;
-
-    const thumbSize = fs.existsSync(thumbPath) ? fs.statSync(thumbPath).size : 0;
-    const thumbExistsAndValid = thumbSize >= MIN_THUMB_BYTES && !!file.thumbnail_iv;
-
-    if (!thumbExistsAndValid && fs.existsSync(thumbPath)) {
-      fs.unlinkSync(thumbPath);
-      if (file.thumbnail_path || file.thumbnail_iv) {
-        file.thumbnail_path = null;
-        file.thumbnail_iv = null;
-        await file.save();
-      }
+    const thumb = await FileService.getOrGenerateThumbnail(file, plaintextKey, iv);
+    if (!thumb) {
+      return res.status(HttpStatus.ACCEPTED).send("");
     }
 
-    if (!thumbExistsAndValid) {
-      if (!fs.existsSync(file.storage_path)) {
-        return res.status(HttpStatus.ACCEPTED).send("");
-      }
-      try {
-        const thumbIv = CryptoUtils.generateFileIv();
-        const tempThumbPath = `${thumbPath}.tmp`;
+    const stats = fs.statSync(thumb.thumbPath);
+    const decipherStream = CryptoUtils.getDecipherStream(plaintextKey, thumb.thumbIv);
+    res.set("Content-Type", "image/jpeg");
+    res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_DAY}`);
+    res.set("Content-Length", stats.size);
 
-        if (file.category === FileCategories.IMAGE || file.mime_type?.startsWith("image/")) {
-          await MediaUtils.generateImageThumbnail(file.storage_path, tempThumbPath, plaintextKey, iv);
-        } else if (file.category === FileCategories.VIDEO || file.mime_type?.startsWith("video/")) {
-          await MediaUtils.generateVideoThumbnail(file.storage_path, thumbDir, `${fileId}.jpg.tmp`, plaintextKey, iv);
-        } else if (file.category === FileCategories.AUDIO || file.mime_type?.startsWith("audio/")) {
-          await MediaUtils.extractAudioAlbumArt(file.storage_path, tempThumbPath, plaintextKey, iv);
-        } else {
-          return res.status(HttpStatus.ACCEPTED).send("");
-        }
-
-        const tempThumbSize = fs.existsSync(tempThumbPath) ? fs.statSync(tempThumbPath).size : 0;
-        if (tempThumbSize >= MIN_THUMB_BYTES) {
-          const cipher = CryptoUtils.getCipherStream(plaintextKey, thumbIv);
-          await new Promise((resolve, reject) => {
-            const readStream = fs.createReadStream(tempThumbPath);
-            const writeStream = fs.createWriteStream(thumbPath);
-            readStream.pipe(cipher).pipe(writeStream).on("finish", resolve).on("error", reject);
-          });
-
-          await fs.promises.unlink(tempThumbPath).catch(() => {});
-          file.thumbnail_path = thumbPath;
-          file.thumbnail_iv = thumbIv.toString("hex");
-          await file.save();
-        } else {
-          if (fs.existsSync(tempThumbPath)) {
-            fs.unlinkSync(tempThumbPath);
-          }
-          logger.warn(
-            `[Preview] Thumbnail generation produced undersized output (${tempThumbSize}B < ${MIN_THUMB_BYTES}B min) for ${fileId}`
-          );
-          return res.status(HttpStatus.ACCEPTED).send("");
-        }
-      } catch (err) {
-        logger.warn(`[Preview] Thumbnail generation failed for ${fileId}: ${err.message}`);
-        return res.status(HttpStatus.ACCEPTED).send("");
-      }
-    }
-
-    if (file.thumbnail_iv) {
-      const thumbIv = Buffer.from(file.thumbnail_iv, "hex");
-      const decipherStream = CryptoUtils.getDecipherStream(plaintextKey, thumbIv);
-      const stats = fs.statSync(thumbPath);
-
-      if (stats.size < MIN_THUMB_BYTES) {
-        fs.unlinkSync(thumbPath);
-        file.thumbnail_path = null;
-        file.thumbnail_iv = null;
-        await file.save();
-        return res.status(HttpStatus.ACCEPTED).send("");
-      }
-
-      res.set("Content-Type", "image/jpeg");
-      res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_DAY}`);
-      res.set("Content-Length", stats.size);
-
-      const readStream = fs.createReadStream(thumbPath);
-      readStream.on("error", () => res.end());
-      decipherStream.on("error", () => res.end());
-      return readStream.pipe(decipherStream).pipe(res);
-    } else {
-      res.set("Content-Type", "image/jpeg");
-      res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_DAY}`);
-      return res.sendFile(path.resolve(thumbPath));
-    }
+    const readStream = fs.createReadStream(thumb.thumbPath);
+    readStream.on("error", () => res.end());
+    decipherStream.on("error", () => res.end());
+    return readStream.pipe(decipherStream).pipe(res);
   }
 
   // ── Video preview ─────────────────────────────────────────────────────────

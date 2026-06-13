@@ -42,6 +42,7 @@ describe("Bulk Operations API", () => {
         size_bytes: 11,
         storage_path: testFilePath,
         category: "document",
+        encryption_iv: "aabbccddeeff00112233445566778899",
       });
 
       const res = await request(app)
@@ -70,6 +71,7 @@ describe("Bulk Operations API", () => {
         size_bytes: 100,
         storage_path: "/tmp/f1.txt",
         category: "document",
+        encryption_iv: "iv2",
       });
       const file2 = await File.create({
         name: "file2.txt",
@@ -79,6 +81,7 @@ describe("Bulk Operations API", () => {
         size_bytes: 100,
         storage_path: "/tmp/f2.txt",
         category: "document",
+        encryption_iv: "iv3",
       });
 
       await request(app)
@@ -117,6 +120,7 @@ describe("Bulk Operations API", () => {
         size_bytes: 100,
         storage_path: "/tmp/f1.txt",
         category: "document",
+        encryption_iv: "iv4",
       });
 
       await request(app)

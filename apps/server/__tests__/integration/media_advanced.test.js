@@ -189,6 +189,7 @@ describe("Advanced Media API", () => {
         metadata: { width: 1920, height: 1080 },
         gps: { lat: 12.9716, lng: 77.5946 },
         taken_at: new Date(),
+        encryption_iv: "iv1",
       });
 
       const res = await request(app).get("/api/v1/files").set(authHeader).expect(200);
@@ -214,6 +215,7 @@ describe("Advanced Media API", () => {
           album: "Test Album",
           title: "Test Song",
         },
+        encryption_iv: "iv2",
       });
 
       const res = await request(app).get("/api/v1/files").set(authHeader).expect(200);

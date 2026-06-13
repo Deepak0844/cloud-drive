@@ -92,7 +92,7 @@ describe("Quota API", () => {
         .expect(403);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toMatch(/quota|limit/i);
+      expect(response.body.message).toMatch(/quota|limit/i);
     });
     it("should still count trashed items toward quota until emptied", async () => {
       // 1. Upload a file (500 bytes)
