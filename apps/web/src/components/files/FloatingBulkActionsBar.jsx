@@ -48,7 +48,7 @@ export default function FloatingBulkActionsBar({ selectedCount, clearSelection, 
           animate={{ y: 0, x: "-50%", opacity: 1 }}
           exit={{ y: 100, x: "-50%", opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed bottom-10 left-1/2 z-50 pointer-events-auto"
+          className="fixed bottom-10 left-1/2 z-50 pointer-events-auto bulk-actions-bar"
         >
           <div className="glass-card rounded-[2.5rem] p-2 flex items-center gap-2 shadow-premium bg-[#1a1c1e]/80 border-white/10 px-6 h-16 min-w-105 active-glow">
             <div className="flex items-center gap-4 pr-4 border-r border-white/10">
