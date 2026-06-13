@@ -222,7 +222,7 @@ function SettingsPage() {
 
                 <div className="flex flex-col md:flex-row gap-4">
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     className="h-12 flex-1 font-bold rounded-2xl"
                     onClick={() => setPasswordModalVisible(true)}
                   >
