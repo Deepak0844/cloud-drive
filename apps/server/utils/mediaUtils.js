@@ -36,9 +36,10 @@ import ZipUtils from "#utils/zipUtils.js";
 
 // Utils
 import logger from "#utils/logger.js";
-import { MediaProcessing } from "#constants/generalConstants.js";
+import { MediaProcessing, HlsConfig } from "#constants/generalConstants.js";
 
-const { TRANSCODE_CRF, TRANSCODE_AUDIO_BITRATE, FFMPEG_MAX_BUFFER, MOOV_RELOCATION_TIMEOUT_MS } = MediaProcessing;
+const { TRANSCODE_CRF, TRANSCODE_AUDIO_BITRATE, MOOV_RELOCATION_TIMEOUT_MS } = MediaProcessing;
+const { TRANSCODE_PRESET } = HlsConfig;
 
 // ─── Media Probe (Encrypted) ──────────────────────────────────────────────────
 
@@ -264,161 +265,112 @@ function needsVideoPreview(filePath, mimeType, codec) {
   return true;
 }
 
-// ─── HLS Full Transcode ────────────────────────────────────────────────────────
-
-// In-memory lock: prevents concurrent full-file transcodes for the same outputDir
-const hlsTranscodeLocks = new Map();
+// ─── HLS Session Args Builder ────────────────────────────────────────────────────
 
 /**
- * Transcodes an entire encrypted media file to HLS format (background-safe with lock).
+ * Builds the ffmpeg argv for an anchored HLS transcode session.
  *
- * @param {string}  storagePath     - Encrypted file path
- * @param {Buffer}  userKey         - Unwrapped DEK
- * @param {Buffer}  iv              - File IV
- * @param {string}  outputDir       - Directory for HLS segments + playlist
- * @param {number}  segmentDuration - Target segment length in seconds
- * @param {boolean} isAudioOnly     - Skip video codec options when true
+ * A session encodes linearly from `anchorSegment * segmentDuration` to the end of the
+ * source, emitting seg-<anchorSegment>.ts, seg-<anchorSegment+1>.ts, ... onto the SAME
+ * fixed segment grid the precomputed master playlist promises:
+ *   - `-ss` input-seeks to the anchor; the run's output timeline restarts at t=0.
+ *   - `-force_key_frames expr:gte(t,n_forced*D)` forces an IDR every D seconds from t=0,
+ *     so each segment is independently decodable and boundaries land on the grid.
+ *   - `-output_ts_offset` shifts the run onto the global timeline, so segment K's internal
+ *     timestamps reflect global [K*D, (K+1)*D) and the player stitches it correctly when
+ *     the segment is loaded via the master playlist.
+ *   - `-start_number K` names files seg-K.ts onward.
+ *   - `independent_segments+temp_file` => each .ts is written to a temp name and renamed
+ *     atomically, so a reader never observes a partially-written segment.
+ *
+ * Source resolution is preserved (only normalized to even dimensions, which libx264
+ * requires) per ratified sub-decision §7.1 — no downscale.
+ *
+ * Pure function (no spawn) — process management lives in hlsSessionUtils.
+ *
+ * @param {object}  opts
+ * @param {string}  opts.sourcePath      - Decrypted source file (seekable)
+ * @param {string}  opts.cacheDir        - Output dir for seg-*.ts + throwaway session playlist
+ * @param {number}  opts.anchorSegment   - Segment index this session starts at (K)
+ * @param {number}  opts.segmentDuration - Segment length in seconds (D)
+ * @param {boolean} opts.isAudioOnly     - Omit video options when true
+ * @param {boolean} [opts.hasAudio=true] - Source has an audio track; set false for video-only files
+ * @returns {string[]} ffmpeg argv
  */
-async function transcodeToHls(storagePath, userKey, iv, outputDir, segmentDuration, isAudioOnly) {
-  if (hlsTranscodeLocks.has(outputDir)) {
-    await hlsTranscodeLocks.get(outputDir);
-    return;
+function buildHlsSessionArgs({ sourcePath, cacheDir, anchorSegment, segmentDuration, isAudioOnly, hasAudio = true }) {
+  const anchorSeconds = anchorSegment * segmentDuration;
+  const segmentPattern = path.join(cacheDir, "seg-%d.ts");
+  const sessionPlaylist = path.join(cacheDir, `session-${anchorSegment}.m3u8`);
+
+  // Shared HLS muxer tail — grid alignment + atomic writes + global-timeline offset
+  const hlsTail = [
+    "-avoid_negative_ts",
+    "make_zero",
+    "-f",
+    "hls",
+    "-hls_time",
+    String(segmentDuration),
+    "-hls_list_size",
+    "0",
+    "-output_ts_offset",
+    String(anchorSeconds),
+    "-hls_flags",
+    "independent_segments+temp_file",
+    "-start_number",
+    String(anchorSegment),
+    "-hls_segment_filename",
+    segmentPattern,
+    "-muxdelay",
+    "0",
+    "-max_muxing_queue_size",
+    "9999",
+    sessionPlaylist,
+  ];
+
+  if (isAudioOnly) {
+    return [
+      "-y",
+      "-ss",
+      String(anchorSeconds),
+      "-i",
+      sourcePath,
+      "-map",
+      "0:a:0",
+      "-c:a",
+      "aac",
+      "-b:a",
+      TRANSCODE_AUDIO_BITRATE,
+      "-af",
+      "asetpts=PTS-STARTPTS",
+      ...hlsTail,
+    ];
   }
 
-  let resolveLock;
-  const lockPromise = new Promise((r) => {
-    resolveLock = r;
-  });
-  hlsTranscodeLocks.set(outputDir, lockPromise);
+  const audioArgs = hasAudio
+    ? ["-map", "0:a:0?", "-c:a", "aac", "-b:a", TRANSCODE_AUDIO_BITRATE, "-af", "asetpts=PTS-STARTPTS"]
+    : ["-an"];
 
-  let tempPath = null;
-  try {
-    await fsPromises.mkdir(outputDir, { recursive: true });
-    tempPath = await decryptToTemp(storagePath, userKey, iv);
-
-    let inputHasAudio = false;
-    try {
-      const probeData = await probeVideo(tempPath);
-      inputHasAudio = probeData.streams.some((s) => s.codec_type === "audio");
-    } catch {
-      inputHasAudio = false;
-    }
-
-    const segmentPattern = path.join(outputDir, "seg-%d.ts");
-    const playlistPath = path.join(outputDir, "playlist.m3u8");
-
-    const args = isAudioOnly
-      ? [
-          "-y",
-          "-i",
-          tempPath,
-          "-filter_complex",
-          "[0:a]asetpts=PTS-STARTPTS[a]",
-          "-map",
-          "[a]",
-          "-c:a",
-          "aac",
-          "-b:a",
-          TRANSCODE_AUDIO_BITRATE,
-          "-f",
-          "hls",
-          "-hls_time",
-          String(segmentDuration),
-          "-hls_list_size",
-          "0",
-          "-hls_flags",
-          "independent_segments",
-          "-hls_segment_filename",
-          segmentPattern,
-          "-max_muxing_queue_size",
-          "9999",
-          playlistPath,
-        ]
-      : inputHasAudio
-        ? [
-            "-y",
-            "-i",
-            tempPath,
-            "-filter_complex",
-            "[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p,setpts=PTS-STARTPTS[v];[0:a]asetpts=PTS-STARTPTS[a]",
-            "-map",
-            "[v]",
-            "-map",
-            "[a]",
-            "-c:v",
-            "libx264",
-            "-crf",
-            TRANSCODE_CRF,
-            "-preset",
-            "fast",
-            "-c:a",
-            "aac",
-            "-b:a",
-            TRANSCODE_AUDIO_BITRATE,
-            "-f",
-            "hls",
-            "-hls_time",
-            String(segmentDuration),
-            "-hls_list_size",
-            "0",
-            "-hls_flags",
-            "independent_segments",
-            "-hls_segment_filename",
-            segmentPattern,
-            "-max_muxing_queue_size",
-            "9999",
-            playlistPath,
-          ]
-        : [
-            "-y",
-            "-i",
-            tempPath,
-            "-filter_complex",
-            "[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p,setpts=PTS-STARTPTS[v]",
-            "-map",
-            "[v]",
-            "-c:v",
-            "libx264",
-            "-crf",
-            TRANSCODE_CRF,
-            "-preset",
-            "fast",
-            "-an",
-            "-f",
-            "hls",
-            "-hls_time",
-            String(segmentDuration),
-            "-hls_list_size",
-            "0",
-            "-hls_flags",
-            "independent_segments",
-            "-hls_segment_filename",
-            segmentPattern,
-            "-max_muxing_queue_size",
-            "9999",
-            playlistPath,
-          ];
-
-    logger.info(`[HLS] Full transcode started: ${resolvedFfmpegPath} ${args.join(" ")}`);
-
-    await new Promise((resolve, reject) => {
-      execFile(resolvedFfmpegPath, args, { maxBuffer: FFMPEG_MAX_BUFFER }, (err, _stdout, stderr) => {
-        if (err) {
-          logger.error(`[HLS] Transcode failed:\n${stderr}`);
-          reject(new Error(`HLS full transcode failed: ${err.message}`));
-        } else {
-          logger.info(`[HLS] Full transcode complete: ${outputDir}`);
-          resolve();
-        }
-      });
-    });
-  } finally {
-    if (tempPath) {
-      await fsPromises.unlink(tempPath).catch(() => {});
-    }
-    hlsTranscodeLocks.delete(outputDir);
-    resolveLock();
-  }
+  return [
+    "-y",
+    "-ss",
+    String(anchorSeconds),
+    "-i",
+    sourcePath,
+    "-map",
+    "0:v:0",
+    ...audioArgs,
+    "-c:v",
+    "libx264",
+    "-preset",
+    TRANSCODE_PRESET,
+    "-crf",
+    TRANSCODE_CRF,
+    "-vf",
+    "setpts=PTS-STARTPTS,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p",
+    "-force_key_frames",
+    `expr:gte(t,n_forced*${segmentDuration})`,
+    ...hlsTail,
+  ];
 }
 
 // ─── Moov Atom Relocation ──────────────────────────────────────────────────────
@@ -458,7 +410,7 @@ const MediaUtils = {
   // Transcode
   pipeTranscode,
   pipeTranscodeStream,
-  transcodeToHls,
+  buildHlsSessionArgs,
   needsVideoPreview,
   relocateMoovAtom,
 

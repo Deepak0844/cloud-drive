@@ -8,6 +8,7 @@ import { HttpStatus } from "@shared-constants/constants";
 
 // Utils
 import { AppError } from "#utils/errorUtils.js";
+import MimeUtils from "#utils/mimeUtils.js";
 
 // ─── Allowed MIME Types ───────────────────────────────────────────────────────
 
@@ -71,6 +72,25 @@ export const ALLOWED_MIME_TYPES = new Set([
   "application/gzip",
 ]);
 
+// ─── Type Acceptance ──────────────────────────────────────────────────────────
+
+/**
+ * First-pass upload type check. Accepts when EITHER the browser-provided MIME or the
+ * extension-derived MIME is allowlisted. The browser MIME is unreliable (e.g. Chrome sends
+ * "video/avi" or "" for .avi, "audio/mp3" for .mp3), so a missing/quirky value must not
+ * reject a legitimate file. The authoritative, spoof-proof gate is the magic-byte check in
+ * fileService.processUpload, which still rejects (and unlinks) any disallowed content.
+ *
+ * @param {{ mimetype?: string, originalname?: string }} file
+ * @returns {boolean}
+ */
+export function isUploadTypeAllowed(file) {
+  if (file && ALLOWED_MIME_TYPES.has(file.mimetype)) {
+    return true;
+  }
+  return ALLOWED_MIME_TYPES.has(MimeUtils.getMimeType(file?.originalname));
+}
+
 // ─── Multer — writes to OS temp dir; we rename to stable path after DB insert ─
 
 const storage = multer.diskStorage({
@@ -85,7 +105,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1000 * 1000 * 1000 }, // 5 GB cap
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
+    if (isUploadTypeAllowed(file)) {
       cb(null, true);
     } else {
       cb(new AppError(ErrorMessages.FILE_TYPE_NOT_ALLOWED, HttpStatus.BAD_REQUEST), false);

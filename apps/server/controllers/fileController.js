@@ -27,6 +27,8 @@ import MediaUtils from "#utils/mediaUtils.js";
 import StreamingUtils from "#utils/streamingUtils.js";
 import CryptoUtils from "#utils/cryptoUtils.js";
 import HlsCacheUtils from "#utils/hlsCacheUtils.js";
+import HlsSessionUtils from "#utils/hlsSessionUtils.js";
+import { decryptToTemp } from "#utils/mediaCore.js";
 import logger from "#utils/logger.js";
 import config from "#config/env.js";
 
@@ -330,98 +332,35 @@ export const getHlsPlaylist = asyncHandler(async (req, res) => {
   }
 
   const fileId = file._id.toString();
-  const baseStoragePath = config.NAS_STORAGE_PATH;
-  const outputDir = HlsCacheUtils.getCacheDir(baseStoragePath, fileId);
-  const isAudioOnly = file.category === FileCategories.AUDIO;
 
+  // Probe duration to build the fixed segment grid. Individual segments are produced on
+  // demand by anchored transcode sessions (see getHlsSegment) — no full-file transcode
+  // happens here, so the playlist is available immediately and the whole timeline is seekable.
   let mediaInfo;
   try {
     mediaInfo = await MediaUtils.probeEncryptedMedia(file.storage_path, plaintextKey, iv);
   } catch (err) {
     logger.error(`[HLS Playlist] Probe failed for ${fileId}: ${err.message}`);
-    return ResponseUtils.error(res, ErrorMessages.MEDIA_METADATA_FAILED, HttpStatus.INTERNAL_SERVER_ERROR);
-  }
-
-  const alreadyTranscoded = await HlsCacheUtils.isPlaylistCached(baseStoragePath, fileId);
-  const durationUnknown = mediaInfo.duration === 0;
-
-  if (!alreadyTranscoded) {
-    if (durationUnknown) {
-      logger.info(`[HLS Playlist] Unknown duration — synchronous transcode for ${fileId}`);
-      try {
-        await MediaUtils.transcodeToHls(
-          file.storage_path,
-          plaintextKey,
-          iv,
-          outputDir,
-          HlsConfig.SEGMENT_DURATION,
-          isAudioOnly
-        );
-      } catch (err) {
-        logger.error(`[HLS Playlist] Sync transcode failed for ${fileId}: ${err.message}`);
-        return ResponseUtils.error(res, "HLS transcode failed", HttpStatus.INTERNAL_SERVER_ERROR);
-      }
-    } else {
-      logger.info(`[HLS Playlist] Starting background transcode for file ${fileId}`);
-      MediaUtils.transcodeToHls(
-        file.storage_path,
-        plaintextKey,
-        iv,
-        outputDir,
-        HlsConfig.SEGMENT_DURATION,
-        isAudioOnly
-      ).catch((err) => logger.error(`[HLS Playlist] Background transcode failed for ${fileId}: ${err.message}`));
-    }
-  }
-
-  const realPlaylistReady = durationUnknown || alreadyTranscoded;
-  if (realPlaylistReady) {
-    try {
-      const playlistPath = HlsCacheUtils.getPlaylistPath(baseStoragePath, fileId);
-      let rawPlaylist = await fs.promises.readFile(playlistPath, "utf8");
-      const hasSegments = /^seg-\d+\.ts$/m.test(rawPlaylist);
-      if (!hasSegments) {
-        logger.warn(`[HLS Playlist] Cached playlist for ${fileId} has 0 segments — purging and re-transcoding`);
-        await fs.promises.rm(outputDir, { recursive: true, force: true }).catch(() => {});
-        try {
-          await MediaUtils.transcodeToHls(
-            file.storage_path,
-            plaintextKey,
-            iv,
-            outputDir,
-            HlsConfig.SEGMENT_DURATION,
-            isAudioOnly
-          );
-        } catch (err) {
-          logger.error(`[HLS Playlist] Re-transcode after empty cache failed for ${fileId}: ${err.message}`);
-          return ResponseUtils.error(res, "HLS transcode failed", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-        rawPlaylist = await fs.promises.readFile(playlistPath, "utf8");
-      }
-
-      let translated = rawPlaylist.replace(/^(seg-\d+\.ts)$/gm, `/api/v1/files/${fileId}/hls/$1`);
-      if (!translated.includes("#EXT-X-PLAYLIST-TYPE")) {
-        translated = translated.replace("#EXTM3U", "#EXTM3U\n#EXT-X-PLAYLIST-TYPE:VOD");
-      }
-
-      res.set("Content-Type", "application/vnd.apple.mpegurl");
-      res.set("Cache-Control", "no-cache");
-      return res.send(translated);
-    } catch (err) {
-      logger.error(`[HLS Playlist] Failed to read real playlist for ${fileId}: ${err.message}`);
-      return ResponseUtils.error(res, "HLS playlist unavailable", HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return ResponseUtils.error(res, ErrorMessages.MEDIA_METADATA_FAILED, HttpStatus.SERVER_ERROR);
   }
 
   const { duration } = mediaInfo;
+  if (!duration || duration <= 0) {
+    // No known duration => cannot build a fixed segment grid (rare: corrupt or streaming-only
+    // container). 503 + Retry-After; there is no HttpStatus.SERVICE_UNAVAILABLE constant.
+    logger.warn(`[HLS Playlist] Unknown duration for ${fileId} — cannot build HLS grid`);
+    res.set("Retry-After", "2");
+    return ResponseUtils.error(res, ErrorMessages.MEDIA_METADATA_FAILED, 503);
+  }
+
   const segDur = HlsConfig.SEGMENT_DURATION;
-  const segmentCount = Math.ceil(duration / segDur);
+  const segmentCount = Math.floor(duration / segDur) || 1;
 
   const lines = [
     "#EXTM3U",
     "#EXT-X-PLAYLIST-TYPE:VOD",
     "#EXT-X-VERSION:3",
-    `#EXT-X-TARGETDURATION:${segDur}`,
+    `#EXT-X-TARGETDURATION:${segDur + 1}`,
     "#EXT-X-MEDIA-SEQUENCE:0",
   ];
   for (let i = 0; i < segmentCount; i++) {
@@ -454,44 +393,41 @@ export const getHlsSegment = asyncHandler(async (req, res) => {
   const segmentIndex = parseInt(match[1], 10);
   const fileId = file._id.toString();
   const baseStoragePath = config.NAS_STORAGE_PATH;
-
-  const alreadyCached = await HlsCacheUtils.isSegmentCached(baseStoragePath, fileId, segmentIndex);
-  if (alreadyCached) {
-    const buffer = await HlsCacheUtils.readSegment(baseStoragePath, fileId, segmentIndex);
-    res.set("Content-Type", "video/mp2t");
-    res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
-    return res.send(buffer);
-  }
-
   const isAudioOnly = file.category === FileCategories.AUDIO;
-  const outputDir = HlsCacheUtils.getCacheDir(baseStoragePath, fileId);
 
-  MediaUtils.transcodeToHls(
-    file.storage_path,
-    plaintextKey,
-    iv,
-    outputDir,
-    HlsConfig.SEGMENT_DURATION,
-    isAudioOnly
-  ).catch((err) => logger.error(`[HLS Segment] Transcode error for ${fileId}: ${err.message}`));
+  // Decrypt to a seekable temp file only when a new session must start. The session
+  // (inside ensureSegment) owns the returned path's lifetime and unlinks it on exit.
+  const getSource = () => decryptToTemp(file.storage_path, plaintextKey, iv);
 
-  const POLL_INTERVAL_MS = 300;
-  const POLL_TIMEOUT_MS = 120_000;
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-
-  while (Date.now() < deadline) {
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-    const ready = await HlsCacheUtils.isSegmentCached(baseStoragePath, fileId, segmentIndex);
-    if (ready) {
-      const segmentBuffer = await HlsCacheUtils.readSegment(baseStoragePath, fileId, segmentIndex);
-      res.set("Content-Type", "video/mp2t");
-      res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
-      return res.send(segmentBuffer);
-    }
+  let result;
+  try {
+    result = await HlsSessionUtils.ensureSegment(baseStoragePath, fileId, segmentIndex, getSource, isAudioOnly);
+  } catch (err) {
+    logger.error(`[HLS Segment] Failed to produce seg-${segmentIndex}.ts for ${fileId}: ${err.message}`);
+    return ResponseUtils.error(res, "HLS segment generation failed", HttpStatus.SERVER_ERROR);
   }
 
-  logger.error(`[HLS Segment] Timed out waiting for seg-${segmentIndex}.ts for file ${fileId}`);
-  return ResponseUtils.error(res, "HLS segment timed out", HttpStatus.INTERNAL_SERVER_ERROR);
+  if (!result.ready) {
+    // Not ready within the budget (timeout / no free transcode slot / session died). 503 +
+    // Retry-After lets the hls.js client re-request while the session keeps producing.
+    logger.info(`[HLS Segment] seg-${segmentIndex}.ts not ready for ${fileId} (${result.reason}) — 503`);
+    res.set("Retry-After", "2");
+    return ResponseUtils.error(res, "HLS segment not ready", 503);
+  }
+
+  let buffer;
+  try {
+    buffer = await HlsCacheUtils.readSegment(baseStoragePath, fileId, segmentIndex);
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      res.set("Retry-After", "2");
+      return ResponseUtils.error(res, "HLS segment not ready", 503);
+    }
+    throw err;
+  }
+  res.set("Content-Type", "video/mp2t");
+  res.set("Cache-Control", `private, max-age=${CacheDurations.ONE_HOUR}`);
+  return res.send(buffer);
 });
 
 export const bulkCopy = asyncHandler(async (req, res) => {

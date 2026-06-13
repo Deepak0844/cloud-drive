@@ -5,6 +5,9 @@ import request from "supertest";
 // App
 import app from "#app";
 
+// Middleware (unit under test)
+import { isUploadTypeAllowed } from "#middlewares/uploadMiddleware.js";
+
 // Models
 import File from "#models/File.js";
 import Folder from "#models/Folder.js";
@@ -367,5 +370,32 @@ describe("File API", () => {
       // Should be sanitized (e.g. etc-passwd or similar)
       expect(response.body.data.name).not.toContain("..");
     });
+  });
+});
+
+// Pure unit tests for the first-pass upload type filter — no DB/app state needed.
+describe("upload type filter", () => {
+  it("accepts AVI when the browser sends a non-standard mime", () => {
+    expect(isUploadTypeAllowed({ mimetype: "video/avi", originalname: "movie.avi" })).toBe(true);
+  });
+
+  it("accepts AVI when the browser sends an empty mime (extension fallback)", () => {
+    expect(isUploadTypeAllowed({ mimetype: "", originalname: "movie.avi" })).toBe(true);
+  });
+
+  it("accepts MP3 when the browser labels it audio/mp3", () => {
+    expect(isUploadTypeAllowed({ mimetype: "audio/mp3", originalname: "song.mp3" })).toBe(true);
+  });
+
+  it("accepts a file whose browser mime is already allowlisted", () => {
+    expect(isUploadTypeAllowed({ mimetype: "image/png", originalname: "pic.png" })).toBe(true);
+  });
+
+  it("rejects a disallowed type even with a plausible extension", () => {
+    expect(isUploadTypeAllowed({ mimetype: "application/x-msdownload", originalname: "x.exe" })).toBe(false);
+  });
+
+  it("rejects when neither the mime nor the extension is recognized", () => {
+    expect(isUploadTypeAllowed({ mimetype: "foo/bar", originalname: "x.zzz" })).toBe(false);
   });
 });

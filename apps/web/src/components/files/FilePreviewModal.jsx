@@ -196,6 +196,7 @@ export default function FilePreviewModal({
           <AnimatePresence>
             {canGoPrev && (
               <motion.div
+                key="prev"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -214,6 +215,7 @@ export default function FilePreviewModal({
 
             {canGoNext && (
               <motion.div
+                key="next"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
@@ -234,6 +236,7 @@ export default function FilePreviewModal({
           {/* Immersive Viewport */}
           <div className="flex-1 flex items-center justify-center relative bg-gradient-radial from-white/5 to-transparent">
             <FilePreviewContent
+              key={fileId}
               file={currentFile}
               type={type}
               previewSrc={previewSrc}

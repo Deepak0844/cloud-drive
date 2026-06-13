@@ -107,6 +107,15 @@ async function cleanupExpiredSegments(baseStoragePath, ttlMs, maxSizeBytes) {
         for (const seg of segments) {
           const segPath = path.join(fileCacheDir, seg);
           try {
+            // Session playlist files (session-N.m3u8) are ephemeral: written per anchor
+            // restart and never served. Always delete them so they cannot prevent the
+            // directory-empty check from cleaning up the per-file cache dir.
+            if (/^session-\d+\.m3u8$/.test(seg)) {
+              await fsPromises.unlink(segPath).catch(() => {});
+              logger.debug(`[HLS Cache] Evicted session playlist: ${segPath}`);
+              continue;
+            }
+
             const stats = await fsPromises.stat(segPath);
             const age = now - stats.atimeMs;
 

@@ -52,30 +52,33 @@ function AdvancedFilterDropdown({ onFilter, onClear, initialFilters = {}, trigge
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        {trigger ? (
-          <div className="cursor-pointer">{trigger}</div>
-        ) : (
-          <Button
-            variant={isOpen ? "aurora" : "outline"}
-            className={cn(
-              "rounded-xl h-10 flex items-center gap-2 font-bold transition-all",
-              isOpen ? "shadow-glow-sm" : "hover:border-primary/50 hover:bg-primary/5"
-            )}
-          >
-            <Filter size={16} />
-            Advanced Search
-            {activeFiltersCount > 0 && (
-              <Badge
-                variant="secondary"
-                className="ml-1 h-5 min-w-[20px] px-1 rounded-full bg-primary text-white border-none flex items-center justify-center text-[10px]"
-              >
-                {activeFiltersCount}
-              </Badge>
-            )}
-          </Button>
-        )}
-      </PopoverTrigger>
+      <PopoverTrigger
+        nativeButton={!trigger}
+        render={
+          trigger ? (
+            <div className="cursor-pointer">{trigger}</div>
+          ) : (
+            <Button
+              variant={isOpen ? "aurora" : "outline"}
+              className={cn(
+                "rounded-xl h-10 flex items-center gap-2 font-bold transition-all",
+                isOpen ? "shadow-glow-sm" : "hover:border-primary/50 hover:bg-primary/5"
+              )}
+            >
+              <Filter size={16} />
+              Advanced Search
+              {activeFiltersCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-5 min-w-[20px] px-1 rounded-full bg-primary text-white border-none flex items-center justify-center text-[10px]"
+                >
+                  {activeFiltersCount}
+                </Badge>
+              )}
+            </Button>
+          )
+        }
+      />
 
       <PopoverContent
         align={align}

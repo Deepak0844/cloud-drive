@@ -1,6 +1,7 @@
 // React core & third-party libraries
+import { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
-import { MediaPlayer, MediaProvider } from "@vidstack/react";
+import { isHLSProvider, MediaPlayer, MediaProvider } from "@vidstack/react";
 import { DefaultAudioLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
 
 // Constants
@@ -27,13 +28,46 @@ import "@vidstack/react/player/styles/default/layouts/audio.css";
 export default function AudioPlayer({ playbackInfo, audioMetadata = null, fileId, onError }) {
   const thumbnailUrl = fileId ? UrlUtils.format(`${ApiBasePath}${FileServiceUrls.thumbnail}`, { id: fileId }) : null;
 
+  // Hooks run before the early return (rules of hooks). Memoizing src + onProviderChange keeps
+  // their identity stable across parent re-renders so Vidstack never re-initializes the provider
+  // mid-playback — referential stability for a reactive prop, not a performance optimization.
+  const playbackUrl = playbackInfo?.playbackUrl;
+  const mimeType = playbackInfo?.mimeType;
+  const nativePlayback = playbackInfo?.nativePlayback;
+
+  const src = useMemo(
+    () =>
+      nativePlayback
+        ? { src: playbackUrl, type: mimeType }
+        : { src: playbackUrl, type: "application/x-mpegURL" },
+    [playbackUrl, mimeType, nativePlayback]
+  );
+
+  const onProviderChange = useCallback((provider) => {
+    if (isHLSProvider(provider)) {
+      provider.config = {
+        // Tolerate small PTS gaps from encoder delay during source→AAC transcoding
+        maxBufferHole: 0.5,
+        // Segments are produced on demand by an anchored transcode session. The server resolves
+        // each request quickly — a cached hit, or a 503 + Retry-After once its SEGMENT_WAIT_MS
+        // budget elapses while the session warms up. Keep a generous time budget for the
+        // cold-start segment, and a generous errorRetry so transient 503s are re-requested (the
+        // session keeps producing, so a retry lands a now-cached segment). The full default
+        // object is required: hls.js mergeConfig shallow-replaces fragLoadPolicy, so omitting the
+        // retry sub-objects would leave them undefined.
+        fragLoadPolicy: {
+          default: {
+            maxTimeToFirstByteMs: 30_000,
+            maxLoadTimeMs: 60_000,
+            timeoutRetry: { maxNumRetry: 4, retryDelayMs: 0, maxRetryDelayMs: 0 },
+            errorRetry: { maxNumRetry: 8, retryDelayMs: 1000, maxRetryDelayMs: 4000 },
+          },
+        },
+      };
+    }
+  }, []);
+
   if (!playbackInfo) return null;
-
-  const { playbackUrl, mimeType, nativePlayback } = playbackInfo;
-
-  const src = nativePlayback
-    ? { src: playbackUrl, type: mimeType }
-    : { src: playbackUrl, type: "application/x-mpegURL" };
 
   return (
     <div className="flex flex-col items-center gap-6 p-8 bg-surface-dim rounded-2xl w-[50%]">
@@ -66,7 +100,7 @@ export default function AudioPlayer({ playbackInfo, audioMetadata = null, fileId
       )}
 
       {/* Vidstack audio player */}
-      <MediaPlayer src={src} autoPlay className="w-full" onError={onError}>
+      <MediaPlayer src={src} viewType="audio" autoPlay className="w-full" onProviderChange={onProviderChange} onError={onError}>
         <MediaProvider />
         <DefaultAudioLayout icons={defaultLayoutIcons} />
       </MediaPlayer>

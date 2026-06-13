@@ -78,7 +78,6 @@ export const BROWSER_NATIVE_AUDIO_MIMES = new Set([
   "audio/mpeg",
   "audio/ogg",
   "audio/wav",
-  "audio/aac",
   "audio/mp4",
   "audio/x-m4a",
   "audio/opus",

@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg-dev \
     libgif-dev \
     librsvg2-dev \
+    ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
 # ── Layer 1: workspace manifests (cached unless package files change) ─────────

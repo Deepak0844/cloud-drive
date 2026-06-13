@@ -23,16 +23,17 @@ function BreadcrumbItem({ className, ...props }) {
   return <li data-slot="breadcrumb-item" className={cn("inline-flex items-center gap-1", className)} {...props} />;
 }
 
-function BreadcrumbLink({ className, render, ...props }) {
+function BreadcrumbLink({ className, render, asChild, children, ...props }) {
+  const resolvedRender = render ?? (asChild && React.isValidElement(children) ? children : undefined);
   return useRender({
     defaultTagName: "a",
     props: mergeProps(
       {
         className: cn("transition-colors hover:text-foreground", className),
       },
-      props
+      resolvedRender ? props : { ...props, children }
     ),
-    render,
+    render: resolvedRender,
     state: {
       slot: "breadcrumb-link",
     },

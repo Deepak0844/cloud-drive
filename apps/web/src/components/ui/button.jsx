@@ -4,6 +4,13 @@ import { buttonVariants } from "./variants/button-variants";
 
 // export { buttonVariants } - Removed to fix Fast Refresh warning
 
-export function Button({ className, variant = "default", size = "default", ...props }) {
-  return <ButtonPrimitive data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+export function Button({ className, variant = "default", size = "default", loading, fullWidth, disabled, ...props }) {
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }), fullWidth && "w-full")}
+      disabled={loading || disabled}
+      {...props}
+    />
+  );
 }

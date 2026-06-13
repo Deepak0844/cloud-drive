@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import { useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
 import { isHLSProvider, MediaPlayer, MediaProvider } from "@vidstack/react";
 import { DefaultVideoLayout, defaultLayoutIcons } from "@vidstack/react/player/layouts/default";
@@ -20,22 +21,45 @@ import "@vidstack/react/player/styles/default/layouts/video.css";
  * @param {{ playbackInfo: object, onError: function }} props
  */
 export default function VideoPlayer({ playbackInfo, onError }) {
-  if (!playbackInfo) return null;
-
-  const { playbackUrl, mimeType, nativePlayback } = playbackInfo;
+  // Hooks run before the early return (rules of hooks). Memoizing src + onProviderChange keeps
+  // their identity stable across parent re-renders so Vidstack never re-initializes the provider
+  // mid-playback — referential stability for a reactive prop, not a performance optimization.
+  const playbackUrl = playbackInfo?.playbackUrl;
+  const mimeType = playbackInfo?.mimeType;
+  const nativePlayback = playbackInfo?.nativePlayback;
 
   // Vidstack accepts either a typed src object or a plain URL string.
   // For HLS we pass the explicit MIME type so Vidstack picks the HLS provider.
-  const src = nativePlayback
-    ? { src: playbackUrl, type: mimeType }
-    : { src: playbackUrl, type: "application/x-mpegURL" };
+  const src = useMemo(
+    () => (nativePlayback ? { src: playbackUrl, type: mimeType } : { src: playbackUrl, type: "application/x-mpegURL" }),
+    [playbackUrl, mimeType, nativePlayback]
+  );
 
-  function onProviderChange(provider) {
+  const onProviderChange = useCallback((provider) => {
     if (isHLSProvider(provider)) {
-      // Tolerate small PTS gaps caused by AAC encoder delay in Vorbis→AAC transcoding
-      provider.config = { maxBufferHole: 0.5 };
+      provider.config = {
+        // Tolerate small PTS gaps caused by AAC encoder delay in Vorbis→AAC transcoding
+        maxBufferHole: 0.5,
+        // Segments are produced on demand by an anchored transcode session. The server resolves
+        // each request quickly — a cached hit, or a 503 + Retry-After once its SEGMENT_WAIT_MS
+        // budget elapses while the session warms up. Keep a generous time budget for the
+        // cold-start segment, and a generous errorRetry so transient 503s are re-requested (the
+        // session keeps producing, so a retry lands a now-cached segment). The full default
+        // object is required: hls.js mergeConfig shallow-replaces fragLoadPolicy, so omitting the
+        // retry sub-objects would leave them undefined.
+        fragLoadPolicy: {
+          default: {
+            maxTimeToFirstByteMs: 30_000,
+            maxLoadTimeMs: 60_000,
+            timeoutRetry: { maxNumRetry: 4, retryDelayMs: 0, maxRetryDelayMs: 0 },
+            errorRetry: { maxNumRetry: 3, retryDelayMs: 2000, maxRetryDelayMs: 8000 },
+          },
+        },
+      };
     }
-  }
+  }, []);
+
+  if (!playbackInfo) return null;
 
   return (
     <MediaPlayer

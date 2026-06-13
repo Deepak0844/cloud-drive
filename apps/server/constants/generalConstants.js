@@ -197,6 +197,17 @@ export const HlsConfig = {
   MAX_CACHE_SIZE_BYTES: 2 * 1024 * 1024 * 1024, // 2 GB max cache
   CLEANUP_INTERVAL_MINUTES: 30, // background cleanup interval
   CACHE_SUBDIR: "hls-cache", // subdirectory under NAS_STORAGE_PATH
+
+  // ── Session-based transcoding (see work/plans/2026-06-11-robust-hls-streaming.md) ──
+  MAX_CONCURRENT_TRANSCODE_SESSIONS: 2, // Pi-safe cap on live ffmpeg sessions
+  SEGMENT_WAIT_MS: 25_000, // bounded wait before returning 503; cold-start headroom for one segment on a Pi
+  SEGMENT_POLL_MS: 250, // cache-dir poll interval while waiting for a segment
+  LOOKAHEAD_SEGMENTS: 4, // how far ahead of highestWritten a request still waits vs. restarts the session
+  SESSION_IDLE_TIMEOUT_MS: 60_000, // kill a session with no segment access for 60s
+  SESSION_REAP_INTERVAL_MS: 15_000, // idle-reaper tick interval
+  TRANSCODE_PRESET: "veryfast", // libx264 preset — keeps a Pi closer to realtime than "fast"
+  // Note: source resolution is preserved (no downscale) per ratified sub-decision §7.1;
+  // sessions only normalize to even dimensions, which libx264 requires.
 };
 
 /**
