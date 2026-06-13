@@ -1,3 +1,4 @@
+import fs from "fs";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 
@@ -47,6 +48,10 @@ export async function setupTests() {
  */
 export async function teardownTests() {
   await closeTestDB();
+  const storagePath = process.env.NAS_STORAGE_PATH;
+  if (storagePath && storagePath.includes("test-storage")) {
+    await fs.promises.rm(storagePath, { recursive: true, force: true });
+  }
 }
 
 /**

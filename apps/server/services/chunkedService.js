@@ -223,6 +223,7 @@ async function assembleAndFinalize(userId, uploadId, { name, folderId, mimeType,
   const extension = path.extname(name).replace(".", "");
   const effectiveMimeType = mimeType || MimeUtils.getMimeType(name);
   const category = MetadataService.getCategory(effectiveMimeType, name);
+  const hash = await MetadataService.calculateHash(tempCombinedPath);
 
   // 4. Run the shared finalization (encrypt + write to user storage + create DB record)
   const file = await FileService.finalizeUploadedFile({
@@ -235,6 +236,7 @@ async function assembleAndFinalize(userId, uploadId, { name, folderId, mimeType,
     category,
     extension: extension || "bin",
     fileId,
+    hash,
   });
 
   // 5. Cleanup chunk directory

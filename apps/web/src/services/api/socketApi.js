@@ -61,6 +61,11 @@ const subscribeToSocketEventsQuery = () => ({
       socket.on(event, handlers[event]);
     }
 
+    // Invalidate all socket-tracked tags on reconnect to catch any events missed during the gap
+    const allTags = [...new Set(Object.values(EVENT_TAG_MAP).flat())];
+    const onReconnect = () => dispatch(api.util.invalidateTags(allTags));
+    socket.on("reconnect", onReconnect);
+
     // Wait until this cache entry is removed (component unmount)
     await cacheEntryRemoved;
 
@@ -68,6 +73,7 @@ const subscribeToSocketEventsQuery = () => ({
     for (const [event, handler] of Object.entries(handlers)) {
       socket.off(event, handler);
     }
+    socket.off("reconnect", onReconnect);
   },
 });
 
