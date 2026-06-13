@@ -28,7 +28,7 @@ function TrashConfirmDialogs({
       <AlertDialog open={confirmEmpty} onOpenChange={onConfirmEmptyChange}>
         <AlertDialogContent className="aurora-modal">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-error">
+            <AlertDialogTitle className="flex items-center gap-2 text-danger">
               <AlertTriangle size={20} />
               <span>Empty Trash</span>
             </AlertDialogTitle>
@@ -40,7 +40,7 @@ function TrashConfirmDialogs({
             <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={onEmptyConfirm}
-              className="rounded-xl font-bold bg-error hover:bg-error/90 text-white shadow-glow-sm"
+              className="rounded-xl font-bold bg-danger hover:bg-danger-dark text-white shadow-glow-destructive"
             >
               Empty Trash
             </AlertDialogAction>
@@ -51,7 +51,7 @@ function TrashConfirmDialogs({
       <AlertDialog open={confirmDelete} onOpenChange={onConfirmDeleteChange}>
         <AlertDialogContent className="aurora-modal">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-error">
+            <AlertDialogTitle className="flex items-center gap-2 text-danger">
               <AlertTriangle size={20} />
               <span>Delete Forever</span>
             </AlertDialogTitle>
@@ -63,7 +63,7 @@ function TrashConfirmDialogs({
             <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={onDeleteConfirm}
-              className="rounded-xl font-bold bg-error hover:bg-error/90 text-white shadow-glow-sm"
+              className="rounded-xl font-bold bg-danger hover:bg-danger-dark text-white shadow-glow-destructive"
             >
               Delete Forever
             </AlertDialogAction>
