@@ -8,8 +8,16 @@ function Popover({ ...props }) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
 
-function PopoverTrigger({ ...props }) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
+function PopoverTrigger({ asChild, render, children, ...props }) {
+  const renderProp = render ?? (asChild && React.isValidElement(children) ? children : undefined);
+  if (renderProp) {
+    return <PopoverPrimitive.Trigger data-slot="popover-trigger" render={renderProp} {...props} />;
+  }
+  return (
+    <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props}>
+      {children}
+    </PopoverPrimitive.Trigger>
+  );
 }
 
 function PopoverPortal({ ...props }) {

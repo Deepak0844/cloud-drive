@@ -13,8 +13,27 @@ function DropdownMenuPortal({ ...props }) {
   return <MenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />;
 }
 
-function DropdownMenuTrigger({ ...props }) {
-  return <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
+function DropdownMenuTrigger({ asChild, render, children, nativeButton, ...props }) {
+  // base-ui's Trigger uses `render` (a ReactElement that replaces the element), not Radix's
+  // `asChild`. Translate asChild → render so a custom child becomes the trigger element instead
+  // of being nested inside base-ui's own <button>. Destructuring asChild also keeps it off the DOM.
+  const renderProp = render ?? (asChild && React.isValidElement(children) ? children : undefined);
+  if (renderProp) {
+    const computedNativeButton = nativeButton ?? (renderProp.type === "button");
+    return (
+      <MenuPrimitive.Trigger
+        data-slot="dropdown-menu-trigger"
+        render={renderProp}
+        nativeButton={computedNativeButton}
+        {...props}
+      />
+    );
+  }
+  return (
+    <MenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props}>
+      {children}
+    </MenuPrimitive.Trigger>
+  );
 }
 
 function DropdownMenuContent({
