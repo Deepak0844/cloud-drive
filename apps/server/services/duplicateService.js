@@ -18,7 +18,10 @@ import MetadataService from "#services/metadataService.js";
  * Scan all files and populate missing hashes
  */
 async function syncHashes() {
-  const filesWithoutHash = await File.find({ hash: { $exists: false }, is_deleted: false });
+  const filesWithoutHash = await File.find({
+    $or: [{ hash: { $exists: false } }, { hash: "" }],
+    is_deleted: false,
+  });
   logger.info(`[Duplicates] Syncing hashes for ${filesWithoutHash.length} files...`);
 
   for (const file of filesWithoutHash) {
@@ -39,7 +42,7 @@ async function findAndNotifyDuplicates() {
 
   try {
     const duplicateHashes = await File.aggregate([
-      { $match: { is_deleted: false, hash: { $exists: true, $ne: null } } },
+      { $match: { is_deleted: false, hash: { $exists: true, $nin: [null, ""] } } },
       { $group: { _id: { user: "$user", hash: "$hash" }, count: { $sum: 1 }, files: { $push: "$name" } } },
       { $match: { count: { $gt: 1 } } },
     ]);
