@@ -15,6 +15,9 @@ import {
   useMarkAsReadMutation,
 } from "@services/api/notificationApi";
 
+// Hooks
+import useTabNotification from "@hooks/useTabNotification";
+
 // Shadcn UI
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@components/ui/dropdown-menu";
 import { Button } from "@components/ui/button";
@@ -54,6 +57,8 @@ export default function NotificationDropdown() {
   // Derived / computed variables
   const notifications = notificationsData?.data || [];
   const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  useTabNotification(unreadCount);
 
   // Event handlers
   async function handleNotificationClick(item) {
