@@ -46,6 +46,13 @@ function applyFaviconBadge(count, isCancelled) {
   img.src = FAVICON_PATH;
 }
 
+/**
+ * Updates the browser tab title and favicon badge to reflect the number of unread notifications.
+ *
+ * @param {number} unreadCount - Number of unread notifications. Drives the `(N)` title prefix and
+ *   the red canvas badge overlaid on the favicon. Both reset to defaults when `unreadCount` is 0.
+ *   Clamped to `9+` for display when greater than 9.
+ */
 export default function useTabNotification(unreadCount) {
   useEffect(() => {
     if (unreadCount > 0) {
