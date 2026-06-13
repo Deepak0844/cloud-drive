@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
 // Constants
-import { NotificationTypes, TIMEOUTS } from "@shared-constants/constants";
+import { NotificationTypes } from "@shared-constants/constants";
 
 // Services (RTK Query hooks)
 import {
@@ -47,9 +47,7 @@ export default function NotificationDropdown() {
   const [open, setOpen] = useState(false);
 
   // RTK Query hooks
-  const { data: notificationsData, isLoading: notificationsLoading } = useGetNotificationsQuery(undefined, {
-    pollingInterval: TIMEOUTS.NOTIFICATION_POLL_MS,
-  });
+  const { data: notificationsData, isLoading: notificationsLoading } = useGetNotificationsQuery();
   const [markAsRead] = useMarkAsReadMutation();
   const [markAllAsRead] = useMarkAllAsReadMutation();
 
