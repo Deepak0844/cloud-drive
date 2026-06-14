@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "baseUrl": "./src",
+    "paths": {
+      "@navigation/*": ["./navigation/*"],
+      "@services/*": ["./services/*"],
+      "@screens/*": ["./screens/*"],
+      "@components/*": ["./components/*"],
+      "@hooks/*": ["./hooks/*"],
+      "@lib/*": ["./lib/*"],
+      "@store/*": ["./store/*"],
+      "@constants/*": ["./constants/*"],
+      "@utils/*": ["./utils/*"],
+      "@db/*": ["./db/*"]
+    }
+  },
+  "include": ["src/**/*", "*.js"]
+}
