@@ -55,7 +55,7 @@ export default function NotificationDropdown() {
   const [markAllAsRead] = useMarkAllAsReadMutation();
 
   // Derived / computed variables
-  const notifications = notificationsData?.data || [];
+  const notifications = notificationsData || [];
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   useTabNotification(unreadCount);

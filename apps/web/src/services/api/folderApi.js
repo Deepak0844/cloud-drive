@@ -1,6 +1,7 @@
 // Utils
 import ApiUtils from "./apiUtils";
 import { UrlUtils } from "@shared-utils/utils";
+import FolderTransformer from "./folderTransformer";
 
 // Constants
 import { TagIds, TagTypes } from "@constants/apiTags";
@@ -19,12 +20,14 @@ const getFoldersQuery = () => ({
     url: FolderServiceUrls.getFolderList,
     params,
   }),
+  transformResponse: FolderTransformer.transformFolderList,
   serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
   merge: ApiUtils.mergePaginatedArrays(),
   providesTags: ApiUtils.paginatedTags(TagTypes.FOLDERS),
 });
 
 const getFolderContentsQuery = () => ({
+  transformResponse: FolderTransformer.transformFolderContents,
   query: (arg) => {
     const id = typeof arg === "string" ? arg : arg?.folderId || ROOT_FOLDER_ID;
     const params = typeof arg === "object" ? { ...arg } : {};
@@ -53,6 +56,7 @@ const getFolderDetailsQuery = () => ({
   query: ({ id }) => ({
     url: UrlUtils.format(FolderServiceUrls.getFolderDetails, { id }),
   }),
+  transformResponse: FolderTransformer.transformFolderDetails,
   providesTags: (result, error, arg) => ApiUtils.entityTags(TagTypes.FOLDERS)(result, error, arg),
 });
 

@@ -18,6 +18,7 @@ const getNotificationsQuery = () => ({
     url: NotificationServiceUrls.getNotificationList,
     params,
   }),
+  transformResponse: (res) => res.data ?? [],
   providesTags: [TagTypes.NOTIFICATIONS],
 });
 

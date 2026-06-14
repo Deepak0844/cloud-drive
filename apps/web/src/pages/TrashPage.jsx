@@ -62,8 +62,8 @@ function TrashView() {
 
   // Derived / computed variables
   const paginationData = trashData?.pagination || {};
-  const folders = trashData?.data?.folders || [];
-  const files = trashData?.data?.files || [];
+  const folders = trashData?.folders || [];
+  const files = trashData?.files || [];
 
   const { loaderRef } = useInfinitePaging({
     hasNext: paginationData?.hasNext || false,

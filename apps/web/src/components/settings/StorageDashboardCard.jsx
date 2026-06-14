@@ -58,23 +58,23 @@ function StorageDashboardCard({
             <div className="flex items-end justify-between mb-3">
               <div className="flex flex-col">
                 <span className="text-3xl font-black text-label tabular-nums">
-                  {usage?.data?.percentage.toFixed(1)}
+                  {usage?.percentage.toFixed(1)}
                   <span className="text-lg font-bold opacity-40 ml-0.5">%</span>
                 </span>
                 <span className="text-[10px] font-bold text-label-tertiary uppercase tracking-widest">Used Space</span>
               </div>
               <div className="text-right">
                 <span className="text-sm font-extrabold text-primary block">
-                  {formatBytes(usage?.data?.used_bytes)}
+                  {formatBytes(usage?.used_bytes)}
                 </span>
                 <span className="text-[10px] font-bold text-label-tertiary opacity-80">
-                  of {formatBytes(usage?.data?.quota_bytes)}
+                  of {formatBytes(usage?.quota_bytes)}
                 </span>
               </div>
             </div>
 
             <Progress
-              value={usage?.data?.percentage}
+              value={usage?.percentage}
               className="h-3.5 bg-line/20 overflow-hidden rounded-full shadow-inner"
             />
 
@@ -84,7 +84,7 @@ function StorageDashboardCard({
               ) : (
                 sortedBreakdown.map((item) => {
                   const config = CATEGORY_CONFIG[item.category] || CATEGORY_CONFIG.other;
-                  const percentage = (item.total_size_bytes / usage?.data?.quota_bytes) * 100 || 0;
+                  const percentage = (item.total_size_bytes / usage?.quota_bytes) * 100 || 0;
 
                   return (
                     <div key={item.category} className="group cursor-default">

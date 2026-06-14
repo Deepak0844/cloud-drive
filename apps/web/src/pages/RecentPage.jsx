@@ -68,7 +68,7 @@ export default function RecentPage() {
 
   // Derived / computed variables
   const paginationData = recentData?.pagination || {};
-  const allItems = recentData?.data || [];
+  const allItems = recentData?.items || [];
   const filteredItems = allItems;
 
   const timeGroups = useMemo(() => {

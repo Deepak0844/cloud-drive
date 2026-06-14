@@ -53,14 +53,16 @@ function paginatedTags(type) {
       id: `PAGE-${args?.pageNumber || 1}-${args?.pageSize || 20}-${stableStringify(args?.filters || {})}`,
     };
 
-    if (!result?.data) {
+    if (!result?.data && !result?.items && !result?.folders) {
       return [{ type, id: TagIds.LIST }, pageTag];
     }
 
     let list = [];
-    if (Array.isArray(result.data)) list = result.data;
-    else if (result.data.files && Array.isArray(result.data.files)) list = result.data.files;
-    else if (result.data.folders && Array.isArray(result.data.folders)) list = result.data.folders;
+    if (Array.isArray(result?.items))   list = result.items;
+    else if (Array.isArray(result?.folders)) list = result.folders;
+    else if (Array.isArray(result?.data)) list = result.data;
+    else if (result?.data?.files && Array.isArray(result.data.files)) list = result.data.files;
+    else if (result?.data?.folders && Array.isArray(result.data.folders)) list = result.data.folders;
 
     if (!list.length) {
       return [{ type, id: TagIds.LIST }, pageTag];

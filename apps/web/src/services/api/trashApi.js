@@ -1,5 +1,6 @@
 // Utils
 import ApiUtils from "./apiUtils";
+import TrashTransformer from "./trashTransformer";
 
 // Constants
 import { TagTypes, TagIds } from "@constants/apiTags";
@@ -18,6 +19,7 @@ const getTrashItemsQuery = () => ({
     url: TrashServiceUrls.getTrashItems,
     params,
   }),
+  transformResponse: TrashTransformer.transformTrashContents,
   serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
   merge: ApiUtils.mergePaginatedArrays(),
   providesTags: ApiUtils.listTags(TagTypes.TRASH),

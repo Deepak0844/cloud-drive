@@ -14,6 +14,7 @@ const getQuotaUsageQuery = () => ({
   query: () => ({
     url: QuotaServiceUrls.getQuotaUsage,
   }),
+  transformResponse: (res) => res.data,
   providesTags: [TagTypes.QUOTA],
 });
 
@@ -21,6 +22,7 @@ const getQuotaBreakdownQuery = () => ({
   query: () => ({
     url: QuotaServiceUrls.getQuotaBreakdown,
   }),
+  transformResponse: (res) => res.data,
   providesTags: [TagTypes.QUOTA],
 });
 

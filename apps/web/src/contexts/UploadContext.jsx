@@ -49,7 +49,7 @@ export function UploadProvider({ children }) {
               const responseBody = await dispatch(
                 fileApi.endpoints.getChunkUploadStatus.initiate(savedSession.uploadId, { forceRefetch: true })
               ).unwrap();
-              const status = responseBody?.data;
+              const status = responseBody;
               // Only resume if server session totalChunks still matches what we saved
               if (status && status.totalChunks === savedSession.totalChunks) {
                 return {
@@ -66,7 +66,7 @@ export function UploadProvider({ children }) {
             UploadSessionStore.clearUploadSession(fp);
             const body = { fileName: file.name, fileSize: file.size, totalChunks, folderId: folderId || null };
             const data = await initChunkedUpload(body).unwrap();
-            const { uploadId, totalChunks: tc } = data?.data || {};
+            const { uploadId, totalChunks: tc } = data || {};
             if (uploadId) {
               UploadSessionStore.saveUploadSession(fp, {
                 uploadId,
@@ -85,7 +85,7 @@ export function UploadProvider({ children }) {
           initPromise = initChunkedUpload(body)
             .unwrap()
             .then((data) => {
-              const { uploadId, totalChunks: tc } = data?.data || {};
+              const { uploadId, totalChunks: tc } = data || {};
               if (uploadId) {
                 UploadSessionStore.saveUploadSession(fp, {
                   uploadId,
