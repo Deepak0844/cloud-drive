@@ -59,7 +59,7 @@ function PhotosPage() {
   });
 
   // Derived / computed variables (part 2)
-  const photos = useMemo(() => filesResponse?.data || [], [filesResponse]);
+  const photos = useMemo(() => filesResponse?.items || [], [filesResponse]);
 
   // Group photos by Month/Year
   const groupedPhotos = useMemo(() => {

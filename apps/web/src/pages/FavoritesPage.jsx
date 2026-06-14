@@ -76,8 +76,8 @@ function FavoritesPage() {
     updateParams,
   });
 
-  const folders = foldersData?.data || [];
-  const files = filesData?.data || [];
+  const folders = foldersData?.items || [];
+  const files = filesData?.items || [];
   const isLoading = foldersLoading || filesLoading;
 
   const {

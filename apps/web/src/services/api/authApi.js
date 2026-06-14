@@ -21,10 +21,11 @@ const loginMutation = () => ({
     body: credentials,
     onError: { suppressGlobalError: true },
   }),
+  transformResponse: (res) => res.data,
   async onQueryStarted(_args, { queryFulfilled }) {
     try {
       const { data } = await queryFulfilled;
-      AuthUtils.storeUserInfoInLocalStorage(data.data);
+      AuthUtils.storeUserInfoInLocalStorage(data);
     } catch {
       // Error surfaced via the hook
     }
@@ -62,6 +63,7 @@ const getMeQuery = () => ({
   query: () => ({
     url: AuthServiceUrls.getMe,
   }),
+  transformResponse: (res) => res.data,
   providesTags: [TagTypes.AUTH],
 });
 
@@ -71,11 +73,12 @@ const updateProfileMutation = () => ({
     method: HttpMethods.PUT,
     body,
   }),
+  transformResponse: (res) => res.data,
   invalidatesTags: [TagTypes.AUTH],
   async onQueryStarted(_args, { queryFulfilled }) {
     try {
       const { data } = await queryFulfilled;
-      AuthUtils.storeUserInfoInLocalStorage(data.data);
+      AuthUtils.storeUserInfoInLocalStorage(data);
     } catch {
       // Handled component level
     }
@@ -91,11 +94,12 @@ const updatePasswordMutation = () => ({
       suppressGlobalError: true,
     },
   }),
+  transformResponse: (res) => res.data,
   invalidatesTags: [TagTypes.AUTH],
   async onQueryStarted(_args, { queryFulfilled }) {
     try {
       const { data } = await queryFulfilled;
-      AuthUtils.storeUserInfoInLocalStorage(data.data);
+      AuthUtils.storeUserInfoInLocalStorage(data);
     } catch {
       // Handled component level
     }

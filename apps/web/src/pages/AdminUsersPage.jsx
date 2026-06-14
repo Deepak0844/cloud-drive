@@ -47,7 +47,7 @@ export default function AdminUsersPage() {
   const [runReanalysis, { isLoading: reanalyzing }] = useRunStorageReanalysisMutation();
 
   // Derived / computed variables
-  const users = usersData?.data || [];
+  const users = usersData?.items || [];
   const userPagination = usersData?.pagination;
 
   const userColumns = [

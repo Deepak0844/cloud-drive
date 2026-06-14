@@ -25,10 +25,10 @@ export default function AdminDashboardPage() {
   });
 
   // Live hardware stats via socket (seeded by REST response)
-  const { liveSystem, isLive } = useHardwareLiveStats(statsData?.data?.system);
+  const { liveSystem, isLive } = useHardwareLiveStats(statsData?.system);
 
   // Derived / computed variables
-  const stats = statsData?.data;
+  const stats = statsData;
 
   return (
     <motion.div

@@ -18,6 +18,7 @@ const getUsersQuery = () => ({
     url: AdminServiceUrls.getUsers,
     params,
   }),
+  transformResponse: (res) => ({ items: res.data ?? [], pagination: res.pagination ?? null }),
   providesTags: [TagTypes.ADMIN_USERS],
 });
 
@@ -43,6 +44,7 @@ const getSystemStatsQuery = () => ({
   query: () => ({
     url: AdminServiceUrls.getSystemStats,
   }),
+  transformResponse: (res) => res.data,
   providesTags: [TagTypes.ADMIN_STATS],
 });
 

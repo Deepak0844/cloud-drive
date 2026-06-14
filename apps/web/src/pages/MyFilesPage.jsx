@@ -81,9 +81,9 @@ function MyFilesView() {
   );
 
   // Derived / computed variables
-  const folders = contentsData?.data?.folders || [];
-  const files = contentsData?.data?.files || [];
-  const breadcrumbs = currentFolderId === ROOT_FOLDER_ID ? [] : detailsData?.data?.breadcrumbs || [];
+  const folders = contentsData?.folders || [];
+  const files = contentsData?.files || [];
+  const breadcrumbs = currentFolderId === ROOT_FOLDER_ID ? [] : detailsData?.breadcrumbs || [];
   const paginationData = contentsData?.pagination || {};
 
   // Custom & shared hooks (continued)

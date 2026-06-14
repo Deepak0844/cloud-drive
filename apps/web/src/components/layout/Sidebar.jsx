@@ -206,21 +206,21 @@ function Sidebar({ collapsed, setCollapsed, isMobile }) {
                   Drive Capacity
                 </span>
                 <span className="text-xs font-black text-primary italic">
-                  {quotaData?.data ? quotaData.data.percentage.toFixed(1) : 0}%
+                  {quotaData ? quotaData.percentage.toFixed(1) : 0}%
                 </span>
               </div>
 
               <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden mb-3 border border-white/5">
                 <div
                   className="bg-gradient-aurora h-full rounded-full shadow-glow-sm transition-all duration-1000"
-                  style={{ width: `${quotaData?.data?.percentage || 0}%` }}
+                  style={{ width: `${quotaData?.percentage || 0}%` }}
                 ></div>
               </div>
 
               <div className="flex items-center justify-between">
                 <p className="text-[9px] font-bold text-label-tertiary uppercase tracking-tighter">
-                  {quotaData?.data ? formatBytes(quotaData.data.used_bytes) : "0 B"} /{" "}
-                  {quotaData?.data ? formatBytes(quotaData.data.quota_bytes) : "0 B"}
+                  {quotaData ? formatBytes(quotaData.used_bytes) : "0 B"} /{" "}
+                  {quotaData ? formatBytes(quotaData.quota_bytes) : "0 B"}
                 </p>
                 <div className="w-1.5 h-1.5 rounded-full bg-success shadow-[0_0_6px_var(--success)] animate-pulse" />
               </div>

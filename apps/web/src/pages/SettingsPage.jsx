@@ -37,7 +37,7 @@ function SettingsPage() {
   const { data: userResponse } = useGetMeQuery();
 
   // Derived / computed variables
-  const user = userResponse?.data;
+  const user = userResponse;
   const isAdmin = user?.role === Roles.ADMIN;
 
   // RTK Query hooks (continued)
@@ -57,7 +57,7 @@ function SettingsPage() {
   });
 
   // Derived / computed variables
-  const sortedBreakdown = [...(breakdown?.data || [])].sort((a, b) => b.total_size_bytes - a.total_size_bytes);
+  const sortedBreakdown = [...(breakdown || [])].sort((a, b) => b.total_size_bytes - a.total_size_bytes);
 
   // Effects
   useEffect(() => {

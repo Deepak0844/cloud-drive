@@ -54,9 +54,9 @@ function FolderPickerModal({
   );
 
   // Derived / computed variables
-  const folders = foldersData?.data || [];
+  const folders = foldersData?.items || [];
   // Filter out excluded IDs
-  const visibleFolders = folders.filter((f) => !excludeIds.includes(String(f._id || f.id)));
+  const visibleFolders = folders.filter((f) => !excludeIds.includes(String(f.id)));
 
   // Event handlers
   function handleNavigate(id, name) {

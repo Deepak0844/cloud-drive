@@ -1,6 +1,7 @@
 // Utils
 import ApiUtils from "./apiUtils";
 import HttpClientFactory from "@utils/httpClientFactory";
+import FileTransformer from "./fileTransformer";
 import ChunkUploadUtils from "@utils/chunkUploadUtils";
 import { UrlUtils } from "@shared-utils/utils";
 
@@ -23,6 +24,7 @@ const getFilesQuery = () => ({
     url: FileServiceUrls.getFileList,
     params,
   }),
+  transformResponse: FileTransformer.transformFileList,
   serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
   merge: ApiUtils.mergePaginatedArrays(),
   providesTags: ApiUtils.paginatedTags(TagTypes.FILES),
@@ -33,6 +35,7 @@ const getRecentFilesQuery = () => ({
     url: FileServiceUrls.getRecentFileList,
     params,
   }),
+  transformResponse: FileTransformer.transformFileList,
   serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
   merge: ApiUtils.mergePaginatedArrays(),
   providesTags: ApiUtils.listTags(TagTypes.FILES, TagIds.RECENT),
@@ -46,6 +49,7 @@ const initChunkedUploadMutation = () => ({
     // Upload errors must never redirect to the error page — they surface in the upload drawer.
     onError: { suppressGlobalError: true },
   }),
+  transformResponse: (res) => res.data,
 });
 
 const finalizeChunkedUploadMutation = () => ({
@@ -109,7 +113,7 @@ const uploadFileChunkedMutation = () => ({
           state.uploadedChunkSet = new Set(initData.uploadedChunks || []);
         } else {
           // Normal fresh-start path
-          const { uploadId, totalChunks } = initData.data || {};
+          const { uploadId, totalChunks } = initData || {};
           state.uploadId = uploadId;
           state.totalChunks = totalChunks;
         }
@@ -280,6 +284,7 @@ const getChunkUploadStatusQuery = () => ({
   query: (uploadId) => ({
     url: `${FileServiceUrls.uploadChunkStatus}?uploadId=${encodeURIComponent(uploadId)}`,
   }),
+  transformResponse: (res) => res.data,
   // Never serve a stale response — always hit the server on resume
   keepUnusedDataFor: 0,
 });
