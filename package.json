@@ -6,6 +6,16 @@
     "build": "turbo run build",
     "web:dev": "turbo run dev --filter=cloud-drive-web",
     "server:dev": "turbo run dev --filter=cloud-drive-server",
+    "mobile:start": "npm run start -w apps/mobile",
+    "mobile:android": "npm run android -w apps/mobile",
+    "mobile:android-prebuild": "npm run android-prebuild -w apps/mobile",
+    "mobile:ios": "npm run ios -w apps/mobile",
+    "mobile:ios-prebuild": "npm run ios-prebuild -w apps/mobile",
+    "mobile:web": "npm run web -w apps/mobile",
+    "mobile:prebuild:android": "npm run prebuild:android -w apps/mobile",
+    "mobile:prebuild:ios": "npm run prebuild:ios -w apps/mobile",
+    "mobile:db:generate": "npm run db:generate -w apps/mobile",
+    "mobile:db:studio": "npm run db:studio -w apps/mobile",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{js,jsx,md}\"",
@@ -21,10 +31,6 @@
     "*.{json,md}": [
       "prettier --write"
     ]
-  },
-  "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "globals": "^17.3.0",

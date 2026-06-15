@@ -4,33 +4,26 @@
     "slug": "cloud-drive",
     "scheme": "clouddrive",
     "version": "0.0.1",
-    "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.clouddrive.app",
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": ["FOREGROUND_SERVICE", "RECEIVE_BOOT_COMPLETED", "READ_MEDIA_IMAGES", "READ_MEDIA_VIDEO"]
+    },
     "ios": {
-      "supportsTablet": true,
       "bundleIdentifier": "com.clouddrive.app",
       "infoPlist": {
         "UIBackgroundModes": ["remote-notification", "fetch"],
-        "NSPhotoLibraryUsageDescription": "cloud-drive needs access to your photo library to back up your photos.",
-        "NSPhotoLibraryAddUsageDescription": "cloud-drive needs permission to save photos to your library."
+        "NSPhotoLibraryUsageDescription": "Used to back up your photos to cloud-drive.",
+        "NSPhotoLibraryAddUsageDescription": "Used to save files from cloud-drive to your photo library."
       }
     },
-    "android": {
-      "package": "com.clouddrive.app",
-      "permissions": [
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO"
-      ]
-    },
     "plugins": [
-      "expo-notifications",
-      "expo-media-library",
+      ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }],
       "expo-sqlite",
-      "expo-secure-store",
-      "expo-image",
-      "expo-sharing"
+      "expo-notifications",
+      "expo-media-library"
     ]
   }
 }

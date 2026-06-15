@@ -1,20 +1,32 @@
 {
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": false,
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@navigation/*": ["./navigation/*"],
-      "@services/*": ["./services/*"],
-      "@screens/*": ["./screens/*"],
-      "@components/*": ["./components/*"],
-      "@hooks/*": ["./hooks/*"],
-      "@lib/*": ["./lib/*"],
-      "@store/*": ["./store/*"],
-      "@constants/*": ["./constants/*"],
-      "@utils/*": ["./utils/*"],
-      "@db/*": ["./db/*"]
-    }
+      "@components/*": ["src/components/*"],
+      "@constants/*": ["src/constants/*"],
+      "@helpers/*": ["src/helpers/*"],
+      "@screens/*": ["src/screens/*"],
+      "@utils/*": ["src/utils/*"],
+      "@assets/*": ["src/assets/*"],
+      "@providers/*": ["src/providers/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@styles/*": ["src/styles/*"],
+      "@services/*": ["src/services/*"],
+      "@store": ["src/store/store.js"],
+      "@redux-slices/*": ["src/store/redux-slices/*"],
+      "@navigation/*": ["src/navigation/*"],
+      "@db/*": ["src/db/*"],
+      "@rtkQuery/*": ["src/store/rtkQuery/*"],
+      "@api/*": ["src/store/api/*"],
+      "@sdk/*": ["src/sdk/*"],
+      "@theme/*": ["src/theme/*"],
+      "@config": ["src/config.js"]
+    },
+    "jsx": "react-native",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true
   },
-  "include": ["src/**/*", "*.js"]
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js"]
 }
