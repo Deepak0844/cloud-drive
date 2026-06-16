@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "cloud-drive",
+    "slug": "cloud-drive",
+    "scheme": "clouddrive",
+    "version": "0.0.1",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.clouddrive.app",
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": ["FOREGROUND_SERVICE", "RECEIVE_BOOT_COMPLETED", "READ_MEDIA_IMAGES", "READ_MEDIA_VIDEO"]
+    },
+    "ios": {
+      "bundleIdentifier": "com.clouddrive.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification", "fetch"],
+        "NSPhotoLibraryUsageDescription": "Used to back up your photos to cloud-drive.",
+        "NSPhotoLibraryAddUsageDescription": "Used to save files from cloud-drive to your photo library."
+      }
+    },
+    "plugins": [
+      ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }],
+      "expo-sqlite",
+      "expo-notifications",
+      "expo-media-library"
+    ]
+  }
+}

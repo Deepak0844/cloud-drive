@@ -26,6 +26,22 @@ export default [
     },
   },
   {
+    files: ["apps/mobile/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
+    files: ["apps/mobile/**/*.{js,jsx}"],
+    languageOptions: {
+      globals: {
+        __DEV__: "readonly",
+      },
+    },
+  },
+  {
     files: ["**/*.js", "**/*.jsx", "**/*.mjs"],
   },
   // Disable react-refresh warning for shadcn/ui generated files.

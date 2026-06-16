@@ -1,0 +1,33 @@
+module.exports = {
+  presets: [["babel-preset-expo", { jsxImportSource: "nativewind" }], "nativewind/babel"],
+  plugins: [
+    ["inline-import", { extensions: [".sql"] }],
+    [
+      "module-resolver",
+      {
+        root: ["./src"],
+        alias: {
+          "@utils": "./src/utils",
+          "@components": "./src/components",
+          "@screens": "./src/screens",
+          "@helpers": "./src/helpers",
+          "@constants": "./src/constants",
+          "@assets": "./src/assets",
+          "@providers": "./src/providers",
+          "@hooks": "./src/hooks",
+          "@styles": "./src/styles",
+          "@services": "./src/services",
+          "@store": "./src/store/store.js",
+          "@redux-slices": "./src/store/redux-slices",
+          "@db": "./src/db",
+          "@theme": "./src/theme",
+          "@config": "./src/config.js",
+          "@rtkQuery": "./src/store/rtkQuery",
+          "@api": "./src/store/api",
+          "@sdk": "./src/sdk",
+        },
+      },
+    ],
+    "react-native-reanimated/plugin",
+  ],
+};
