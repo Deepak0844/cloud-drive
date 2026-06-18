@@ -1,7 +1,9 @@
 import React, { useEffect } from "react";
-import { Provider } from "react-redux";
 import { StyleSheet } from "react-native";
+import { Provider } from "react-redux";
 import * as SplashScreen from "expo-splash-screen";
+import GluestackUIProvider from "@providers/GluestackUIProvider";
+import ThemeProvider from "@providers/ThemeProvider";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -30,6 +32,8 @@ const isDev = __DEV__;
 // Stack navigator
 const Stack = createNativeStackNavigator();
 
+const styles = StyleSheet.create({ flex: { flex: 1 } });
+
 export default function App() {
   useEffect(() => {
     SplashScreen.hideAsync();
@@ -37,27 +41,29 @@ export default function App() {
 
   return (
     <Provider store={Store}>
-      <GestureHandlerRootView style={styles.flex}>
-        {isDev && <DrizzleStudioPlugin />}
+      <GluestackUIProvider mode="system">
+        <ThemeProvider>
+          <GestureHandlerRootView style={styles.flex}>
+            {isDev && <DrizzleStudioPlugin />}
 
-        <DatabaseGate>
-          <AppStatusBar variant="gradient-light" />
-          <NavigationContainer>
-            <SafeAreaView style={styles.flex} edges={["bottom"]}>
-              <Stack.Navigator initialRouteName={AppScreens.HomeScreen}>
-                <Stack.Screen name={AppScreens.HomeScreen} component={HomeScreen} options={{ headerShown: false }} />
-              </Stack.Navigator>
-            </SafeAreaView>
-            <ErrorHandler />
-          </NavigationContainer>
-        </DatabaseGate>
-      </GestureHandlerRootView>
+            <DatabaseGate>
+              <AppStatusBar variant="gradient-light" />
+              <NavigationContainer>
+                <SafeAreaView style={styles.flex} edges={["bottom"]}>
+                  <Stack.Navigator initialRouteName={AppScreens.HomeScreen}>
+                    <Stack.Screen
+                      name={AppScreens.HomeScreen}
+                      component={HomeScreen}
+                      options={{ headerShown: false }}
+                    />
+                  </Stack.Navigator>
+                </SafeAreaView>
+                <ErrorHandler />
+              </NavigationContainer>
+            </DatabaseGate>
+          </GestureHandlerRootView>
+        </ThemeProvider>
+      </GluestackUIProvider>
     </Provider>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-});

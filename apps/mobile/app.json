@@ -5,7 +5,7 @@
     "scheme": "clouddrive",
     "version": "0.0.1",
     "orientation": "default",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "android": {
       "package": "com.clouddrive.app",
       "softwareKeyboardLayoutMode": "pan",
@@ -23,7 +23,8 @@
       ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }],
       "expo-sqlite",
       "expo-notifications",
-      "expo-media-library"
+      "expo-media-library",
+      "expo-system-ui"
     ]
   }
 }

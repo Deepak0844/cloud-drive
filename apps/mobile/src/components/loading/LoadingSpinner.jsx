@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { View, Text } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
+import { colors } from "@theme/tokens/colors";
 import Svg, { Circle } from "react-native-svg";
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing } from "react-native-reanimated";
 
@@ -7,11 +8,11 @@ const AnimatedSvg = Animated.createAnimatedComponent(Svg);
 
 /**
  * @param {number} [size=48] - Diameter of the spinner in pixels.
- * @param {string} [color='#E53A48'] - Color of the spinning arc.
- * @param {string} [trackColor='#E0E0E0'] - Color of the background track circle.
+ * @param {string} [color] - Color of the spinning arc. Defaults to `colors.primary.DEFAULT`.
+ * @param {string} [trackColor] - Color of the background track circle. Defaults to `colors.neutral.light`.
  * @param {number} [strokeWidth] - Stroke width; defaults to 12% of size.
  */
-export function Spinner({ size = 48, color = "#E53A48", trackColor = "#E0E0E0", strokeWidth }) {
+export function Spinner({ size = 48, color = colors.primary.DEFAULT, trackColor = colors.neutral.light, strokeWidth }) {
   const finalStrokeWidth = strokeWidth ?? size * 0.12;
   const radius = (size - finalStrokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -39,7 +40,7 @@ export function Spinner({ size = 48, color = "#E53A48", trackColor = "#E0E0E0", 
         <Circle cx={size / 2} cy={size / 2} r={radius} stroke={trackColor} strokeWidth={finalStrokeWidth} fill="none" />
       </Svg>
 
-      <AnimatedSvg width={size} height={size} className="absolute inset-0" style={animatedStyle}>
+      <AnimatedSvg width={size} height={size} style={[styles.overlay, animatedStyle]}>
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -57,11 +58,20 @@ export function Spinner({ size = 48, color = "#E53A48", trackColor = "#E0E0E0", 
 
 /**
  * @param {string} [text='Loading...'] - Message displayed below the spinner.
- * @param {string} [color='#E53A48'] - Color of the spinning arc.
- * @param {string} [trackColor='#E0E0E0'] - Color of the background track circle.
+ * @param {string} [color] - Color of the spinning arc. Defaults to `colors.primary.DEFAULT`.
+ * @param {string} [trackColor] - Color of the background track circle. Defaults to `colors.neutral.light`.
  * @param {number} [size=48] - Diameter of the spinner in pixels.
  */
-export const LoadingSpinner = ({ text = "Loading...", color = "#E53A48", trackColor = "#E0E0E0", size = 48 }) => {
+const styles = StyleSheet.create({
+  overlay: { position: "absolute", top: 0, left: 0 },
+});
+
+export const LoadingSpinner = ({
+  text = "Loading...",
+  color = colors.primary.DEFAULT,
+  trackColor = colors.neutral.light,
+  size = 48,
+}) => {
   return (
     <View className="absolute inset-0 justify-center items-center">
       <View className="absolute inset-0 bg-black/35" />
