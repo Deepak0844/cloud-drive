@@ -5,12 +5,12 @@ import { api } from "@rtkQuery/api";
 
 // Reducers
 import { ErrorReducer } from "@redux-slices/errorSlice";
+import { AuthReducer } from "@redux-slices/authSlice";
+import { ThemeReducer } from "@redux-slices/themeSlice";
 
-// Root Reducer definition
 export const RootReducer = combineReducers({
-  // RTK Query
   [api.reducerPath]: api.reducer,
-
-  // Global error state
   Error: ErrorReducer,
+  auth: AuthReducer,
+  theme: ThemeReducer,
 });

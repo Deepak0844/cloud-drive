@@ -16,4 +16,5 @@ const Store = configureStore({
       serializableCheck: false,
     }).concat(api.middleware, rtkQueryErrorMiddleware),
 });
+
 export default Store;

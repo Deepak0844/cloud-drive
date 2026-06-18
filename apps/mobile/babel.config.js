@@ -19,6 +19,7 @@ module.exports = {
           "@services": "./src/services",
           "@store": "./src/store/store.js",
           "@redux-slices": "./src/store/redux-slices",
+          "@navigation": "./src/navigation",
           "@db": "./src/db",
           "@theme": "./src/theme",
           "@config": "./src/config.js",
