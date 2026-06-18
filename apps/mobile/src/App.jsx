@@ -1,12 +1,9 @@
 import React, { useEffect } from "react";
-import { StyleSheet } from "react-native";
-import { Provider } from "react-redux";
+import { StyleSheet, useColorScheme } from "react-native";
+import { Provider, useSelector } from "react-redux";
 import * as SplashScreen from "expo-splash-screen";
-import GluestackUIProvider from "@providers/GluestackUIProvider";
-import ThemeProvider from "@providers/ThemeProvider";
-import { SafeAreaView } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "../gesture-handler";
 import "../global.css";
@@ -14,56 +11,68 @@ import "../global.css";
 // Store
 import Store from "@store";
 
+// Providers
+import GluestackUIProvider from "@providers/GluestackUIProvider";
+import ThemeProvider from "@providers/ThemeProvider";
+import { DatabaseGate, DrizzleStudioPlugin } from "@providers/DatabaseGate";
+
 // Components
 import AppStatusBar from "@components/statusBar/AppStatusBar";
 import ErrorHandler from "@components/error_handler/ErrorHandler";
 
-// Providers
-import { DatabaseGate, DrizzleStudioPlugin } from "@providers/DatabaseGate";
+// Navigation
+import RootNavigator from "@navigation/RootNavigator";
 
-// Screens
-import HomeScreen from "@screens/home/HomeScreen";
+// Actions
+import { setColorMode } from "@redux-slices/themeSlice";
 
-// Constants
-import { AppScreens } from "@constants/appScreens";
-
+const SECURE_KEY_COLOR_MODE = "colorMode";
 const isDev = __DEV__;
-
-// Stack navigator
-const Stack = createNativeStackNavigator();
 
 const styles = StyleSheet.create({ flex: { flex: 1 } });
 
+function AppContent() {
+  const colorMode = useSelector((s) => s.theme.colorMode);
+  const systemScheme = useColorScheme();
+  const resolved = colorMode === "system" ? (systemScheme ?? "light") : colorMode;
+
+  useEffect(() => {
+    SecureStore.setItemAsync(SECURE_KEY_COLOR_MODE, colorMode);
+  }, [colorMode]);
+
+  return (
+    <GluestackUIProvider mode={resolved}>
+      <ThemeProvider>
+        <GestureHandlerRootView style={styles.flex}>
+          {isDev && <DrizzleStudioPlugin />}
+          <DatabaseGate>
+            <AppStatusBar variant="gradient-light" />
+            <NavigationContainer>
+              <RootNavigator />
+              <ErrorHandler />
+            </NavigationContainer>
+          </DatabaseGate>
+        </GestureHandlerRootView>
+      </ThemeProvider>
+    </GluestackUIProvider>
+  );
+}
+
 export default function App() {
   useEffect(() => {
-    SplashScreen.hideAsync();
+    async function init() {
+      const saved = await SecureStore.getItemAsync(SECURE_KEY_COLOR_MODE);
+      if (saved) {
+        Store.dispatch(setColorMode(saved));
+      }
+      SplashScreen.hideAsync();
+    }
+    init();
   }, []);
 
   return (
     <Provider store={Store}>
-      <GluestackUIProvider mode="system">
-        <ThemeProvider>
-          <GestureHandlerRootView style={styles.flex}>
-            {isDev && <DrizzleStudioPlugin />}
-
-            <DatabaseGate>
-              <AppStatusBar variant="gradient-light" />
-              <NavigationContainer>
-                <SafeAreaView style={styles.flex} edges={["bottom"]}>
-                  <Stack.Navigator initialRouteName={AppScreens.HomeScreen}>
-                    <Stack.Screen
-                      name={AppScreens.HomeScreen}
-                      component={HomeScreen}
-                      options={{ headerShown: false }}
-                    />
-                  </Stack.Navigator>
-                </SafeAreaView>
-                <ErrorHandler />
-              </NavigationContainer>
-            </DatabaseGate>
-          </GestureHandlerRootView>
-        </ThemeProvider>
-      </GluestackUIProvider>
+      <AppContent />
     </Provider>
   );
 }
