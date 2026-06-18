@@ -28,7 +28,10 @@ export default function ErrorHandler() {
 
   return (
     <View className="absolute inset-x-4 bottom-8" pointerEvents="box-none">
-      <Pressable onPress={() => dispatch(ErrorActions.reset())} className="rounded-xl bg-slate-800 px-4 py-3 shadow-lg">
+      <Pressable
+        onPress={() => dispatch(ErrorActions.reset())}
+        className="rounded-xl bg-secondary-dark px-4 py-3 shadow-lg"
+      >
         <Text className="text-sm text-white">{message}</Text>
       </Pressable>
     </View>
