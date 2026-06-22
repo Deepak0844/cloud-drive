@@ -55,7 +55,10 @@ module.exports = {
           foreground: "var(--neutral-foreground)",
         },
         background: "var(--background)",
-        surface: "var(--surface)",
+        surface: {
+          DEFAULT: "var(--surface)",
+          inverse: "var(--surface-inverse)",
+        },
         border: "var(--border)",
         text: {
           DEFAULT: "var(--text)",
@@ -66,6 +69,7 @@ module.exports = {
           card: { bg: "var(--glass-card-bg)", border: "var(--glass-card-border)" },
           bar: { bg: "var(--glass-bar-bg)", border: "var(--glass-bar-border)" },
           modal: { bg: "var(--glass-modal-bg)", border: "var(--glass-modal-border)" },
+          surface: { bg: "var(--glass-surface-bg)", border: "var(--glass-surface-border)" },
         },
       },
       fontFamily: {
