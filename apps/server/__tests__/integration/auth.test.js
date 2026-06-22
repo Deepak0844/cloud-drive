@@ -154,10 +154,7 @@ describe("Auth API", () => {
       const refreshCookie = cookies.find((c) => c.startsWith("refresh_token="));
       expect(refreshCookie).toBeDefined();
 
-      const refreshRes = await request(app)
-        .post("/api/v1/auth/refresh")
-        .set("Cookie", refreshCookie)
-        .expect(200);
+      const refreshRes = await request(app).post("/api/v1/auth/refresh").set("Cookie", refreshCookie).expect(200);
 
       expect(refreshRes.body.success).toBe(true);
       expect(refreshRes.body.data.user).toBeDefined();
@@ -215,6 +212,102 @@ describe("Auth API", () => {
         .put("/api/v1/auth/reset-password")
         .send({ token: "invalid", password: "newpassword" })
         .expect(400);
+    });
+  });
+
+  describe("Mobile platform — X-Platform: mobile token delivery", () => {
+    const password = "TestPass@123!";
+
+    it("test_login_mobile_platform: should return tokens in body when X-Platform is mobile", async () => {
+      const user = await createTestUser({ password });
+
+      const response = await request(app)
+        .post("/api/v1/auth/login")
+        .set("X-Platform", "mobile")
+        .send({ email: user.email, password })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.accessToken).toBeDefined();
+      expect(response.body.data.refreshToken).toBeDefined();
+      expect(response.body.data.user).toBeDefined();
+    });
+
+    it("test_register_mobile_platform: should return tokens in body when X-Platform is mobile", async () => {
+      const response = await request(app)
+        .post("/api/v1/auth/register")
+        .set("X-Platform", "mobile")
+        .send({ name: "Mobile User", email: "mobile@example.com", password: "TestPass@123!" })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.accessToken).toBeDefined();
+      expect(response.body.data.refreshToken).toBeDefined();
+    });
+
+    it("test_refresh_mobile_header_token: should accept X-Refresh-Token header and return tokens in body", async () => {
+      const user = await createTestUser({ password });
+
+      const loginRes = await request(app)
+        .post("/api/v1/auth/login")
+        .set("X-Platform", "mobile")
+        .send({ email: user.email, password })
+        .expect(200);
+
+      const { refreshToken } = loginRes.body.data;
+
+      const response = await request(app)
+        .post("/api/v1/auth/refresh")
+        .set("X-Platform", "mobile")
+        .set("X-Refresh-Token", refreshToken)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.accessToken).toBeDefined();
+      expect(response.body.data.refreshToken).toBeDefined();
+    });
+
+    it("test_login_web_contract_unchanged: should not return tokens in body without X-Platform header", async () => {
+      const user = await createTestUser({ password });
+
+      const response = await request(app).post("/api/v1/auth/login").send({ email: user.email, password }).expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.accessToken).toBeUndefined();
+      expect(response.body.data.refreshToken).toBeUndefined();
+      expect(response.body.data.user).toBeDefined();
+    });
+
+    it("test_update_password_mobile_platform: should return tokens in body when X-Platform is mobile", async () => {
+      const user = await createTestUser({ password });
+      const authHeader = getAuthHeader(user);
+
+      const response = await request(app)
+        .put("/api/v1/auth/password")
+        .set(authHeader)
+        .set("X-Platform", "mobile")
+        .send({ currentPassword: password, newPassword: "NewPass@456!" })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.accessToken).toBeDefined();
+      expect(response.body.data.refreshToken).toBeDefined();
+    });
+
+    it("test_reset_password_mobile_platform: should return tokens in body when X-Platform is mobile", async () => {
+      const user = await createTestUser();
+      const resetToken = user.getResetPasswordToken();
+      await user.save({ validateBeforeSave: false });
+
+      const response = await request(app)
+        .put("/api/v1/auth/reset-password")
+        .set("X-Platform", "mobile")
+        .send({ token: resetToken, password: "NewPass@456!" })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.accessToken).toBeDefined();
+      expect(response.body.data.refreshToken).toBeDefined();
     });
   });
 });
