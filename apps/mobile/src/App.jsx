@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
-import { StyleSheet, useColorScheme } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { StyleSheet, useColorScheme, AppState } from "react-native";
+import { useColorScheme as useNWColorScheme } from "nativewind";
 import { Provider, useSelector } from "react-redux";
 import * as SplashScreen from "expo-splash-screen";
 import * as SecureStore from "expo-secure-store";
@@ -19,12 +20,16 @@ import { DatabaseGate, DrizzleStudioPlugin } from "@providers/DatabaseGate";
 // Components
 import AppStatusBar from "@components/statusBar/AppStatusBar";
 import ErrorHandler from "@components/error_handler/ErrorHandler";
+import BiometricLockScreen from "@components/auth/BiometricLockScreen";
 
 // Navigation
 import RootNavigator from "@navigation/RootNavigator";
 
-// Actions
-import { setColorMode } from "@redux-slices/themeSlice";
+// Hooks
+import { useBiometric } from "@hooks/useBiometric";
+
+SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({ duration: 500, fade: true });
 
 const SECURE_KEY_COLOR_MODE = "colorMode";
 const isDev = __DEV__;
@@ -32,13 +37,30 @@ const isDev = __DEV__;
 const styles = StyleSheet.create({ flex: { flex: 1 } });
 
 function AppContent() {
-  const colorMode = useSelector((s) => s.theme.colorMode);
+  const colorMode = useSelector((state) => state.theme.colorMode);
   const systemScheme = useColorScheme();
   const resolved = colorMode === "system" ? (systemScheme ?? "light") : colorMode;
+  const { setColorScheme } = useNWColorScheme();
+  const [biometricLocked, setBiometricLocked] = useState(false);
+  const { isEnabled } = useBiometric();
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
+    setColorScheme(colorMode);
     SecureStore.setItemAsync(SECURE_KEY_COLOR_MODE, colorMode);
   }, [colorMode]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", async (next) => {
+      if (appState.current === "active" && next.match(/inactive|background/)) {
+        if (await isEnabled()) {
+          setBiometricLocked(true);
+        }
+      }
+      appState.current = next;
+    });
+    return () => sub.remove();
+  }, []);
 
   return (
     <GluestackUIProvider mode={resolved}>
@@ -50,6 +72,7 @@ function AppContent() {
             <NavigationContainer>
               <RootNavigator />
               <ErrorHandler />
+              {biometricLocked ? <BiometricLockScreen onUnlock={() => setBiometricLocked(false)} /> : null}
             </NavigationContainer>
           </DatabaseGate>
         </GestureHandlerRootView>
@@ -60,14 +83,7 @@ function AppContent() {
 
 export default function App() {
   useEffect(() => {
-    async function init() {
-      const saved = await SecureStore.getItemAsync(SECURE_KEY_COLOR_MODE);
-      if (saved) {
-        Store.dispatch(setColorMode(saved));
-      }
-      SplashScreen.hideAsync();
-    }
-    init();
+    SplashScreen.hideAsync();
   }, []);
 
   return (
