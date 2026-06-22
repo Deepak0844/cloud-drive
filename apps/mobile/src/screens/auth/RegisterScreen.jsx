@@ -18,11 +18,17 @@ import Button from "@components/ui/button/Button";
 import Text from "@components/ui/text/Text";
 
 // Schema
-const schema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.email("Enter a valid email"),
-  password: z.string().min(12, "Password must be at least 12 characters"),
-});
+const schema = z
+  .object({
+    name: z.string().min(1, "Name is required"),
+    email: z.email("Enter a valid email"),
+    password: z.string().min(1, "Password is required").min(12, "Password must be at least 12 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 /**
  * Name, email, and password form for the register screen.
@@ -43,6 +49,8 @@ function RegisterForm({
   serverError = "",
   showPassword = false,
   onTogglePassword = () => {},
+  showConfirmPassword = false,
+  onToggleConfirmPassword = () => {},
   onSignIn = () => {},
 }) {
   return (
@@ -114,6 +122,31 @@ function RegisterForm({
             onChangeText={onChange}
             onBlur={onBlur}
             error={errors.password?.message}
+            className="mb-4"
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="confirmPassword"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Input
+            label="Confirm Password"
+            placeholder="Repeat your password"
+            secureTextEntry={!showConfirmPassword}
+            autoComplete="new-password"
+            leftIcon={<AuthIcon Icon={Lock} size={16} />}
+            labelClassName="text-white/75"
+            rightIcon={
+              <Pressable onPress={onToggleConfirmPassword} hitSlop={8}>
+                {showConfirmPassword ? <AuthIcon Icon={EyeOff} size={16} /> : <AuthIcon Icon={Eye} size={16} />}
+              </Pressable>
+            }
+            value={value}
+            onChangeText={onChange}
+            onBlur={onBlur}
+            error={errors.confirmPassword?.message}
             className="mb-6"
           />
         )}
@@ -148,16 +181,20 @@ function RegisterForm({
  */
 export default function RegisterScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm({ resolver: zodResolver(schema) });
+  } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+  });
   const [register, { isLoading, error }] = useRegisterMutation();
 
   const serverError = error?.data?.message ?? "";
 
-  function onSubmit(data) {
+  function onSubmit({ confirmPassword: _confirmPassword, ...data }) {
     register(data);
   }
 
@@ -172,7 +209,9 @@ export default function RegisterScreen({ navigation }) {
           isLoading={isLoading}
           serverError={serverError}
           showPassword={showPassword}
-          onTogglePassword={() => setShowPassword((p) => !p)}
+          onTogglePassword={() => setShowPassword((prev) => !prev)}
+          showConfirmPassword={showConfirmPassword}
+          onToggleConfirmPassword={() => setShowConfirmPassword((prev) => !prev)}
           onSignIn={() => navigation.goBack()}
         />
       </AuthCard>

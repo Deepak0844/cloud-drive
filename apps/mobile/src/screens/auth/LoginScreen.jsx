@@ -23,7 +23,7 @@ import Text from "@components/ui/text/Text";
 // Schema
 const schema = z.object({
   email: z.email("Enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(1, "Password is required").min(8, "Password must be at least 8 characters"),
 });
 
 /**
@@ -143,7 +143,7 @@ export default function LoginScreen({ navigation }) {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm({ resolver: zodResolver(schema) });
+  } = useForm({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
   const [login, { isLoading, error }] = useLoginMutation();
 
   const serverError = error?.data?.message ?? "";
@@ -163,7 +163,7 @@ export default function LoginScreen({ navigation }) {
           isLoading={isLoading}
           serverError={serverError}
           showPassword={showPassword}
-          onTogglePassword={() => setShowPassword((p) => !p)}
+          onTogglePassword={() => setShowPassword((prev) => !prev)}
           onForgotPassword={() => navigation.navigate(AppScreens.FORGOT_PASSWORD)}
           onSignUp={() => navigation.navigate(AppScreens.REGISTER)}
         />
