@@ -68,14 +68,24 @@ export const customBaseQuery = async (rawArgs, api) => {
         url: Config.API_SERVICE_URL + "/api/v1/auth/refresh",
         method: "post",
         headers: { "X-Platform": "mobile", "X-Refresh-Token": refreshToken },
-      }).finally(() => {
-        _refreshPromise = null;
-      });
+      })
+        .then(async (response) => {
+          const { accessToken: newAccess, refreshToken: newRefresh } = response.data.data;
+          if (!newAccess || !newRefresh) {
+            throw new Error("refresh response missing tokens");
+          }
+          await TokenStorage.setAccessToken(newAccess);
+          await TokenStorage.setRefreshToken(newRefresh);
+          return newAccess;
+        })
+        .finally(() => {
+          _refreshPromise = null;
+        });
     }
 
-    let refreshResponse;
+    let newAccessToken;
     try {
-      refreshResponse = await _refreshPromise;
+      newAccessToken = await _refreshPromise;
     } catch (refreshError) {
       if (__DEV__) console.error("[customBaseQuery] refresh failed", refreshError.message);
       await TokenStorage.clearTokens();
@@ -88,12 +98,8 @@ export const customBaseQuery = async (rawArgs, api) => {
       };
     }
 
-    const { accessToken: newAccess, refreshToken: newRefresh } = refreshResponse.data.data;
-    await TokenStorage.setAccessToken(newAccess);
-    await TokenStorage.setRefreshToken(newRefresh);
-
     try {
-      const retryResponse = await makeRequest(args, newAccess, api.signal);
+      const retryResponse = await makeRequest(args, newAccessToken, api.signal);
       return { data: retryResponse.data };
     } catch (retryError) {
       if (isCancel(retryError)) throw retryError;

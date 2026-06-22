@@ -12,6 +12,20 @@ import { setAuthenticated, setRole, resetAuth } from "@redux-slices/authSlice";
 import { TokenStorage } from "@utils/tokenStorage";
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function handleAuthSuccess({ data }, dispatch) {
+  const { accessToken, refreshToken, user } = data.data;
+  if (!accessToken || !refreshToken || !user) return;
+  await TokenStorage.setAccessToken(accessToken);
+  await TokenStorage.setRefreshToken(refreshToken);
+  await TokenStorage.setRole(user.role);
+  dispatch(setAuthenticated(true));
+  dispatch(setRole(user.role));
+}
+
+// ---------------------------------------------------------------------------
 // Endpoint Definitions
 // ---------------------------------------------------------------------------
 
@@ -23,13 +37,8 @@ const loginMutation = () => ({
   }),
   async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
     try {
-      const { data } = await queryFulfilled;
-      const { accessToken, refreshToken, user } = data.data;
-      await TokenStorage.setAccessToken(accessToken);
-      await TokenStorage.setRefreshToken(refreshToken);
-      await TokenStorage.setRole(user.role);
-      dispatch(setAuthenticated(true));
-      dispatch(setRole(user.role));
+      const result = await queryFulfilled;
+      await handleAuthSuccess(result, dispatch);
     } catch {
       // login failed — leave state untouched
     }
@@ -44,13 +53,8 @@ const registerMutation = () => ({
   }),
   async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
     try {
-      const { data } = await queryFulfilled;
-      const { accessToken, refreshToken, user } = data.data;
-      await TokenStorage.setAccessToken(accessToken);
-      await TokenStorage.setRefreshToken(refreshToken);
-      await TokenStorage.setRole(user.role);
-      dispatch(setAuthenticated(true));
-      dispatch(setRole(user.role));
+      const result = await queryFulfilled;
+      await handleAuthSuccess(result, dispatch);
     } catch {
       // registration failed — leave state untouched
     }
@@ -62,9 +66,10 @@ const logoutMutation = () => ({
   async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
     try {
       await queryFulfilled;
-    } finally {
       await TokenStorage.clearTokens();
       dispatch(resetAuth());
+    } catch {
+      // logout request failed — leave local session intact so user can retry
     }
   },
 });

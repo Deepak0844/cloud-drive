@@ -11,7 +11,7 @@ export function useBiometric() {
   }
 
   function authenticate() {
-    LocalAuthentication.authenticateAsync({ promptMessage: "Unlock cloud-drive" });
+    return LocalAuthentication.authenticateAsync({ promptMessage: "Unlock cloud-drive" });
   }
 
   function setEnabled(val) {
@@ -20,7 +20,7 @@ export function useBiometric() {
 
   // Checks the persisted user preference, not hardware availability.
   function isEnabled() {
-    SecureStore.getItemAsync(BIOMETRIC_KEY).then((v) => v === "true");
+    return SecureStore.getItemAsync(BIOMETRIC_KEY).then((v) => v === "true");
   }
 
   return { isAvailable, authenticate, setEnabled, isEnabled };

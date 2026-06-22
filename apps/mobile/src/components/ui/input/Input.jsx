@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TextInput, Text as RNText, Platform } from "react-native";
+import { View, TextInput, Text as RNText, Platform, StyleSheet } from "react-native";
 import { useTheme } from "@theme/useTheme";
 
 /**
@@ -42,7 +42,7 @@ export default function Input({
         <TextInput
           className={`flex-1 font-sans text-base py-0 text-white ${inputClassName}`}
           textAlignVertical="center"
-          style={Platform.OS === "android" ? { includeFontPadding: false } : undefined}
+          style={Platform.OS === "android" ? styles.androidInput : undefined}
           placeholderTextColor={colors.input.placeholder}
           editable={!disabled}
           {...props}
@@ -58,3 +58,7 @@ export default function Input({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  androidInput: { includeFontPadding: false },
+});
