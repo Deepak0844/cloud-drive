@@ -98,7 +98,7 @@ function LoginForm({
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
-            error={errors.password?.message}
+            error={errors.password?.message || serverError}
             className="mb-1"
           />
         )}
@@ -109,12 +109,6 @@ function LoginForm({
           Forgot password?
         </Text>
       </Pressable>
-
-      {serverError ? (
-        <Text variant="body2" color="danger" className="mb-3">
-          {serverError}
-        </Text>
-      ) : null}
 
       <Button size="lg" onPress={onSubmit} loading={isLoading} className="mt-4 mb-4">
         Sign in
@@ -146,7 +140,7 @@ export default function LoginScreen({ navigation }) {
   } = useForm({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
   const [login, { isLoading, error }] = useLoginMutation();
 
-  const serverError = error?.data?.message ?? "";
+  const serverError = error ? (error?.data?.message ?? "Invalid email or password.") : "";
 
   function onSubmit(data) {
     login(data);
