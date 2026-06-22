@@ -51,7 +51,7 @@ export const customBaseQuery = async (rawArgs, api) => {
       console.error("[customBaseQuery]", { url: args.url, status, message: error.message });
     }
 
-    if (status !== 401) {
+    if (status !== 401 || args.skipAuthRetry) {
       return { error: { status: status ?? "NETWORK_ERROR", data: error.response?.data ?? error.message } };
     }
 

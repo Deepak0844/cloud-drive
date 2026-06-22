@@ -34,6 +34,7 @@ const loginMutation = () => ({
     url: AuthUrls.login,
     method: HttpMethods.post,
     body: credentials,
+    skipAuthRetry: true,
   }),
   async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
     try {
@@ -50,6 +51,7 @@ const registerMutation = () => ({
     url: AuthUrls.register,
     method: HttpMethods.post,
     body: userData,
+    skipAuthRetry: true,
   }),
   async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
     try {
@@ -87,7 +89,7 @@ const refreshTokenMutation = () => ({
 });
 
 const forgotPasswordMutation = () => ({
-  query: (body) => ({ url: AuthUrls.forgotPassword, method: HttpMethods.post, body }),
+  query: (body) => ({ url: AuthUrls.forgotPassword, method: HttpMethods.post, body, skipAuthRetry: true }),
 });
 
 // ---------------------------------------------------------------------------
