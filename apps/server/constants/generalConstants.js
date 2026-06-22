@@ -170,13 +170,14 @@ export const AUTH_COOKIE_NAME = "token";
 export const REFRESH_COOKIE_NAME = "refresh_token";
 export const CSRF_COOKIE_NAME = "csrf_token";
 export const CSRF_HEADER_NAME = "x-csrf-token";
+export const REFRESH_TOKEN_HEADER = "x-refresh-token";
 export const BCRYPT_COST = 11;
 
 export const CookieConfig = {
   HTTP_ONLY: true,
   SAME_SITE: "strict",
-  MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000,         // 7 days — kept for backward compat
-  ACCESS_MAX_AGE_MS: 15 * 60 * 1000,            // 15 minutes for access token
+  MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000, // 7 days — kept for backward compat
+  ACCESS_MAX_AGE_MS: 15 * 60 * 1000, // 15 minutes for access token
   REFRESH_MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000, // 7 days for refresh token
 };
 

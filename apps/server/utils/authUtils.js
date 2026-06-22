@@ -23,12 +23,16 @@ export async function sendTokenResponse(user, statusCode, req, res, message) {
     ...(config.NODE_ENV === "production" && { secure: true }),
   };
 
-  res.cookie(AUTH_COOKIE_NAME, accessToken, { ...baseOptions, maxAge: CookieConfig.ACCESS_MAX_AGE_MS });
-  res.cookie(REFRESH_COOKIE_NAME, plainRefreshToken, { ...baseOptions, maxAge: CookieConfig.REFRESH_MAX_AGE_MS });
+  const isMobile = req.headers["x-platform"] === "mobile";
+
+  if (!isMobile) {
+    res.cookie(AUTH_COOKIE_NAME, accessToken, { ...baseOptions, maxAge: CookieConfig.ACCESS_MAX_AGE_MS });
+    res.cookie(REFRESH_COOKIE_NAME, plainRefreshToken, { ...baseOptions, maxAge: CookieConfig.REFRESH_MAX_AGE_MS });
+  }
 
   const userObj = { id: user._id, name: user.name, email: user.email, role: user.role };
 
-  if (req.headers["x-platform"] === "mobile") {
+  if (isMobile) {
     return ResponseUtils.success(
       res,
       { user: userObj, accessToken, refreshToken: plainRefreshToken },
