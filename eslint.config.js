@@ -37,6 +37,7 @@ export default [
     files: ["apps/mobile/**/*.{js,jsx}"],
     languageOptions: {
       globals: {
+        ...globals.es2021,
         __DEV__: "readonly",
       },
     },
