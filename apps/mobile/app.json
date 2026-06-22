@@ -6,8 +6,13 @@
     "version": "0.0.1",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/splash-icon.png",
     "android": {
       "package": "com.clouddrive.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/splash-icon.png",
+        "backgroundColor": "#0f172a"
+      },
       "softwareKeyboardLayoutMode": "pan",
       "permissions": ["FOREGROUND_SERVICE", "RECEIVE_BOOT_COMPLETED", "READ_MEDIA_IMAGES", "READ_MEDIA_VIDEO"]
     },
@@ -26,6 +31,15 @@
           "android": {
             "usesCleartextTraffic": true
           }
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 250,
+          "resizeMode": "contain",
+          "backgroundColor": "#0f172a"
         }
       ],
       "expo-sqlite",

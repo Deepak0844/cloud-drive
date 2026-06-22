@@ -20,7 +20,7 @@ import { sendTokenResponse } from "#utils/authUtils.js";
 export const updatePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   const user = await AuthService.updatePassword(req.user.id, currentPassword, newPassword);
-  return sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.PASSWORD_UPDATED);
+  return sendTokenResponse(user, HttpStatus.OK, req, res, SuccessMessages.PASSWORD_UPDATED);
 });
 
 /**
@@ -43,5 +43,5 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 export const resetPassword = asyncHandler(async (req, res) => {
   const { token, password } = req.body;
   const user = await AuthService.resetPassword(token, password);
-  return sendTokenResponse(user, HttpStatus.OK, res, SuccessMessages.PASSWORD_RESET);
+  return sendTokenResponse(user, HttpStatus.OK, req, res, SuccessMessages.PASSWORD_RESET);
 });

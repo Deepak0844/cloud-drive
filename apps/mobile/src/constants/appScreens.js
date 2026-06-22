@@ -3,7 +3,6 @@ export const AppScreens = {
   LOGIN: "Login",
   REGISTER: "Register",
   FORGOT_PASSWORD: "ForgotPassword",
-  RESET_PASSWORD: "ResetPassword",
 
   // App tabs
   FILES: "Files",

@@ -1,4 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
+import { Appearance } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { TokenStorage } from "@utils/tokenStorage";
 
 // Root reducer
 import { RootReducer } from "@redux-slices/rootReducer";
@@ -11,6 +14,13 @@ import { rtkQueryErrorMiddleware } from "@rtkQuery/rtkQueryErrorMiddleware";
 
 const Store = configureStore({
   reducer: RootReducer,
+  preloadedState: {
+    theme: { colorMode: SecureStore.getItem("colorMode") || Appearance.getColorScheme() || "dark" },
+    auth: {
+      isAuthenticated: Boolean(TokenStorage.getAccessTokenSync()),
+      role: TokenStorage.getRoleSync() || null,
+    },
+  },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,

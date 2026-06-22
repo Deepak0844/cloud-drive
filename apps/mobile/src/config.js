@@ -16,7 +16,7 @@ const _config_prod = {
 // Development configuration
 const _config_dev = {
   ..._config,
-  API_SERVICE_URL: "https://staging.api.example.com",
+  API_SERVICE_URL: "http://10.0.2.2:9000",
 };
 
 // Pick env-specific configuration
