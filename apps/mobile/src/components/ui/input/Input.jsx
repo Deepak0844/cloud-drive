@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TextInput, Text as RNText } from "react-native";
+import { View, TextInput, Text as RNText, Platform } from "react-native";
 import { useTheme } from "@theme/useTheme";
 
 /**
@@ -11,6 +11,7 @@ import { useTheme } from "@theme/useTheme";
  * @param {boolean} [disabled=false]                   - Makes the input non-editable and reduces opacity
  * @param {string}  [className='']                     - Extra NativeWind classes applied to the outer View wrapper
  * @param {string}  [inputClassName='']                - Extra NativeWind classes applied to the TextInput
+ * @param {string}  [labelClassName='']                - Extra NativeWind classes applied to the label text
  */
 export default function Input({
   label = "",
@@ -21,23 +22,28 @@ export default function Input({
   disabled = false,
   className = "",
   inputClassName = "",
+  labelClassName = "",
   ...props
 }) {
   const { colors } = useTheme();
-  const borderClass = error ? "border-danger" : "border-neutral-light focus:border-primary";
+  const borderClass = error ? "border-danger" : "border-glass-surface-border";
   const disabledClass = disabled ? "opacity-50" : "";
 
   return (
     <View className={`gap-1 ${className}`}>
-      {label ? <RNText className="text-sm font-medium leading-normal font-sans text-text">{label}</RNText> : null}
+      {label ? (
+        <RNText className={`text-sm font-medium leading-normal font-sans text-text ${labelClassName}`}>{label}</RNText>
+      ) : null}
 
       <View
-        className={`flex-row items-center bg-background border rounded-md px-3 h-10 ${borderClass} ${disabledClass}`}
+        className={`flex-row items-center bg-glass-surface-bg border rounded-md px-3 h-10 ${borderClass} ${disabledClass}`}
       >
         {leftIcon ? <View className="mr-2">{leftIcon}</View> : null}
         <TextInput
-          className={`flex-1 font-sans text-base text-text ${inputClassName}`}
-          placeholderTextColor={colors.surface.textDisabled}
+          className={`flex-1 font-sans text-base py-0 text-white ${inputClassName}`}
+          textAlignVertical="center"
+          style={Platform.OS === "android" ? { includeFontPadding: false } : undefined}
+          placeholderTextColor={colors.input.placeholder}
           editable={!disabled}
           {...props}
         />
