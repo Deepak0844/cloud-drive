@@ -5,7 +5,7 @@ import crypto from "crypto";
 import AuthService from "#services/authService.js";
 
 // Constants
-import { SuccessMessages, REFRESH_COOKIE_NAME } from "#constants/generalConstants.js";
+import { SuccessMessages, REFRESH_COOKIE_NAME, REFRESH_TOKEN_HEADER } from "#constants/generalConstants.js";
 import { HttpStatus } from "@shared-constants/constants";
 
 // Middleware
@@ -42,7 +42,7 @@ export const login = asyncHandler(async (req, res) => {
  * @access  Public (access token may be expired)
  */
 export const logout = (req, res) => {
-  const plainRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME];
+  const plainRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME] ?? req.headers[REFRESH_TOKEN_HEADER];
   AuthService.clearAuthCookie(res);
 
   if (plainRefreshToken) {
@@ -59,7 +59,7 @@ export const logout = (req, res) => {
  * @access  Public (no access token required)
  */
 export const refreshToken = asyncHandler(async (req, res) => {
-  const token = req.cookies?.[REFRESH_COOKIE_NAME] ?? req.headers["x-refresh-token"];
+  const token = req.cookies?.[REFRESH_COOKIE_NAME] ?? req.headers[REFRESH_TOKEN_HEADER];
   const user = await AuthService.refreshAccessToken(token);
   return sendTokenResponse(user, HttpStatus.OK, req, res, SuccessMessages.LOGIN_SUCCESS);
 });

@@ -47,12 +47,18 @@ export const customBaseQuery = async (rawArgs, api) => {
 
     const status = error.response?.status;
 
-    if (__DEV__) {
+    if (__DEV__ && !args.skipAuthRetry) {
       console.error("[customBaseQuery]", { url: args.url, status, message: error.message });
     }
 
     if (status !== 401 || args.skipAuthRetry) {
-      return { error: { status: status ?? "NETWORK_ERROR", data: error.response?.data ?? error.message } };
+      return {
+        error: {
+          status: status ?? "NETWORK_ERROR",
+          data: error.response?.data ?? error.message,
+          ...(args.suppressGlobalError && { suppressGlobalError: true }),
+        },
+      };
     }
 
     // --- Silent refresh on 401 ---

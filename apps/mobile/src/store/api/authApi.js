@@ -35,6 +35,7 @@ const loginMutation = () => ({
     method: HttpMethods.post,
     body: credentials,
     skipAuthRetry: true,
+    suppressGlobalError: true,
   }),
   async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
     try {
@@ -52,6 +53,7 @@ const registerMutation = () => ({
     method: HttpMethods.post,
     body: userData,
     skipAuthRetry: true,
+    suppressGlobalError: true,
   }),
   async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
     try {
@@ -64,7 +66,16 @@ const registerMutation = () => ({
 });
 
 const logoutMutation = () => ({
-  query: () => ({ url: AuthUrls.logout, method: HttpMethods.post }),
+  queryFn: async (_arg, _api, _extraOptions, baseQuery) => {
+    const refreshToken = await TokenStorage.getRefreshToken();
+    return baseQuery({
+      url: AuthUrls.logout,
+      method: HttpMethods.post,
+      skipAuthRetry: true,
+      suppressGlobalError: true,
+      ...(refreshToken && { headers: { "X-Refresh-Token": refreshToken } }),
+    });
+  },
   async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
     try {
       await queryFulfilled;

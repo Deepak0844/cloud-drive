@@ -192,7 +192,7 @@ export default function RegisterScreen({ navigation }) {
   });
   const [register, { isLoading, error }] = useRegisterMutation();
 
-  const serverError = error?.data?.message ?? "";
+  const serverError = error ? (error?.data?.message ?? "Registration failed. Please try again.") : "";
 
   function onSubmit({ confirmPassword: _confirmPassword, ...data }) {
     register(data);

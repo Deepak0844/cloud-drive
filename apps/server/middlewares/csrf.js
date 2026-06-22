@@ -29,6 +29,10 @@ export function verifyCsrf(req, res, next) {
   if (SAFE_METHODS.has(req.method)) {
     return next();
   }
+  // Mobile clients use Bearer tokens — CSRF does not apply regardless of any cookies present.
+  if (req.headers["x-platform"] === "mobile") {
+    return next();
+  }
   // CSRF only applies to cookie-based sessions; Bearer-token clients are immune by design.
   if (!req.cookies?.[AUTH_COOKIE_NAME]) {
     return next();
