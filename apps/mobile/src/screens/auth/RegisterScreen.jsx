@@ -8,6 +8,9 @@ import { Mail, Lock, Eye, EyeOff, User } from "lucide-react-native";
 // Rtk
 import { useRegisterMutation } from "@api/authApi";
 
+// Hooks
+import { useFormServerErrors } from "@shared-hooks";
+
 // Components
 import AuthScreenLayout from "@components/auth/AuthScreenLayout";
 import AuthIcon from "@components/auth/AuthIcon";
@@ -36,7 +39,6 @@ const schema = z
  * @param {object} errors - react-hook-form field errors
  * @param {() => void} [onSubmit=()=>{}] - Pre-bound submit handler from `handleSubmit`
  * @param {boolean} [isLoading=false] - Shows spinner on the submit button while the request is in flight
- * @param {string} [serverError=''] - Server-side error message shown above the submit button
  * @param {boolean} [showPassword=false] - Whether the password field is visible
  * @param {() => void} [onTogglePassword=()=>{}] - Toggles password visibility
  * @param {() => void} [onSignIn=()=>{}] - Navigates to the login screen
@@ -46,7 +48,6 @@ function RegisterForm({
   errors = {},
   onSubmit = () => {},
   isLoading = false,
-  serverError = "",
   showPassword = false,
   onTogglePassword = () => {},
   showConfirmPassword = false,
@@ -152,12 +153,6 @@ function RegisterForm({
         )}
       />
 
-      {serverError ? (
-        <Text variant="body2" color="danger" className="mb-3">
-          {serverError}
-        </Text>
-      ) : null}
-
       <Button size="lg" onPress={onSubmit} loading={isLoading} className="mb-4">
         Create account
       </Button>
@@ -185,14 +180,14 @@ export default function RegisterScreen({ navigation }) {
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
   });
   const [register, { isLoading, error }] = useRegisterMutation();
-
-  const serverError = error ? (error?.data?.message ?? "Registration failed. Please try again.") : "";
+  useFormServerErrors(error, setError, { fallbackField: "email" });
 
   function onSubmit({ confirmPassword: _confirmPassword, ...data }) {
     register(data);
@@ -207,7 +202,6 @@ export default function RegisterScreen({ navigation }) {
           errors={errors}
           onSubmit={handleSubmit(onSubmit)}
           isLoading={isLoading}
-          serverError={serverError}
           showPassword={showPassword}
           onTogglePassword={() => setShowPassword((prev) => !prev)}
           showConfirmPassword={showConfirmPassword}

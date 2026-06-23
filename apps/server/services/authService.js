@@ -28,7 +28,9 @@ import { sendSecurityEmail } from "#utils/securityEmailUtils.js";
 async function register(name, email, password) {
   const userExists = await User.findOne({ email });
   if (userExists) {
-    throw new AppError(ErrorMessages.USER_ALREADY_EXISTS, HttpStatus.BAD_REQUEST);
+    throw new AppError(ErrorMessages.USER_ALREADY_EXISTS, HttpStatus.BAD_REQUEST, [
+      { field: "email", message: ErrorMessages.USER_ALREADY_EXISTS },
+    ]);
   }
 
   const { wrappedKey } = CryptoUtils.generateAndWrapUserKey();
@@ -49,7 +51,10 @@ async function register(name, email, password) {
 async function login(email, password, req) {
   const user = await User.findOne({ email }).select("+password");
   if (!user || !(await user.matchPassword(password))) {
-    throw new AppError(ErrorMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
+    throw new AppError(ErrorMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED, [
+      { field: "email", message: ErrorMessages.INVALID_CREDENTIALS },
+      { field: "password", message: ErrorMessages.INVALID_CREDENTIALS },
+    ]);
   }
 
   if (!user.is_active) {
@@ -94,7 +99,9 @@ async function updatePassword(userId, currentPassword, newPassword, user) {
   const userWithPassword = user || (await User.findById(userId).select("+password"));
 
   if (!(await userWithPassword.matchPassword(currentPassword))) {
-    throw new AppError(ErrorMessages.INCORRECT_PASSWORD, HttpStatus.UNAUTHORIZED);
+    throw new AppError(ErrorMessages.INCORRECT_PASSWORD, HttpStatus.BAD_REQUEST, [
+      { field: "currentPassword", message: ErrorMessages.INCORRECT_PASSWORD },
+    ]);
   }
 
   userWithPassword.password = newPassword;

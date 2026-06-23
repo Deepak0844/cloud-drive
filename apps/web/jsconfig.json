@@ -13,7 +13,8 @@
       "@store/*": ["./src/store/*"],
       "@styles/*": ["./src/styles/*"],
       "@utils/*": ["./src/utils/*"],
-      "@schemas/*": ["./src/schemas/*"]
+      "@schemas/*": ["./src/schemas/*"],
+      "@shared-hooks": ["../../shared/hooks/src/index.js"]
     }
   }
 }

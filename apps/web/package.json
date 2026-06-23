@@ -15,7 +15,6 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@reduxjs/toolkit": "^2.11.2",
     "@shared-constants/constants": "*",
-    "@shared-hooks/hooks": "*",
     "@shared-utils/utils": "*",
     "@vidstack/react": "^1.12.13",
     "axios": "^1.13.5",

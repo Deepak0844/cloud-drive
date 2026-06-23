@@ -11,6 +11,9 @@ import { useLoginMutation } from "@api/authApi";
 // Constants
 import { AppScreens } from "@constants/appScreens";
 
+// Hooks
+import { useFormServerErrors } from "@shared-hooks";
+
 // Components
 import AuthScreenLayout from "@components/auth/AuthScreenLayout";
 import AuthIcon from "@components/auth/AuthIcon";
@@ -32,7 +35,6 @@ const schema = z.object({
  * @param {object} errors - react-hook-form field errors
  * @param {() => void} [onSubmit=()=>{}] - Pre-bound submit handler from `handleSubmit`
  * @param {boolean} [isLoading=false] - Shows spinner on the submit button while the request is in flight
- * @param {string} [serverError=''] - Server-side error message shown above the submit button
  * @param {boolean} [showPassword=false] - Whether the password field is visible
  * @param {() => void} [onTogglePassword=()=>{}] - Toggles password visibility
  * @param {() => void} [onForgotPassword=()=>{}] - Navigates to the forgot-password screen
@@ -43,7 +45,7 @@ function LoginForm({
   errors = {},
   onSubmit = () => {},
   isLoading = false,
-  serverError = "",
+  isSuccess = false,
   showPassword = false,
   onTogglePassword = () => {},
   onForgotPassword = () => {},
@@ -98,7 +100,7 @@ function LoginForm({
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
-            error={errors.password?.message || serverError}
+            error={errors.password?.message}
             className="mb-1"
           />
         )}
@@ -110,8 +112,8 @@ function LoginForm({
         </Text>
       </Pressable>
 
-      <Button size="lg" onPress={onSubmit} loading={isLoading} className="mt-4 mb-4">
-        Sign in
+      <Button size="lg" onPress={onSubmit} loading={isLoading} disabled={isLoading || isSuccess} className="mt-4 mb-4">
+        {isSuccess ? "✓ Signed in!" : "Sign in"}
       </Button>
 
       <View className="flex-row items-center justify-center">
@@ -136,11 +138,11 @@ export default function LoginScreen({ navigation }) {
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
-  const [login, { isLoading, error }] = useLoginMutation();
-
-  const serverError = error ? (error?.data?.message ?? "Invalid email or password.") : "";
+  const [login, { isLoading, error, isSuccess }] = useLoginMutation();
+  useFormServerErrors(error, setError, { fallbackField: "password" });
 
   function onSubmit(data) {
     login(data);
@@ -155,7 +157,7 @@ export default function LoginScreen({ navigation }) {
           errors={errors}
           onSubmit={handleSubmit(onSubmit)}
           isLoading={isLoading}
-          serverError={serverError}
+          isSuccess={isSuccess}
           showPassword={showPassword}
           onTogglePassword={() => setShowPassword((prev) => !prev)}
           onForgotPassword={() => navigation.navigate(AppScreens.FORGOT_PASSWORD)}

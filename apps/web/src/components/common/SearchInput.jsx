@@ -5,7 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";
 
 // Hooks
-import { useDebounce } from "@shared-hooks/hooks";
+import { useDebounce } from "@shared-hooks";
 
 // Constants
 import { QUERY_PARAMS_KEYS, TIMEOUTS } from "@shared-constants/constants";

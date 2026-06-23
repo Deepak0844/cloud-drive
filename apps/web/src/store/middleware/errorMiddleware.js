@@ -28,18 +28,27 @@ export default function rtkQueryErrorMiddleware(api) {
       const showToast = payloadShowToast ?? originalArgs?.showToast ?? false; // Default to redirect for all >= 400
       const showPageError = payloadShowPageError ?? originalArgs?.showPageError ?? true; // Default to redirect/page error
 
-      // 1. Handle 401 Unauthorized globally (always reset session)
+      // 1. Network error — request never reached the server
+      if (!status && !suppressGlobalError) {
+        toast.error("Network Error", {
+          description: "Please check your connection and try again.",
+          duration: 4000,
+        });
+        return next(action);
+      }
+
+      // 2. Handle 401 Unauthorized globally (always reset session)
       if (status === 401) {
         AuthUtils.clearSession();
-        api.dispatch({ type: "api/resetApiState" });
 
         if (!suppressGlobalError) {
+          api.dispatch({ type: "api/resetApiState" });
           Navigation.globalNavigate(PageUrls.LoginPage, { replace: true });
           return next(action);
         }
       }
 
-      // 2. Universal Redirection for all other errors (status >= 400)
+      // 3. Universal Redirection for all other errors (status >= 400)
       if (status >= 400 && showPageError && !suppressGlobalError) {
         // Look for common error keys in the response data, prioritizing specific message strings
         const errorMessage =
@@ -56,7 +65,7 @@ export default function rtkQueryErrorMiddleware(api) {
         return next(action);
       }
 
-      // 3. Show Toaster (Notification) if explicitly requested OR fallback
+      // 4. Show Toaster (Notification) if explicitly requested OR fallback
       if (showToast && !suppressGlobalError) {
         const errorMessage =
           data?.error?.message ||

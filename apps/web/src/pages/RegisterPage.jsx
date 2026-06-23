@@ -14,6 +14,7 @@ import PageUrls from "@constants/pageUrls";
 
 // Hooks
 import { useAuth } from "@hooks/useAuth";
+import { useFormServerErrors } from "@shared-hooks";
 
 // Components
 import { Card } from "@components/ui/card";
@@ -24,9 +25,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 function RegisterPage() {
   // Custom & shared hooks
 
-  const { register, isRegisterLoading } = useAuth();
-
-  // Form setup
+  const { register, isRegisterLoading, registerError } = useAuth();
   const form = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -35,6 +34,7 @@ function RegisterPage() {
       password: "",
     },
   });
+  useFormServerErrors(registerError, form.setError, { fallbackField: "email" });
 
   // Event handlers
 
@@ -42,18 +42,8 @@ function RegisterPage() {
     try {
       await register({ name: values.name, email: values.email, password: values.password });
       toast.success("Account created! Please sign in with your credentials.");
-    } catch (err) {
-      const errorMessage =
-        err?.data?.error?.message ||
-        err?.data?.message ||
-        err?.data?.error ||
-        (typeof err?.data === "string" ? err.data : null);
-
-      if (errorMessage) {
-        form.setError("password", { type: "server", message: errorMessage });
-      } else {
-        toast.error("Registration failed. Please try again.");
-      }
+    } catch {
+      // errors surfaced via useFormServerErrors
     }
   }
 

@@ -37,6 +37,7 @@ const registerMutation = () => ({
     url: AuthServiceUrls.register,
     method: HttpMethods.POST,
     body: userData,
+    onError: { suppressGlobalError: true },
   }),
 });
 

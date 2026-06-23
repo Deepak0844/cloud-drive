@@ -29,8 +29,13 @@ const validate = (schema) => (req, res, next) => {
 
     next();
   } catch (error) {
-    const message = error.issues?.[0]?.message ?? "Validation error";
-    return ResponseUtils.error(res, message, HttpStatus.BAD_REQUEST);
+    const issues = error.issues ?? [];
+    const errors = issues.map((issue) => ({
+      field: issue.path.slice(1).join(".") || issue.path.join("."),
+      message: issue.message,
+    }));
+    const message = issues[0]?.message ?? "Validation error";
+    return ResponseUtils.error(res, message, HttpStatus.BAD_REQUEST, errors);
   }
 };
 

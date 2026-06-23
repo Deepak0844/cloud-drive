@@ -36,10 +36,15 @@ function convertSecondsToTimeText(seconds = null) {
   return parts.join(" ");
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Exports
 const TimeUtils = {
   convertSecondsToMinutes,
   convertSecondsToTimeText,
+  delay,
 };
 
 export default TimeUtils;
