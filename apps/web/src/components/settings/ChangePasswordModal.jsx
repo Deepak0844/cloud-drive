@@ -12,14 +12,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 // Services (RTK Query hooks)
 import { useUpdatePasswordMutation } from "@services/api/authApi";
 
+// Hooks
+import { useFormServerErrors } from "@shared-hooks";
+
 // Components
 import Modal from "@components/common/Modal";
 
 function ChangePasswordModal({ open, onClose }) {
   // RTK Query hooks
-  const [updatePassword, { isLoading }] = useUpdatePasswordMutation();
-
-  // Custom & shared hooks
+  const [updatePassword, { isLoading, error: updatePasswordError }] = useUpdatePasswordMutation();
 
   const form = useForm({
     resolver: zodResolver(changePasswordSchema),
@@ -29,6 +30,9 @@ function ChangePasswordModal({ open, onClose }) {
       confirmPassword: "",
     },
   });
+
+  // Custom & shared hooks
+  useFormServerErrors(updatePasswordError, form.setError, { fallbackField: "currentPassword" });
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -48,20 +52,8 @@ function ChangePasswordModal({ open, onClose }) {
       toast.success("Password updated successfully!");
       form.reset();
       onClose();
-    } catch (err) {
-      const errorMessage =
-        err?.data?.error?.message ||
-        err?.data?.message ||
-        err?.data?.error ||
-        (typeof err?.data === "string" ? err.data : null);
-
-      if (errorMessage === "Incorrect current password") {
-        form.setError("currentPassword", { type: "server", message: errorMessage });
-      } else if (errorMessage) {
-        toast.error(errorMessage);
-      } else {
-        toast.error("Failed to update password");
-      }
+    } catch {
+      // errors surfaced via useFormServerErrors
     }
   }
 

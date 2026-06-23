@@ -40,9 +40,9 @@ export default function rtkQueryErrorMiddleware(api) {
       // 2. Handle 401 Unauthorized globally (always reset session)
       if (status === 401) {
         AuthUtils.clearSession();
-        api.dispatch({ type: "api/resetApiState" });
 
         if (!suppressGlobalError) {
+          api.dispatch({ type: "api/resetApiState" });
           Navigation.globalNavigate(PageUrls.LoginPage, { replace: true });
           return next(action);
         }
