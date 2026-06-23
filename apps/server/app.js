@@ -177,9 +177,7 @@ app.use((err, req, res, _next) => {
     logger.error(err.stack);
   }
 
-  ResponseUtils.error(res, message, statusCode, {
-    ...(Env.NODE_ENV !== "production" && { stack: err.stack }),
-  });
+  ResponseUtils.error(res, message, statusCode, err.errors || []);
 });
 
 export default app;
