@@ -11,7 +11,10 @@ export function useBiometric() {
   }
 
   function authenticate() {
-    return LocalAuthentication.authenticateAsync({ promptMessage: "Unlock cloud-drive" });
+    return LocalAuthentication.authenticateAsync({
+      promptMessage: "Unlock cloud-drive",
+      disableDeviceFallback: false,
+    });
   }
 
   function setEnabled(val) {
