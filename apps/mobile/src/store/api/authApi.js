@@ -100,7 +100,13 @@ const refreshTokenMutation = () => ({
 });
 
 const forgotPasswordMutation = () => ({
-  query: (body) => ({ url: AuthUrls.forgotPassword, method: HttpMethods.post, body, skipAuthRetry: true }),
+  query: (body) => ({
+    url: AuthUrls.forgotPassword,
+    method: HttpMethods.post,
+    body,
+    skipAuthRetry: true,
+    suppressGlobalError: true,
+  }),
 });
 
 // ---------------------------------------------------------------------------

@@ -8,22 +8,19 @@ import { ErrorActions } from "@redux-slices/errorSlice";
  */
 export function rtkQueryErrorMiddleware(store) {
   return (next) => (action) => {
-    // Catch all RTK Query rejected actions
     if (isRejectedWithValue(action)) {
       const { originalArgs = {} } = action.meta.arg;
       const errorPayload = action.payload || {};
-
-      // Get flags (Priority: Hook Args > Endpoint Payload )
       const suppressGlobalError = originalArgs.suppressGlobalError ?? errorPayload.suppressGlobalError ?? false;
 
-      // Dispatch to the existing global error slice
       if (!suppressGlobalError) {
-        const { errorInfo = {} } = errorPayload || {};
-        store.dispatch(
-          ErrorActions.setError({
-            errorInfo: errorInfo,
-          })
-        );
+        const status = errorPayload.status;
+        if (status === "NETWORK_ERROR" || status === "FETCH_ERROR" || status === "TIMEOUT_ERROR") {
+          store.dispatch(ErrorActions.setNetworkError());
+        } else {
+          const message = errorPayload.data?.message ?? "Something went wrong";
+          store.dispatch(ErrorActions.setError({ errorInfo: { message } }));
+        }
       }
     }
 

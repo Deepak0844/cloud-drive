@@ -8,21 +8,23 @@ import { ErrorActions } from "@redux-slices/errorSlice";
 /**
  * Listens to the global error state in Redux and shows a dismissible message
  * when an error occurs. Tapping it, or the auto-dismiss timer, resets the state.
+ * Handles both API errors and network errors.
  */
 export default function ErrorHandler() {
   const dispatch = useDispatch();
-  const { error, message } = useSelector((state) => state.Error);
+  const { error, networkError, message } = useSelector((state) => state.Error);
+  const visible = error || networkError;
 
   useEffect(() => {
-    if (!error) {
+    if (!visible) {
       return undefined;
     }
 
     const timer = setTimeout(() => dispatch(ErrorActions.reset()), 4000);
     return () => clearTimeout(timer);
-  }, [error, dispatch]);
+  }, [visible, dispatch]);
 
-  if (!error) {
+  if (!visible) {
     return null;
   }
 
