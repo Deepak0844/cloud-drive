@@ -38,12 +38,15 @@ const styles = StyleSheet.create({ flex: { flex: 1 } });
 
 function AppContent() {
   const colorMode = useSelector((state) => state.theme.colorMode);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const systemScheme = useColorScheme();
   const resolved = colorMode === "system" ? (systemScheme ?? "light") : colorMode;
   const { setColorScheme } = useNWColorScheme();
   const [biometricLocked, setBiometricLocked] = useState(false);
   const { isEnabled } = useBiometric();
   const appState = useRef(AppState.currentState);
+  const biometricLockedRef = useRef(false);
+  biometricLockedRef.current = biometricLocked;
 
   useEffect(() => {
     setColorScheme(colorMode);
@@ -51,16 +54,27 @@ function AppContent() {
   }, [colorMode]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    isEnabled().then((enabled) => {
+      if (enabled) {
+        setBiometricLocked(true);
+      }
+    });
+  }, [isAuthenticated]);
+
+  useEffect(() => {
     const sub = AppState.addEventListener("change", async (next) => {
       if (appState.current === "active" && next.match(/inactive|background/)) {
-        if (await isEnabled()) {
+        if (isAuthenticated && !biometricLockedRef.current && (await isEnabled())) {
           setBiometricLocked(true);
         }
       }
       appState.current = next;
     });
     return () => sub.remove();
-  }, []);
+  }, [isAuthenticated]);
 
   return (
     <GluestackUIProvider mode={resolved}>
@@ -72,7 +86,9 @@ function AppContent() {
             <NavigationContainer>
               <RootNavigator />
               <ErrorHandler />
-              {biometricLocked ? <BiometricLockScreen onUnlock={() => setBiometricLocked(false)} /> : null}
+              {isAuthenticated && biometricLocked ? (
+                <BiometricLockScreen onUnlock={() => setBiometricLocked(false)} />
+              ) : null}
             </NavigationContainer>
           </DatabaseGate>
         </GestureHandlerRootView>
