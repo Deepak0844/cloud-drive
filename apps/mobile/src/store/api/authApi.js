@@ -10,17 +10,21 @@ import { setAuthenticated, setRole, resetAuth } from "@redux-slices/authSlice";
 
 // Utils
 import { TokenStorage } from "@utils/tokenStorage";
+import { TimeUtils } from "@shared-utils/utils";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function handleAuthSuccess({ data }, dispatch) {
+async function handleAuthSuccess({ data }, dispatch, delayMs = 0) {
   const { accessToken, refreshToken, user } = data.data;
   if (!accessToken || !refreshToken || !user) return;
   await TokenStorage.setAccessToken(accessToken);
   await TokenStorage.setRefreshToken(refreshToken);
   await TokenStorage.setRole(user.role);
+  if (delayMs > 0) {
+    await TimeUtils.delay(delayMs);
+  }
   dispatch(setAuthenticated(true));
   dispatch(setRole(user.role));
 }
@@ -40,7 +44,7 @@ const loginMutation = () => ({
   async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
     try {
       const result = await queryFulfilled;
-      await handleAuthSuccess(result, dispatch);
+      await handleAuthSuccess(result, dispatch, 1000);
     } catch {
       // login failed — leave state untouched
     }

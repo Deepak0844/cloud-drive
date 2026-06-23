@@ -1,4 +1,5 @@
 // React core & third-party libraries
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 // Services (RTK Query hooks)
@@ -10,6 +11,7 @@ import { Roles } from "@shared-constants/constants";
 
 // Utils
 import AuthUtils from "@utils/authUtils";
+import { TimeUtils } from "@shared-utils/utils";
 
 /**
  * Custom hook for Authentication related actions.
@@ -24,17 +26,16 @@ export function useAuth() {
   const [registerMutation, { isLoading: isRegisterLoading, isError: isRegisterError, error: registerError }] =
     useRegisterMutation();
 
+  const [loginSuccess, setLoginSuccess] = useState(false);
+
   /**
    * Login Function.
-   * After a successful login, reads the stored role and navigates to the
-   * correct default page for that role. Admins → /admin, users → /my-files.
-   * If the user was redirected here from a protected route, they go back there
-   * (only for regular users; admins always land on their dashboard).
+   * On success, shows a toast, waits 1 seconds, then navigates based on role.
    */
   async function login(credentials, redirectTo = PageUrls.MyFilesPage, options = {}) {
     await loginMutation({ ...credentials, ...options }).unwrap();
-
-    // Role is now stored in localStorage by authApi's onQueryStarted
+    setLoginSuccess(true);
+    await TimeUtils.delay(1000);
     const role = AuthUtils.getUserRole();
     if (role === Roles.ADMIN) {
       navigate(PageUrls.AdminPage, { replace: true });
@@ -67,6 +68,7 @@ export function useAuth() {
     login,
     logout,
     register,
+    loginSuccess,
     isLoginLoading,
     isLogoutLoading,
     isRegisterLoading,

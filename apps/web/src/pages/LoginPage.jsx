@@ -38,8 +38,7 @@ function LoginPage() {
   });
 
   // Custom & shared hooks
-
-  const { login, isLoginLoading, loginError } = useAuth();
+  const { login, isLoginLoading, loginError, loginSuccess } = useAuth();
   useFormServerErrors(loginError, form.setError, { fallbackField: "password" });
 
   // Derived / computed variables
@@ -132,10 +131,10 @@ function LoginPage() {
               variant="aurora"
               size="pill"
               type="submit"
-              disabled={isLoginLoading}
+              disabled={isLoginLoading || loginSuccess}
               className="w-full text-lg mt-2 font-bold"
             >
-              {isLoginLoading ? "Signing In..." : "Sign In"}
+              {isLoginLoading ? "Signing In..." : loginSuccess ? "✓ Signed in!" : "Sign In"}
             </Button>
           </form>
         </Form>

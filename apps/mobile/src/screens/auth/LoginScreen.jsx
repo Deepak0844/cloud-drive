@@ -45,6 +45,7 @@ function LoginForm({
   errors = {},
   onSubmit = () => {},
   isLoading = false,
+  isSuccess = false,
   showPassword = false,
   onTogglePassword = () => {},
   onForgotPassword = () => {},
@@ -111,8 +112,8 @@ function LoginForm({
         </Text>
       </Pressable>
 
-      <Button size="lg" onPress={onSubmit} loading={isLoading} className="mt-4 mb-4">
-        Sign in
+      <Button size="lg" onPress={onSubmit} loading={isLoading} disabled={isLoading || isSuccess} className="mt-4 mb-4">
+        {isSuccess ? "✓ Signed in!" : "Sign in"}
       </Button>
 
       <View className="flex-row items-center justify-center">
@@ -140,7 +141,7 @@ export default function LoginScreen({ navigation }) {
     setError,
     formState: { errors },
   } = useForm({ resolver: zodResolver(schema), defaultValues: { email: "", password: "" } });
-  const [login, { isLoading, error }] = useLoginMutation();
+  const [login, { isLoading, error, isSuccess }] = useLoginMutation();
   useFormServerErrors(error, setError, { fallbackField: "password" });
 
   function onSubmit(data) {
@@ -156,6 +157,7 @@ export default function LoginScreen({ navigation }) {
           errors={errors}
           onSubmit={handleSubmit(onSubmit)}
           isLoading={isLoading}
+          isSuccess={isSuccess}
           showPassword={showPassword}
           onTogglePassword={() => setShowPassword((prev) => !prev)}
           onForgotPassword={() => navigation.navigate(AppScreens.FORGOT_PASSWORD)}
