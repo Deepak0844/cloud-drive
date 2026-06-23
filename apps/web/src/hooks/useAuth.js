@@ -47,13 +47,8 @@ export function useAuth() {
    * Register Function
    */
   async function register(userData, options = {}) {
-    try {
-      await registerMutation({ ...userData, ...options }).unwrap();
-      // Redirect to login after successful registration
-      navigate(PageUrls.LoginPage, { replace: true });
-    } catch (_err) {
-      // Errors are surfaced via the hook's isRegisterError / registerError state
-    }
+    await registerMutation({ ...userData, ...options }).unwrap();
+    navigate(PageUrls.LoginPage, { replace: true });
   }
 
   /**
