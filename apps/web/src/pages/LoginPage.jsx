@@ -21,6 +21,7 @@ import PageUrls from "@constants/pageUrls";
 
 // Hooks
 import { useAuth } from "@hooks/useAuth";
+import { useFormServerErrors } from "@hooks/useFormServerErrors";
 
 function LoginPage() {
   // Router hooks & params
@@ -38,7 +39,8 @@ function LoginPage() {
 
   // Custom & shared hooks
 
-  const { login, isLoginLoading } = useAuth();
+  const { login, isLoginLoading, loginError } = useAuth();
+  useFormServerErrors(loginError, form.setError, { fallbackField: "password" });
 
   // Derived / computed variables
   // Redirect back to the page the user came from, or to the dashboard
@@ -50,18 +52,8 @@ function LoginPage() {
     try {
       await login({ email: values.email, password: values.password }, from);
       toast.success("Welcome back!");
-    } catch (err) {
-      const errorMessage =
-        err?.data?.error?.message ||
-        err?.data?.message ||
-        err?.data?.error ||
-        (typeof err?.data === "string" ? err.data : null);
-
-      if (errorMessage) {
-        form.setError("password", { type: "server", message: errorMessage });
-      } else {
-        toast.error("Login failed. Please try again.");
-      }
+    } catch {
+      // errors surfaced via useFormServerErrors
     }
   }
 
