@@ -9,7 +9,7 @@ import { ErrorActions } from "@redux-slices/errorSlice";
 export function rtkQueryErrorMiddleware(store) {
   return (next) => (action) => {
     if (isRejectedWithValue(action)) {
-      const { originalArgs = {} } = action.meta.arg;
+      const { originalArgs = {} } = action.meta?.arg ?? {};
       const errorPayload = action.payload || {};
       const suppressGlobalError = originalArgs.suppressGlobalError ?? errorPayload.suppressGlobalError ?? false;
 

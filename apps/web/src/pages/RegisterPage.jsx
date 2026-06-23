@@ -26,9 +26,6 @@ function RegisterPage() {
   // Custom & shared hooks
 
   const { register, isRegisterLoading, registerError } = useAuth();
-  useFormServerErrors(registerError, form.setError, { fallbackField: "email" });
-
-  // Form setup
   const form = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -37,6 +34,7 @@ function RegisterPage() {
       password: "",
     },
   });
+  useFormServerErrors(registerError, form.setError, { fallbackField: "email" });
 
   // Event handlers
 

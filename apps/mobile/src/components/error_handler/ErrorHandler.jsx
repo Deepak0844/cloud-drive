@@ -16,13 +16,13 @@ export default function ErrorHandler() {
   const visible = error || networkError;
 
   useEffect(() => {
-    if (!visible) {
+    if (!error && !networkError) {
       return undefined;
     }
 
     const timer = setTimeout(() => dispatch(ErrorActions.reset()), 4000);
     return () => clearTimeout(timer);
-  }, [visible, dispatch]);
+  }, [error, networkError, dispatch]);
 
   if (!visible) {
     return null;
