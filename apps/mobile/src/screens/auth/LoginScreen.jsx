@@ -12,7 +12,7 @@ import { useLoginMutation } from "@api/authApi";
 import { AppScreens } from "@constants/appScreens";
 
 // Hooks
-import { useFormServerErrors } from "@hooks/useFormServerErrors";
+import { useFormServerErrors } from "@shared-hooks";
 
 // Components
 import AuthScreenLayout from "@components/auth/AuthScreenLayout";

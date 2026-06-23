@@ -1,5 +1,5 @@
 // Hooks
-import { useMediaQuery } from "@shared-hooks/hooks";
+import { useMediaQuery } from "@shared-hooks";
 
 /**
  * Convenience hook — returns true when the viewport width is ≤ 767 px.

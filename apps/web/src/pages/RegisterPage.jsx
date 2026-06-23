@@ -14,7 +14,7 @@ import PageUrls from "@constants/pageUrls";
 
 // Hooks
 import { useAuth } from "@hooks/useAuth";
-import { useFormServerErrors } from "@hooks/useFormServerErrors";
+import { useFormServerErrors } from "@shared-hooks";
 
 // Components
 import { Card } from "@components/ui/card";

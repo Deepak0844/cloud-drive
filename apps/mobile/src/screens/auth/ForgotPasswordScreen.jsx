@@ -12,7 +12,7 @@ import { useTheme } from "@theme/useTheme";
 import { useForgotPasswordMutation } from "@api/authApi";
 
 // Hooks
-import { useFormServerErrors } from "@hooks/useFormServerErrors";
+import { useFormServerErrors } from "@shared-hooks";
 
 // Components
 import AuthScreenLayout from "@components/auth/AuthScreenLayout";

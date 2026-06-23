@@ -21,7 +21,7 @@ import PageUrls from "@constants/pageUrls";
 
 // Hooks
 import { useAuth } from "@hooks/useAuth";
-import { useFormServerErrors } from "@hooks/useFormServerErrors";
+import { useFormServerErrors } from "@shared-hooks";
 
 function LoginPage() {
   // Router hooks & params

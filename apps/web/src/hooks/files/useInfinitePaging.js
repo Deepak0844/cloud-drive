@@ -2,7 +2,7 @@
 import { QUERY_PARAMS_KEYS } from "@shared-constants/constants";
 
 // Hooks
-import { useInfiniteScroll } from "@shared-hooks/hooks";
+import { useInfiniteScroll } from "@shared-hooks";
 
 export function useInfinitePaging({ hasNext, isLoading, page, setPage, updateParams }) {
   const { loaderRef } = useInfiniteScroll({

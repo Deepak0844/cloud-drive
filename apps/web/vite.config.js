@@ -20,6 +20,7 @@ export default defineConfig({
       "@styles": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/styles"),
       "@utils": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/utils"),
       "@schemas": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "src/schemas"),
+      "@shared-hooks": path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../../shared/hooks/src"),
     },
     dedupe: ["react", "react-dom"],
   },
