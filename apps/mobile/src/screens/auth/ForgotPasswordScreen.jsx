@@ -11,6 +11,9 @@ import { useTheme } from "@theme/useTheme";
 // Rtk
 import { useForgotPasswordMutation } from "@api/authApi";
 
+// Hooks
+import { useFormServerErrors } from "@hooks/useFormServerErrors";
+
 // Components
 import AuthScreenLayout from "@components/auth/AuthScreenLayout";
 import AuthIcon from "@components/auth/AuthIcon";
@@ -113,14 +116,20 @@ export default function ForgotPasswordScreen({ navigation }) {
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
   } = useForm({ resolver: zodResolver(schema) });
-  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
+  const [forgotPassword, { isLoading, error }] = useForgotPasswordMutation();
   const [submitted, setSubmitted] = useState(false);
+  useFormServerErrors(error, setError, { fallbackField: "email" });
 
   async function onSubmit(data) {
-    await forgotPassword(data).unwrap();
-    setSubmitted(true);
+    try {
+      await forgotPassword(data).unwrap();
+      setSubmitted(true);
+    } catch {
+      // error surfaced via useFormServerErrors
+    }
   }
 
   return (
