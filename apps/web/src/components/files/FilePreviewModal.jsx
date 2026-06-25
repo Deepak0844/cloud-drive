@@ -36,7 +36,7 @@ export default function FilePreviewModal({
   const [showSidebar, setShowSidebar] = useState(false);
 
   const currentFile = file;
-  const type = currentFile?.type || currentFile?.category;
+  const type = currentFile?.category || currentFile?.type;
   const fileId = currentFile?.id || currentFile?._id;
   const isMediaFile = type === FileCategories.VIDEO || type === FileCategories.AUDIO;
 
