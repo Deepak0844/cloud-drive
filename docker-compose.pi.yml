@@ -29,6 +29,8 @@ services:
       - NODE_ENV=production
       - NAS_STORAGE_PATH=/storage
       - ENABLE_FACE_API=false
+    ports:
+      - "${SERVER_PORT:-9000}:9000"
     volumes:
       - ${NAS_HOST_PATH:?NAS_HOST_PATH must be set in .env.prod}:/storage
     networks: [app-net]
