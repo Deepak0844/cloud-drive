@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { View } from "react-native";
 import { useColorScheme } from "nativewind";
+import { OverlayProvider } from "@gluestack-ui/core/overlay/creator";
 
 export default function GluestackUIProvider({ mode = "system", children, ...props }) {
   const { setColorScheme } = useColorScheme();
@@ -11,7 +12,7 @@ export default function GluestackUIProvider({ mode = "system", children, ...prop
 
   return (
     <View style={{ flex: 1 }} {...props}>
-      {children}
+      <OverlayProvider>{children}</OverlayProvider>
     </View>
   );
 }
