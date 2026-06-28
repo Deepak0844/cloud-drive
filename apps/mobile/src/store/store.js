@@ -11,6 +11,7 @@ import { api } from "@rtkQuery/api";
 
 // Middleware
 import { rtkQueryErrorMiddleware } from "@rtkQuery/rtkQueryErrorMiddleware";
+import { socketMiddleware } from "./middleware/socketMiddleware";
 
 const Store = configureStore({
   reducer: RootReducer,
@@ -24,7 +25,7 @@ const Store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
-    }).concat(api.middleware, rtkQueryErrorMiddleware),
+    }).concat(api.middleware, rtkQueryErrorMiddleware, socketMiddleware),
 });
 
 export default Store;

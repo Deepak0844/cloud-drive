@@ -3,10 +3,13 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { Folder, Image, Clock, Star, MoreHorizontal, ShieldCheck } from "lucide-react-native";
-import { useSelector } from "react-redux";
+
+// Rtk
+import { useGetMeQuery } from "@api/authApi";
 
 // Constants
 import { AppScreens } from "@constants/appScreens";
+import { Roles } from "@shared-constants";
 
 // Hooks
 import { useResponsive } from "@hooks/useResponsive";
@@ -16,6 +19,8 @@ import { useTheme } from "@theme/useTheme";
 
 // Screens
 import MyFilesScreen from "@screens/files/MyFilesScreen";
+import FolderScreen from "@screens/files/FolderScreen";
+import FileDetailScreen from "@screens/files/FileDetailScreen";
 import PhotosScreen from "@screens/photos/PhotosScreen";
 import RecentScreen from "@screens/recent/RecentScreen";
 import FavoritesScreen from "@screens/favorites/FavoritesScreen";
@@ -26,11 +31,18 @@ import AdminDashboardScreen from "@screens/admin/AdminDashboardScreen";
 import AdminUsersScreen from "@screens/admin/AdminUsersScreen";
 import AdminQuotaScreen from "@screens/admin/AdminQuotaScreen";
 
+function useIsAdmin() {
+  const { data: me } = useGetMeQuery();
+  return me?.role === Roles.ADMIN;
+}
+
 const FilesStack = createNativeStackNavigator();
 function FilesStackNavigator() {
   return (
     <FilesStack.Navigator screenOptions={{ headerShown: false }}>
       <FilesStack.Screen name={AppScreens.MY_FILES} component={MyFilesScreen} />
+      <FilesStack.Screen name={AppScreens.FOLDER} component={FolderScreen} />
+      <FilesStack.Screen name={AppScreens.FILE_DETAIL} component={FileDetailScreen} />
     </FilesStack.Navigator>
   );
 }
@@ -60,7 +72,7 @@ function AdminStackNavigator() {
 const BottomTab = createBottomTabNavigator();
 function PhoneNavigator() {
   const { colors } = useTheme();
-  const isAdmin = useSelector((s) => s.auth.role === "ADMIN");
+  const isAdmin = useIsAdmin();
 
   return (
     <BottomTab.Navigator
@@ -112,7 +124,7 @@ function PhoneNavigator() {
 
 const Drawer = createDrawerNavigator();
 function TabletNavigator() {
-  const isAdmin = useSelector((s) => s.auth.role === "ADMIN");
+  const isAdmin = useIsAdmin();
 
   return (
     <Drawer.Navigator screenOptions={{ headerShown: false }}>

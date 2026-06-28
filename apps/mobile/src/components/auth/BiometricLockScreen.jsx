@@ -9,7 +9,7 @@ import { useBiometric } from "@hooks/useBiometric";
 // Components
 import AuroraBackground from "@components/auth/AuroraBackground";
 import Text from "@components/ui/text/Text";
-import Button from "@components/ui/button/Button";
+import Button, { ButtonText } from "@components/ui/button/Button";
 
 /**
  * Full-screen biometric lock modal. Matches the aurora auth design language.
@@ -43,6 +43,7 @@ export default function BiometricLockScreen({ onUnlock = () => {} }) {
   useEffect(() => {
     Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     tryUnlock();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -55,16 +56,16 @@ export default function BiometricLockScreen({ onUnlock = () => {} }) {
               <Lock size={44} color="white" strokeWidth={1.5} />
             </View>
 
-            <Text variant="h4" color="white" weight="bold" align="center" className="mt-4 mb-10">
+            <Text size="2xl" bold className="text-white text-center mt-4 mb-10">
               Cloud Drive Locked
             </Text>
 
             <Button size="lg" onPress={tryUnlock} className="w-full">
-              Unlock
+              <ButtonText>Unlock</ButtonText>
             </Button>
 
             {authError.length > 0 ? (
-              <Text variant="caption" align="center" color="danger" className="mt-4">
+              <Text size="xs" className="text-danger text-center mt-4">
                 {authError}
               </Text>
             ) : null}

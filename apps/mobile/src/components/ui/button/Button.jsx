@@ -1,91 +1,163 @@
 import React from "react";
-import { ActivityIndicator, Pressable, Text as RNText } from "react-native";
-import { useTheme } from "@theme/useTheme";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { createButton } from "@gluestack-ui/core/button/creator";
+import { tva, withStyleContext, useStyleContext } from "@gluestack-ui/utils/nativewind-utils";
+import { cssInterop } from "nativewind";
+import { UIIcon } from "@gluestack-ui/core/icon/creator";
 
-const variantClasses = {
-  primary: { container: "bg-primary active:bg-primary-dark", text: "text-primary-foreground font-sans" },
-  secondary: { container: "bg-secondary active:bg-secondary-dark", text: "text-secondary-foreground font-sans" },
-  danger: { container: "bg-danger active:bg-danger-dark", text: "text-danger-foreground font-sans" },
-  ghost: { container: "bg-transparent active:bg-neutral-subtle", text: "text-primary font-sans" },
-  outline: {
-    container: "bg-transparent border border-primary active:bg-primary-subtle",
-    text: "text-primary font-sans",
+const SCOPE = "BUTTON";
+const Root = withStyleContext(Pressable, SCOPE);
+
+const UIButton = createButton({
+  Root,
+  Text,
+  Group: View,
+  Spinner: ActivityIndicator,
+  Icon: UIIcon,
+});
+
+cssInterop(UIIcon, {
+  className: {
+    target: "style",
+    nativeStyleToProp: { height: true, width: true, fill: true, color: "classNameColor", stroke: true },
   },
-};
+});
 
-const sizeClasses = {
-  sm: { container: "px-3 h-8 rounded-md", text: "text-sm" },
-  md: { container: "px-4 h-10 rounded-md", text: "text-base" },
-  lg: { container: "px-6 h-12 rounded-lg", text: "text-lg" },
-};
+const buttonStyle = tva({
+  base: "rounded-md flex-row items-center justify-center data-[disabled=true]:opacity-40 gap-2 h-fit",
+  variants: {
+    variant: {
+      default: "bg-primary data-[active=true]:bg-primary-dark",
+      destructive: "bg-danger data-[active=true]:bg-danger-dark",
+      outline: "border border-border bg-background data-[active=true]:bg-neutral-subtle",
+      secondary: "bg-secondary data-[active=true]:bg-secondary-dark",
+      ghost: "data-[active=true]:bg-neutral-subtle",
+      link: "text-primary",
+    },
+    size: {
+      default: "px-4 py-2",
+      sm: "min-h-8 rounded-md px-3",
+      lg: "min-h-10 rounded-md px-8",
+      icon: "min-h-9 min-w-9",
+    },
+  },
+});
 
-/**
- * @param {'primary'|'secondary'|'danger'|'ghost'|'outline'} [variant='primary'] - Visual style
- * @param {'sm'|'md'|'lg'} [size='md']                   - Height and padding scale
- * @param {boolean} [disabled=false]                      - Disables press; reduces opacity
- * @param {boolean} [loading=false]                       - Shows ActivityIndicator; blocks press
- * @param {import('react').ReactElement} [leftIcon=null]   - Icon rendered before the label
- * @param {import('react').ReactElement} [rightIcon=null] - Icon rendered after the label
- * @param {import('react').ReactNode} [children=null]     - Label text or custom content
- * @param {() => void} [onPress=()=>{}]                   - Press handler
- * @param {string}  [className='']                        - Extra NativeWind classes applied to the Pressable
- */
-export default function Button({
-  variant = "primary",
-  size = "md",
-  disabled = false,
-  loading = false,
-  leftIcon = null,
-  rightIcon = null,
-  children = null,
-  onPress = () => {},
-  className = "",
+const buttonTextStyle = tva({
+  base: "font-sans font-semibold",
+  parentVariants: {
+    variant: {
+      default: "text-primary-foreground",
+      destructive: "text-danger-foreground",
+      outline: "text-text",
+      secondary: "text-secondary-foreground",
+      ghost: "text-primary",
+      link: "text-primary",
+    },
+    size: {
+      default: "text-sm",
+      sm: "text-xs",
+      lg: "text-base",
+      icon: "text-sm",
+    },
+  },
+});
+
+const buttonSpinnerStyle = tva({
+  base: "",
+  parentVariants: {
+    size: {
+      default: "h-4 w-4",
+      sm: "h-4 w-4",
+      lg: "h-4 w-4",
+      icon: "h-4 w-4",
+    },
+  },
+});
+
+const buttonIconStyle = tva({
+  base: "fill-none pointer-events-none shrink-0",
+  parentVariants: {
+    variant: {
+      default: "text-primary-foreground",
+      destructive: "text-danger-foreground",
+      outline: "text-text",
+      secondary: "text-secondary-foreground",
+      ghost: "text-primary",
+      link: "text-primary",
+    },
+    size: {
+      default: "h-4 w-4",
+      sm: "h-4 w-4",
+      lg: "h-5 w-5",
+      icon: "h-5 w-5",
+    },
+  },
+});
+
+export function Button({ className, variant = "default", size = "default", ...props }) {
+  return (
+    <UIButton {...props} className={buttonStyle({ variant, size, class: className })} context={{ variant, size }} />
+  );
+}
+
+export function ButtonText({ className, size, ...props }) {
+  const { size: parentSize, variant: parentVariant } = useStyleContext(SCOPE);
+  return (
+    <UIButton.Text
+      {...props}
+      className={buttonTextStyle({
+        parentVariants: { size: parentSize, variant: parentVariant },
+        size,
+        class: className,
+      })}
+    />
+  );
+}
+
+export function ButtonSpinner({ className, size, ...props }) {
+  const { size: parentSize } = useStyleContext(SCOPE);
+  return (
+    <UIButton.Spinner
+      {...props}
+      className={buttonSpinnerStyle({ parentVariants: { size: parentSize }, class: className, size })}
+    />
+  );
+}
+
+export function ButtonIcon({ className, size, ...props }) {
+  const { size: parentSize, variant: parentVariant } = useStyleContext(SCOPE);
+  return (
+    <UIButton.Icon
+      {...props}
+      className={buttonIconStyle({
+        parentVariants: { size: parentSize, variant: parentVariant },
+        size,
+        class: className,
+      })}
+    />
+  );
+}
+
+export function ButtonGroup({
+  className,
+  space: _space = "md",
+  isAttached = false,
+  flexDirection = "column",
   ...props
 }) {
-  const { colors } = useTheme();
-  const variantClass = variantClasses[variant] ?? variantClasses.primary;
-  const sizeClass = sizeClasses[size] ?? sizeClasses.md;
-  const disabledClass = disabled || loading ? "opacity-50" : "";
-  const ripple =
-    variant === "primary" || variant === "danger" ? { color: colors.ripple.onDark } : { color: colors.ripple.onLight };
-  const spinnerColor =
-    variant === "primary" || variant === "secondary" || variant === "danger"
-      ? colors[variant].foreground
-      : colors.primary.DEFAULT;
-
   return (
-    <Pressable
-      onPress={!disabled && !loading ? onPress : undefined}
-      className={`flex-row items-center justify-center gap-2 ${sizeClass.container} ${variantClass.container} ${disabledClass} ${className}`}
-      android_ripple={ripple}
+    <UIButton.Group
       {...props}
-    >
-      {loading ? (
-        <ActivityIndicator size="small" color={spinnerColor} />
-      ) : (
-        <>
-          {leftIcon}
-          {typeof children === "string" ? (
-            <RNText className={`font-semibold ${sizeClass.text} ${variantClass.text}`}>{children}</RNText>
-          ) : (
-            children
-          )}
-          {rightIcon}
-        </>
-      )}
-    </Pressable>
+      className={`${flexDirection === "row" ? "flex-row" : "flex-col"} ${isAttached ? "gap-0" : "gap-3"} ${className ?? ""}`}
+    />
   );
 }
 
-/**
- * Pre-styled text child for use inside a Button when custom JSX is passed instead of a string label.
- * @param {import('react').ReactNode} [children=null] - Text content
- * @param {string}  [className='']                   - Extra NativeWind classes applied to the Text
- */
-export function ButtonText({ children = null, className = "", ...props }) {
-  return (
-    <RNText className={`font-semibold font-sans ${className}`} {...props}>
-      {children}
-    </RNText>
-  );
-}
+Button.displayName = "Button";
+ButtonText.displayName = "ButtonText";
+ButtonSpinner.displayName = "ButtonSpinner";
+ButtonIcon.displayName = "ButtonIcon";
+ButtonGroup.displayName = "ButtonGroup";
+
+export default Button;

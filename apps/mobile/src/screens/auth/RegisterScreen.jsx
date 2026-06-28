@@ -16,8 +16,8 @@ import AuthScreenLayout from "@components/auth/AuthScreenLayout";
 import AuthIcon from "@components/auth/AuthIcon";
 import BrandSection from "@components/auth/BrandSection";
 import AuthCard from "@components/auth/AuthCard";
-import Input from "@components/ui/input/Input";
-import Button from "@components/ui/button/Button";
+import { Input, InputField, InputSlot } from "@components/ui/input/Input";
+import Button, { ButtonSpinner, ButtonText } from "@components/ui/button/Button";
 import Text from "@components/ui/text/Text";
 
 // Schema
@@ -56,10 +56,10 @@ function RegisterForm({
 }) {
   return (
     <>
-      <Text variant="h4" color="white" weight="bold" className="mb-1">
+      <Text size="2xl" bold className="text-white mb-1">
         Create account
       </Text>
-      <Text variant="body2" className="mb-6 text-white/50">
+      <Text size="sm" className="mb-6 text-white/50">
         Join Cloud Drive today
       </Text>
 
@@ -67,18 +67,28 @@ function RegisterForm({
         control={control}
         name="name"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
-            label="Name"
-            placeholder="Your name"
-            autoComplete="name"
-            leftIcon={<AuthIcon Icon={User} size={16} />}
-            labelClassName="text-white/75"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.name?.message}
-            className="mb-4"
-          />
+          <View className="gap-1 mb-4">
+            <Text size="sm" className="text-white/75">
+              Name
+            </Text>
+            <Input isInvalid={!!errors.name}>
+              <InputSlot>
+                <AuthIcon Icon={User} size={16} />
+              </InputSlot>
+              <InputField
+                placeholder="Your name"
+                autoComplete="name"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            </Input>
+            {errors.name?.message ? (
+              <Text size="xs" className="text-danger">
+                {errors.name.message}
+              </Text>
+            ) : null}
+          </View>
         )}
       />
 
@@ -86,20 +96,30 @@ function RegisterForm({
         control={control}
         name="email"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
-            label="Email"
-            placeholder="email@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            leftIcon={<AuthIcon Icon={Mail} size={16} />}
-            labelClassName="text-white/75"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.email?.message}
-            className="mb-4"
-          />
+          <View className="gap-1 mb-4">
+            <Text size="sm" className="text-white/75">
+              Email
+            </Text>
+            <Input isInvalid={!!errors.email}>
+              <InputSlot>
+                <AuthIcon Icon={Mail} size={16} />
+              </InputSlot>
+              <InputField
+                placeholder="email@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            </Input>
+            {errors.email?.message ? (
+              <Text size="xs" className="text-danger">
+                {errors.email.message}
+              </Text>
+            ) : null}
+          </View>
         )}
       />
 
@@ -107,24 +127,32 @@ function RegisterForm({
         control={control}
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
-            label="Password"
-            placeholder="At least 12 characters"
-            secureTextEntry={!showPassword}
-            autoComplete="new-password"
-            leftIcon={<AuthIcon Icon={Lock} size={16} />}
-            labelClassName="text-white/75"
-            rightIcon={
-              <Pressable onPress={onTogglePassword} hitSlop={8}>
-                {showPassword ? <AuthIcon Icon={EyeOff} size={16} /> : <AuthIcon Icon={Eye} size={16} />}
-              </Pressable>
-            }
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.password?.message}
-            className="mb-4"
-          />
+          <View className="gap-1 mb-4">
+            <Text size="sm" className="text-white/75">
+              Password
+            </Text>
+            <Input isInvalid={!!errors.password}>
+              <InputSlot>
+                <AuthIcon Icon={Lock} size={16} />
+              </InputSlot>
+              <InputField
+                placeholder="At least 12 characters"
+                secureTextEntry={!showPassword}
+                autoComplete="new-password"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+              <InputSlot onPress={onTogglePassword}>
+                <AuthIcon Icon={showPassword ? EyeOff : Eye} size={16} />
+              </InputSlot>
+            </Input>
+            {errors.password?.message ? (
+              <Text size="xs" className="text-danger">
+                {errors.password.message}
+              </Text>
+            ) : null}
+          </View>
         )}
       />
 
@@ -132,37 +160,45 @@ function RegisterForm({
         control={control}
         name="confirmPassword"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
-            label="Confirm Password"
-            placeholder="Repeat your password"
-            secureTextEntry={!showConfirmPassword}
-            autoComplete="new-password"
-            leftIcon={<AuthIcon Icon={Lock} size={16} />}
-            labelClassName="text-white/75"
-            rightIcon={
-              <Pressable onPress={onToggleConfirmPassword} hitSlop={8}>
-                {showConfirmPassword ? <AuthIcon Icon={EyeOff} size={16} /> : <AuthIcon Icon={Eye} size={16} />}
-              </Pressable>
-            }
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.confirmPassword?.message}
-            className="mb-6"
-          />
+          <View className="gap-1 mb-6">
+            <Text size="sm" className="text-white/75">
+              Confirm Password
+            </Text>
+            <Input isInvalid={!!errors.confirmPassword}>
+              <InputSlot>
+                <AuthIcon Icon={Lock} size={16} />
+              </InputSlot>
+              <InputField
+                placeholder="Repeat your password"
+                secureTextEntry={!showConfirmPassword}
+                autoComplete="new-password"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+              <InputSlot onPress={onToggleConfirmPassword}>
+                <AuthIcon Icon={showConfirmPassword ? EyeOff : Eye} size={16} />
+              </InputSlot>
+            </Input>
+            {errors.confirmPassword?.message ? (
+              <Text size="xs" className="text-danger">
+                {errors.confirmPassword.message}
+              </Text>
+            ) : null}
+          </View>
         )}
       />
 
-      <Button size="lg" onPress={onSubmit} loading={isLoading} className="mb-4">
-        Create account
+      <Button size="lg" onPress={onSubmit} disabled={isLoading} className="mb-4">
+        {isLoading ? <ButtonSpinner /> : <ButtonText>Create account</ButtonText>}
       </Button>
 
       <View className="flex-row items-center justify-center">
-        <Text variant="body2" className="text-white/50">
+        <Text size="sm" className="text-white/50">
           Already have an account?{" "}
         </Text>
         <Pressable onPress={onSignIn}>
-          <Text variant="body2" color="primary" weight="semibold">
+          <Text size="sm" bold className="text-primary">
             Sign in
           </Text>
         </Pressable>
