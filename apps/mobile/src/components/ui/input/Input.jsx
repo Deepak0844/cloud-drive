@@ -5,6 +5,9 @@ import { tva, withStyleContext } from "@gluestack-ui/utils/nativewind-utils";
 import { cssInterop } from "nativewind";
 import { UIIcon } from "@gluestack-ui/core/icon/creator";
 
+// Theme
+import { useTheme } from "@theme/useTheme";
+
 const SCOPE = "INPUT";
 
 const UIInput = createInput({
@@ -49,8 +52,15 @@ export function InputSlot({ className, ...props }) {
   return <UIInput.Slot {...props} className={inputSlotStyle({ class: className })} />;
 }
 
-export function InputField({ className, ...props }) {
-  return <UIInput.Input {...props} className={inputFieldStyle({ class: className })} />;
+export function InputField({ className, placeholderTextColor, ...props }) {
+  const { colors } = useTheme();
+  return (
+    <UIInput.Input
+      {...props}
+      placeholderTextColor={placeholderTextColor ?? colors.input.placeholder}
+      className={inputFieldStyle({ class: className })}
+    />
+  );
 }
 
 Input.displayName = "Input";

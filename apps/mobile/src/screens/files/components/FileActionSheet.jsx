@@ -8,15 +8,7 @@ import { useDeleteFileMutation, useRenameFileMutation } from "@api/fileApi";
 // Theme
 import { useTheme } from "@theme/useTheme";
 
-// Gluestack
-import {
-  AlertDialog,
-  AlertDialogBackdrop,
-  AlertDialogBody,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-} from "@components/ui/alert-dialog/AlertDialog";
+import { Dialog } from "@components/ui/alert-dialog/AlertDialog";
 
 // Components
 import Text from "@components/ui/text/Text";
@@ -24,29 +16,22 @@ import Button, { ButtonSpinner, ButtonText } from "@components/ui/button/Button"
 
 function ConfirmDialog({ visible = false, title = "", message = "", onConfirm = () => {}, onCancel = () => {} }) {
   return (
-    <AlertDialog isOpen={visible} onClose={onCancel} size="md">
-      <AlertDialogBackdrop />
-      <AlertDialogContent className="bg-surface-card rounded-2xl p-2">
-        <AlertDialogHeader>
-          <Text size="xl" bold>
-            {title}
-          </Text>
-        </AlertDialogHeader>
-        <AlertDialogBody>
-          <Text size="sm" className="text-secondary">
-            {message}
-          </Text>
-        </AlertDialogBody>
-        <AlertDialogFooter className="gap-3 mt-2">
-          <Button variant="ghost" onPress={onCancel} className="flex-1">
-            <ButtonText>Cancel</ButtonText>
-          </Button>
-          <Button variant="destructive" onPress={onConfirm} className="flex-1">
-            <ButtonText>Delete</ButtonText>
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Dialog
+      isOpen={visible}
+      onClose={onCancel}
+      size="md"
+      title={title}
+      contentClassName="bg-surface-card rounded-2xl p-2"
+      footerClassName="gap-3 mt-2"
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+      confirmLabel="Delete"
+      confirmVariant="destructive"
+    >
+      <Text size="sm" className="text-secondary">
+        {message}
+      </Text>
+    </Dialog>
   );
 }
 
@@ -62,40 +47,32 @@ function PromptDialog({ visible = false, title = "", initialValue = "", onConfir
   }
 
   return (
-    <AlertDialog isOpen={visible} onClose={onCancel} size="md">
-      <AlertDialogBackdrop />
-      <AlertDialogContent className="bg-surface-card rounded-2xl p-2">
-        <AlertDialogHeader>
-          <Text size="xl" bold>
-            {title}
-          </Text>
-        </AlertDialogHeader>
-        <AlertDialogBody>
-          <TextInput
-            value={value}
-            onChangeText={setValue}
-            selectTextOnFocus
-            style={{
-              borderWidth: 1,
-              borderColor: colors.surface.border,
-              borderRadius: 8,
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              color: colors.neutral.DEFAULT,
-              fontSize: 14,
-            }}
-          />
-        </AlertDialogBody>
-        <AlertDialogFooter className="gap-3 mt-2">
-          <Button variant="ghost" onPress={onCancel} className="flex-1">
-            <ButtonText>Cancel</ButtonText>
-          </Button>
-          <Button onPress={handleConfirm} className="flex-1">
-            <ButtonText>Save</ButtonText>
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <Dialog
+      isOpen={visible}
+      onClose={onCancel}
+      size="md"
+      title={title}
+      contentClassName="bg-surface-card rounded-2xl p-2"
+      footerClassName="gap-3 mt-2"
+      onCancel={onCancel}
+      onConfirm={handleConfirm}
+      confirmLabel="Save"
+    >
+      <TextInput
+        value={value}
+        onChangeText={setValue}
+        selectTextOnFocus
+        style={{
+          borderWidth: 1,
+          borderColor: colors.surface.border,
+          borderRadius: 8,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          color: colors.neutral.DEFAULT,
+          fontSize: 14,
+        }}
+      />
+    </Dialog>
   );
 }
 

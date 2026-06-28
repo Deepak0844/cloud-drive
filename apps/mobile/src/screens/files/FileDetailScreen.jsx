@@ -1,8 +1,6 @@
 import React from "react";
-import { View, Image, Pressable, ScrollView } from "react-native";
-import SkeletonPlaceholder from "react-native-skeleton-placeholder";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, Download, Share2 } from "lucide-react-native";
+import { View, Image, ScrollView } from "react-native";
+import { Download, Share2 } from "lucide-react-native";
 
 // Rtk
 import { useGetFilesQuery } from "@api/fileApi";
@@ -10,16 +8,17 @@ import { useGetFilesQuery } from "@api/fileApi";
 // Utils
 import { formatBytes } from "@shared-utils/utils";
 
-// Theme
-import { useTheme } from "@theme/useTheme";
-
 // Components
+import ScreenLayout from "@components/ui/screen/ScreenLayout";
+import GlassHeader from "@components/ui/header/GlassHeader";
+import GlassCard from "@components/ui/glass/GlassCard";
+import Skeleton from "@components/ui/skeleton/Skeleton";
 import Text from "@components/ui/text/Text";
 import Button, { ButtonText } from "@components/ui/button/Button";
 
 function MetaRow({ label = "", value = "" }) {
   return (
-    <View className="flex-row justify-between py-3 border-b border-border">
+    <View className="flex-row justify-between py-2">
       <Text size="sm" className="text-secondary">
         {label}
       </Text>
@@ -32,7 +31,6 @@ function MetaRow({ label = "", value = "" }) {
 
 export default function FileDetailScreen({ navigation = {}, route = {} }) {
   const { fileId } = route.params ?? {};
-  const { colors } = useTheme();
 
   const { data, isLoading } = useGetFilesQuery(undefined, {
     selectFromResult: ({ data: result, ...rest }) => ({
@@ -44,45 +42,28 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
   const isImage = data?.mimeType?.startsWith("image/");
 
   return (
-    <SafeAreaView className="flex-1 bg-surface-DEFAULT" edges={["top"]}>
-      <View className="flex-row items-center px-2 py-3 border-b border-border gap-1">
-        <Pressable
-          onPress={() => navigation.goBack()}
-          android_ripple={{ color: colors.ripple.DEFAULT }}
-          hitSlop={8}
-          className="p-2"
-        >
-          <ChevronLeft size={22} color={colors.neutral.DEFAULT} />
-        </Pressable>
-        <Text size="2xl" bold numberOfLines={1} className="flex-1">
-          {data?.name ?? "File"}
-        </Text>
-      </View>
+    <ScreenLayout>
+      <GlassHeader title={data?.name ?? "File"} onBack={() => navigation.goBack()} />
 
-      <SkeletonPlaceholder enabled={isLoading} borderRadius={4}>
+      <Skeleton loading={isLoading}>
         <ScrollView className="flex-1">
           {isImage && data?.previewUrl ? (
-            <Image
-              source={{ uri: data.previewUrl }}
-              style={{ width: "100%", height: 240 }}
-              resizeMode="contain"
-              className="bg-surface-card"
-            />
+            <Image source={{ uri: data.previewUrl }} style={{ width: "100%", height: 240 }} resizeMode="contain" />
           ) : (
-            <View className="h-40 bg-surface-card items-center justify-center">
-              <Text size="sm" className="text-secondary">
+            <GlassCard className="m-4">
+              <Text size="sm" className="text-secondary text-center">
                 No preview available
               </Text>
-            </View>
+            </GlassCard>
           )}
 
-          <View className="px-4 py-2">
+          <GlassCard className="m-4">
             <MetaRow label="Name" value={data?.name ?? "—"} />
             <MetaRow label="Size" value={formatBytes(data?.size)} />
             <MetaRow label="Type" value={data?.mimeType ?? "—"} />
-          </View>
+          </GlassCard>
 
-          <View className="px-4 pt-2 gap-3">
+          <View className="px-4 gap-3 pb-4">
             <Button size="lg" disabled>
               <Download size={18} />
               <ButtonText>Download (Phase 5)</ButtonText>
@@ -93,7 +74,7 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
             </Button>
           </View>
         </ScrollView>
-      </SkeletonPlaceholder>
-    </SafeAreaView>
+      </Skeleton>
+    </ScreenLayout>
   );
 }

@@ -51,6 +51,7 @@ function AppContent() {
   useEffect(() => {
     setColorScheme(colorMode);
     SecureStore.setItemAsync(SECURE_KEY_COLOR_MODE, colorMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colorMode]);
 
   useEffect(() => {
@@ -62,6 +63,7 @@ function AppContent() {
         setBiometricLocked(true);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
   useEffect(() => {
@@ -74,6 +76,7 @@ function AppContent() {
       appState.current = next;
     });
     return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
   return (

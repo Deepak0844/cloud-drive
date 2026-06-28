@@ -8,6 +8,7 @@ export default function GluestackUIProvider({ mode = "system", children, ...prop
 
   useEffect(() => {
     setColorScheme(mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   return (

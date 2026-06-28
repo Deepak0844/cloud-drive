@@ -1,35 +1,25 @@
-import React, { useEffect } from "react";
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming } from "react-native-reanimated";
+import React from "react";
+import SkeletonPlaceholder from "react-native-skeleton-placeholder";
+
+// Theme
 import { useTheme } from "@theme/useTheme";
 
-const radiusClassMap = {
-  sm: "rounded-sm",
-  md: "rounded-md",
-  lg: "rounded-lg",
-  xl: "rounded-xl",
-  full: "rounded-full",
-};
-
 /**
- * @param {number|string} [width=0]                        - Width of the placeholder shape
- * @param {number|string} [height=0]                       - Height of the placeholder shape
- * @param {'sm'|'md'|'lg'|'xl'|'full'} [radius='md']      - Border radius of the placeholder
- * @param {import('react-native').ViewStyle} [style={}]    - Additional inline style forwarded to the Animated.View
+ * Wraps children with a shimmer skeleton effect while loading.
+ * When loading=true, children's shapes are used as the shimmer mask.
+ * When loading=false, children render normally.
+ *
+ * @param {boolean} [loading=false]              - Show shimmer when true
+ * @param {import('react').ReactNode} [children] - Content whose shape defines the skeleton
  */
-export default function Skeleton({ width = 0, height = 0, radius: radiusProp = "md", style = {} }) {
-  const { animations } = useTheme();
-  const opacity = useSharedValue(1);
+export default function Skeleton({ loading = false, children = null }) {
+  const { colors } = useTheme();
 
-  useEffect(() => {
-    opacity.value = withRepeat(withTiming(0.4, { duration: animations.duration.slower }), -1, true);
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  if (!loading) return children;
 
   return (
-    <Animated.View
-      className={`bg-neutral-subtle ${radiusClassMap[radiusProp] ?? "rounded-md"}`}
-      style={[animatedStyle, { width, height }, style]}
-    />
+    <SkeletonPlaceholder backgroundColor={colors.neutral.subtle} highlightColor={colors.surface.card} speed={1400}>
+      {children}
+    </SkeletonPlaceholder>
   );
 }

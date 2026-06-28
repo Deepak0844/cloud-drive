@@ -101,9 +101,9 @@ export const animations = {
 export const glass = {
   card: {
     light: {
-      background: "rgba(0, 0, 0, 0.03)",
-      border: "rgba(0, 0, 0, 0.06)",
-      blurIntensity: 60,
+      background: "rgba(255, 255, 255, 0.42)",
+      border: "rgba(124, 58, 237, 0.18)",
+      blurIntensity: 72,
       tint: "light",
     },
     dark: {
@@ -115,9 +115,9 @@ export const glass = {
   },
   bar: {
     light: {
-      background: "rgba(255, 255, 255, 0.8)",
-      border: "rgba(0, 0, 0, 0.06)",
-      blurIntensity: 50,
+      background: "rgba(255, 255, 255, 0.82)",
+      border: "rgba(124, 58, 237, 0.12)",
+      blurIntensity: 65,
       tint: "light",
     },
     dark: {
@@ -129,9 +129,9 @@ export const glass = {
   },
   modal: {
     light: {
-      background: "rgba(255, 255, 255, 0.9)",
-      border: "rgba(0, 0, 0, 0.08)",
-      blurIntensity: 80,
+      background: "rgba(255, 255, 255, 0.92)",
+      border: "rgba(124, 58, 237, 0.15)",
+      blurIntensity: 85,
       tint: "light",
     },
     dark: {
