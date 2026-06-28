@@ -1,8 +1,6 @@
 import React from "react";
 import { View, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { HardDrive, Users, FileText } from "lucide-react-native";
-import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 
 // Rtk
 import { useGetSystemStatsQuery } from "@api/adminApi";
@@ -14,57 +12,23 @@ import { formatBytes } from "@shared-utils/utils";
 import { useTheme } from "@theme/useTheme";
 
 // Components
+import Skeleton from "@components/ui/skeleton/Skeleton";
+import ScreenLayout from "@components/ui/screen/ScreenLayout";
+import GlassHeader from "@components/ui/header/GlassHeader";
+import GlassCard from "@components/ui/glass/GlassCard";
 import Text from "@components/ui/text/Text";
 
-/**
- * A stat card showing an icon, label, and value.
- * @param {React.ComponentType} Icon - Lucide icon component
- * @param {string} label - Card label
- * @param {string} value - Formatted value to display
- * @param {string} iconColor - Icon tint color
- */
 function StatCard({ Icon, label, value, iconColor }) {
   return (
-    <View className="flex-1 bg-surface-card rounded-2xl p-4 gap-2">
+    <GlassCard className="flex-1">
       <Icon size={22} color={iconColor} />
-      <Text size="3xl" bold>
+      <Text size="3xl" bold className="mt-2">
         {value}
       </Text>
-      <Text size="xs" className="text-secondary">
+      <Text size="xs" className="text-secondary mt-1">
         {label}
       </Text>
-    </View>
-  );
-}
-
-function DashboardBody({ isLoading = false, data = null, colors = {} }) {
-  return (
-    <SkeletonPlaceholder enabled={isLoading} borderRadius={16}>
-      <ScrollView className="flex-1 p-4" contentContainerClassName="gap-4">
-        <View className="flex-row gap-3">
-          <StatCard
-            Icon={HardDrive}
-            label="Storage used"
-            value={formatBytes(data?.totalStorageUsed)}
-            iconColor={colors.primary?.DEFAULT}
-          />
-          <StatCard
-            Icon={Users}
-            label="Total users"
-            value={String(data?.totalUsers ?? 0)}
-            iconColor={colors.success?.DEFAULT}
-          />
-        </View>
-        <View className="flex-row gap-3">
-          <StatCard
-            Icon={FileText}
-            label="Total files"
-            value={String(data?.totalFiles ?? 0)}
-            iconColor={colors.warning?.DEFAULT}
-          />
-        </View>
-      </ScrollView>
-    </SkeletonPlaceholder>
+    </GlassCard>
   );
 }
 
@@ -73,13 +37,35 @@ export default function AdminDashboardScreen() {
   const { data, isLoading } = useGetSystemStatsQuery();
 
   return (
-    <SafeAreaView className="flex-1 bg-surface-DEFAULT" edges={["top"]}>
-      <View className="px-4 py-3 border-b border-border">
-        <Text size="2xl" bold>
-          Dashboard
-        </Text>
-      </View>
-      <DashboardBody isLoading={isLoading} data={data} colors={colors} />
-    </SafeAreaView>
+    <ScreenLayout>
+      <GlassHeader title="Dashboard" />
+
+      <Skeleton loading={isLoading}>
+        <ScrollView className="flex-1 p-4" contentContainerClassName="gap-4 pb-4">
+          <View className="flex-row gap-3">
+            <StatCard
+              Icon={HardDrive}
+              label="Storage used"
+              value={formatBytes(data?.totalStorageUsed)}
+              iconColor={colors.primary.DEFAULT}
+            />
+            <StatCard
+              Icon={Users}
+              label="Total users"
+              value={String(data?.totalUsers ?? 0)}
+              iconColor={colors.success.DEFAULT}
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <StatCard
+              Icon={FileText}
+              label="Total files"
+              value={String(data?.totalFiles ?? 0)}
+              iconColor={colors.warning.DEFAULT}
+            />
+          </View>
+        </ScrollView>
+      </Skeleton>
+    </ScreenLayout>
   );
 }

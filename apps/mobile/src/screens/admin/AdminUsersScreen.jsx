@@ -1,8 +1,6 @@
-import React from "react";
-import { View, FlatList, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useState } from "react";
+import { View, FlatList } from "react-native";
 import { UserCheck, UserX } from "lucide-react-native";
-import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 
 // Rtk
 import { useGetUsersQuery, useUpdateUserStatusMutation, useUpdateUserQuotaMutation } from "@api/adminApi";
@@ -14,16 +12,23 @@ import { formatBytes } from "@shared-utils/utils";
 import { useTheme } from "@theme/useTheme";
 
 // Components
+import Skeleton from "@components/ui/skeleton/Skeleton";
+import ScreenLayout from "@components/ui/screen/ScreenLayout";
+import GlassHeader from "@components/ui/header/GlassHeader";
+import GlassCard from "@components/ui/glass/GlassCard";
+import EmptyState from "@components/ui/empty-state/EmptyState";
 import Text from "@components/ui/text/Text";
 import Button, { ButtonText } from "@components/ui/button/Button";
+import { Input, InputField } from "@components/ui/input/Input";
+import { Dialog } from "@components/ui/alert-dialog/AlertDialog";
 
 function UserRow({ user = {}, onToggleStatus = () => {}, onEditQuota = () => {} }) {
   const { colors } = useTheme();
   return (
-    <View className="px-4 py-3 border-b border-border gap-1">
-      <View className="flex-row items-center justify-between">
+    <GlassCard className="mx-4 my-1">
+      <View className="flex-row items-center justify-between mb-1">
         <View className="flex-1">
-          <Text size="md" className="font-medium" numberOfLines={1}>
+          <Text size="md" bold numberOfLines={1}>
             {user.name ?? user.email}
           </Text>
           <Text size="xs" className="text-secondary">
@@ -38,7 +43,7 @@ function UserRow({ user = {}, onToggleStatus = () => {}, onEditQuota = () => {} 
       </View>
       <View className="flex-row items-center justify-between mt-1">
         <Text size="xs" className="text-secondary">
-          Quota: {formatBytes(user.quota_used)} / {formatBytes(user.quota_bytes)}
+          {formatBytes(user.quota_used)} / {formatBytes(user.quota_bytes)}
         </Text>
         <View className="flex-row gap-2">
           <Button variant="ghost" size="sm" onPress={() => onToggleStatus(user._id ?? user.id)}>
@@ -54,7 +59,7 @@ function UserRow({ user = {}, onToggleStatus = () => {}, onEditQuota = () => {} 
           </Button>
         </View>
       </View>
-    </View>
+    </GlassCard>
   );
 }
 
@@ -63,35 +68,38 @@ export default function AdminUsersScreen() {
   const [updateStatus] = useUpdateUserStatusMutation();
   const [updateQuota] = useUpdateUserQuotaMutation();
 
+  const [quotaDialog, setQuotaDialog] = useState({ open: false, userId: null });
+  const [quotaInput, setQuotaInput] = useState("");
+
   async function handleToggleStatus(userId, isActive) {
     await updateStatus({ id: userId, is_active: !isActive });
   }
 
   function handleEditQuota(userId) {
-    Alert.prompt(
-      "Update quota",
-      "Enter new quota in GB:",
-      async (input) => {
-        const gb = parseFloat(input);
-        if (!isNaN(gb) && gb > 0) {
-          await updateQuota({ id: userId, quota_bytes: Math.round(gb * 1024 * 1024 * 1024) });
-        }
-      },
-      "plain-text"
-    );
+    setQuotaInput("");
+    setQuotaDialog({ open: true, userId });
+  }
+
+  async function handleConfirmQuota() {
+    const gb = parseFloat(quotaInput);
+    if (!isNaN(gb) && gb > 0) {
+      await updateQuota({ id: quotaDialog.userId, quota_bytes: Math.round(gb * 1024 * 1024 * 1024) });
+    }
+    setQuotaDialog({ open: false, userId: null });
+  }
+
+  function handleCloseQuota() {
+    setQuotaDialog({ open: false, userId: null });
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface-DEFAULT" edges={["top"]}>
-      <View className="px-4 py-3 border-b border-border">
-        <Text size="2xl" bold>
-          Users
-        </Text>
-      </View>
-      <SkeletonPlaceholder enabled={isLoading} borderRadius={4}>
+    <ScreenLayout>
+      <GlassHeader title="Users" />
+
+      <Skeleton loading={isLoading}>
         <FlatList
-          data={isLoading ? Array(5).fill({}) : (data?.items ?? [])}
-          keyExtractor={(_, i) => String(i)}
+          data={data?.items ?? []}
+          keyExtractor={(item) => item._id ?? item.id}
           renderItem={({ item }) => (
             <UserRow
               user={item}
@@ -101,15 +109,28 @@ export default function AdminUsersScreen() {
           )}
           refreshing={false}
           onRefresh={refetch}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center mt-20">
-              <Text size="sm" className="text-secondary">
-                No users found
-              </Text>
-            </View>
-          }
+          contentContainerClassName="py-2"
+          ListEmptyComponent={isLoading ? null : <EmptyState message="No users found" />}
         />
-      </SkeletonPlaceholder>
-    </SafeAreaView>
+      </Skeleton>
+
+      <Dialog
+        isOpen={quotaDialog.open}
+        onClose={handleCloseQuota}
+        title="Update Quota"
+        onCancel={handleCloseQuota}
+        onConfirm={handleConfirmQuota}
+        confirmLabel="Update"
+      >
+        <Input>
+          <InputField
+            value={quotaInput}
+            onChangeText={setQuotaInput}
+            placeholder="Quota in GB"
+            keyboardType="decimal-pad"
+          />
+        </Input>
+      </Dialog>
+    </ScreenLayout>
   );
 }

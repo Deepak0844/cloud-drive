@@ -1,9 +1,13 @@
 import React from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { createButton } from "@gluestack-ui/core/button/creator";
 import { tva, withStyleContext, useStyleContext } from "@gluestack-ui/utils/nativewind-utils";
 import { cssInterop } from "nativewind";
 import { UIIcon } from "@gluestack-ui/core/icon/creator";
+
+// Theme
+import { useTheme } from "@theme/useTheme";
 
 const SCOPE = "BUTTON";
 const Root = withStyleContext(Pressable, SCOPE);
@@ -33,6 +37,7 @@ const buttonStyle = tva({
       secondary: "bg-secondary data-[active=true]:bg-secondary-dark",
       ghost: "data-[active=true]:bg-neutral-subtle",
       link: "text-primary",
+      gradient: "overflow-hidden",
     },
     size: {
       default: "px-4 py-2",
@@ -53,6 +58,7 @@ const buttonTextStyle = tva({
       secondary: "text-secondary-foreground",
       ghost: "text-primary",
       link: "text-primary",
+      gradient: "text-primary-foreground",
     },
     size: {
       default: "text-sm",
@@ -96,6 +102,24 @@ const buttonIconStyle = tva({
 });
 
 export function Button({ className, variant = "default", size = "default", ...props }) {
+  const { colors } = useTheme();
+
+  if (variant === "gradient") {
+    return (
+      <LinearGradient
+        colors={[colors.primary.DEFAULT, colors.alt.DEFAULT]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        className={buttonStyle({ variant, size, class: className })}
+      >
+        <UIButton
+          {...props}
+          className="flex-row items-center justify-center gap-2 flex-1 bg-transparent"
+          context={{ variant, size }}
+        />
+      </LinearGradient>
+    );
+  }
   return (
     <UIButton {...props} className={buttonStyle({ variant, size, class: className })} context={{ variant, size }} />
   );

@@ -17,6 +17,7 @@ const palette = {
     900: "#0f172a",
   },
   violet: {
+    50: "#f5f3ff",
     100: "#ede9fe",
     400: "#a78bfa",
     500: "#8b5cf6",
@@ -132,8 +133,8 @@ export const lightColors = {
     foreground: palette.white,
   },
   surface: {
-    background: palette.white,
-    card: palette.slate[50],
+    background: palette.violet[50],
+    card: palette.white,
     border: palette.slate[200],
     text: palette.slate[900],
     textSecondary: palette.slate[500],
@@ -146,7 +147,7 @@ export const lightColors = {
     onDark: alpha.white20,
     onLight: alpha.black10,
     card: alpha.black05,
-    glass: alpha.white05,
+    glass: alpha.black10,
   },
   accent: {
     pink: palette.pink[500],
@@ -158,7 +159,7 @@ export const lightColors = {
     },
   },
   input: {
-    placeholder: alpha.white40,
+    placeholder: palette.slate[400],
   },
 };
 

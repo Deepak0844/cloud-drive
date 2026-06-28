@@ -1,7 +1,5 @@
 import React, { useState } from "react";
-import { FlatList, View } from "react-native";
-import SkeletonPlaceholder from "react-native-skeleton-placeholder";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { FlatList } from "react-native";
 
 // Rtk
 import { useGetFolderContentsQuery } from "@api/folderApi";
@@ -10,7 +8,11 @@ import { useGetFolderContentsQuery } from "@api/folderApi";
 import { AppScreens } from "@constants/appScreens";
 
 // Components
-import Text from "@components/ui/text/Text";
+import ScreenLayout from "@components/ui/screen/ScreenLayout";
+import GlassHeader from "@components/ui/header/GlassHeader";
+import GlassBottomSheet from "@components/ui/glass/GlassBottomSheet";
+import Skeleton from "@components/ui/skeleton/Skeleton";
+import EmptyState from "@components/ui/empty-state/EmptyState";
 import FileListItem from "./components/FileListItem";
 import FolderListItem from "./components/FolderListItem";
 import FileActionSheet from "./components/FileActionSheet";
@@ -38,36 +40,24 @@ export default function MyFilesScreen({ navigation = {} }) {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-surface-DEFAULT" edges={["top"]}>
-      <View className="px-4 py-3 border-b border-border">
-        <Text size="2xl" bold>
-          My Files
-        </Text>
-      </View>
+    <ScreenLayout>
+      <GlassHeader title="My Files" />
 
-      <SkeletonPlaceholder enabled={isLoading} borderRadius={4}>
+      <Skeleton loading={isLoading}>
         <FlatList
-          data={isLoading ? Array(8).fill({}) : (data?.items ?? [])}
-          keyExtractor={(_, i) => String(i)}
+          data={data?.items ?? []}
+          keyExtractor={(item) => item.id}
           renderItem={renderItem}
           refreshing={isFetching && !isLoading}
           onRefresh={refetch}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center mt-20">
-              <Text size="sm" className="text-secondary">
-                No files yet
-              </Text>
-            </View>
-          }
-          ItemSeparatorComponent={() => <View className="h-px bg-border mx-4" />}
+          contentContainerClassName="py-2 gap-1 px-2"
+          ListEmptyComponent={isLoading ? null : <EmptyState message="No files yet" />}
         />
-      </SkeletonPlaceholder>
+      </Skeleton>
 
-      {selectedFile ? (
-        <View className="absolute bottom-0 left-0 right-0 bg-surface-card rounded-t-2xl shadow-lg">
-          <FileActionSheet file={selectedFile} onClose={() => setSelectedFile(null)} />
-        </View>
-      ) : null}
-    </SafeAreaView>
+      <GlassBottomSheet visible={!!selectedFile}>
+        <FileActionSheet file={selectedFile} onClose={() => setSelectedFile(null)} />
+      </GlassBottomSheet>
+    </ScreenLayout>
   );
 }

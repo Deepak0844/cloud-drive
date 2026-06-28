@@ -1,8 +1,6 @@
 import React from "react";
 import { View, FlatList } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { CheckCircle, XCircle } from "lucide-react-native";
-import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 
 // Rtk
 import { useGetQuotaRequestsQuery, useApproveQuotaMutation, useRejectQuotaMutation } from "@api/adminApi";
@@ -14,6 +12,11 @@ import { formatBytes } from "@shared-utils/utils";
 import { useTheme } from "@theme/useTheme";
 
 // Components
+import Skeleton from "@components/ui/skeleton/Skeleton";
+import ScreenLayout from "@components/ui/screen/ScreenLayout";
+import GlassHeader from "@components/ui/header/GlassHeader";
+import GlassCard from "@components/ui/glass/GlassCard";
+import EmptyState from "@components/ui/empty-state/EmptyState";
 import Text from "@components/ui/text/Text";
 import Button, { ButtonSpinner, ButtonText } from "@components/ui/button/Button";
 
@@ -26,19 +29,19 @@ function QuotaRequestRow({
 }) {
   const { colors } = useTheme();
   return (
-    <View className="px-4 py-3 border-b border-border gap-2">
-      <Text size="md" className="font-medium">
+    <GlassCard className="mx-4 my-1">
+      <Text size="md" bold numberOfLines={1}>
         {request.user?.name ?? request.user?.email ?? "Unknown user"}
       </Text>
-      <Text size="xs" className="text-secondary">
+      <Text size="xs" className="text-secondary mt-0.5">
         Requested: {formatBytes(request.requested_quota_bytes)}
       </Text>
       {request.reason ? (
-        <Text size="xs" className="text-secondary" numberOfLines={2}>
+        <Text size="xs" className="text-secondary mt-0.5" numberOfLines={2}>
           {request.reason}
         </Text>
       ) : null}
-      <View className="flex-row gap-2 mt-1">
+      <View className="flex-row gap-2 mt-2">
         <Button size="sm" onPress={onApprove} disabled={isApproving || isRejecting}>
           {isApproving ? <ButtonSpinner /> : <CheckCircle size={14} color={colors.primary.foreground} />}
           <ButtonText>Approve</ButtonText>
@@ -48,7 +51,7 @@ function QuotaRequestRow({
           <ButtonText>Reject</ButtonText>
         </Button>
       </View>
-    </View>
+    </GlassCard>
   );
 }
 
@@ -58,16 +61,13 @@ export default function AdminQuotaScreen() {
   const [rejectQuota] = useRejectQuotaMutation();
 
   return (
-    <SafeAreaView className="flex-1 bg-surface-DEFAULT" edges={["top"]}>
-      <View className="px-4 py-3 border-b border-border">
-        <Text size="2xl" bold>
-          Quota Requests
-        </Text>
-      </View>
-      <SkeletonPlaceholder enabled={isLoading} borderRadius={4}>
+    <ScreenLayout>
+      <GlassHeader title="Quota Requests" />
+
+      <Skeleton loading={isLoading}>
         <FlatList
-          data={isLoading ? Array(5).fill({}) : (data?.items ?? [])}
-          keyExtractor={(_, i) => String(i)}
+          data={data?.items ?? []}
+          keyExtractor={(item) => item._id ?? item.id}
           renderItem={({ item }) => (
             <QuotaRequestRow
               request={item}
@@ -77,15 +77,10 @@ export default function AdminQuotaScreen() {
           )}
           refreshing={false}
           onRefresh={refetch}
-          ListEmptyComponent={
-            <View className="flex-1 items-center justify-center mt-20">
-              <Text size="sm" className="text-secondary">
-                No pending requests
-              </Text>
-            </View>
-          }
+          contentContainerClassName="py-2"
+          ListEmptyComponent={isLoading ? null : <EmptyState message="No pending requests" />}
         />
-      </SkeletonPlaceholder>
-    </SafeAreaView>
+      </Skeleton>
+    </ScreenLayout>
   );
 }

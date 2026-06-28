@@ -5,6 +5,10 @@ import React from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import Animated, { Easing, FadeIn, FadeOut, ZoomIn } from "react-native-reanimated";
 
+// Components
+import Text from "@components/ui/text/Text";
+import Button, { ButtonSpinner, ButtonText } from "@components/ui/button/Button";
+
 const SCOPE = "ALERT_DIALOG";
 
 const RootComponent = withStyleContext(View, SCOPE);
@@ -90,5 +94,52 @@ export function AlertDialogBackdrop({ className, ...props }) {
       exiting={FadeOut.duration(200).easing(Easing.linear)}
       className={alertDialogBackdropStyle({ class: className })}
     />
+  );
+}
+
+export function Dialog({
+  isOpen = false,
+  onClose = () => {},
+  size = "sm",
+  title = "",
+  footer = null,
+  children = null,
+  contentClassName,
+  footerClassName,
+  onCancel,
+  cancelLabel = "Cancel",
+  onConfirm,
+  confirmLabel = "Confirm",
+  confirmVariant = "primary",
+  confirmLoading = false,
+  confirmDisabled = false,
+}) {
+  const resolvedFooter =
+    footer ??
+    (onConfirm ? (
+      <>
+        <Button variant="outline" size="sm" onPress={onCancel ?? onClose}>
+          <ButtonText>{cancelLabel}</ButtonText>
+        </Button>
+        <Button variant={confirmVariant} size="sm" onPress={onConfirm} disabled={confirmDisabled || confirmLoading}>
+          {confirmLoading ? <ButtonSpinner /> : null}
+          <ButtonText>{confirmLabel}</ButtonText>
+        </Button>
+      </>
+    ) : null);
+
+  return (
+    <AlertDialog isOpen={isOpen} onClose={onClose}>
+      <AlertDialogBackdrop />
+      <AlertDialogContent size={size} className={contentClassName}>
+        {title ? (
+          <AlertDialogHeader>
+            <Text bold>{title}</Text>
+          </AlertDialogHeader>
+        ) : null}
+        {children ? <AlertDialogBody>{children}</AlertDialogBody> : null}
+        {resolvedFooter ? <AlertDialogFooter className={footerClassName}>{resolvedFooter}</AlertDialogFooter> : null}
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
