@@ -15,15 +15,15 @@ import { useTheme } from "@theme/useTheme";
 
 // Components
 import Text from "@components/ui/text/Text";
-import Button from "@components/ui/button/Button";
+import Button, { ButtonText } from "@components/ui/button/Button";
 
 function MetaRow({ label = "", value = "" }) {
   return (
     <View className="flex-row justify-between py-3 border-b border-border">
-      <Text variant="body2" color="secondary">
+      <Text size="sm" className="text-secondary">
         {label}
       </Text>
-      <Text variant="body2" weight="medium" numberOfLines={1} className="max-w-[60%] text-right">
+      <Text size="sm" className="font-medium max-w-[60%] text-right" numberOfLines={1}>
         {value}
       </Text>
     </View>
@@ -54,7 +54,7 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
         >
           <ChevronLeft size={22} color={colors.neutral.DEFAULT} />
         </Pressable>
-        <Text variant="h4" weight="bold" numberOfLines={1} className="flex-1">
+        <Text size="2xl" bold numberOfLines={1} className="flex-1">
           {data?.name ?? "File"}
         </Text>
       </View>
@@ -70,7 +70,7 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
             />
           ) : (
             <View className="h-40 bg-surface-card items-center justify-center">
-              <Text variant="body2" color="secondary">
+              <Text size="sm" className="text-secondary">
                 No preview available
               </Text>
             </View>
@@ -83,11 +83,13 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
           </View>
 
           <View className="px-4 pt-2 gap-3">
-            <Button variant="primary" size="lg" leftIcon={<Download size={18} />} disabled>
-              Download (Phase 5)
+            <Button size="lg" disabled>
+              <Download size={18} />
+              <ButtonText>Download (Phase 5)</ButtonText>
             </Button>
-            <Button variant="outline" size="lg" leftIcon={<Share2 size={18} />} disabled>
-              Share (Phase 5)
+            <Button variant="outline" size="lg" disabled>
+              <Share2 size={18} />
+              <ButtonText>Share (Phase 5)</ButtonText>
             </Button>
           </View>
         </ScrollView>

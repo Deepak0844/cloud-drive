@@ -9,7 +9,7 @@ import { useGetMeQuery } from "@api/authApi";
 
 // Constants
 import { AppScreens } from "@constants/appScreens";
-import { Roles } from "@shared-constants/src/generalConstants";
+import { Roles } from "@shared-constants";
 
 // Hooks
 import { useResponsive } from "@hooks/useResponsive";

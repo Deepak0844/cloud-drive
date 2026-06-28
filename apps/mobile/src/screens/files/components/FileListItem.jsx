@@ -36,10 +36,10 @@ export default function FileListItem({ item = {}, onPress = () => {}, onLongPres
         )}
       </View>
       <View className="flex-1">
-        <Text variant="body1" weight="medium" numberOfLines={1}>
+        <Text size="md" className="font-medium" numberOfLines={1}>
           {item.name}
         </Text>
-        <Text variant="caption" color="secondary">
+        <Text size="xs" className="text-secondary">
           {item.size != null ? formatBytes(item.size) : ""}
         </Text>
       </View>

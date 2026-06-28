@@ -29,11 +29,11 @@ export default function FolderListItem({ item = {}, onPress = () => {}, onLongPr
         <Folder size={20} color={colors.primary.DEFAULT} />
       </View>
       <View className="flex-1">
-        <Text variant="body1" weight="medium" numberOfLines={1}>
+        <Text size="md" className="font-medium" numberOfLines={1}>
           {item.name}
         </Text>
         {item.itemCount != null ? (
-          <Text variant="caption" color="secondary">
+          <Text size="xs" className="text-secondary">
             {item.itemCount} {item.itemCount === 1 ? "item" : "items"}
           </Text>
         ) : null}

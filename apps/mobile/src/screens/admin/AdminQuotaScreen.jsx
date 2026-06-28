@@ -15,7 +15,7 @@ import { useTheme } from "@theme/useTheme";
 
 // Components
 import Text from "@components/ui/text/Text";
-import Button from "@components/ui/button/Button";
+import Button, { ButtonSpinner, ButtonText } from "@components/ui/button/Button";
 
 function QuotaRequestRow({
   request = {},
@@ -27,37 +27,25 @@ function QuotaRequestRow({
   const { colors } = useTheme();
   return (
     <View className="px-4 py-3 border-b border-border gap-2">
-      <Text variant="body1" weight="medium">
+      <Text size="md" className="font-medium">
         {request.user?.name ?? request.user?.email ?? "Unknown user"}
       </Text>
-      <Text variant="caption" color="secondary">
+      <Text size="xs" className="text-secondary">
         Requested: {formatBytes(request.requested_quota_bytes)}
       </Text>
       {request.reason ? (
-        <Text variant="caption" color="secondary" numberOfLines={2}>
+        <Text size="xs" className="text-secondary" numberOfLines={2}>
           {request.reason}
         </Text>
       ) : null}
       <View className="flex-row gap-2 mt-1">
-        <Button
-          variant="primary"
-          size="sm"
-          onPress={onApprove}
-          loading={isApproving}
-          disabled={isApproving || isRejecting}
-          leftIcon={<CheckCircle size={14} color={colors.primary.foreground} />}
-        >
-          Approve
+        <Button size="sm" onPress={onApprove} disabled={isApproving || isRejecting}>
+          {isApproving ? <ButtonSpinner /> : <CheckCircle size={14} color={colors.primary.foreground} />}
+          <ButtonText>Approve</ButtonText>
         </Button>
-        <Button
-          variant="danger"
-          size="sm"
-          onPress={onReject}
-          loading={isRejecting}
-          disabled={isApproving || isRejecting}
-          leftIcon={<XCircle size={14} color={colors.primary.foreground} />}
-        >
-          Reject
+        <Button variant="destructive" size="sm" onPress={onReject} disabled={isApproving || isRejecting}>
+          {isRejecting ? <ButtonSpinner /> : <XCircle size={14} color={colors.primary.foreground} />}
+          <ButtonText>Reject</ButtonText>
         </Button>
       </View>
     </View>
@@ -72,7 +60,7 @@ export default function AdminQuotaScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-DEFAULT" edges={["top"]}>
       <View className="px-4 py-3 border-b border-border">
-        <Text variant="h4" weight="bold">
+        <Text size="2xl" bold>
           Quota Requests
         </Text>
       </View>
@@ -91,7 +79,7 @@ export default function AdminQuotaScreen() {
           onRefresh={refetch}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-20">
-              <Text variant="body2" color="secondary">
+              <Text size="sm" className="text-secondary">
                 No pending requests
               </Text>
             </View>

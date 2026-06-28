@@ -11,7 +11,7 @@ import Text from "@components/ui/text/Text";
 export default function UploadProgressSheet() {
   return (
     <View className="hidden">
-      <Text variant="caption">Upload progress — Phase 5</Text>
+      <Text size="xs">Upload progress — Phase 5</Text>
     </View>
   );
 }

@@ -20,7 +20,7 @@ import {
 
 // Components
 import Text from "@components/ui/text/Text";
-import Button from "@components/ui/button/Button";
+import Button, { ButtonSpinner, ButtonText } from "@components/ui/button/Button";
 
 function ConfirmDialog({ visible = false, title = "", message = "", onConfirm = () => {}, onCancel = () => {} }) {
   return (
@@ -28,21 +28,21 @@ function ConfirmDialog({ visible = false, title = "", message = "", onConfirm = 
       <AlertDialogBackdrop />
       <AlertDialogContent className="bg-surface-card rounded-2xl p-2">
         <AlertDialogHeader>
-          <Text variant="h5" weight="bold">
+          <Text size="xl" bold>
             {title}
           </Text>
         </AlertDialogHeader>
         <AlertDialogBody>
-          <Text variant="body2" color="secondary">
+          <Text size="sm" className="text-secondary">
             {message}
           </Text>
         </AlertDialogBody>
         <AlertDialogFooter className="gap-3 mt-2">
-          <Button variant="ghost" size="md" onPress={onCancel} className="flex-1">
-            Cancel
+          <Button variant="ghost" onPress={onCancel} className="flex-1">
+            <ButtonText>Cancel</ButtonText>
           </Button>
-          <Button variant="danger" size="md" onPress={onConfirm} className="flex-1">
-            Delete
+          <Button variant="destructive" onPress={onConfirm} className="flex-1">
+            <ButtonText>Delete</ButtonText>
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -66,7 +66,7 @@ function PromptDialog({ visible = false, title = "", initialValue = "", onConfir
       <AlertDialogBackdrop />
       <AlertDialogContent className="bg-surface-card rounded-2xl p-2">
         <AlertDialogHeader>
-          <Text variant="h5" weight="bold">
+          <Text size="xl" bold>
             {title}
           </Text>
         </AlertDialogHeader>
@@ -87,11 +87,11 @@ function PromptDialog({ visible = false, title = "", initialValue = "", onConfir
           />
         </AlertDialogBody>
         <AlertDialogFooter className="gap-3 mt-2">
-          <Button variant="ghost" size="md" onPress={onCancel} className="flex-1">
-            Cancel
+          <Button variant="ghost" onPress={onCancel} className="flex-1">
+            <ButtonText>Cancel</ButtonText>
           </Button>
-          <Button variant="primary" size="md" onPress={handleConfirm} className="flex-1">
-            Save
+          <Button onPress={handleConfirm} className="flex-1">
+            <ButtonText>Save</ButtonText>
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -139,21 +139,16 @@ export default function FileActionSheet({ file = null, onClose = () => {} }) {
   return (
     <>
       <View className="p-4 gap-2">
-        <Text variant="label" color="secondary" className="mb-2 px-1">
+        <Text size="sm" bold className="text-secondary mb-2 px-1">
           {file.name}
         </Text>
         {actions.map(({ icon: Icon, label, onPress, loading = false, danger = false, stub = false }) => (
-          <Button
-            key={label}
-            variant={danger ? "danger" : "ghost"}
-            size="md"
-            onPress={onPress}
-            loading={loading}
-            disabled={stub || loading}
-            leftIcon={<Icon size={18} />}
-          >
-            {label}
-            {stub ? " (Phase 5)" : ""}
+          <Button key={label} variant={danger ? "destructive" : "ghost"} onPress={onPress} disabled={stub || loading}>
+            {loading ? <ButtonSpinner /> : <Icon size={18} />}
+            <ButtonText>
+              {label}
+              {stub ? " (Phase 5)" : ""}
+            </ButtonText>
           </Button>
         ))}
       </View>

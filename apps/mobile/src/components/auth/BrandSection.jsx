@@ -16,11 +16,11 @@ export default function BrandSection({ subtitle = "" }) {
       <View className="w-20 h-20 items-center justify-center bg-white/8 border border-white/[18] rounded-2xl overflow-hidden">
         <Cloud size={34} color="white" strokeWidth={1.5} />
       </View>
-      <Text variant="h3" color="white" weight="bold" align="center" className="mt-lg">
+      <Text size="3xl" bold className="text-white text-center mt-lg">
         Cloud Drive
       </Text>
       {subtitle ? (
-        <Text variant="body2" align="center" className="text-white/50 mt-xs">
+        <Text size="sm" className="text-white/50 text-center mt-xs">
           {subtitle}
         </Text>
       ) : null}

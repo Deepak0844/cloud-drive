@@ -15,7 +15,7 @@ import { useTheme } from "@theme/useTheme";
 
 // Components
 import Text from "@components/ui/text/Text";
-import Button from "@components/ui/button/Button";
+import Button, { ButtonText } from "@components/ui/button/Button";
 
 function UserRow({ user = {}, onToggleStatus = () => {}, onEditQuota = () => {} }) {
   const { colors } = useTheme();
@@ -23,40 +23,34 @@ function UserRow({ user = {}, onToggleStatus = () => {}, onEditQuota = () => {} 
     <View className="px-4 py-3 border-b border-border gap-1">
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
-          <Text variant="body1" weight="medium" numberOfLines={1}>
+          <Text size="md" className="font-medium" numberOfLines={1}>
             {user.name ?? user.email}
           </Text>
-          <Text variant="caption" color="secondary">
+          <Text size="xs" className="text-secondary">
             {user.email}
           </Text>
         </View>
         <View className={`px-2 py-0.5 rounded-full ${user.is_active ? "bg-success/15" : "bg-danger/15"}`}>
-          <Text variant="caption" color={user.is_active ? "success" : "danger"}>
+          <Text size="xs" className={user.is_active ? "text-success" : "text-danger"}>
             {user.is_active ? "Active" : "Inactive"}
           </Text>
         </View>
       </View>
       <View className="flex-row items-center justify-between mt-1">
-        <Text variant="caption" color="secondary">
+        <Text size="xs" className="text-secondary">
           Quota: {formatBytes(user.quota_used)} / {formatBytes(user.quota_bytes)}
         </Text>
         <View className="flex-row gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onPress={() => onToggleStatus(user._id ?? user.id)}
-            leftIcon={
-              user.is_active ? (
-                <UserX size={14} color={colors.danger.DEFAULT} />
-              ) : (
-                <UserCheck size={14} color={colors.success.DEFAULT} />
-              )
-            }
-          >
-            {user.is_active ? "Deactivate" : "Activate"}
+          <Button variant="ghost" size="sm" onPress={() => onToggleStatus(user._id ?? user.id)}>
+            {user.is_active ? (
+              <UserX size={14} color={colors.danger.DEFAULT} />
+            ) : (
+              <UserCheck size={14} color={colors.success.DEFAULT} />
+            )}
+            <ButtonText>{user.is_active ? "Deactivate" : "Activate"}</ButtonText>
           </Button>
           <Button variant="ghost" size="sm" onPress={() => onEditQuota(user._id ?? user.id)}>
-            Quota
+            <ButtonText>Quota</ButtonText>
           </Button>
         </View>
       </View>
@@ -90,7 +84,7 @@ export default function AdminUsersScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-DEFAULT" edges={["top"]}>
       <View className="px-4 py-3 border-b border-border">
-        <Text variant="h4" weight="bold">
+        <Text size="2xl" bold>
           Users
         </Text>
       </View>
@@ -109,7 +103,7 @@ export default function AdminUsersScreen() {
           onRefresh={refetch}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-20">
-              <Text variant="body2" color="secondary">
+              <Text size="sm" className="text-secondary">
                 No users found
               </Text>
             </View>

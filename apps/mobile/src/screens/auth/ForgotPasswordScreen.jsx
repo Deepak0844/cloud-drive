@@ -19,8 +19,8 @@ import AuthScreenLayout from "@components/auth/AuthScreenLayout";
 import AuthIcon from "@components/auth/AuthIcon";
 import BrandSection from "@components/auth/BrandSection";
 import AuthCard from "@components/auth/AuthCard";
-import Input from "@components/ui/input/Input";
-import Button from "@components/ui/button/Button";
+import { Input, InputField, InputSlot } from "@components/ui/input/Input";
+import Button, { ButtonSpinner, ButtonText } from "@components/ui/button/Button";
 import Text from "@components/ui/text/Text";
 
 // Schema
@@ -37,14 +37,14 @@ function SuccessView({ onPress = () => {}, successColor = "" }) {
   return (
     <View className="items-center gap-md">
       <CheckCircle size={48} color={successColor} />
-      <Text variant="h4" color="white" weight="bold" align="center" className="mt-sm">
+      <Text size="2xl" bold className="text-white text-center mt-sm">
         Check your email
       </Text>
-      <Text variant="body2" align="center" className="text-white/50">
+      <Text size="sm" className="text-white/50 text-center">
         If that address is registered you&#39;ll receive a reset link shortly.
       </Text>
       <Button size="lg" onPress={onPress} className="mt-6 w-full">
-        Back to sign in
+        <ButtonText>Back to sign in</ButtonText>
       </Button>
     </View>
   );
@@ -67,10 +67,10 @@ function ForgotPasswordForm({
 }) {
   return (
     <>
-      <Text variant="h4" color="white" weight="bold" className="mb-1">
+      <Text size="2xl" bold className="text-white mb-1">
         Forgot password?
       </Text>
-      <Text variant="body2" className="mb-6 text-white/50">
+      <Text size="sm" className="mb-6 text-white/50">
         Enter your email and we&#39;ll send you a reset link.
       </Text>
 
@@ -78,29 +78,39 @@ function ForgotPasswordForm({
         control={control}
         name="email"
         render={({ field: { onChange, onBlur, value } }) => (
-          <Input
-            label="Email"
-            placeholder="email@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            leftIcon={<AuthIcon Icon={Mail} size={16} />}
-            labelClassName="text-white/75"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            error={errors.email?.message}
-            className="mb-6"
-          />
+          <View className="gap-1 mb-6">
+            <Text size="sm" className="text-white/75">
+              Email
+            </Text>
+            <Input isInvalid={!!errors.email}>
+              <InputSlot>
+                <AuthIcon Icon={Mail} size={16} />
+              </InputSlot>
+              <InputField
+                placeholder="email@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            </Input>
+            {errors.email?.message ? (
+              <Text size="xs" className="text-danger">
+                {errors.email.message}
+              </Text>
+            ) : null}
+          </View>
         )}
       />
 
-      <Button size="lg" onPress={onSubmit} loading={isLoading} className="mb-4">
-        Send reset link
+      <Button size="lg" onPress={onSubmit} disabled={isLoading} className="mb-4">
+        {isLoading ? <ButtonSpinner /> : <ButtonText>Send reset link</ButtonText>}
       </Button>
 
       <Pressable onPress={onBackToSignIn} className="py-sm">
-        <Text variant="body2" color="primary" weight="semibold" align="center">
+        <Text size="sm" bold className="text-primary text-center">
           Back to sign in
         </Text>
       </Pressable>

@@ -54,7 +54,7 @@ export default function FolderScreen({ navigation = {}, route = {} }) {
         >
           <ChevronLeft size={22} color={colors.neutral.DEFAULT} />
         </Pressable>
-        <Text variant="h4" weight="bold" numberOfLines={1} className="flex-1">
+        <Text size="2xl" bold numberOfLines={1} className="flex-1">
           {folderName}
         </Text>
       </View>
@@ -68,7 +68,7 @@ export default function FolderScreen({ navigation = {}, route = {} }) {
           onRefresh={refetch}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-20">
-              <Text variant="body2" color="secondary">
+              <Text size="sm" className="text-secondary">
                 This folder is empty
               </Text>
             </View>

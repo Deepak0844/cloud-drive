@@ -40,7 +40,7 @@ export default function MyFilesScreen({ navigation = {} }) {
   return (
     <SafeAreaView className="flex-1 bg-surface-DEFAULT" edges={["top"]}>
       <View className="px-4 py-3 border-b border-border">
-        <Text variant="h4" weight="bold">
+        <Text size="2xl" bold>
           My Files
         </Text>
       </View>
@@ -54,7 +54,7 @@ export default function MyFilesScreen({ navigation = {} }) {
           onRefresh={refetch}
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center mt-20">
-              <Text variant="body2" color="secondary">
+              <Text size="sm" className="text-secondary">
                 No files yet
               </Text>
             </View>

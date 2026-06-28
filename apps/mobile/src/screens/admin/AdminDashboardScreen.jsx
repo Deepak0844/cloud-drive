@@ -27,10 +27,10 @@ function StatCard({ Icon, label, value, iconColor }) {
   return (
     <View className="flex-1 bg-surface-card rounded-2xl p-4 gap-2">
       <Icon size={22} color={iconColor} />
-      <Text variant="h3" weight="bold">
+      <Text size="3xl" bold>
         {value}
       </Text>
-      <Text variant="caption" color="secondary">
+      <Text size="xs" className="text-secondary">
         {label}
       </Text>
     </View>
@@ -75,7 +75,7 @@ export default function AdminDashboardScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-DEFAULT" edges={["top"]}>
       <View className="px-4 py-3 border-b border-border">
-        <Text variant="h4" weight="bold">
+        <Text size="2xl" bold>
           Dashboard
         </Text>
       </View>

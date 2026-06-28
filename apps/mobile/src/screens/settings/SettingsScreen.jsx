@@ -34,6 +34,7 @@ export default function SettingsScreen() {
       setBiometricEnabled(enabled);
       setBiometricLoading(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleBiometricToggle(value) {
@@ -57,7 +58,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView className="flex-1">
       <View className="flex-1 items-center justify-center">
-        <Text variant="body1" className="mb-3">
+        <Text size="md" className="mb-3">
           Theme
         </Text>
         <View className="flex-row rounded-lg overflow-hidden border border-border">
@@ -67,7 +68,7 @@ export default function SettingsScreen() {
               className={`py-2 px-5 ${colorMode === mode.value ? "bg-primary" : "bg-transparent"}`}
               onPress={() => dispatch(setColorMode(mode.value))}
             >
-              <Text variant="body2" color={colorMode === mode.value ? "white" : ""}>
+              <Text size="sm" className={colorMode === mode.value ? "text-white" : ""}>
                 {mode.label}
               </Text>
             </Pressable>
@@ -76,16 +77,16 @@ export default function SettingsScreen() {
 
         <View className="mt-8 w-full px-6" style={{ opacity: biometricRowDisabled ? 0.4 : 1 }}>
           <View className="flex-row items-center justify-between">
-            <Text variant="body1">Biometric Lock</Text>
+            <Text size="md">Biometric Lock</Text>
             <Switch value={biometricEnabled} onValueChange={handleBiometricToggle} disabled={biometricRowDisabled} />
           </View>
           {!biometricAvailable && !biometricLoading ? (
-            <Text variant="caption" color="secondary" className="mt-1">
+            <Text size="xs" className="text-secondary mt-1">
               No biometrics enrolled on this device
             </Text>
           ) : null}
           {biometricError.length > 0 ? (
-            <Text variant="caption" color="danger" className="mt-1">
+            <Text size="xs" className="text-danger mt-1">
               {biometricError}
             </Text>
           ) : null}
