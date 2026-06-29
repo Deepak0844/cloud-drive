@@ -28,6 +28,10 @@ import RootNavigator from "@navigation/RootNavigator";
 // Hooks
 import { useBiometric } from "@hooks/useBiometric";
 
+// Lib / Services
+import backgroundTransfer from "@lib/backgroundTransfer";
+import syncService from "@services/sync/syncService";
+
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 500, fade: true });
 
@@ -69,9 +73,13 @@ function AppContent() {
   useEffect(() => {
     const sub = AppState.addEventListener("change", async (next) => {
       if (appState.current === "active" && next.match(/inactive|background/)) {
+        await backgroundTransfer.pauseAll();
         if (isAuthenticated && !biometricLockedRef.current && (await isEnabled())) {
           setBiometricLocked(true);
         }
+      }
+      if (next === "active") {
+        syncService.resumeTransfers?.();
       }
       appState.current = next;
     });

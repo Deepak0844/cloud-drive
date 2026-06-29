@@ -16,6 +16,8 @@ import EmptyState from "@components/ui/empty-state/EmptyState";
 import FileListItem from "./components/FileListItem";
 import FolderListItem from "./components/FolderListItem";
 import FileActionSheet from "./components/FileActionSheet";
+import UploadFab from "./components/UploadFab";
+import UploadProgressSheet from "./components/UploadProgressSheet";
 
 export default function MyFilesScreen({ navigation = {} }) {
   const { data, isLoading, isFetching, refetch } = useGetFolderContentsQuery({ id: "root" });
@@ -54,6 +56,9 @@ export default function MyFilesScreen({ navigation = {} }) {
           ListEmptyComponent={isLoading ? null : <EmptyState message="No files yet" />}
         />
       </Skeleton>
+
+      <UploadFab />
+      <UploadProgressSheet />
 
       <GlassBottomSheet visible={!!selectedFile}>
         <FileActionSheet file={selectedFile} onClose={() => setSelectedFile(null)} />
