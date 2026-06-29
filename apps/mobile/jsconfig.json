@@ -19,6 +19,7 @@
       "@rtkQuery/*": ["src/store/rtkQuery/*"],
       "@api/*": ["src/store/api/*"],
       "@sdk/*": ["src/sdk/*"],
+      "@lib/*": ["src/lib/*"],
       "@theme/*": ["src/theme/*"],
       "@config": ["src/config.js"]
     },

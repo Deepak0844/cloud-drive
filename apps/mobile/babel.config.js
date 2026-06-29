@@ -26,6 +26,7 @@ module.exports = {
           "@rtkQuery": "./src/store/rtkQuery",
           "@api": "./src/store/api",
           "@sdk": "./src/sdk",
+          "@lib": "./src/lib",
         },
       },
     ],

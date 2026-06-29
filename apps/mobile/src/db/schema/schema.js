@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 
 // ─── app_meta ────────────────────────────────────────────────────────────────
 // Minimal placeholder table so the SQLite + Drizzle + migration pipeline is
@@ -7,4 +7,24 @@ export const appMeta = sqliteTable("app_meta", {
   key: text("key").primaryKey(),
   value: text("value"),
   updatedAt: integer("updated_at"),
+});
+
+// ─── transfers ───────────────────────────────────────────────────────────────
+export const transfers = sqliteTable("transfers", {
+  id: text("id").primaryKey(),
+  fileId: text("file_id").notNull(),
+  type: text("type").notNull(), // 'upload' | 'download'
+  status: text("status").notNull(), // 'pending' | 'active' | 'paused' | 'complete' | 'failed'
+  name: text("name").notNull(),
+  url: text("url"),
+  dest: text("dest"),
+  mimeType: text("mime_type"),
+  progress: real("progress"),
+  resumeData: text("resume_data"),
+  uploadId: text("upload_id"),
+  uploadedChunks: integer("uploaded_chunks"),
+  totalChunks: integer("total_chunks"),
+  retryCount: integer("retry_count").default(0),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
 });
