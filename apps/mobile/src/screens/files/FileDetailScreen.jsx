@@ -15,6 +15,7 @@ import backgroundTransfer from "@lib/backgroundTransfer";
 // Components
 import ScreenLayout from "@components/ui/screen/ScreenLayout";
 import GlassHeader from "@components/ui/header/GlassHeader";
+import OfflineToggle from "@components/offline/OfflineToggle";
 import GlassCard from "@components/ui/glass/GlassCard";
 import Skeleton from "@components/ui/skeleton/Skeleton";
 import Text from "@components/ui/text/Text";
@@ -59,7 +60,11 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
 
   return (
     <ScreenLayout>
-      <GlassHeader title={data?.name ?? "File"} onBack={() => navigation.goBack()} />
+      <GlassHeader
+        title={data?.name ?? "File"}
+        onBack={() => navigation.goBack()}
+        right={<OfflineToggle file={data} />}
+      />
 
       <Skeleton loading={isLoading}>
         <ScrollView className="flex-1">

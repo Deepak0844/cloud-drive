@@ -28,3 +28,15 @@ export const transfers = sqliteTable("transfers", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+// ─── items ────────────────────────────────────────────────────────────────────
+export const items = sqliteTable("items", {
+  id: text("id").primaryKey(),
+  parentId: text("parent_id"),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'file' | 'folder'
+  size: integer("size"),
+  mimeType: text("mime_type"),
+  updatedAt: text("updated_at"),
+  isOffline: integer("is_offline").default(0),
+});

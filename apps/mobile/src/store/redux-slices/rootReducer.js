@@ -7,10 +7,12 @@ import { api } from "@rtkQuery/api";
 import { ErrorReducer } from "@redux-slices/errorSlice";
 import { AuthReducer } from "@redux-slices/authSlice";
 import { ThemeReducer } from "@redux-slices/themeSlice";
+import OfflineReducer from "@redux-slices/offlineSlice";
 
 export const RootReducer = combineReducers({
   [api.reducerPath]: api.reducer,
   Error: ErrorReducer,
   auth: AuthReducer,
   theme: ThemeReducer,
+  offline: OfflineReducer,
 });

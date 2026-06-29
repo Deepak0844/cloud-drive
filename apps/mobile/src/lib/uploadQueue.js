@@ -1,3 +1,4 @@
+import * as Notifications from "expo-notifications";
 import uuid from "react-native-uuid";
 
 // Db
@@ -14,6 +15,10 @@ async function drainQueue() {
     } catch {
       const next = (row.retryCount ?? 0) + 1;
       await transfersRepository.markFailed(row.id, next);
+      await Notifications.scheduleNotificationAsync({
+        content: { title: "Upload failed", body: row.name },
+        trigger: null,
+      });
     }
   }
 }
