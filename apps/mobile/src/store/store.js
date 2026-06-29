@@ -1,7 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { Appearance } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import { TokenStorage } from "@utils/tokenStorage";
+import TokenStorage from "@utils/tokenStorage";
 
 // Root reducer
 import { RootReducer } from "@redux-slices/rootReducer";

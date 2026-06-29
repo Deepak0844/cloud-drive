@@ -16,6 +16,8 @@ import EmptyState from "@components/ui/empty-state/EmptyState";
 import FileListItem from "./components/FileListItem";
 import FolderListItem from "./components/FolderListItem";
 import FileActionSheet from "./components/FileActionSheet";
+import UploadFab from "./components/UploadFab";
+import UploadProgressSheet from "./components/UploadProgressSheet";
 
 export default function FolderScreen({ navigation = {}, route = {} }) {
   const { folderId, folderName = "Folder" } = route.params ?? {};
@@ -55,6 +57,9 @@ export default function FolderScreen({ navigation = {}, route = {} }) {
           ListEmptyComponent={isLoading ? null : <EmptyState message="This folder is empty" />}
         />
       </Skeleton>
+
+      <UploadFab />
+      <UploadProgressSheet />
 
       <GlassBottomSheet visible={!!selectedFile}>
         <FileActionSheet file={selectedFile} onClose={() => setSelectedFile(null)} />

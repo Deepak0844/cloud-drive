@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Pressable, Image } from "react-native";
 import { File } from "lucide-react-native";
+
+// DB
+import transfersRepository from "@db/repositories/transfersRepository";
 
 // Utils
 import { formatBytes } from "@shared-utils/utils";
@@ -12,13 +15,35 @@ import { useTheme } from "@theme/useTheme";
 import Text from "@components/ui/text/Text";
 import GlassCard from "@components/ui/glass/GlassCard";
 
-/**
- * A single file row in a file listing backed by a glass card surface.
- * GlassCard handles visual surface; Pressable handles both press and long-press.
- * @param {object} item - Normalized file object with `id`, `name`, `size`, `mimeType`, `thumbnailUrl`
- * @param {() => void} [onPress=()=>{}] - Handler for tapping the file row
- * @param {() => void} [onLongPress=()=>{}] - Handler for long-pressing (e.g. to open action sheet)
- */
+function TransferProgressBar({ fileId }) {
+  const [pct, setPct] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function poll() {
+      const rows = await transfersRepository.getByStatus(["active", "pending", "paused"]);
+      const match = rows.find((r) => r.fileId === fileId);
+      if (mounted) setPct(match ? (match.progress ?? 0) : null);
+    }
+
+    poll();
+    const interval = setInterval(poll, 1000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [fileId]);
+
+  if (pct === null) return null;
+
+  return (
+    <View className="h-1 bg-neutral-subtle rounded-full overflow-hidden mt-1">
+      <View className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+    </View>
+  );
+}
+
 export default function FileListItem({ item = {}, onPress = () => {}, onLongPress = () => {} }) {
   const { colors } = useTheme();
 
@@ -40,6 +65,7 @@ export default function FileListItem({ item = {}, onPress = () => {}, onLongPres
             <Text size="xs" className="text-secondary">
               {item.size != null ? formatBytes(item.size) : ""}
             </Text>
+            <TransferProgressBar fileId={item.id} />
           </View>
         </View>
       </GlassCard>

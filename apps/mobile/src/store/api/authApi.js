@@ -9,7 +9,7 @@ import { HttpMethods } from "@constants/httpConstants";
 import { setAuthenticated, setRole, resetAuth } from "@redux-slices/authSlice";
 
 // Utils
-import { TokenStorage } from "@utils/tokenStorage";
+import TokenStorage from "@utils/tokenStorage";
 import { TimeUtils } from "@shared-utils/utils";
 
 // ---------------------------------------------------------------------------

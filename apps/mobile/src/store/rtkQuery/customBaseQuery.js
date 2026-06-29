@@ -1,7 +1,7 @@
 import axios, { isCancel } from "axios";
 
 // Utils
-import { TokenStorage } from "@utils/tokenStorage";
+import TokenStorage from "@utils/tokenStorage";
 
 // Actions
 import { resetAuth } from "@redux-slices/authSlice";

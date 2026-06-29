@@ -42,7 +42,7 @@ async function clearTokens() {
   await SecureStore.deleteItemAsync(RoleKey);
 }
 
-export const TokenStorage = {
+const TokenStorage = {
   getAccessToken,
   getAccessTokenSync,
   setAccessToken,
@@ -53,3 +53,5 @@ export const TokenStorage = {
   setRole,
   clearTokens,
 };
+
+export default TokenStorage;

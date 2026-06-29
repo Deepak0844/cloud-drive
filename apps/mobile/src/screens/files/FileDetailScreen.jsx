@@ -1,12 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Image, ScrollView } from "react-native";
 import { Download, Share2 } from "lucide-react-native";
+import * as Sharing from "expo-sharing";
 
 // Rtk
 import { useGetFilesQuery } from "@api/fileApi";
 
 // Utils
 import { formatBytes } from "@shared-utils/utils";
+
+// Lib
+import backgroundTransfer from "@lib/backgroundTransfer";
 
 // Components
 import ScreenLayout from "@components/ui/screen/ScreenLayout";
@@ -31,6 +35,7 @@ function MetaRow({ label = "", value = "" }) {
 
 export default function FileDetailScreen({ navigation = {}, route = {} }) {
   const { fileId } = route.params ?? {};
+  const [downloading, setDownloading] = useState(false);
 
   const { data, isLoading } = useGetFilesQuery(undefined, {
     selectFromResult: ({ data: result, ...rest }) => ({
@@ -40,6 +45,17 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
   });
 
   const isImage = data?.mimeType?.startsWith("image/");
+
+  async function onDownload() {
+    if (!data?.downloadUrl) return;
+    setDownloading(true);
+    try {
+      const uri = await backgroundTransfer.download(data.id, data.downloadUrl, data.name);
+      await Sharing.shareAsync(uri);
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <ScreenLayout>
@@ -64,13 +80,13 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
           </GlassCard>
 
           <View className="px-4 gap-3 pb-4">
-            <Button size="lg" disabled>
+            <Button size="lg" onPress={onDownload} disabled={downloading || !data}>
               <Download size={18} />
-              <ButtonText>Download (Phase 5)</ButtonText>
+              <ButtonText>{downloading ? "Downloading…" : "Download"}</ButtonText>
             </Button>
-            <Button variant="outline" size="lg" disabled>
+            <Button variant="outline" size="lg" onPress={onDownload} disabled={downloading || !data}>
               <Share2 size={18} />
-              <ButtonText>Share (Phase 5)</ButtonText>
+              <ButtonText>Share</ButtonText>
             </Button>
           </View>
         </ScrollView>

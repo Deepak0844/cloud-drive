@@ -1,4 +1,4 @@
-import { socketClient } from "@services/socketClient";
+import socketClient from "@services/socketClient";
 import { api } from "@rtkQuery/api";
 
 const FILE_FOLDER_EVENTS = ["file:created", "file:deleted", "file:updated", "folder:created", "folder:deleted"];
