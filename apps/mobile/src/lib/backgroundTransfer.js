@@ -184,8 +184,8 @@ async function pauseAll() {
       if (row) {
         await transfersRepository.updateProgress(row.id, row.progress, JSON.stringify(snapshot));
       }
-    } catch {
-      // already complete or failed — ignore
+    } catch (_ex) {
+      // already complete or failed — pause on a finished download throws, safe to ignore
     }
   }
 }

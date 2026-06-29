@@ -27,6 +27,7 @@ import RootNavigator from "@navigation/RootNavigator";
 
 // Hooks
 import { useBiometric } from "@hooks/useBiometric";
+import { useNetworkStatus } from "@hooks/useNetworkStatus";
 
 // Lib / Services
 import backgroundTransfer from "@lib/backgroundTransfer";
@@ -48,6 +49,7 @@ function AppContent() {
   const { setColorScheme } = useNWColorScheme();
   const [biometricLocked, setBiometricLocked] = useState(false);
   const { isEnabled } = useBiometric();
+  useNetworkStatus();
   const appState = useRef(AppState.currentState);
   const biometricLockedRef = useRef(false);
   biometricLockedRef.current = biometricLocked;

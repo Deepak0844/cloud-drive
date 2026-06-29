@@ -12,20 +12,57 @@ import { ApiTagTypes } from "@constants/generalConstants";
 // Transformer
 import FileTransformer from "./fileTransformer";
 
+// Db
+import itemsRepository from "@db/repositories/itemsRepository";
+
+// Store
+import { ErrorActions } from "@redux-slices/errorSlice";
+
 // ---------------------------------------------------------------------------
 // Endpoint Definitions
 // ---------------------------------------------------------------------------
+
+async function _cacheFileItems(data) {
+  const rows = (data?.items ?? []).map((f) => ({
+    id: f.id,
+    parentId: f.folderId ?? null,
+    name: f.name,
+    type: "file",
+    size: f.size ?? null,
+    mimeType: f.mimeType ?? null,
+    updatedAt: f.updatedAt ?? null,
+    isOffline: 0,
+  }));
+  if (rows.length) await itemsRepository.upsertItems(rows);
+}
+
+async function _onFulfilled({ queryFulfilled, dispatch }) {
+  let data;
+  try {
+    ({ data } = await queryFulfilled);
+  } catch {
+    // query failed — already surfaced by the global ErrorHandler via customBaseQuery
+    return;
+  }
+  try {
+    await _cacheFileItems(data);
+  } catch {
+    dispatch(ErrorActions.setError({ errorInfo: { message: "Failed to save files for offline use" } }));
+  }
+}
 
 const getFilesQuery = () => ({
   query: (params) => ({ url: FileUrls.list, params }),
   transformResponse: FileTransformer.transformFileList,
   providesTags: [ApiTagTypes.FILES],
+  onQueryStarted: (_, api) => _onFulfilled(api),
 });
 
 const getRecentFilesQuery = () => ({
   query: (params) => ({ url: FileUrls.recent, params }),
   transformResponse: FileTransformer.transformFileList,
   providesTags: [ApiTagTypes.FILES],
+  onQueryStarted: (_, api) => _onFulfilled(api),
 });
 
 const deleteFileMutation = () => ({

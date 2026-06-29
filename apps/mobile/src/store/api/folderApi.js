@@ -12,6 +12,12 @@ import { ApiTagTypes } from "@constants/generalConstants";
 // Transformer
 import FolderTransformer from "./folderTransformer";
 
+// Db
+import itemsRepository from "@db/repositories/itemsRepository";
+
+// Store
+import { ErrorActions } from "@redux-slices/errorSlice";
+
 // ---------------------------------------------------------------------------
 // Endpoint Definitions
 // ---------------------------------------------------------------------------
@@ -22,6 +28,30 @@ const getFolderContentsQuery = () => ({
   }),
   transformResponse: FolderTransformer.transformFolderContents,
   providesTags: [ApiTagTypes.FOLDERS, ApiTagTypes.FILES],
+  async onQueryStarted(_, { queryFulfilled, dispatch }) {
+    let data;
+    try {
+      ({ data } = await queryFulfilled);
+    } catch {
+      // query failed — already surfaced by the global ErrorHandler via customBaseQuery
+      return;
+    }
+    try {
+      const rows = (data?.items ?? []).map((item) => ({
+        id: item.id,
+        parentId: item.parentId ?? item.folderId ?? null,
+        name: item.name,
+        type: item.type,
+        size: item.size ?? null,
+        mimeType: item.mimeType ?? null,
+        updatedAt: item.updatedAt ?? null,
+        isOffline: 0,
+      }));
+      if (rows.length) await itemsRepository.upsertItems(rows);
+    } catch {
+      dispatch(ErrorActions.setError({ errorInfo: { message: "Failed to save folder contents for offline use" } }));
+    }
+  },
 });
 
 const getFoldersQuery = () => ({

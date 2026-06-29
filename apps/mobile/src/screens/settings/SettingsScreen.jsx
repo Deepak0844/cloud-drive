@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { View, Pressable, Switch, ScrollView } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { Sun, Moon, Monitor } from "lucide-react-native";
+import { Sun, Moon, Monitor, Trash2 } from "lucide-react-native";
 
 // Actions
 import { setColorMode } from "@redux-slices/themeSlice";
+import { ErrorActions } from "@redux-slices/errorSlice";
 
 // Hooks
 import { useBiometric } from "@hooks/useBiometric";
+import { useOfflineFiles } from "@hooks/useOfflineFiles";
+
+// Db
+import itemsRepository from "@db/repositories/itemsRepository";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -29,13 +34,24 @@ export default function SettingsScreen() {
   const { colors } = useTheme();
   const colorMode = useSelector((s) => s.theme.colorMode);
   const { isAvailable, isEnabled, authenticate, setEnabled } = useBiometric();
+  const { getMarkedFiles, removeOffline } = useOfflineFiles();
 
+  const [dbSizeBytes, setDbSizeBytes] = useState(0);
+  const [offlineCount, setOfflineCount] = useState(0);
+  const [clearingOffline, setClearingOffline] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(true);
   const [biometricError, setBiometricError] = useState("");
 
+  async function loadStorageStats() {
+    const files = await getMarkedFiles();
+    setOfflineCount(files.length);
+    setDbSizeBytes(itemsRepository.getDbSizeBytes());
+  }
+
   useEffect(() => {
+    loadStorageStats();
     Promise.all([isAvailable(), isEnabled()]).then(([available, enabled]) => {
       setBiometricAvailable(available);
       setBiometricEnabled(enabled);
@@ -43,6 +59,21 @@ export default function SettingsScreen() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function handleClearOffline() {
+    setClearingOffline(true);
+    try {
+      const files = await getMarkedFiles();
+      for (const f of files) {
+        await removeOffline(f.id);
+      }
+      await loadStorageStats();
+    } catch {
+      dispatch(ErrorActions.setError({ errorInfo: { message: "Failed to clear offline files" } }));
+    } finally {
+      setClearingOffline(false);
+    }
+  }
 
   async function handleBiometricToggle(value) {
     setBiometricError("");
@@ -94,6 +125,40 @@ export default function SettingsScreen() {
               );
             })}
           </View>
+        </GlassCard>
+
+        {/* Offline storage */}
+        <GlassCard>
+          <Text bold className="mb-3">
+            Offline Storage
+          </Text>
+          <View className="flex-row justify-between items-center mb-2">
+            <Text size="sm" className="text-secondary">
+              Cached files
+            </Text>
+            <Text size="sm" className="font-medium">
+              {offlineCount}
+            </Text>
+          </View>
+          <View className="flex-row justify-between items-center mb-3">
+            <Text size="sm" className="text-secondary">
+              Database size
+            </Text>
+            <Text size="sm" className="font-medium">
+              {(dbSizeBytes / 1024).toFixed(1)} KB
+            </Text>
+          </View>
+          <Pressable
+            onPress={handleClearOffline}
+            disabled={clearingOffline || offlineCount === 0}
+            style={{ opacity: clearingOffline || offlineCount === 0 ? 0.4 : 1 }}
+            className="flex-row items-center gap-2"
+          >
+            <Trash2 size={14} color={colors.danger?.DEFAULT ?? colors.error?.DEFAULT} />
+            <Text size="sm" style={{ color: colors.danger?.DEFAULT ?? colors.error?.DEFAULT }}>
+              {clearingOffline ? "Clearing…" : "Clear offline files"}
+            </Text>
+          </Pressable>
         </GlassCard>
 
         {/* Biometric lock */}
