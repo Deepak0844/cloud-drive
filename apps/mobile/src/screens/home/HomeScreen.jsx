@@ -1,6 +1,7 @@
 import React from "react";
 import { View, ScrollView, FlatList } from "react-native";
 import Svg, { Circle } from "react-native-svg";
+import { Search, Settings } from "lucide-react-native";
 
 // Rtk
 import { useGetQuotaUsageQuery, useGetQuotaBreakdownQuery } from "@api/quotaApi";
@@ -18,6 +19,7 @@ import { useTheme } from "@theme/useTheme";
 // Components
 import ScreenLayout from "@components/ui/screen/ScreenLayout";
 import GlassHeader from "@components/ui/header/GlassHeader";
+import IconButton from "@components/ui/icon-button/IconButton";
 import GlassCard from "@components/ui/glass/GlassCard";
 import Skeleton from "@components/ui/skeleton/Skeleton";
 import Text from "@components/ui/text/Text";
@@ -164,9 +166,26 @@ export default function HomeScreen({ navigation = {} }) {
     refetchRecent();
   }
 
+  const headerRight = (
+    <View className="flex-row gap-1">
+      <IconButton
+        icon={<Search size={20} color={colors.neutral.DEFAULT} />}
+        onPress={() => navigation.navigate(AppScreens.SEARCH)}
+        variant="ghost"
+        size="sm"
+      />
+      <IconButton
+        icon={<Settings size={20} color={colors.neutral.DEFAULT} />}
+        onPress={() => navigation.navigate(AppScreens.SETTINGS)}
+        variant="ghost"
+        size="sm"
+      />
+    </View>
+  );
+
   return (
     <ScreenLayout>
-      <GlassHeader title="Home" />
+      <GlassHeader title="Home" right={headerRight} accentColor={colors.primary.DEFAULT} />
 
       <Skeleton loading={isLoading}>
         <ScrollView className="flex-1 p-4" contentContainerClassName="gap-4 pb-4">

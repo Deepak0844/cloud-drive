@@ -9,6 +9,10 @@ import { ErrorActions } from "@redux-slices/errorSlice";
 
 // Rtk
 import { useGetMeQuery, useLogoutMutation } from "@api/authApi";
+import { useGetQuotaUsageQuery } from "@api/quotaApi";
+
+// Utils
+import { formatBytes } from "@shared-utils/utils";
 
 // Hooks
 import { useBiometric } from "@hooks/useBiometric";
@@ -30,6 +34,25 @@ import GlassCard from "@components/ui/glass/GlassCard";
 import Text from "@components/ui/text/Text";
 import Button, { ButtonText } from "@components/ui/button/Button";
 
+function QuotaBar({ usedBytes = 0, totalBytes = 1 }) {
+  const pct = totalBytes > 0 ? Math.min(usedBytes / totalBytes, 1) : 0;
+  return (
+    <GlassCard>
+      <View className="flex-row justify-between mb-2">
+        <Text size="sm" bold>
+          Storage
+        </Text>
+        <Text size="sm" className="text-secondary">
+          {formatBytes(usedBytes)} / {formatBytes(totalBytes)}
+        </Text>
+      </View>
+      <View className="h-2 rounded-full bg-neutral-subtle">
+        <View className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(pct * 100)}%` }} />
+      </View>
+    </GlassCard>
+  );
+}
+
 const COLOR_MODES = [
   { label: "Light", value: "light", Icon: Sun },
   { label: "Dark", value: "dark", Icon: Moon },
@@ -44,6 +67,7 @@ export default function SettingsScreen() {
   // Auth
   const { data: me } = useGetMeQuery();
   const [logout, { isLoading: loggingOut }] = useLogoutMutation();
+  const { data: quota } = useGetQuotaUsageQuery();
 
   // Biometric
   const { isAvailable, isEnabled, authenticate, setEnabled } = useBiometric();
@@ -137,6 +161,8 @@ export default function SettingsScreen() {
       <GlassHeader title="Settings" />
 
       <ScrollView className="flex-1 p-4" contentContainerClassName="gap-4 pb-8">
+        {quota ? <QuotaBar usedBytes={quota.used ?? 0} totalBytes={quota.total ?? 1} /> : null}
+
         {/* Profile */}
         {me ? (
           <GlassCard>
