@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Pressable, Image } from "react-native";
+import { View, Pressable } from "react-native";
 import { File } from "lucide-react-native";
 
 // DB
@@ -12,6 +12,7 @@ import { formatBytes } from "@shared-utils/utils";
 import { useTheme } from "@theme/useTheme";
 
 // Components
+import AuthImage from "@components/media/AuthImage";
 import Text from "@components/ui/text/Text";
 import GlassCard from "@components/ui/glass/GlassCard";
 
@@ -53,7 +54,7 @@ export default function FileListItem({ item = {}, onPress = () => {}, onLongPres
         <View className="flex-row items-center gap-3">
           <View className="w-10 h-10 rounded-xl bg-neutral-subtle overflow-hidden items-center justify-center">
             {item.thumbnailUrl ? (
-              <Image source={{ uri: item.thumbnailUrl }} style={{ width: 40, height: 40 }} resizeMode="cover" />
+              <AuthImage uri={item.thumbnailUrl} className="w-full h-full" contentFit="cover" />
             ) : (
               <File size={20} color={colors.neutral.DEFAULT} />
             )}

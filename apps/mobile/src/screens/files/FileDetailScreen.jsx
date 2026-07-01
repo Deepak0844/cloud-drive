@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Image, ScrollView } from "react-native";
+import { View, ScrollView } from "react-native";
 import { Download, Share2 } from "lucide-react-native";
 import * as Sharing from "expo-sharing";
 
@@ -15,11 +15,14 @@ import backgroundTransfer from "@lib/backgroundTransfer";
 // Components
 import ScreenLayout from "@components/ui/screen/ScreenLayout";
 import GlassHeader from "@components/ui/header/GlassHeader";
-import OfflineToggle from "@components/offline/OfflineToggle";
 import GlassCard from "@components/ui/glass/GlassCard";
 import Skeleton from "@components/ui/skeleton/Skeleton";
 import Text from "@components/ui/text/Text";
 import Button, { ButtonText } from "@components/ui/button/Button";
+import OfflineToggle from "@components/offline/OfflineToggle";
+import ImageViewer from "@components/media/ImageViewer";
+import VideoPlayer from "@components/media/VideoPlayer";
+import AudioPlayer from "@components/media/AudioPlayer";
 
 function MetaRow({ label = "", value = "" }) {
   return (
@@ -46,6 +49,14 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
   });
 
   const isImage = data?.mimeType?.startsWith("image/");
+  const isVideo = data?.mimeType?.startsWith("video/");
+  const isAudio = data?.mimeType?.startsWith("audio/");
+
+  // previewUrl serves the raw decrypted file with AES-CTR range support (206 + Content-Length).
+  // ExoPlayer's DefaultExtractorsFactory sniffs content bytes and selects the right extractor
+  // (MP4, Matroska, AVI, WebM, …) regardless of the Content-Type header — all formats play
+  // without transcoding lag.
+  const videoUri = data?.previewUrl;
 
   async function onDownload() {
     if (!data?.downloadUrl) return;
@@ -58,6 +69,25 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
     }
   }
 
+  function renderPreview() {
+    if (isImage && data?.previewUrl) {
+      return <ImageViewer uri={data.previewUrl} />;
+    }
+    if (isVideo && videoUri) {
+      return <VideoPlayer uri={videoUri} fallbackUri={data?.hlsUrl} />;
+    }
+    if (isAudio && data?.downloadUrl) {
+      return <AudioPlayer uri={data.downloadUrl} />;
+    }
+    return (
+      <GlassCard className="m-4">
+        <Text size="sm" className="text-secondary text-center">
+          No preview available
+        </Text>
+      </GlassCard>
+    );
+  }
+
   return (
     <ScreenLayout>
       <GlassHeader
@@ -68,15 +98,7 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
 
       <Skeleton loading={isLoading}>
         <ScrollView className="flex-1">
-          {isImage && data?.previewUrl ? (
-            <Image source={{ uri: data.previewUrl }} style={{ width: "100%", height: 240 }} resizeMode="contain" />
-          ) : (
-            <GlassCard className="m-4">
-              <Text size="sm" className="text-secondary text-center">
-                No preview available
-              </Text>
-            </GlassCard>
-          )}
+          {renderPreview()}
 
           <GlassCard className="m-4">
             <MetaRow label="Name" value={data?.name ?? "—"} />

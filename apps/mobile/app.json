@@ -46,7 +46,10 @@
       "expo-notifications",
       "expo-media-library",
       "expo-system-ui",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-image",
+      "expo-video",
+      "expo-audio"
     ]
   }
 }

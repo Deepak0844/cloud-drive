@@ -3,10 +3,21 @@ import * as Notifications from "expo-notifications";
 import * as TaskManager from "expo-task-manager";
 import axios from "axios";
 import { Buffer } from "buffer";
-import transfersRepository from "@db/repositories/transfersRepository";
-import TokenStorage from "@utils/tokenStorage";
-import Config from "@config";
 import uuid from "react-native-uuid";
+
+// Db
+import transfersRepository from "@db/repositories/transfersRepository";
+import photoBackupsRepository from "@db/repositories/photoBackupsRepository";
+import Store from "@store";
+
+// Actions
+import { setLastBackupTimestamp } from "@redux-slices/photoBackupSlice";
+
+// Utils
+import TokenStorage from "@utils/tokenStorage";
+
+// Config
+import Config from "@config";
 
 const UPLOAD_TASK = "background-upload-task";
 
@@ -165,9 +176,21 @@ async function upload(transferId, localUri, fileName, mimeType) {
     await _updateProgressNotification(notifId, pct);
   }
 
-  await axios.post(`${baseUrl}/files/upload/finalize`, { uploadId }, { headers: { Authorization: `Bearer ${token}` } });
+  const finalizeRes = await axios.post(
+    `${baseUrl}/files/upload/finalize`,
+    { uploadId },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const cloudFileId = finalizeRes.data?.data?._id ?? finalizeRes.data?.data?.id ?? null;
 
   await transfersRepository.markComplete(row.id);
+
+  const alreadyBacked = await photoBackupsRepository.isAlreadyBacked(transferId).catch(() => false);
+  if (!alreadyBacked && cloudFileId) {
+    await photoBackupsRepository.markBackedUp(transferId, cloudFileId).catch(() => {});
+    Store.dispatch(setLastBackupTimestamp(Date.now()));
+  }
+
   await Notifications.dismissNotificationAsync(notifId);
   await _showCompleteNotification(`Uploaded ${fileName}`);
 }

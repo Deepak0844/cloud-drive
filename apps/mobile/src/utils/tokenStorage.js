@@ -36,6 +36,11 @@ function setRole(v) {
   return SecureStore.setItemAsync(RoleKey, v);
 }
 
+function getAuthHeaders() {
+  const token = SecureStore.getItem(AccessKey);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function clearTokens() {
   await SecureStore.deleteItemAsync(AccessKey);
   await SecureStore.deleteItemAsync(RefreshKey);
@@ -45,6 +50,7 @@ async function clearTokens() {
 const TokenStorage = {
   getAccessToken,
   getAccessTokenSync,
+  getAuthHeaders,
   setAccessToken,
   getRefreshToken,
   setRefreshToken,
