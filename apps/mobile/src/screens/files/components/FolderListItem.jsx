@@ -14,11 +14,11 @@ import GlassCard from "@components/ui/glass/GlassCard";
  * @param {object} item - Folder data object with `id`, `name`, and optional `itemCount`
  * @param {() => void} [onPress=()=>{}] - Handler for tapping the folder row
  */
-export default function FolderListItem({ item = {}, onPress = () => {} }) {
+export default function FolderListItem({ item = {}, onPress = () => {}, onLongPress = null }) {
   const { colors } = useTheme();
 
   return (
-    <Pressable onPress={onPress} android_ripple={{ color: colors.ripple.glass }}>
+    <Pressable onPress={onPress} onLongPress={onLongPress} android_ripple={{ color: colors.ripple.glass }}>
       <GlassCard>
         <View className="flex-row items-center gap-3">
           <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
