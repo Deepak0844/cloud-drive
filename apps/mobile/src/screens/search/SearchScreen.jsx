@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, FlatList } from "react-native";
 import { Search } from "lucide-react-native";
+import { useSelector } from "react-redux";
 
 // Rtk
 import { useGetFilesQuery } from "@api/fileApi";
@@ -24,6 +25,7 @@ import FileListItem from "@screens/files/components/FileListItem";
 
 export default function SearchScreen({ navigation = {} }) {
   const { colors } = useTheme();
+  const isOnline = useSelector((state) => state.offline.isOnline);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
 
@@ -34,11 +36,11 @@ export default function SearchScreen({ navigation = {} }) {
 
   const { data, isLoading, isFetching } = useGetFilesQuery(
     { search: debouncedTerm },
-    { skip: debouncedTerm.length < 2 }
+    { skip: debouncedTerm.length < 2 || !isOnline }
   );
 
   const isIdle = debouncedTerm.length < 2;
-  const showSpinner = !isIdle && (isLoading || isFetching);
+  const showSpinner = !isIdle && isOnline && (isLoading || isFetching);
 
   return (
     <ScreenLayout>
@@ -70,7 +72,13 @@ export default function SearchScreen({ navigation = {} }) {
           )}
           ItemSeparatorComponent={() => <View className="h-px bg-border mx-4" />}
           ListEmptyComponent={
-            showSpinner ? null : isIdle ? (
+            showSpinner ? null : !isOnline ? (
+              <View className="flex-1 items-center justify-center px-4 pt-16">
+                <Text size="sm" className="text-secondary text-center">
+                  Search requires an internet connection
+                </Text>
+              </View>
+            ) : isIdle ? (
               <View className="flex-1 items-center justify-center px-4 pt-16">
                 <Text size="sm" className="text-secondary text-center">
                   Type to search

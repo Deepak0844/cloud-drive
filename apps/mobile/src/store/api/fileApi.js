@@ -23,14 +23,14 @@ import { ErrorActions } from "@redux-slices/errorSlice";
 // ---------------------------------------------------------------------------
 
 async function _cacheFileItems(data) {
-  const rows = (data?.items ?? []).map((f) => ({
-    id: f.id,
-    parentId: f.folderId ?? null,
-    name: f.name,
+  const rows = (data?.items ?? []).map((file) => ({
+    id: file.id,
+    parentId: file.folderId ?? null,
+    name: file.name,
     type: "file",
-    size: f.size ?? null,
-    mimeType: f.mimeType ?? null,
-    updatedAt: f.updatedAt ?? null,
+    size: file.size ?? null,
+    mimeType: file.mimeType ?? null,
+    updatedAt: file.updatedAt ?? null,
     isOffline: 0,
   }));
   if (rows.length) await itemsRepository.upsertItems(rows);

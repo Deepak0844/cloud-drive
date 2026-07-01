@@ -29,6 +29,18 @@ export const transfers = sqliteTable("transfers", {
   updatedAt: text("updated_at").notNull(),
 });
 
+// ─── photo_backups ────────────────────────────────────────────────────────────
+export const photoBackups = sqliteTable("photo_backups", {
+  assetId: text("asset_id").primaryKey(),
+  fileName: text("file_name").notNull(),
+  size: integer("size"),
+  mimeType: text("mime_type"),
+  status: text("status").notNull().default("pending"), // 'pending' | 'backed_up' | 'failed'
+  cloudFileId: text("cloud_file_id"),
+  createdAt: text("created_at"),
+  backedUpAt: text("backed_up_at"),
+});
+
 // ─── items ────────────────────────────────────────────────────────────────────
 export const items = sqliteTable("items", {
   id: text("id").primaryKey(),

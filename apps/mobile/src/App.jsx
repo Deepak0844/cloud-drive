@@ -6,6 +6,7 @@ import * as SplashScreen from "expo-splash-screen";
 import * as SecureStore from "expo-secure-store";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as Notifications from "expo-notifications";
 import "../gesture-handler";
 import "../global.css";
 
@@ -32,6 +33,11 @@ import { useNetworkStatus } from "@hooks/useNetworkStatus";
 // Lib / Services
 import backgroundTransfer from "@lib/backgroundTransfer";
 import syncService from "@services/sync/syncService";
+import photoBackupService from "@services/backup/photoBackupService";
+
+// Store actions
+import { useGetMeQuery } from "@api/authApi";
+import { useRegisterPushTokenMutation } from "@api/notificationApi";
 
 SplashScreen.preventAutoHideAsync();
 SplashScreen.setOptions({ duration: 500, fade: true });
@@ -44,6 +50,9 @@ const styles = StyleSheet.create({ flex: { flex: 1 } });
 function AppContent() {
   const colorMode = useSelector((state) => state.theme.colorMode);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const backupEnabled = useSelector((state) => state.photoBackup.enabled);
+  const [registerPushToken] = useRegisterPushTokenMutation();
+  useGetMeQuery(undefined, { skip: !isAuthenticated });
   const systemScheme = useColorScheme();
   const resolved = colorMode === "system" ? (systemScheme ?? "light") : colorMode;
   const { setColorScheme } = useNWColorScheme();
@@ -71,6 +80,31 @@ function AppContent() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    Notifications.requestPermissionsAsync().then(({ status }) => {
+      if (status === "granted") {
+        Notifications.getExpoPushTokenAsync()
+          .then(({ data: pushToken }) => registerPushToken(pushToken))
+          .catch(() => {});
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    if (backupEnabled) {
+      photoBackupService.initialSync().catch(() => {});
+      photoBackupService.startListening();
+    } else {
+      photoBackupService.stopListening();
+    }
+    return () => photoBackupService.stopListening();
+  }, [isAuthenticated, backupEnabled]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", async (next) => {
