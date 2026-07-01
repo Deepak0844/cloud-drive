@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { View, FlatList } from "react-native";
-import { RotateCcw, Trash2 } from "lucide-react-native";
+import { SectionList, View } from "react-native";
+import { Folder, File, RotateCcw, Trash2 } from "lucide-react-native";
 
 // Rtk
 import {
@@ -27,11 +27,29 @@ import IconButton from "@components/ui/icon-button/IconButton";
 import Button, { ButtonText, ButtonSpinner } from "@components/ui/button/Button";
 import { Dialog } from "@components/ui/alert-dialog/AlertDialog";
 
+function SectionHeader({ title }) {
+  return (
+    <Text size="xs" className="text-secondary uppercase tracking-widest px-4 pt-4 pb-1 font-semibold">
+      {title}
+    </Text>
+  );
+}
+
 function TrashItemRow({ item = {}, onRestore = () => {}, onDelete = () => {} }) {
   const { colors } = useTheme();
+  const isFolder = item.type === "folder";
   return (
     <GlassCard className="mx-4 my-1">
-      <View className="flex-row items-center justify-between gap-2">
+      <View className="flex-row items-center gap-3">
+        <View
+          className={`w-10 h-10 rounded-xl items-center justify-center ${isFolder ? "bg-primary/10" : "bg-neutral/10"}`}
+        >
+          {isFolder ? (
+            <Folder size={20} color={colors.primary.DEFAULT} />
+          ) : (
+            <File size={20} color={colors.neutral.DEFAULT} />
+          )}
+        </View>
         <View className="flex-1">
           <Text size="sm" bold numberOfLines={1}>
             {item.name}
@@ -62,50 +80,57 @@ function TrashItemRow({ item = {}, onRestore = () => {}, onDelete = () => {} }) 
 }
 
 export default function TrashScreen() {
+  const { colors } = useTheme();
   const { data, isLoading, isFetching, refetch } = useGetTrashQuery();
   const [restoreItems] = useRestoreItemsMutation();
   const [permanentlyDelete] = usePermanentlyDeleteItemsMutation();
   const [emptyTrash, { isLoading: isEmptying }] = useEmptyTrashMutation();
-
-  const [emptyingAll, setEmptyingAll] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  const folders = data?.folders ?? [];
+  const files = data?.files ?? [];
+  const sections = [
+    ...(folders.length > 0 ? [{ title: "Folders", data: folders }] : []),
+    ...(files.length > 0 ? [{ title: "Files", data: files }] : []),
+  ];
+  const isEmpty = folders.length === 0 && files.length === 0;
+
   async function handleConfirmEmpty() {
-    setEmptyingAll(true);
     try {
       await emptyTrash().unwrap();
     } finally {
-      setEmptyingAll(false);
       setConfirmOpen(false);
     }
   }
 
   const emptyAllButton = (
-    <Button variant="destructive" size="sm" onPress={() => setConfirmOpen(true)} disabled={isEmptying || emptyingAll}>
-      {emptyingAll ? <ButtonSpinner /> : null}
+    <Button variant="destructive" size="sm" onPress={() => setConfirmOpen(true)} disabled={isEmptying}>
+      {isEmptying ? <ButtonSpinner /> : null}
       <ButtonText>Empty All</ButtonText>
     </Button>
   );
 
   return (
     <ScreenLayout>
-      <GlassHeader title="Trash" rightSlot={emptyAllButton} />
+      <GlassHeader title="Trash" right={emptyAllButton} accentColor={colors.danger.DEFAULT} />
 
       <Skeleton loading={isLoading}>
-        <FlatList
-          data={data?.items ?? []}
-          keyExtractor={(item) => item._id ?? item.id}
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TrashItemRow
               item={item}
-              onRestore={() => restoreItems({ items: [{ id: item._id ?? item.id, type: item.type }] })}
-              onDelete={() => permanentlyDelete({ items: [{ id: item._id ?? item.id, type: item.type }] })}
+              onRestore={() => restoreItems({ items: [{ id: item.id, type: item.type }] })}
+              onDelete={() => permanentlyDelete({ items: [{ id: item.id, type: item.type }] })}
             />
           )}
+          renderSectionHeader={({ section }) => <SectionHeader title={section.title} />}
           refreshing={isFetching && !isLoading}
           onRefresh={refetch}
-          contentContainerClassName="py-2"
-          ListEmptyComponent={isLoading ? null : <EmptyState message="Trash is empty" />}
+          contentContainerClassName="pb-2"
+          stickySectionHeadersEnabled={false}
+          ListEmptyComponent={!isLoading && isEmpty ? <EmptyState message="Trash is empty" /> : null}
         />
       </Skeleton>
 
@@ -117,8 +142,8 @@ export default function TrashScreen() {
         onConfirm={handleConfirmEmpty}
         confirmLabel="Delete All"
         confirmVariant="destructive"
-        confirmDisabled={emptyingAll}
-        confirmLoading={emptyingAll}
+        confirmDisabled={isEmptying}
+        confirmLoading={isEmptying}
       >
         <Text size="sm" className="text-secondary">
           All items will be permanently deleted. This cannot be undone.
