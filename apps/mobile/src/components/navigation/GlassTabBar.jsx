@@ -31,7 +31,8 @@ export default function GlassTabBar({ state = { routes: [], index: 0 }, descript
           const { options } = descriptors[route.key];
           const label = options.tabBarLabel ?? options.title ?? route.name;
           const isFocused = state.index === index;
-          const iconColor = isFocused ? colors.primary.DEFAULT : colors.neutral.DEFAULT;
+          const activeColor = options.tabBarActiveTintColor ?? colors.primary.DEFAULT;
+          const iconColor = isFocused ? activeColor : colors.neutral.DEFAULT;
 
           function onPress() {
             const event = navigation.emit({

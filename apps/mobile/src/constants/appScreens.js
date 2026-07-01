@@ -5,18 +5,18 @@ export const AppScreens = {
   FORGOT_PASSWORD: "ForgotPassword",
 
   // App tabs
+  HOME: "Home",
   FILES: "Files",
   PHOTOS: "Photos",
   RECENT: "Recent",
   FAVORITES: "Favorites",
-  MORE: "More",
+  TRASH: "Trash",
   ADMIN: "Admin",
 
   // Nested stacks
   MY_FILES: "MyFiles",
   FOLDER: "Folder",
   FILE_DETAIL: "FileDetail",
-  TRASH: "Trash",
   SEARCH: "Search",
   SETTINGS: "Settings",
   ADMIN_DASHBOARD: "AdminDashboard",

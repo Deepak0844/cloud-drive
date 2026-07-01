@@ -14,16 +14,22 @@ import IconButton from "@components/ui/icon-button/IconButton";
  * Reusable glass screen header backed by BlurView.
  * Tint and blur intensity are driven by the active theme (dark glass / frosted white).
  *
- * @param {string}              [title='']     - Header title text
- * @param {() => void}          [onBack]       - When provided, renders a ChevronLeft back button
- * @param {import('react').ReactElement} [rightSlot] - Optional element rendered on the right side
+ * @param {string}        [title='']       - Header title text
+ * @param {() => void}    [onBack]         - When provided, renders a ChevronLeft back button
+ * @param {ReactElement}  [right]          - Optional element rendered on the right side
+ * @param {string}        [accentColor]    - Optional hex colour for the bottom border tint
  */
-export default function GlassHeader({ title = "", onBack = null, rightSlot = null }) {
+export default function GlassHeader({ title = "", onBack = null, right = null, accentColor = null }) {
   const { glass = {}, colors = {} } = useTheme();
   const { blurIntensity, tint } = glass.bar;
 
   return (
-    <BlurView intensity={blurIntensity} tint={tint} className="border-b border-glass-bar-border">
+    <BlurView
+      intensity={blurIntensity}
+      tint={tint}
+      className="border-b border-glass-bar-border"
+      style={accentColor ? { borderBottomColor: accentColor } : undefined}
+    >
       <View className="flex-row items-center px-2 py-3 gap-1">
         {onBack ? (
           <IconButton
@@ -40,7 +46,7 @@ export default function GlassHeader({ title = "", onBack = null, rightSlot = nul
           {title}
         </Text>
 
-        {rightSlot ? rightSlot : <View className="w-8" />}
+        {right ?? <View className="w-8" />}
       </View>
     </BlurView>
   );
