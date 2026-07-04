@@ -86,7 +86,7 @@ function StorageCard({ quota = null, onRetry = () => {} }) {
         Storage
       </Text>
       {quota ? (
-        <QuotaRing usedBytes={quota.used ?? 0} totalBytes={quota.total ?? 1} colors={colors} />
+        <QuotaRing usedBytes={quota.used_bytes ?? 0} totalBytes={quota.quota_bytes ?? 1} colors={colors} />
       ) : (
         <GlassCard>
           <Text size="sm" className="text-secondary text-center">
@@ -123,7 +123,7 @@ function RecentFilesStrip({ items = [], onNavigate = () => {} }) {
   );
 }
 
-function StorageBreakdownCard({ categories = {}, totalBytes = 1, categoryColors = {} }) {
+function StorageBreakdownCard({ categories = [], totalBytes = 1, categoryColors = {} }) {
   const { colors } = useTheme();
   return (
     <GlassCard>
@@ -131,13 +131,13 @@ function StorageBreakdownCard({ categories = {}, totalBytes = 1, categoryColors 
         By type
       </Text>
       <View className="gap-3">
-        {Object.entries(categories).map(([key, bytes]) => (
+        {categories.map((item) => (
           <StorageBar
-            key={key}
-            label={key.charAt(0).toUpperCase() + key.slice(1)}
-            bytes={bytes}
+            key={item.category}
+            label={item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+            bytes={item.total_size_bytes ?? 0}
             totalBytes={totalBytes}
-            color={categoryColors[key] ?? colors.neutral.DEFAULT}
+            color={categoryColors[item.category] ?? colors.neutral.DEFAULT}
           />
         ))}
       </View>
@@ -156,7 +156,7 @@ export default function HomeScreen({ navigation = {} }) {
   const categoryColors = {
     images: colors.primary.DEFAULT,
     video: colors.alt.DEFAULT,
-    audio: colors.accent?.pink ?? colors.secondary.DEFAULT,
+    audio: colors.warning.DEFAULT,
     docs: colors.success.DEFAULT,
     other: colors.neutral.DEFAULT,
   };
@@ -194,10 +194,10 @@ export default function HomeScreen({ navigation = {} }) {
             items={recent?.items ?? []}
             onNavigate={(id) => navigation.navigate(AppScreens.FILE_DETAIL, { fileId: id })}
           />
-          {breakdown?.categories && (
+          {Array.isArray(breakdown) && breakdown.length > 0 && (
             <StorageBreakdownCard
-              categories={breakdown.categories}
-              totalBytes={quota?.total ?? 1}
+              categories={breakdown}
+              totalBytes={quota?.quota_bytes ?? 1}
               categoryColors={categoryColors}
             />
           )}

@@ -161,7 +161,7 @@ export default function SettingsScreen() {
       <GlassHeader title="Settings" />
 
       <ScrollView className="flex-1 p-4" contentContainerClassName="gap-4 pb-8">
-        {quota ? <QuotaBar usedBytes={quota.used ?? 0} totalBytes={quota.total ?? 1} /> : null}
+        {quota ? <QuotaBar usedBytes={quota.used_bytes ?? 0} totalBytes={quota.quota_bytes ?? 1} /> : null}
 
         {/* Profile */}
         {me ? (
