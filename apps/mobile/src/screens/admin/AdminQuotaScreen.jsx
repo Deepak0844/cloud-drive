@@ -6,7 +6,7 @@ import { CheckCircle, XCircle } from "lucide-react-native";
 import { useGetQuotaRequestsQuery, useApproveQuotaMutation, useRejectQuotaMutation } from "@api/adminApi";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
+import { NumberUtils } from "@shared-utils/utils";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -34,7 +34,7 @@ function QuotaRequestRow({
         {request.user?.name ?? request.user?.email ?? "Unknown user"}
       </Text>
       <Text size="xs" className="text-secondary mt-0.5">
-        Requested: {formatBytes(request.requested_quota_bytes)}
+        Requested: {NumberUtils.formatBytes(request.requested_quota_bytes)}
       </Text>
       {request.reason ? (
         <Text size="xs" className="text-secondary mt-0.5" numberOfLines={2}>

@@ -11,7 +11,7 @@ import {
 } from "@api/trashApi";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
+import { NumberUtils } from "@shared-utils/utils";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -56,7 +56,7 @@ function TrashItemRow({ item = {}, onRestore = () => {}, onDelete = () => {} }) 
           </Text>
           {item.size > 0 ? (
             <Text size="xs" className="text-secondary">
-              {formatBytes(item.size)}
+              {NumberUtils.formatBytes(item.size)}
             </Text>
           ) : null}
         </View>

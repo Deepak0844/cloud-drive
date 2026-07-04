@@ -7,7 +7,7 @@ import * as Sharing from "expo-sharing";
 import { useGetFilesQuery, useToggleFileFavoriteMutation } from "@api/fileApi";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
+import { NumberUtils } from "@shared-utils/utils";
 
 // Lib
 import backgroundTransfer from "@lib/backgroundTransfer";
@@ -144,7 +144,7 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
 
           <GlassCard className="m-4">
             <MetaRow label="Name" value={data?.name ?? "—"} />
-            <MetaRow label="Size" value={formatBytes(data?.size)} />
+            <MetaRow label="Size" value={NumberUtils.formatBytes(data?.size)} />
             <MetaRow label="Type" value={data?.mimeType ?? "—"} />
             <MetaRow label="Created" value={formatDate(data?.createdAt)} />
             <MetaRow label="Modified" value={formatDate(data?.updatedAt)} />

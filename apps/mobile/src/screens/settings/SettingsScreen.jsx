@@ -12,7 +12,7 @@ import { useGetMeQuery, useLogoutMutation } from "@api/authApi";
 import { useGetQuotaUsageQuery } from "@api/quotaApi";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
+import { NumberUtils } from "@shared-utils/utils";
 
 // Hooks
 import { useBiometric } from "@hooks/useBiometric";
@@ -43,7 +43,7 @@ function QuotaBar({ usedBytes = 0, totalBytes = 1 }) {
           Storage
         </Text>
         <Text size="sm" className="text-secondary">
-          {formatBytes(usedBytes)} / {formatBytes(totalBytes)}
+          {NumberUtils.formatBytes(usedBytes)} / {NumberUtils.formatBytes(totalBytes)}
         </Text>
       </View>
       <View className="h-2 rounded-full bg-neutral-subtle">

@@ -1,10 +1,10 @@
 import React from "react";
 import { View } from "react-native";
 import { Cloud } from "lucide-react-native";
-import Svg, { Defs, LinearGradient, Stop, Text as SvgText } from "react-native-svg";
 
 // Components
 import Text from "@components/ui/text/Text";
+import Wordmark from "@components/ui/wordmark/Wordmark";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -25,28 +25,16 @@ export default function BrandSection({ subtitle = "" }) {
         </View>
       </View>
       <View className="w-full mt-lg">
-        <Svg width="100%" height={40}>
-          <Defs>
-            <LinearGradient id="wordmarkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={colors.primary.DEFAULT} />
-              <Stop offset="50%" stopColor={colors.alt.DEFAULT} />
-              <Stop offset="100%" stopColor={colors.accent.pink} />
-            </LinearGradient>
-          </Defs>
-          <SvgText
-            x="50%"
-            y="30"
-            textAnchor="middle"
-            fontSize={28}
-            fontWeight="900"
-            fontStyle="italic"
-            letterSpacing={-0.5}
-            fontFamily="Outfit"
-            fill="url(#wordmarkGradient)"
-          >
-            CLOUD DRIVE
-          </SvgText>
-        </Svg>
+        <Wordmark
+          gradientId="wordmarkGradient"
+          gradientColors={[colors.primary.DEFAULT, colors.alt.DEFAULT, colors.accent.pink]}
+          height={40}
+          fontSize={28}
+          fontWeight="900"
+          letterSpacing={-0.5}
+          align="center"
+          y={30}
+        />
       </View>
       {subtitle ? (
         <Text size="sm" className="text-white/50 text-center mt-xs">

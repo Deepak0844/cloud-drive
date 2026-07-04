@@ -6,7 +6,7 @@ import { HardDrive, Users, FileText } from "lucide-react-native";
 import { useGetSystemStatsQuery } from "@api/adminApi";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
+import { NumberUtils } from "@shared-utils/utils";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -46,7 +46,7 @@ export default function AdminDashboardScreen() {
             <StatCard
               Icon={HardDrive}
               label="Storage used"
-              value={formatBytes(data?.totalStorageUsed)}
+              value={NumberUtils.formatBytes(data?.totalStorageUsed)}
               iconColor={colors.primary.DEFAULT}
             />
             <StatCard

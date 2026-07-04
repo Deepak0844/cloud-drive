@@ -1,14 +1,15 @@
 import React from "react";
-import { View, ScrollView, FlatList } from "react-native";
+import { View, ScrollView, Pressable } from "react-native";
+import { DrawerActions } from "@react-navigation/native";
 import Svg, { Circle } from "react-native-svg";
-import { Search, Settings } from "lucide-react-native";
+import { Search, Settings, Menu } from "lucide-react-native";
 
 // Rtk
 import { useGetQuotaUsageQuery, useGetQuotaBreakdownQuery } from "@api/quotaApi";
 import { useGetRecentFilesQuery } from "@api/fileApi";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
+import { NumberUtils } from "@shared-utils/utils";
 
 // Constants
 import { AppScreens } from "@constants/appScreens";
@@ -25,6 +26,7 @@ import Skeleton from "@components/ui/skeleton/Skeleton";
 import Text from "@components/ui/text/Text";
 import EmptyState from "@components/ui/empty-state/EmptyState";
 import Button, { ButtonText } from "@components/ui/button/Button";
+import Wordmark from "@components/ui/wordmark/Wordmark";
 
 // Sections
 import FileListItem from "@screens/files/components/FileListItem";
@@ -37,7 +39,7 @@ function QuotaRing({ usedBytes = 0, totalBytes = 1, colors = {} }) {
   const pct = Math.min(usedBytes / totalBytes, 1);
   const dash = pct * QUOTA_CIRC;
   return (
-    <View className="items-center gap-2">
+    <View className="items-center justify-center">
       <Svg width={104} height={104}>
         <Circle cx={52} cy={52} r={QUOTA_R} stroke={colors.neutral.subtle} strokeWidth={QUOTA_STROKE} fill="none" />
         <Circle
@@ -52,9 +54,14 @@ function QuotaRing({ usedBytes = 0, totalBytes = 1, colors = {} }) {
           transform="rotate(-90, 52, 52)"
         />
       </Svg>
-      <Text size="sm" className="text-secondary">
-        {formatBytes(usedBytes)} / {formatBytes(totalBytes)}
-      </Text>
+      <View className="absolute items-center">
+        <Text size="lg" bold>
+          {Math.round(pct * 100)}%
+        </Text>
+        <Text size="2xs" className="text-secondary uppercase tracking-wider">
+          used
+        </Text>
+      </View>
     </View>
   );
 }
@@ -68,7 +75,7 @@ function StorageBar({ label = "", bytes = 0, totalBytes = 1, color = "#7c3aed" }
           {label}
         </Text>
         <Text size="xs" className="text-secondary">
-          {formatBytes(bytes)}
+          {NumberUtils.formatBytes(bytes)}
         </Text>
       </View>
       <View className="h-1.5 rounded-full bg-neutral-subtle">
@@ -78,70 +85,73 @@ function StorageBar({ label = "", bytes = 0, totalBytes = 1, color = "#7c3aed" }
   );
 }
 
-function StorageCard({ quota = null, onRetry = () => {} }) {
+function StorageCard({ quota = null, breakdown = [], categoryColors = {}, onRetry = () => {} }) {
   const { colors } = useTheme();
+
+  if (!quota) {
+    return (
+      <GlassCard>
+        <Text size="sm" className="text-secondary text-center">
+          Could not load quota
+        </Text>
+        <Button variant="outline" size="sm" onPress={onRetry} className="mt-2">
+          <ButtonText>Retry</ButtonText>
+        </Button>
+      </GlassCard>
+    );
+  }
+
   return (
     <GlassCard>
-      <Text bold className="mb-3">
-        Storage
-      </Text>
-      {quota ? (
+      <View className="flex-row items-center gap-5">
         <QuotaRing usedBytes={quota.used_bytes ?? 0} totalBytes={quota.quota_bytes ?? 1} colors={colors} />
-      ) : (
-        <GlassCard>
-          <Text size="sm" className="text-secondary text-center">
-            Could not load quota
-          </Text>
-          <Button variant="outline" size="sm" onPress={onRetry} className="mt-2">
-            <ButtonText>Retry</ButtonText>
-          </Button>
-        </GlassCard>
-      )}
-    </GlassCard>
-  );
-}
-
-function RecentFilesStrip({ items = [], onNavigate = () => {} }) {
-  return (
-    <View className="gap-2">
-      <Text bold size="md">
-        Recent
-      </Text>
-      <FlatList
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        data={items}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View className="w-56 mr-3">
-            <FileListItem item={item} onPress={() => onNavigate(item.id)} onLongPress={() => {}} />
+        <View className="flex-1 gap-3">
+          <View>
+            <Text size="md" bold>
+              Drive Capacity
+            </Text>
+            <Text size="xs" className="text-secondary">
+              {NumberUtils.formatBytes(quota.used_bytes ?? 0)} of {NumberUtils.formatBytes(quota.quota_bytes ?? 1)} used
+            </Text>
           </View>
-        )}
-        ListEmptyComponent={<EmptyState message="No recent files" />}
-      />
-    </View>
-  );
-}
-
-function StorageBreakdownCard({ categories = [], totalBytes = 1, categoryColors = {} }) {
-  const { colors } = useTheme();
-  return (
-    <GlassCard>
-      <Text bold className="mb-3">
-        By type
-      </Text>
-      <View className="gap-3">
-        {categories.map((item) => (
-          <StorageBar
-            key={item.category}
-            label={item.category.charAt(0).toUpperCase() + item.category.slice(1)}
-            bytes={item.total_size_bytes ?? 0}
-            totalBytes={totalBytes}
-            color={categoryColors[item.category] ?? colors.neutral.DEFAULT}
-          />
-        ))}
+          {breakdown.map((item) => (
+            <StorageBar
+              key={item.category}
+              label={item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+              bytes={item.total_size_bytes ?? 0}
+              totalBytes={quota.quota_bytes ?? 1}
+              color={categoryColors[item.category] ?? colors.neutral.DEFAULT}
+            />
+          ))}
+        </View>
       </View>
     </GlassCard>
+  );
+}
+
+function RecentFilesList({ items = [], onNavigate = () => {}, onSeeAll = () => {} }) {
+  return (
+    <View className="gap-2">
+      <View className="flex-row items-center justify-between">
+        <Text bold size="xs" className="uppercase tracking-wider">
+          Recent
+        </Text>
+        <Pressable onPress={onSeeAll}>
+          <Text size="xs" bold className="text-primary">
+            See all →
+          </Text>
+        </Pressable>
+      </View>
+      {items.length > 0 ? (
+        <View className="gap-2">
+          {items.map((item) => (
+            <FileListItem key={item.id} item={item} onPress={() => onNavigate(item.id)} onLongPress={() => {}} />
+          ))}
+        </View>
+      ) : (
+        <EmptyState message="No recent files" />
+      )}
+    </View>
   );
 }
 
@@ -154,8 +164,8 @@ export default function HomeScreen({ navigation = {} }) {
   const isLoading = quotaLoading || recentLoading;
 
   const categoryColors = {
-    images: colors.primary.DEFAULT,
-    video: colors.alt.DEFAULT,
+    images: colors.alt.DEFAULT,
+    video: colors.primary.DEFAULT,
     audio: colors.warning.DEFAULT,
     docs: colors.success.DEFAULT,
     other: colors.neutral.DEFAULT,
@@ -166,6 +176,15 @@ export default function HomeScreen({ navigation = {} }) {
     refetchRecent();
   }
 
+  const headerLeft = (
+    <IconButton
+      icon={<Menu size={20} color={colors.neutral.DEFAULT} />}
+      onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+      variant="ghost"
+      size="sm"
+    />
+  );
+
   const headerRight = (
     <View className="flex-row gap-1">
       <IconButton
@@ -175,32 +194,47 @@ export default function HomeScreen({ navigation = {} }) {
         size="sm"
       />
       <IconButton
-        icon={<Settings size={20} color={colors.neutral.DEFAULT} />}
+        icon={<Settings size={17} color={colors.primary.light} />}
         onPress={() => navigation.navigate(AppScreens.SETTINGS)}
         variant="ghost"
         size="sm"
+        className="bg-primary/[15] border border-primary/30"
       />
     </View>
   );
 
   return (
     <ScreenLayout>
-      <GlassHeader title="Home" right={headerRight} accentColor={colors.primary.DEFAULT} />
+      <GlassHeader
+        titleElement={
+          <View className="flex-1">
+            <Wordmark
+              gradientId="homeWordmarkGradient"
+              gradientColors={[colors.primary.DEFAULT, colors.alt.DEFAULT]}
+              height={22}
+              fontSize={17}
+              y={17}
+            />
+          </View>
+        }
+        left={headerLeft}
+        right={headerRight}
+        accentColor={colors.primary.DEFAULT}
+      />
 
       <Skeleton loading={isLoading}>
         <ScrollView className="flex-1 p-4" contentContainerClassName="gap-4 pb-4">
-          <StorageCard quota={quota} onRetry={handleRetry} />
-          <RecentFilesStrip
+          <StorageCard
+            quota={quota}
+            breakdown={Array.isArray(breakdown) ? breakdown : []}
+            categoryColors={categoryColors}
+            onRetry={handleRetry}
+          />
+          <RecentFilesList
             items={recent?.items ?? []}
             onNavigate={(id) => navigation.navigate(AppScreens.FILE_DETAIL, { fileId: id })}
+            onSeeAll={() => navigation.navigate(AppScreens.RECENT)}
           />
-          {Array.isArray(breakdown) && breakdown.length > 0 && (
-            <StorageBreakdownCard
-              categories={breakdown}
-              totalBytes={quota?.quota_bytes ?? 1}
-              categoryColors={categoryColors}
-            />
-          )}
         </ScrollView>
       </Skeleton>
     </ScreenLayout>

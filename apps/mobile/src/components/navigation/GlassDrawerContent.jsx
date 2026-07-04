@@ -1,14 +1,12 @@
 import React from "react";
 import { View, Pressable } from "react-native";
 import { DrawerContentScrollView } from "@react-navigation/drawer";
-import { House, Folder, Image, Clock, Star, Trash2, ShieldCheck } from "lucide-react-native";
+import { BlurView } from "expo-blur";
+import { useColorScheme } from "nativewind";
 
 // Rtk
 import { useGetQuotaUsageQuery } from "@api/quotaApi";
 import { useGetMeQuery } from "@api/authApi";
-
-// Constants
-import { AppScreens } from "@constants/appScreens";
 
 // Hooks
 import { useIsAdmin } from "@hooks/useIsAdmin";
@@ -17,21 +15,18 @@ import { useIsAdmin } from "@hooks/useIsAdmin";
 import { useTheme } from "@theme/useTheme";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
+import { NumberUtils } from "@shared-utils/utils";
 
 // Components
 import Text from "@components/ui/text/Text";
 
-const NAV_ITEMS = [
-  { screen: AppScreens.HOME, icon: House, label: "Home" },
-  { screen: AppScreens.FILES, icon: Folder, label: "Files" },
-  { screen: AppScreens.PHOTOS, icon: Image, label: "Photos" },
-  { screen: AppScreens.RECENT, icon: Clock, label: "Recent" },
-  { screen: AppScreens.FAVORITES, icon: Star, label: "Favorites" },
-  { screen: AppScreens.TRASH, icon: Trash2, label: "Trash" },
-];
-
-const ADMIN_ITEM = { screen: AppScreens.ADMIN, icon: ShieldCheck, label: "Admin" };
+function getActiveRouteName(state, nested) {
+  const route = state.routes[state.index];
+  if (nested && route.state) {
+    return route.state.routes[route.state.index]?.name;
+  }
+  return route.name;
+}
 
 function DrawerNavItem({ icon: Icon, label, accentColor, isActive, onPress }) {
   const { colors } = useTheme();
@@ -51,28 +46,34 @@ function DrawerNavItem({ icon: Icon, label, accentColor, isActive, onPress }) {
   );
 }
 
-export default function GlassDrawerContent(props) {
+/**
+ * Reusable glass drawer body — item-set agnostic. Rendered for both the tablet
+ * drawer (flat: each item is a direct Drawer.Screen) and the phone drawer
+ * (nested: items are screens inside the "Root" stack wrapped by the drawer).
+ * @param {{screen: string, icon: React.ComponentType, label: string, accentColor: string}[]} items
+ * @param {boolean} [nested=false] - True when items live one level inside a wrapped stack ("Root"),
+ * as on phone, rather than being direct Drawer.Screens, as on tablet.
+ */
+export default function GlassDrawerContent({ items, nested = false, ...props }) {
   const { state, navigation } = props;
-  const { colors } = useTheme();
+  const { colors, glass } = useTheme();
+  const { colorScheme } = useColorScheme();
   const isAdmin = useIsAdmin();
   const { data: quotaData } = useGetQuotaUsageQuery(undefined, { skip: isAdmin });
   const { data: me } = useGetMeQuery();
 
-  const accentMap = {
-    [AppScreens.HOME]: colors.primary.DEFAULT,
-    [AppScreens.FILES]: colors.primary.DEFAULT,
-    [AppScreens.PHOTOS]: colors.alt.DEFAULT,
-    [AppScreens.RECENT]: "#fb923c",
-    [AppScreens.FAVORITES]: colors.warning.DEFAULT,
-    [AppScreens.TRASH]: colors.danger.DEFAULT,
-    [AppScreens.ADMIN]: "#818cf8",
-  };
+  const activeRouteName = getActiveRouteName(state, nested);
 
-  const navItems = isAdmin ? [...NAV_ITEMS, ADMIN_ITEM] : NAV_ITEMS;
-  const activeRouteName = state.routes[state.index]?.name;
+  function handleNavigate(screen) {
+    if (nested) {
+      navigation.navigate("Root", { screen });
+    } else {
+      navigation.navigate(screen);
+    }
+  }
 
-  const used = quotaData?.used ?? 0;
-  const total = quotaData?.total ?? 1;
+  const used = quotaData?.used_bytes ?? 0;
+  const total = quotaData?.quota_bytes ?? 1;
   const pct = Math.min((used / total) * 100, 100);
 
   const initials = me?.name
@@ -84,72 +85,81 @@ export default function GlassDrawerContent(props) {
         .slice(0, 2)
     : "?";
 
+  const drawerBackground = colorScheme === "dark" ? `${colors.surface.background}F2` : `${colors.surface.card}F6`;
+
   return (
-    <DrawerContentScrollView {...props} className="flex-1 bg-background">
-      {/* Logo */}
-      <View className="px-4 py-5 flex-row items-center gap-3">
-        <View className="w-9 h-9 rounded-xl bg-primary/10 items-center justify-center">
-          <Text bold className="text-primary">
-            C
+    <BlurView
+      intensity={glass.modal.blurIntensity}
+      tint={glass.modal.tint}
+      style={{ flex: 1 }}
+      className="border-r border-glass-modal-border"
+    >
+      <DrawerContentScrollView {...props} className="flex-1" style={{ backgroundColor: drawerBackground }}>
+        {/* Logo */}
+        <View className="px-4 py-5 flex-row items-center gap-3">
+          <View className="w-9 h-9 rounded-xl bg-primary/10 items-center justify-center">
+            <Text bold className="text-primary">
+              C
+            </Text>
+          </View>
+          <Text bold size="lg">
+            Cloud Drive
           </Text>
         </View>
-        <Text bold size="lg">
-          Cloud Drive
-        </Text>
-      </View>
 
-      {/* Nav items */}
-      <View className="mt-2">
-        {navItems.map(({ screen, icon, label }) => (
-          <DrawerNavItem
-            key={screen}
-            icon={icon}
-            label={label}
-            accentColor={accentMap[screen]}
-            isActive={activeRouteName === screen}
-            onPress={() => navigation.navigate(screen)}
-          />
-        ))}
-      </View>
+        {/* Nav items */}
+        <View className="mt-2">
+          {items.map(({ screen, icon, label, accentColor }) => (
+            <DrawerNavItem
+              key={screen}
+              icon={icon}
+              label={label}
+              accentColor={accentColor}
+              isActive={activeRouteName === screen}
+              onPress={() => handleNavigate(screen)}
+            />
+          ))}
+        </View>
 
-      {/* Storage widget — non-admin only */}
-      {!isAdmin && (
-        <View className="mx-4 mt-6 p-4 rounded-2xl bg-glass-surface-bg">
-          <View className="flex-row justify-between mb-2">
-            <Text size="xs" className="text-secondary font-semibold uppercase tracking-wider">
-              Storage
-            </Text>
+        {/* Storage widget — non-admin only */}
+        {!isAdmin && (
+          <View className="mx-4 mt-6 p-4 rounded-2xl bg-glass-surface-bg">
+            <View className="flex-row justify-between mb-2">
+              <Text size="xs" className="text-secondary font-semibold uppercase tracking-wider">
+                Storage
+              </Text>
+              <Text size="xs" className="text-secondary">
+                {pct.toFixed(1)}%
+              </Text>
+            </View>
+            <View className="h-1.5 bg-neutral-subtle rounded-full overflow-hidden mb-2">
+              <View className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+            </View>
             <Text size="xs" className="text-secondary">
-              {pct.toFixed(1)}%
+              {NumberUtils.formatBytes(used)} of {NumberUtils.formatBytes(total)}
             </Text>
           </View>
-          <View className="h-1.5 bg-neutral-subtle rounded-full overflow-hidden mb-2">
-            <View className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
-          </View>
-          <Text size="xs" className="text-secondary">
-            {formatBytes(used)} of {formatBytes(total)}
-          </Text>
-        </View>
-      )}
+        )}
 
-      {/* User footer */}
-      {me ? (
-        <View className="flex-row items-center gap-3 px-4 mt-6 pt-4 border-t border-glass-bar-border">
-          <View className="w-9 h-9 rounded-full bg-primary/20 items-center justify-center">
-            <Text size="xs" bold className="text-primary">
-              {initials}
-            </Text>
+        {/* User footer */}
+        {me ? (
+          <View className="flex-row items-center gap-3 px-4 mt-6 pt-4 border-t border-glass-bar-border">
+            <View className="w-9 h-9 rounded-full bg-primary/20 items-center justify-center">
+              <Text size="xs" bold className="text-primary">
+                {initials}
+              </Text>
+            </View>
+            <View className="flex-1">
+              <Text size="sm" bold numberOfLines={1}>
+                {me.name ?? me.email}
+              </Text>
+              <Text size="xs" className="text-secondary" numberOfLines={1}>
+                {me.email}
+              </Text>
+            </View>
           </View>
-          <View className="flex-1">
-            <Text size="sm" bold numberOfLines={1}>
-              {me.name ?? me.email}
-            </Text>
-            <Text size="xs" className="text-secondary" numberOfLines={1}>
-              {me.email}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-    </DrawerContentScrollView>
+        ) : null}
+      </DrawerContentScrollView>
+    </BlurView>
   );
 }

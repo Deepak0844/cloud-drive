@@ -15,11 +15,20 @@ import IconButton from "@components/ui/icon-button/IconButton";
  * Tint and blur intensity are driven by the active theme (dark glass / frosted white).
  *
  * @param {string}        [title='']       - Header title text
+ * @param {ReactElement}  [titleElement]   - Optional custom title element; takes priority over title
  * @param {() => void}    [onBack]         - When provided, renders a ChevronLeft back button
+ * @param {ReactElement}  [left]           - Optional custom left element; takes priority over onBack
  * @param {ReactElement}  [right]          - Optional element rendered on the right side
  * @param {string}        [accentColor]    - Optional hex colour for the bottom border tint
  */
-export default function GlassHeader({ title = "", onBack = null, right = null, accentColor = null }) {
+export default function GlassHeader({
+  title = "",
+  titleElement = null,
+  onBack = null,
+  left = null,
+  right = null,
+  accentColor = null,
+}) {
   const { glass = {}, colors = {} } = useTheme();
   const { blurIntensity, tint } = glass.bar;
 
@@ -31,20 +40,23 @@ export default function GlassHeader({ title = "", onBack = null, right = null, a
       style={accentColor ? { borderBottomColor: accentColor } : undefined}
     >
       <View className="flex-row items-center px-2 py-3 gap-1">
-        {onBack ? (
-          <IconButton
-            icon={<ChevronLeft size={22} color={colors.neutral.DEFAULT} />}
-            onPress={onBack}
-            variant="ghost"
-            size="sm"
-          />
-        ) : (
-          <View className="w-8" />
-        )}
+        {left ??
+          (onBack ? (
+            <IconButton
+              icon={<ChevronLeft size={22} color={colors.neutral.DEFAULT} />}
+              onPress={onBack}
+              variant="ghost"
+              size="sm"
+            />
+          ) : (
+            <View className="w-8" />
+          ))}
 
-        <Text size="xl" bold numberOfLines={1} className="flex-1">
-          {title}
-        </Text>
+        {titleElement ?? (
+          <Text size="xl" bold numberOfLines={1} className="flex-1">
+            {title}
+          </Text>
+        )}
 
         {right ?? <View className="w-8" />}
       </View>

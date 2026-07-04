@@ -6,7 +6,7 @@ import { UserCheck, UserX } from "lucide-react-native";
 import { useGetUsersQuery, useUpdateUserStatusMutation, useUpdateUserQuotaMutation } from "@api/adminApi";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
+import { NumberUtils } from "@shared-utils/utils";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -43,7 +43,7 @@ function UserRow({ user = {}, onToggleStatus = () => {}, onEditQuota = () => {} 
       </View>
       <View className="flex-row items-center justify-between mt-1">
         <Text size="xs" className="text-secondary">
-          {formatBytes(user.quota_used)} / {formatBytes(user.quota_bytes)}
+          {NumberUtils.formatBytes(user.quota_used)} / {NumberUtils.formatBytes(user.quota_bytes)}
         </Text>
         <View className="flex-row gap-2">
           <Button variant="ghost" size="sm" onPress={() => onToggleStatus(user._id ?? user.id)}>
