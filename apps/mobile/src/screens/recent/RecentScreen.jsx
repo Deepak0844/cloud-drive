@@ -1,5 +1,5 @@
 import React from "react";
-import { View, FlatList } from "react-native";
+import { SectionList } from "react-native";
 
 // Rtk
 import { useGetRecentFilesQuery } from "@api/fileApi";
@@ -12,18 +12,46 @@ import ScreenLayout from "@components/ui/screen/ScreenLayout";
 import GlassHeader from "@components/ui/header/GlassHeader";
 import Skeleton from "@components/ui/skeleton/Skeleton";
 import EmptyState from "@components/ui/empty-state/EmptyState";
+import Text from "@components/ui/text/Text";
 import FileListItem from "@screens/files/components/FileListItem";
+
+function SectionHeader({ title }) {
+  return (
+    <Text size="xs" className="text-secondary uppercase tracking-widest px-4 pt-4 pb-1 font-semibold">
+      {title}
+    </Text>
+  );
+}
+
+function groupByTime(items) {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - 864e5;
+  const sections = [
+    { title: "Today", data: [] },
+    { title: "Yesterday", data: [] },
+    { title: "Earlier", data: [] },
+  ];
+  for (const item of items) {
+    const ts = new Date(item.updatedAt ?? item.createdAt ?? 0).getTime();
+    if (ts >= todayStart) sections[0].data.push(item);
+    else if (ts >= yesterdayStart) sections[1].data.push(item);
+    else sections[2].data.push(item);
+  }
+  return sections.filter((s) => s.data.length > 0);
+}
 
 export default function RecentScreen({ navigation = {} }) {
   const { data, isLoading, isFetching, refetch } = useGetRecentFilesQuery();
+  const sections = groupByTime(data?.items ?? []);
 
   return (
     <ScreenLayout>
-      <GlassHeader title="Recent" />
+      <GlassHeader title="Recent" accentColor="#fb923c" />
 
       <Skeleton loading={isLoading}>
-        <FlatList
-          data={data?.items ?? []}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <FileListItem
@@ -32,9 +60,11 @@ export default function RecentScreen({ navigation = {} }) {
               onLongPress={() => {}}
             />
           )}
+          renderSectionHeader={({ section }) => <SectionHeader title={section.title} />}
           refreshing={isFetching && !isLoading}
           onRefresh={refetch}
-          ItemSeparatorComponent={() => <View className="h-px bg-border mx-4" />}
+          contentContainerClassName="pb-4"
+          stickySectionHeadersEnabled={false}
           ListEmptyComponent={isLoading ? null : <EmptyState message="No recent files" />}
         />
       </Skeleton>

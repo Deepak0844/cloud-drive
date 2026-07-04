@@ -1,27 +1,29 @@
 import React from "react";
 import { View, FlatList } from "react-native";
 
+// Rtk
+import { useGetFilesQuery } from "@api/fileApi";
+
 // Constants
 import { AppScreens } from "@constants/appScreens";
 
-// Rtk
-import { useGetFilesQuery } from "@api/fileApi";
+// Theme
+import { useTheme } from "@theme/useTheme";
 
 // Components
 import ScreenLayout from "@components/ui/screen/ScreenLayout";
 import GlassHeader from "@components/ui/header/GlassHeader";
 import Skeleton from "@components/ui/skeleton/Skeleton";
 import EmptyState from "@components/ui/empty-state/EmptyState";
-
-// Sections
 import FileListItem from "@screens/files/components/FileListItem";
 
 export default function FavoritesScreen({ navigation = {} }) {
+  const { colors } = useTheme();
   const { data, isLoading, isFetching, refetch } = useGetFilesQuery({ isFavorite: true });
 
   return (
     <ScreenLayout>
-      <GlassHeader title="Favourites" />
+      <GlassHeader title="Favourites" accentColor={colors.warning.DEFAULT} />
 
       <Skeleton loading={isLoading}>
         <FlatList

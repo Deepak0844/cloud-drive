@@ -6,7 +6,7 @@ import { File } from "lucide-react-native";
 import transfersRepository from "@db/repositories/transfersRepository";
 
 // Utils
-import { formatBytes } from "@shared-utils/utils";
+import { NumberUtils } from "@shared-utils/utils";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -64,7 +64,7 @@ export default function FileListItem({ item = {}, onPress = () => {}, onLongPres
               {item.name}
             </Text>
             <Text size="xs" className="text-secondary">
-              {item.size != null ? formatBytes(item.size) : ""}
+              {item.size != null ? NumberUtils.formatBytes(item.size) : ""}
             </Text>
             <TransferProgressBar fileId={item.id} />
           </View>

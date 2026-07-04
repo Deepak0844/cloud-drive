@@ -3,7 +3,7 @@ import { View, Pressable } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, CheckCircle } from "lucide-react-native";
+import { Mail, CheckCircle, ChevronLeft } from "lucide-react-native";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -17,7 +17,6 @@ import { useFormServerErrors } from "@shared-hooks";
 // Components
 import AuthScreenLayout from "@components/auth/AuthScreenLayout";
 import AuthIcon from "@components/auth/AuthIcon";
-import BrandSection from "@components/auth/BrandSection";
 import AuthCard from "@components/auth/AuthCard";
 import { Input, InputField, InputSlot } from "@components/ui/input/Input";
 import Button, { ButtonSpinner, ButtonText } from "@components/ui/button/Button";
@@ -27,6 +26,32 @@ import Text from "@components/ui/text/Text";
 const schema = z.object({
   email: z.email("Enter a valid email"),
 });
+
+// ---------------------------------------------------------------------------
+// Header
+// ---------------------------------------------------------------------------
+
+/**
+ * Back button + page title, replacing the brand logo on this screen.
+ * @param {() => void} [onBack=()=>{}]
+ */
+function BackRow({ onBack = () => {} }) {
+  const { colors } = useTheme();
+
+  return (
+    <View className="flex-row items-center gap-2.5">
+      <Pressable
+        onPress={onBack}
+        className="w-9 h-9 items-center justify-center rounded-lg bg-white/[6] border border-white/[8]"
+      >
+        <ChevronLeft size={18} color={colors.surface.textSecondary} />
+      </Pressable>
+      <Text size="xl" bold className="text-white">
+        Reset Password
+      </Text>
+    </View>
+  );
+}
 
 /**
  * Confirmation state shown after a reset link is sent.
@@ -67,9 +92,6 @@ function ForgotPasswordForm({
 }) {
   return (
     <>
-      <Text size="2xl" bold className="text-white mb-1">
-        Forgot password?
-      </Text>
       <Text size="sm" className="mb-6 text-white/50">
         Enter your email and we&#39;ll send you a reset link.
       </Text>
@@ -79,13 +101,10 @@ function ForgotPasswordForm({
         name="email"
         render={({ field: { onChange, onBlur, value } }) => (
           <View className="gap-1 mb-6">
-            <Text size="sm" className="text-white/75">
-              Email
+            <Text size="sm" bold className="text-secondary uppercase tracking-widest">
+              Email address
             </Text>
-            <Input isInvalid={!!errors.email}>
-              <InputSlot>
-                <AuthIcon Icon={Mail} size={16} />
-              </InputSlot>
+            <Input isInvalid={!!errors.email} className="rounded-xl">
               <InputField
                 placeholder="email@example.com"
                 keyboardType="email-address"
@@ -95,6 +114,9 @@ function ForgotPasswordForm({
                 onChangeText={onChange}
                 onBlur={onBlur}
               />
+              <InputSlot>
+                <AuthIcon Icon={Mail} size={16} />
+              </InputSlot>
             </Input>
             {errors.email?.message ? (
               <Text size="xs" className="text-danger">
@@ -143,8 +165,8 @@ export default function ForgotPasswordScreen({ navigation }) {
   }
 
   return (
-    <AuthScreenLayout>
-      <BrandSection />
+    <AuthScreenLayout centered={false}>
+      <BackRow onBack={() => navigation.goBack()} />
       <AuthCard>
         {submitted ? (
           <SuccessView onPress={() => navigation.goBack()} successColor={colors.success.DEFAULT} />

@@ -21,7 +21,10 @@
       "@sdk/*": ["src/sdk/*"],
       "@lib/*": ["src/lib/*"],
       "@theme/*": ["src/theme/*"],
-      "@config": ["src/config.js"]
+      "@config": ["src/config.js"],
+      "@shared-constants": ["../../shared/constants/src/index.js"],
+      "@shared-hooks": ["../../shared/hooks/src/index.js"],
+      "@shared-utils/utils": ["../../shared/utils/common/index.js"]
     },
     "jsx": "react-native",
     "allowSyntheticDefaultImports": true,

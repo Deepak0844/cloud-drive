@@ -53,11 +53,33 @@ function calculatePercentage(used, total) {
   return Math.min(100, Math.round((used / total) * 100));
 }
 
+/**
+ * ------------------------------------------------------------------------------
+ * formatBytes - formatBytes
+ * @param {number} bytes
+ * @param {number} decimals : Number of decimal places to keep (default: 2)
+ * @returns {string} Human-readable byte size, e.g. "270.67 MB"
+ */
+function formatBytes(bytes, decimals = 2) {
+  if (bytes === undefined || bytes === null || isNaN(bytes)) return "0 B";
+  if (bytes === 0) return "0 B";
+
+  // Google Drive and modern OSs use decimal (1000) instead of binary (1024)
+  const k = 1000;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
 const NumberUtils = {
   roundToNearestInteger,
   formatRoundedNumber,
   formatFixedDecimals,
   calculatePercentage,
+  formatBytes,
 };
 
 export default NumberUtils;

@@ -93,6 +93,7 @@ const logoutMutation = () => ({
 
 const getMeQuery = () => ({
   query: () => ({ url: AuthUrls.me, method: HttpMethods.get }),
+  transformResponse: (response) => response.data,
 });
 
 const updateProfileMutation = () => ({

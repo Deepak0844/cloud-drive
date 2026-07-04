@@ -3,23 +3,36 @@ import { View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createDrawerNavigator } from "@react-navigation/drawer";
-import { Folder, Image, Clock, Star, MoreHorizontal, ShieldCheck } from "lucide-react-native";
-
-// Rtk
-import { useGetMeQuery } from "@api/authApi";
+import {
+  House,
+  Folder,
+  Image,
+  Clock,
+  Star,
+  Trash2,
+  Settings,
+  LayoutDashboard,
+  Users,
+  Gauge,
+} from "lucide-react-native";
 
 // Constants
 import { AppScreens } from "@constants/appScreens";
-import { Roles } from "@shared-constants";
 
 // Hooks
 import { useResponsive } from "@hooks/useResponsive";
+import { useIsAdmin } from "@hooks/useIsAdmin";
+
+// Theme
+import { useTheme } from "@theme/useTheme";
 
 // Components
 import AuroraBackground from "@components/auth/AuroraBackground";
 import GlassTabBar from "@components/navigation/GlassTabBar";
+import GlassDrawerContent from "@components/navigation/GlassDrawerContent";
 
 // Screens
+import HomeScreen from "@screens/home/HomeScreen";
 import MyFilesScreen from "@screens/files/MyFilesScreen";
 import FolderScreen from "@screens/files/FolderScreen";
 import FileDetailScreen from "@screens/files/FileDetailScreen";
@@ -33,12 +46,40 @@ import AdminDashboardScreen from "@screens/admin/AdminDashboardScreen";
 import AdminUsersScreen from "@screens/admin/AdminUsersScreen";
 import AdminQuotaScreen from "@screens/admin/AdminQuotaScreen";
 
-function useIsAdmin() {
-  const { data: me } = useGetMeQuery();
-  return me?.role === Roles.ADMIN;
+// ─── Drawer/tab nav-item definitions ───────────────────────────────────────────
+
+function useNavItemSets() {
+  const { colors } = useTheme();
+  return {
+    normalTablet: [
+      { screen: AppScreens.HOME, icon: House, label: "Home", accentColor: colors.primary.DEFAULT },
+      { screen: AppScreens.FILES, icon: Folder, label: "Files", accentColor: colors.primary.DEFAULT },
+      { screen: AppScreens.PHOTOS, icon: Image, label: "Photos", accentColor: colors.alt.DEFAULT },
+      { screen: AppScreens.RECENT, icon: Clock, label: "Recent", accentColor: colors.warning.DEFAULT },
+      { screen: AppScreens.FAVORITES, icon: Star, label: "Favorites", accentColor: colors.warning.DEFAULT },
+      { screen: AppScreens.TRASH, icon: Trash2, label: "Trash", accentColor: colors.danger.DEFAULT },
+    ],
+    normalPhoneDrawer: [
+      { screen: AppScreens.RECENT, icon: Clock, label: "Recent", accentColor: colors.warning.DEFAULT },
+      { screen: AppScreens.FAVORITES, icon: Star, label: "Favorites", accentColor: colors.warning.DEFAULT },
+      { screen: AppScreens.TRASH, icon: Trash2, label: "Trash", accentColor: colors.danger.DEFAULT },
+      { screen: AppScreens.SETTINGS, icon: Settings, label: "Settings", accentColor: colors.neutral.DEFAULT },
+    ],
+    admin: [
+      {
+        screen: AppScreens.ADMIN_DASHBOARD,
+        icon: LayoutDashboard,
+        label: "Dashboard",
+        accentColor: colors.primary.DEFAULT,
+      },
+      { screen: AppScreens.ADMIN_USERS, icon: Users, label: "Users", accentColor: colors.primary.DEFAULT },
+      { screen: AppScreens.ADMIN_QUOTA, icon: Gauge, label: "Quota Request", accentColor: colors.primary.DEFAULT },
+      { screen: AppScreens.SETTINGS, icon: Settings, label: "Settings", accentColor: colors.neutral.DEFAULT },
+    ],
+  };
 }
 
-// ─── Stack Navigators ────────────────────────────────────────────────────────
+// ─── Stack Navigators ─────────────────────────────────────────────────────────
 
 const FilesStack = createNativeStackNavigator();
 function FilesStackNavigator() {
@@ -51,33 +92,11 @@ function FilesStackNavigator() {
   );
 }
 
-const MoreStack = createNativeStackNavigator();
-function MoreStackNavigator() {
-  return (
-    <MoreStack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" } }}>
-      <MoreStack.Screen name={AppScreens.SETTINGS} component={SettingsScreen} />
-      <MoreStack.Screen name={AppScreens.TRASH} component={TrashScreen} />
-      <MoreStack.Screen name={AppScreens.SEARCH} component={SearchScreen} />
-    </MoreStack.Navigator>
-  );
-}
-
-const AdminStack = createNativeStackNavigator();
-function AdminStackNavigator() {
-  return (
-    <AdminStack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" } }}>
-      <AdminStack.Screen name={AppScreens.ADMIN_DASHBOARD} component={AdminDashboardScreen} />
-      <AdminStack.Screen name={AppScreens.ADMIN_USERS} component={AdminUsersScreen} />
-      <AdminStack.Screen name={AppScreens.ADMIN_QUOTA} component={AdminQuotaScreen} />
-    </AdminStack.Navigator>
-  );
-}
-
-// ─── Tab Navigator ────────────────────────────────────────────────────────────
+// ─── Normal-user Tab Navigator (phone) ─────────────────────────────────────────
 
 const BottomTab = createBottomTabNavigator();
-function TabNavigator() {
-  const isAdmin = useIsAdmin();
+function NormalTabNavigator() {
+  const { colors } = useTheme();
 
   return (
     <BottomTab.Navigator
@@ -88,59 +107,146 @@ function TabNavigator() {
       }}
     >
       <BottomTab.Screen
+        name={AppScreens.HOME}
+        component={HomeScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <House color={color} size={size} />,
+          tabBarActiveTintColor: colors.primary.DEFAULT,
+        }}
+      />
+      <BottomTab.Screen
         name={AppScreens.FILES}
         component={FilesStackNavigator}
-        options={{ tabBarIcon: ({ color, size }) => <Folder color={color} size={size} /> }}
+        options={{
+          tabBarIcon: ({ color, size }) => <Folder color={color} size={size} />,
+          tabBarActiveTintColor: colors.primary.DEFAULT,
+        }}
       />
       <BottomTab.Screen
         name={AppScreens.PHOTOS}
         component={PhotosScreen}
-        options={{ tabBarIcon: ({ color, size }) => <Image color={color} size={size} /> }}
+        options={{
+          tabBarIcon: ({ color, size }) => <Image color={color} size={size} />,
+          tabBarActiveTintColor: colors.alt.DEFAULT,
+        }}
       />
-      <BottomTab.Screen
-        name={AppScreens.RECENT}
-        component={RecentScreen}
-        options={{ tabBarIcon: ({ color, size }) => <Clock color={color} size={size} /> }}
-      />
-      <BottomTab.Screen
-        name={AppScreens.FAVORITES}
-        component={FavoritesScreen}
-        options={{ tabBarIcon: ({ color, size }) => <Star color={color} size={size} /> }}
-      />
-      <BottomTab.Screen
-        name={AppScreens.MORE}
-        component={MoreStackNavigator}
-        options={{ tabBarIcon: ({ color, size }) => <MoreHorizontal color={color} size={size} /> }}
-      />
-      {isAdmin ? (
-        <BottomTab.Screen
-          name={AppScreens.ADMIN}
-          component={AdminStackNavigator}
-          options={{ tabBarIcon: ({ color, size }) => <ShieldCheck color={color} size={size} /> }}
-        />
-      ) : null}
     </BottomTab.Navigator>
   );
 }
 
-// ─── Root Stack (shared screens reachable from any tab) ───────────────────────
+// ─── Admin Tab Navigator (phone) ───────────────────────────────────────────────
 
-const RootStack = createNativeStackNavigator();
-function PhoneNavigator() {
+function AdminTabNavigator() {
+  const { colors } = useTheme();
+
   return (
-    <RootStack.Navigator
+    <BottomTab.Navigator
+      tabBar={(props) => <GlassTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        sceneStyle: { backgroundColor: "transparent" },
+      }}
+    >
+      <BottomTab.Screen
+        name={AppScreens.ADMIN_DASHBOARD}
+        component={AdminDashboardScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <LayoutDashboard color={color} size={size} />,
+          tabBarActiveTintColor: colors.primary.DEFAULT,
+        }}
+      />
+      <BottomTab.Screen
+        name={AppScreens.ADMIN_USERS}
+        component={AdminUsersScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+          tabBarActiveTintColor: colors.primary.DEFAULT,
+        }}
+      />
+      <BottomTab.Screen
+        name={AppScreens.ADMIN_QUOTA}
+        component={AdminQuotaScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Gauge color={color} size={size} />,
+          tabBarActiveTintColor: colors.primary.DEFAULT,
+        }}
+      />
+      <BottomTab.Screen
+        name={AppScreens.SETTINGS}
+        component={SettingsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
+          tabBarActiveTintColor: colors.neutral.DEFAULT,
+        }}
+      />
+    </BottomTab.Navigator>
+  );
+}
+
+// ─── Normal-user Root Stack + Drawer (phone) ───────────────────────────────────
+
+const NormalRootStack = createNativeStackNavigator();
+function NormalPhoneRootStack() {
+  return (
+    <NormalRootStack.Navigator
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: "transparent" },
         animation: "slide_from_right",
       }}
     >
-      <RootStack.Screen name="Tabs" component={TabNavigator} />
-      {/* Shared screens — reachable from Photos, Recent, Favorites, Home, Search, Trash */}
-      <RootStack.Screen name={AppScreens.FILE_DETAIL} component={FileDetailScreen} />
-      <RootStack.Screen name={AppScreens.FOLDER} component={FolderScreen} />
-    </RootStack.Navigator>
+      <NormalRootStack.Screen name="Tabs" component={NormalTabNavigator} />
+      <NormalRootStack.Screen name={AppScreens.FILE_DETAIL} component={FileDetailScreen} />
+      <NormalRootStack.Screen name={AppScreens.FOLDER} component={FolderScreen} />
+      <NormalRootStack.Screen name={AppScreens.SEARCH} component={SearchScreen} />
+      <NormalRootStack.Screen name={AppScreens.SETTINGS} component={SettingsScreen} />
+      <NormalRootStack.Screen name={AppScreens.RECENT} component={RecentScreen} />
+      <NormalRootStack.Screen name={AppScreens.FAVORITES} component={FavoritesScreen} />
+      <NormalRootStack.Screen name={AppScreens.TRASH} component={TrashScreen} />
+    </NormalRootStack.Navigator>
   );
+}
+
+const PhoneDrawer = createDrawerNavigator();
+function NormalPhoneNavigator() {
+  const { normalPhoneDrawer } = useNavItemSets();
+
+  return (
+    <PhoneDrawer.Navigator
+      drawerContent={(props) => <GlassDrawerContent {...props} items={normalPhoneDrawer} nested />}
+      screenOptions={{
+        headerShown: false,
+        sceneStyle: { backgroundColor: "transparent" },
+        drawerStyle: { backgroundColor: "transparent" },
+      }}
+    >
+      <PhoneDrawer.Screen name="Root" component={NormalPhoneRootStack} />
+    </PhoneDrawer.Navigator>
+  );
+}
+
+// ─── Admin Root Stack (phone, no drawer) ───────────────────────────────────────
+
+const AdminRootStack = createNativeStackNavigator();
+function AdminPhoneNavigator() {
+  return (
+    <AdminRootStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: "transparent" },
+        animation: "slide_from_right",
+      }}
+    >
+      <AdminRootStack.Screen name="Tabs" component={AdminTabNavigator} />
+    </AdminRootStack.Navigator>
+  );
+}
+
+// ─── Phone Root ─────────────────────────────────────────────────────────────────
+
+function PhoneNavigator() {
+  const isAdmin = useIsAdmin();
+  return isAdmin ? <AdminPhoneNavigator /> : <NormalPhoneNavigator />;
 }
 
 // ─── Tablet Drawer Navigator ──────────────────────────────────────────────────
@@ -149,45 +255,34 @@ const Drawer = createDrawerNavigator();
 function TabletNavigator() {
   const isAdmin = useIsAdmin();
 
+  const { normalTablet, admin } = useNavItemSets();
+
   return (
     <Drawer.Navigator
+      drawerContent={(props) => <GlassDrawerContent {...props} items={isAdmin ? admin : normalTablet} />}
       screenOptions={{
         headerShown: false,
-        sceneContainerStyle: { backgroundColor: "transparent" },
+        sceneStyle: { backgroundColor: "transparent" },
+        drawerStyle: { backgroundColor: "transparent" },
       }}
     >
-      <Drawer.Screen
-        name={AppScreens.FILES}
-        component={FilesStackNavigator}
-        options={{ drawerIcon: ({ color, size }) => <Folder color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name={AppScreens.PHOTOS}
-        component={PhotosScreen}
-        options={{ drawerIcon: ({ color, size }) => <Image color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name={AppScreens.RECENT}
-        component={RecentScreen}
-        options={{ drawerIcon: ({ color, size }) => <Clock color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name={AppScreens.FAVORITES}
-        component={FavoritesScreen}
-        options={{ drawerIcon: ({ color, size }) => <Star color={color} size={size} /> }}
-      />
-      <Drawer.Screen
-        name={AppScreens.MORE}
-        component={MoreStackNavigator}
-        options={{ drawerIcon: ({ color, size }) => <MoreHorizontal color={color} size={size} /> }}
-      />
       {isAdmin ? (
-        <Drawer.Screen
-          name={AppScreens.ADMIN}
-          component={AdminStackNavigator}
-          options={{ drawerIcon: ({ color, size }) => <ShieldCheck color={color} size={size} /> }}
-        />
-      ) : null}
+        <>
+          <Drawer.Screen name={AppScreens.ADMIN_DASHBOARD} component={AdminDashboardScreen} />
+          <Drawer.Screen name={AppScreens.ADMIN_USERS} component={AdminUsersScreen} />
+          <Drawer.Screen name={AppScreens.ADMIN_QUOTA} component={AdminQuotaScreen} />
+          <Drawer.Screen name={AppScreens.SETTINGS} component={SettingsScreen} />
+        </>
+      ) : (
+        <>
+          <Drawer.Screen name={AppScreens.HOME} component={HomeScreen} />
+          <Drawer.Screen name={AppScreens.FILES} component={FilesStackNavigator} />
+          <Drawer.Screen name={AppScreens.PHOTOS} component={PhotosScreen} />
+          <Drawer.Screen name={AppScreens.RECENT} component={RecentScreen} />
+          <Drawer.Screen name={AppScreens.FAVORITES} component={FavoritesScreen} />
+          <Drawer.Screen name={AppScreens.TRASH} component={TrashScreen} />
+        </>
+      )}
     </Drawer.Navigator>
   );
 }
