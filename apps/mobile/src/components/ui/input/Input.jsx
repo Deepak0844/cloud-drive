@@ -25,7 +25,7 @@ cssInterop(UIIcon, {
 });
 
 const inputStyle = tva({
-  base: "h-10 w-full flex-row items-center rounded-md border border-border bg-glass-surface-bg overflow-hidden data-[focus=true]:border-primary data-[invalid=true]:border-danger data-[disabled=true]:opacity-50 px-3 gap-2",
+  base: "h-12 w-full flex-row items-center rounded-md border border-border bg-glass-surface-bg overflow-hidden data-[focus=true]:border-primary data-[invalid=true]:border-danger data-[disabled=true]:opacity-50 px-3 gap-2",
 });
 
 const inputIconStyle = tva({

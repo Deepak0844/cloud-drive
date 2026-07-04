@@ -68,7 +68,7 @@ function LoginForm({
             <Text size="xs" bold className="text-secondary uppercase tracking-widest">
               Email address
             </Text>
-            <Input isInvalid={!!errors.email} className="h-12 rounded-xl">
+            <Input isInvalid={!!errors.email} className="rounded-xl">
               <InputField
                 placeholder="email@example.com"
                 keyboardType="email-address"
@@ -99,7 +99,7 @@ function LoginForm({
             <Text size="xs" bold className="text-secondary uppercase tracking-widest">
               Password
             </Text>
-            <Input isInvalid={!!errors.password} className="h-12 rounded-xl">
+            <Input isInvalid={!!errors.password} className="rounded-xl">
               <InputField
                 placeholder="Enter your password"
                 secureTextEntry={!showPassword}
