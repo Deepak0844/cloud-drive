@@ -3,7 +3,7 @@ import { View, Pressable } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react-native";
+import { Mail, Eye, EyeOff } from "lucide-react-native";
 
 // Rtk
 import { useLoginMutation } from "@api/authApi";
@@ -57,7 +57,7 @@ function LoginForm({
         Welcome back
       </Text>
       <Text size="sm" className="mb-6 text-white/50">
-        Sign in to your account
+        Sign in to your account to continue
       </Text>
 
       <Controller
@@ -65,13 +65,10 @@ function LoginForm({
         name="email"
         render={({ field: { onChange, onBlur, value } }) => (
           <View className="gap-1 mb-4">
-            <Text size="sm" className="text-white/75">
-              Email
+            <Text size="xs" bold className="text-secondary uppercase tracking-widest">
+              Email address
             </Text>
-            <Input isInvalid={!!errors.email}>
-              <InputSlot>
-                <AuthIcon Icon={Mail} size={16} />
-              </InputSlot>
+            <Input isInvalid={!!errors.email} className="h-12 rounded-xl">
               <InputField
                 placeholder="email@example.com"
                 keyboardType="email-address"
@@ -81,6 +78,9 @@ function LoginForm({
                 onChangeText={onChange}
                 onBlur={onBlur}
               />
+              <InputSlot>
+                <AuthIcon Icon={Mail} size={16} />
+              </InputSlot>
             </Input>
             {errors.email?.message ? (
               <Text size="xs" className="text-danger">
@@ -96,13 +96,10 @@ function LoginForm({
         name="password"
         render={({ field: { onChange, onBlur, value } }) => (
           <View className="gap-1 mb-1">
-            <Text size="sm" className="text-white/75">
+            <Text size="xs" bold className="text-secondary uppercase tracking-widest">
               Password
             </Text>
-            <Input isInvalid={!!errors.password}>
-              <InputSlot>
-                <AuthIcon Icon={Lock} size={16} />
-              </InputSlot>
+            <Input isInvalid={!!errors.password} className="h-12 rounded-xl">
               <InputField
                 placeholder="Enter your password"
                 secureTextEntry={!showPassword}
@@ -131,7 +128,7 @@ function LoginForm({
       </Pressable>
 
       <Button size="lg" onPress={onSubmit} disabled={isLoading || isSuccess} className="mt-4 mb-4">
-        {isLoading ? <ButtonSpinner /> : <ButtonText>{isSuccess ? "✓ Signed in!" : "Sign in"}</ButtonText>}
+        {isLoading ? <ButtonSpinner /> : <ButtonText>{isSuccess ? "✓ Signed In!" : "Sign In"}</ButtonText>}
       </Button>
 
       <View className="flex-row items-center justify-center">
@@ -140,7 +137,7 @@ function LoginForm({
         </Text>
         <Pressable onPress={onSignUp}>
           <Text size="sm" bold className="text-primary">
-            Sign up
+            Create account
           </Text>
         </Pressable>
       </View>
@@ -168,7 +165,7 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <AuthScreenLayout>
-      <BrandSection subtitle="Your files, everywhere" />
+      <BrandSection subtitle="Your personal cloud storage" />
       <AuthCard>
         <LoginForm
           control={control}
