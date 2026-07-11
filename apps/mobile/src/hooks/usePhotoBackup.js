@@ -1,5 +1,6 @@
+import { useCallback } from "react";
 import { Alert } from "react-native";
-import * as MediaLibrary from "expo-media-library";
+import * as MediaLibrary from "expo-media-library/legacy";
 import { useDispatch, useSelector } from "react-redux";
 
 import { setBackupEnabled, setWifiOnly, setChargingOnly } from "@redux-slices/photoBackupSlice";
@@ -20,10 +21,10 @@ export function usePhotoBackup() {
     dispatch(setBackupEnabled(val));
   }
 
-  async function getPendingCount() {
+  const getPendingCount = useCallback(async () => {
     const rows = await photoBackupsRepository.getPendingAssets();
     return rows.length;
-  }
+  }, []);
 
   return {
     enabled,

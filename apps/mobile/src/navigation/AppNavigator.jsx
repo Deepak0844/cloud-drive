@@ -42,6 +42,7 @@ import FavoritesScreen from "@screens/favorites/FavoritesScreen";
 import TrashScreen from "@screens/trash/TrashScreen";
 import SearchScreen from "@screens/search/SearchScreen";
 import SettingsScreen from "@screens/settings/SettingsScreen";
+import NotificationsScreen from "@screens/notifications/NotificationsScreen";
 import AdminDashboardScreen from "@screens/admin/AdminDashboardScreen";
 import AdminUsersScreen from "@screens/admin/AdminUsersScreen";
 import AdminQuotaScreen from "@screens/admin/AdminQuotaScreen";
@@ -58,8 +59,10 @@ function useNavItemSets() {
       { screen: AppScreens.RECENT, icon: Clock, label: "Recent", accentColor: colors.warning.DEFAULT },
       { screen: AppScreens.FAVORITES, icon: Star, label: "Favorites", accentColor: colors.warning.DEFAULT },
       { screen: AppScreens.TRASH, icon: Trash2, label: "Trash", accentColor: colors.danger.DEFAULT },
+      { screen: AppScreens.SETTINGS, icon: Settings, label: "Settings", accentColor: colors.neutral.DEFAULT },
     ],
     normalPhoneDrawer: [
+      { screen: AppScreens.HOME, icon: House, label: "Home", accentColor: colors.primary.DEFAULT },
       { screen: AppScreens.RECENT, icon: Clock, label: "Recent", accentColor: colors.warning.DEFAULT },
       { screen: AppScreens.FAVORITES, icon: Star, label: "Favorites", accentColor: colors.warning.DEFAULT },
       { screen: AppScreens.TRASH, icon: Trash2, label: "Trash", accentColor: colors.danger.DEFAULT },
@@ -200,6 +203,7 @@ function NormalPhoneRootStack() {
       <NormalRootStack.Screen name={AppScreens.FOLDER} component={FolderScreen} />
       <NormalRootStack.Screen name={AppScreens.SEARCH} component={SearchScreen} />
       <NormalRootStack.Screen name={AppScreens.SETTINGS} component={SettingsScreen} />
+      <NormalRootStack.Screen name={AppScreens.NOTIFICATIONS} component={NotificationsScreen} />
       <NormalRootStack.Screen name={AppScreens.RECENT} component={RecentScreen} />
       <NormalRootStack.Screen name={AppScreens.FAVORITES} component={FavoritesScreen} />
       <NormalRootStack.Screen name={AppScreens.TRASH} component={TrashScreen} />
@@ -238,6 +242,7 @@ function AdminPhoneNavigator() {
       }}
     >
       <AdminRootStack.Screen name="Tabs" component={AdminTabNavigator} />
+      <AdminRootStack.Screen name={AppScreens.NOTIFICATIONS} component={NotificationsScreen} />
     </AdminRootStack.Navigator>
   );
 }
@@ -272,6 +277,7 @@ function TabletNavigator() {
           <Drawer.Screen name={AppScreens.ADMIN_USERS} component={AdminUsersScreen} />
           <Drawer.Screen name={AppScreens.ADMIN_QUOTA} component={AdminQuotaScreen} />
           <Drawer.Screen name={AppScreens.SETTINGS} component={SettingsScreen} />
+          <Drawer.Screen name={AppScreens.NOTIFICATIONS} component={NotificationsScreen} />
         </>
       ) : (
         <>
@@ -281,6 +287,9 @@ function TabletNavigator() {
           <Drawer.Screen name={AppScreens.RECENT} component={RecentScreen} />
           <Drawer.Screen name={AppScreens.FAVORITES} component={FavoritesScreen} />
           <Drawer.Screen name={AppScreens.TRASH} component={TrashScreen} />
+          <Drawer.Screen name={AppScreens.SETTINGS} component={SettingsScreen} />
+          <Drawer.Screen name={AppScreens.SEARCH} component={SearchScreen} />
+          <Drawer.Screen name={AppScreens.NOTIFICATIONS} component={NotificationsScreen} />
         </>
       )}
     </Drawer.Navigator>

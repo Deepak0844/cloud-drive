@@ -1,4 +1,5 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
+import * as MediaLibrary from "expo-media-library/legacy";
 import * as Notifications from "expo-notifications";
 import * as TaskManager from "expo-task-manager";
 import axios from "axios";
@@ -10,8 +11,15 @@ import transfersRepository from "@db/repositories/transfersRepository";
 import photoBackupsRepository from "@db/repositories/photoBackupsRepository";
 import Store from "@store";
 
+// Rtk
+import { api } from "@rtkQuery/api";
+
 // Actions
 import { setLastBackupTimestamp } from "@redux-slices/photoBackupSlice";
+
+// Constants
+import { FileUrls, BulkUrls } from "@constants/serviceUrls";
+import { ApiTagTypes } from "@constants/generalConstants";
 
 // Utils
 import TokenStorage from "@utils/tokenStorage";
@@ -20,6 +28,7 @@ import TokenStorage from "@utils/tokenStorage";
 import Config from "@config";
 
 const UPLOAD_TASK = "background-upload-task";
+export const MAX_ZIP_ITEMS = 20;
 
 // Map of fileId → DownloadResumable for in-progress downloads.
 const _activeDownloads = new Map();
@@ -49,10 +58,38 @@ function _showCompleteNotification(title) {
   });
 }
 
+// ─── Gallery publish ────────────────────────────────────────────────────────────
+
+/**
+ * Publish an already-downloaded image/video into the device's public Gallery.
+ * No-op for non-media mime types — there's no Gallery equivalent for documents.
+ * @param {string} uri local file uri returned by download()
+ * @param {string} mimeType
+ */
+async function saveToGallery(uri, mimeType) {
+  const isMedia = mimeType?.startsWith("image/") || mimeType?.startsWith("video/");
+  if (!isMedia) {
+    return;
+  }
+
+  const { status } = await MediaLibrary.requestPermissionsAsync(true);
+  if (status !== "granted") {
+    throw new Error("MEDIA_LIBRARY_PERMISSION_DENIED");
+  }
+
+  await MediaLibrary.saveToLibraryAsync(uri);
+}
+
 // ─── Download ─────────────────────────────────────────────────────────────────
 
 async function download(fileId, url, fileName) {
-  const dest = `${FileSystem.documentDirectory}downloads/${fileId}/${fileName}`;
+  const destDir = `${FileSystem.documentDirectory}downloads/${fileId}`;
+  const dest = `${destDir}/${fileName}`;
+  const headers = TokenStorage.getAuthHeaders();
+
+  // Runs on every call, including resumes, so the download self-heals if the
+  // directory was ever removed (e.g. OS storage cleanup between app launches).
+  await FileSystem.makeDirectoryAsync(destDir, { intermediates: true }).catch(() => {});
 
   const existing = (await transfersRepository.getByStatus(["paused", "pending"])).find(
     (r) => r.fileId === fileId && r.type === "download"
@@ -64,10 +101,10 @@ async function download(fileId, url, fileName) {
   let resumable;
 
   if (existing?.resumeData) {
-    resumable = await FileSystem.createDownloadResumable(
+    resumable = FileSystem.createDownloadResumable(
       url,
       dest,
-      {},
+      { headers },
       (evt) => _onDownloadProgress(transferId, notifId, resumable, evt),
       JSON.parse(existing.resumeData)
     );
@@ -83,19 +120,32 @@ async function download(fileId, url, fileName) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    resumable = FileSystem.createDownloadResumable(url, dest, {}, (evt) =>
+    resumable = FileSystem.createDownloadResumable(url, dest, { headers }, (evt) =>
       _onDownloadProgress(transferId, notifId, resumable, evt)
     );
   }
 
   _activeDownloads.set(fileId, resumable);
 
-  const result = await resumable.downloadAsync();
-  _activeDownloads.delete(fileId);
-  await transfersRepository.markComplete(transferId);
-  await Notifications.dismissNotificationAsync(notifId);
-  await _showCompleteNotification(`Downloaded ${fileName}`);
-  return result.uri;
+  try {
+    const result = await resumable.downloadAsync();
+    _activeDownloads.delete(fileId);
+    if (!result) {
+      // Paused mid-flight (e.g. app backgrounded via pauseAll()) — leave the
+      // transfer row as-is so it can resume later; this isn't a failure.
+      await Notifications.dismissNotificationAsync(notifId);
+      return null;
+    }
+    await transfersRepository.markComplete(transferId);
+    await Notifications.dismissNotificationAsync(notifId);
+    await _showCompleteNotification(`Downloaded ${fileName}`);
+    return result.uri;
+  } catch (ex) {
+    _activeDownloads.delete(fileId);
+    await transfersRepository.markFailed(transferId, (existing?.retryCount ?? 0) + 1);
+    await Notifications.dismissNotificationAsync(notifId);
+    throw ex;
+  }
 }
 
 async function _onDownloadProgress(transferId, notifId, resumable, { totalBytesWritten, totalBytesExpectedToWrite }) {
@@ -108,8 +158,7 @@ async function _onDownloadProgress(transferId, notifId, resumable, { totalBytesW
 // ─── Upload ───────────────────────────────────────────────────────────────────
 
 async function upload(transferId, localUri, fileName, mimeType) {
-  const rows = await transfersRepository.getByStatus(["pending", "paused", "active"]);
-  const row = rows.find((r) => r.id === transferId);
+  const [row] = await transfersRepository.getById(transferId);
 
   const token = await TokenStorage.getAccessToken();
   const baseUrl = Config.API_SERVICE_URL;
@@ -124,8 +173,8 @@ async function upload(transferId, localUri, fileName, mimeType) {
 
   if (!uploadId) {
     const initRes = await axios.post(
-      `${baseUrl}/files/upload/init`,
-      { fileName, mimeType, totalSize, totalChunks },
+      `${baseUrl}${FileUrls.uploadInit}`,
+      { fileName, mimeType, fileSize: totalSize, totalChunks, folderId: row?.folderId ?? null },
       { headers: { Authorization: `Bearer ${token}`, "X-Platform": "mobile" } }
     );
     uploadId = initRes.data.data.uploadId;
@@ -137,7 +186,7 @@ async function upload(transferId, localUri, fileName, mimeType) {
       updatedAt: new Date().toISOString(),
     });
   } else {
-    const statusRes = await axios.get(`${baseUrl}/files/upload/status?uploadId=${uploadId}`, {
+    const statusRes = await axios.get(`${baseUrl}${FileUrls.uploadStatus}?uploadId=${uploadId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     startChunk = statusRes.data.data.uploadedChunks ?? startChunk;
@@ -162,12 +211,11 @@ async function upload(transferId, localUri, fileName, mimeType) {
     // Server's rawChunkMiddleware requires raw binary — NOT multipart/form-data.
     const binary = Buffer.from(chunkData, "base64");
 
-    await axios.post(`${baseUrl}/files/upload/chunk`, binary, {
+    const chunkUrl = `${baseUrl}${FileUrls.uploadChunk}?uploadId=${encodeURIComponent(uploadId)}&chunkIndex=${i}`;
+    await axios.post(chunkUrl, binary, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/octet-stream",
-        "X-Upload-Id": uploadId,
-        "X-Chunk-Index": i,
       },
     });
 
@@ -177,8 +225,8 @@ async function upload(transferId, localUri, fileName, mimeType) {
   }
 
   const finalizeRes = await axios.post(
-    `${baseUrl}/files/upload/finalize`,
-    { uploadId },
+    `${baseUrl}${FileUrls.uploadFinalize}`,
+    { uploadId, fileName, folderId: row?.folderId ?? null, mimeType, totalSize },
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const cloudFileId = finalizeRes.data?.data?._id ?? finalizeRes.data?.data?.id ?? null;
@@ -191,8 +239,52 @@ async function upload(transferId, localUri, fileName, mimeType) {
     Store.dispatch(setLastBackupTimestamp(Date.now()));
   }
 
-  await Notifications.dismissNotificationAsync(notifId);
-  await _showCompleteNotification(`Uploaded ${fileName}`);
+  // Notification/cache-refresh failures here must not undo the upload success recorded above.
+  try {
+    await Notifications.dismissNotificationAsync(notifId);
+    await _showCompleteNotification(`Uploaded ${fileName}`);
+    Store.dispatch(api.util.invalidateTags([ApiTagTypes.FILES, ApiTagTypes.FOLDERS, ApiTagTypes.QUOTA]));
+  } catch {
+    // best-effort — upload already succeeded and is recorded as complete
+  }
+}
+
+// ─── Bulk zip download ────────────────────────────────────────────────────────
+
+/**
+ * POST the selected items to /files/bulk-download and write the zip response
+ * to the downloads directory. The zip is buffered in memory (axios arraybuffer),
+ * so callers cap the selection size.
+ * @param {{id: string, type: string}[]} items
+ * @returns {Promise<string>} local file URI of the written zip
+ */
+async function downloadZip(items) {
+  if (items.length > MAX_ZIP_ITEMS) throw new Error("TOO_MANY_ITEMS");
+  const token = await TokenStorage.getAccessToken();
+  const notifId = await _showProgressNotification("Preparing zip…", 0);
+
+  try {
+    const res = await axios.post(
+      `${Config.API_SERVICE_URL}${BulkUrls.download}`,
+      { items },
+      { headers: { Authorization: `Bearer ${token}` }, responseType: "arraybuffer" }
+    );
+
+    const dest = `${FileSystem.documentDirectory}downloads/bulk-${Date.now()}.zip`;
+    await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}downloads`, { intermediates: true }).catch(
+      () => {}
+    );
+    await FileSystem.writeAsStringAsync(dest, Buffer.from(res.data).toString("base64"), {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    await Notifications.dismissNotificationAsync(notifId);
+    await _showCompleteNotification("Zip ready");
+    return dest;
+  } catch (ex) {
+    await Notifications.dismissNotificationAsync(notifId);
+    throw ex;
+  }
 }
 
 // ─── pauseAll ─────────────────────────────────────────────────────────────────
@@ -213,6 +305,6 @@ async function pauseAll() {
   }
 }
 
-const backgroundTransfer = { download, upload, pauseAll };
+const backgroundTransfer = { download, upload, downloadZip, saveToGallery, pauseAll };
 
 export default backgroundTransfer;

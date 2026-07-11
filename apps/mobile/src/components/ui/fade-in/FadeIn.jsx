@@ -16,8 +16,7 @@ export default function FadeIn({ children = null, duration = 0, delay = 0, style
   useEffect(() => {
     opacity.value = 0;
     opacity.value = withDelay(delay, withTiming(1, { duration: resolvedDuration }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resolvedDuration, delay]);
+  }, [resolvedDuration, delay, opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 

@@ -15,6 +15,7 @@ import ScreenLayout from "@components/ui/screen/ScreenLayout";
 import GlassHeader from "@components/ui/header/GlassHeader";
 import Skeleton from "@components/ui/skeleton/Skeleton";
 import EmptyState from "@components/ui/empty-state/EmptyState";
+import DrawerMenuButton from "@components/ui/glass/DrawerMenuButton";
 import FileListItem from "@screens/files/components/FileListItem";
 
 export default function FavoritesScreen({ navigation = {} }) {
@@ -23,7 +24,11 @@ export default function FavoritesScreen({ navigation = {} }) {
 
   return (
     <ScreenLayout>
-      <GlassHeader title="Favourites" accentColor={colors.warning.DEFAULT} />
+      <GlassHeader
+        title="Favourites"
+        left={<DrawerMenuButton navigation={navigation} />}
+        accentColor={colors.warning.DEFAULT}
+      />
 
       <Skeleton loading={isLoading}>
         <FlatList
@@ -32,7 +37,7 @@ export default function FavoritesScreen({ navigation = {} }) {
           renderItem={({ item }) => (
             <FileListItem
               item={item}
-              onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { fileId: item.id })}
+              onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
               onLongPress={() => {}}
             />
           )}

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View, Modal, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Lock } from "lucide-react-native";
@@ -21,8 +21,10 @@ export default function BiometricLockScreen({ onUnlock = () => {} }) {
   const unlockedRef = useRef(false);
   const [authError, setAuthError] = useState("");
   const opacity = useRef(new Animated.Value(0)).current;
+  const onUnlockRef = useRef(onUnlock);
+  onUnlockRef.current = onUnlock;
 
-  async function tryUnlock() {
+  const tryUnlock = useCallback(async () => {
     if (unlockedRef.current) return;
     if (isAuthenticating.current) return;
     isAuthenticating.current = true;
@@ -31,20 +33,19 @@ export default function BiometricLockScreen({ onUnlock = () => {} }) {
       const result = await authenticate();
       if (result?.success) {
         unlockedRef.current = true;
-        onUnlock();
+        onUnlockRef.current();
       } else {
         setAuthError(result?.warning ?? "Authentication failed. Please try again.");
       }
     } finally {
       isAuthenticating.current = false;
     }
-  }
+  }, [authenticate]);
 
   useEffect(() => {
     Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     tryUnlock();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [opacity, tryUnlock]);
 
   return (
     <Modal visible={true} animationType="none" statusBarTranslucent={true} onRequestClose={tryUnlock}>

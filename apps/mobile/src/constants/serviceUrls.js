@@ -14,6 +14,7 @@ export const AuthUrls = {
   me: `${AuthBase}/me`,
   refresh: `${AuthBase}/refresh`,
   forgotPassword: `${AuthBase}/forgot-password`,
+  changePassword: `${AuthBase}/password`,
 };
 
 export const FileUrls = {
@@ -57,6 +58,7 @@ export const BulkUrls = {
   delete: `${FilesBase}/bulk-delete`,
   move: `${FilesBase}/bulk-move`,
   copy: `${FilesBase}/bulk-copy`,
+  download: `${FilesBase}/bulk-download`,
 };
 
 export const NotificationUrls = {

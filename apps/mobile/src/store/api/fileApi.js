@@ -12,6 +12,9 @@ import { ApiTagTypes } from "@constants/generalConstants";
 // Transformer
 import FileTransformer from "./fileTransformer";
 
+// Rtk utils
+import ApiUtils from "@rtkQuery/apiUtils";
+
 // Db
 import itemsRepository from "@db/repositories/itemsRepository";
 
@@ -54,6 +57,9 @@ async function _onFulfilled({ queryFulfilled, dispatch }) {
 const getFilesQuery = () => ({
   query: (params) => ({ url: FileUrls.list, params }),
   transformResponse: FileTransformer.transformFileList,
+  serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
+  merge: ApiUtils.mergePaginatedArrays(),
+  forceRefetch: ({ currentArg, previousArg }) => currentArg?.pg !== previousArg?.pg,
   providesTags: [ApiTagTypes.FILES],
   onQueryStarted: (_, api) => _onFulfilled(api),
 });
@@ -61,6 +67,9 @@ const getFilesQuery = () => ({
 const getRecentFilesQuery = () => ({
   query: (params) => ({ url: FileUrls.recent, params }),
   transformResponse: FileTransformer.transformFileList,
+  serializeQueryArgs: ApiUtils.serializePaginatedQueryArgs,
+  merge: ApiUtils.mergePaginatedArrays(),
+  forceRefetch: ({ currentArg, previousArg }) => currentArg?.pg !== previousArg?.pg,
   providesTags: [ApiTagTypes.FILES],
   onQueryStarted: (_, api) => _onFulfilled(api),
 });
