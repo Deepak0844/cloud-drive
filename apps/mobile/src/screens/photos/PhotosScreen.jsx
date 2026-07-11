@@ -1,14 +1,18 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { SectionList, View } from "react-native";
 
 // Rtk
 import { useGetFilesQuery } from "@api/fileApi";
+import { useGetQuotaBreakdownQuery } from "@api/quotaApi";
 
 // Constants
 import { AppScreens } from "@constants/appScreens";
 
 // Hooks
 import { useResponsive } from "@hooks/useResponsive";
+
+// Utils
+import { NumberUtils } from "@shared-utils/utils";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -19,6 +23,7 @@ import GlassHeader from "@components/ui/header/GlassHeader";
 import Skeleton from "@components/ui/skeleton/Skeleton";
 import EmptyState from "@components/ui/empty-state/EmptyState";
 import Text from "@components/ui/text/Text";
+import DrawerMenuButton from "@components/ui/glass/DrawerMenuButton";
 import FileGrid from "./components/FileGrid";
 
 function SectionHeader({ title }) {
@@ -26,6 +31,19 @@ function SectionHeader({ title }) {
     <Text size="xs" className="text-secondary uppercase tracking-widest px-4 pt-4 pb-1 font-semibold">
       {title}
     </Text>
+  );
+}
+
+function StatChip({ value, label, valueClassName }) {
+  return (
+    <View className="flex-1 items-center py-2.5 rounded-xl bg-glass-surface-bg border border-glass-surface-border">
+      <Text size="lg" bold className={valueClassName}>
+        {value}
+      </Text>
+      <Text size="2xs" className="text-secondary mt-0.5">
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -57,12 +75,77 @@ function groupByMonth(items, columns) {
 export default function PhotosScreen({ navigation = {} }) {
   const { columns } = useResponsive();
   const { colors } = useTheme();
-  const { data, isLoading, isFetching, refetch } = useGetFilesQuery({ category: "image", recursive: true });
-  const sections = groupByMonth(data?.items ?? [], columns);
+  const [imagePage, setImagePage] = useState(1);
+  const [videoPage, setVideoPage] = useState(1);
+
+  const {
+    data: imageData,
+    isLoading: imagesLoading,
+    isFetching: imagesFetching,
+    refetch: refetchImages,
+  } = useGetFilesQuery({ category: "image", recursive: true, pg: imagePage });
+  const {
+    data: videoData,
+    isLoading: videosLoading,
+    isFetching: videosFetching,
+    refetch: refetchVideos,
+  } = useGetFilesQuery({ category: "video", recursive: true, pg: videoPage });
+  const { data: breakdown } = useGetQuotaBreakdownQuery();
+
+  const isLoading = imagesLoading || videosLoading;
+  const isFetching = imagesFetching || videosFetching;
+
+  const merged = useMemo(() => {
+    const items = [...(imageData?.items ?? []), ...(videoData?.items ?? [])];
+    return items.sort((a, b) => new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0));
+  }, [imageData, videoData]);
+
+  const sections = groupByMonth(merged, columns);
+
+  const photoCount = imageData?.pagination?.total ?? imageData?.items?.length ?? 0;
+  const videoCount = videoData?.pagination?.total ?? videoData?.items?.length ?? 0;
+  const breakdownRows = Array.isArray(breakdown) ? breakdown : [];
+  const usedBytes = breakdownRows
+    .filter((row) => ["images", "image", "video", "videos"].includes(row.category))
+    .reduce((sum, row) => sum + (row.total_size_bytes ?? 0), 0);
+
+  function handleRefresh() {
+    if (imagePage === 1) {
+      refetchImages();
+    } else {
+      setImagePage(1);
+    }
+    if (videoPage === 1) {
+      refetchVideos();
+    } else {
+      setVideoPage(1);
+    }
+  }
+
+  function handleEndReached() {
+    if (isFetching) return;
+    // Advance whichever feeds still have pages; a drained query no-ops.
+    if (imageData?.pagination?.hasNext) {
+      setImagePage((prev) => prev + 1);
+    }
+    if (videoData?.pagination?.hasNext) {
+      setVideoPage((prev) => prev + 1);
+    }
+  }
 
   return (
     <ScreenLayout>
-      <GlassHeader title="Photos" accentColor={colors.alt.DEFAULT} />
+      <GlassHeader
+        title="Photos"
+        left={<DrawerMenuButton navigation={navigation} />}
+        accentColor={colors.alt.DEFAULT}
+      />
+
+      <View className="flex-row gap-2.5 px-4 py-3">
+        <StatChip value={String(photoCount)} label="Photos" />
+        <StatChip value={String(videoCount)} label="Videos" />
+        <StatChip value={NumberUtils.formatBytes(usedBytes)} label="Used" valueClassName="text-alt" />
+      </View>
 
       <Skeleton loading={isLoading}>
         <SectionList
@@ -74,14 +157,16 @@ export default function PhotosScreen({ navigation = {} }) {
                 <FileGrid
                   key={file.id}
                   file={file}
-                  onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { fileId: file.id })}
+                  onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file })}
                 />
               ))}
             </View>
           )}
           renderSectionHeader={({ section }) => <SectionHeader title={section.title} />}
           refreshing={isFetching && !isLoading}
-          onRefresh={refetch}
+          onRefresh={handleRefresh}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
           stickySectionHeadersEnabled={false}
           ListEmptyComponent={isLoading ? null : <EmptyState message="No photos yet" />}
         />

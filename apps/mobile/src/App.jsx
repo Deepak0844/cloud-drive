@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { StyleSheet, useColorScheme, AppState } from "react-native";
+import { useColorScheme, AppState } from "react-native";
 import { useColorScheme as useNWColorScheme } from "nativewind";
-import { Provider, useSelector } from "react-redux";
+import { Provider, useSelector, useDispatch } from "react-redux";
 import * as SplashScreen from "expo-splash-screen";
 import * as SecureStore from "expo-secure-store";
 import { NavigationContainer } from "@react-navigation/native";
@@ -36,6 +36,7 @@ import syncService from "@services/sync/syncService";
 import photoBackupService from "@services/backup/photoBackupService";
 
 // Store actions
+import { setAuthenticated } from "@redux-slices/authSlice";
 import { useGetMeQuery } from "@api/authApi";
 import { useRegisterPushTokenMutation } from "@api/notificationApi";
 
@@ -45,9 +46,8 @@ SplashScreen.setOptions({ duration: 500, fade: true });
 const SECURE_KEY_COLOR_MODE = "colorMode";
 const isDev = __DEV__;
 
-const styles = StyleSheet.create({ flex: { flex: 1 } });
-
 function AppContent() {
+  const dispatch = useDispatch();
   const colorMode = useSelector((state) => state.theme.colorMode);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const backupEnabled = useSelector((state) => state.photoBackup.enabled);
@@ -66,8 +66,15 @@ function AppContent() {
   useEffect(() => {
     setColorScheme(colorMode);
     SecureStore.setItemAsync(SECURE_KEY_COLOR_MODE, colorMode);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [colorMode]);
+  }, [colorMode, setColorScheme]);
+
+  // Cold start with a stored token preloads auth state without dispatching
+  // setAuthenticated — re-dispatch once so the socket middleware connects.
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(setAuthenticated(true));
+    }
+  }, [dispatch, isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -78,8 +85,7 @@ function AppContent() {
         setBiometricLocked(true);
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isEnabled]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -90,8 +96,7 @@ function AppContent() {
           .catch(() => {});
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, [isAuthenticated, registerPushToken]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -120,13 +125,12 @@ function AppContent() {
       appState.current = next;
     });
     return () => sub.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isEnabled]);
 
   return (
-    <GluestackUIProvider mode={resolved}>
-      <ThemeProvider>
-        <GestureHandlerRootView style={styles.flex}>
+    <ThemeProvider>
+      <GluestackUIProvider mode={resolved}>
+        <GestureHandlerRootView className="flex-1">
           {isDev && <DrizzleStudioPlugin />}
           <DatabaseGate>
             <AppStatusBar variant="gradient-light" />
@@ -139,8 +143,8 @@ function AppContent() {
             </NavigationContainer>
           </DatabaseGate>
         </GestureHandlerRootView>
-      </ThemeProvider>
-    </GluestackUIProvider>
+      </GluestackUIProvider>
+    </ThemeProvider>
   );
 }
 

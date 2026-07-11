@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, TextInput } from "react-native";
+import { View, TextInput, Alert } from "react-native";
 import { Download, Share2, Wifi, WifiOff, Star, Pencil, FolderInput, Copy, Trash2 } from "lucide-react-native";
 import * as Sharing from "expo-sharing";
 
@@ -11,14 +11,13 @@ import { useOfflineFiles } from "@hooks/useOfflineFiles";
 
 // Lib
 import backgroundTransfer from "@lib/backgroundTransfer";
-
-// Theme
-import { useTheme } from "@theme/useTheme";
+import haptics from "@lib/haptics";
 
 // Components
 import { Dialog } from "@components/ui/alert-dialog/AlertDialog";
 import Text from "@components/ui/text/Text";
-import Button, { ButtonSpinner, ButtonText } from "@components/ui/button/Button";
+import MenuSheetRow from "@components/ui/menu-sheet-row/MenuSheetRow";
+import Divider from "@components/ui/divider/Divider";
 
 function ConfirmDialog({ visible = false, title = "", message = "", onConfirm = () => {}, onCancel = () => {} }) {
   return (
@@ -27,7 +26,7 @@ function ConfirmDialog({ visible = false, title = "", message = "", onConfirm = 
       onClose={onCancel}
       size="md"
       title={title}
-      contentClassName="bg-surface-card rounded-2xl p-2"
+      contentClassName="bg-surface rounded-2xl p-2"
       footerClassName="gap-3 mt-2"
       onCancel={onCancel}
       onConfirm={onConfirm}
@@ -42,7 +41,6 @@ function ConfirmDialog({ visible = false, title = "", message = "", onConfirm = 
 }
 
 function PromptDialog({ visible = false, title = "", initialValue = "", onConfirm = () => {}, onCancel = () => {} }) {
-  const { colors } = useTheme();
   const [value, setValue] = useState(initialValue);
 
   function handleConfirm() {
@@ -58,7 +56,7 @@ function PromptDialog({ visible = false, title = "", initialValue = "", onConfir
       onClose={onCancel}
       size="md"
       title={title}
-      contentClassName="bg-surface-card rounded-2xl p-2"
+      contentClassName="bg-surface rounded-2xl p-2"
       footerClassName="gap-3 mt-2"
       onCancel={onCancel}
       onConfirm={handleConfirm}
@@ -68,22 +66,24 @@ function PromptDialog({ visible = false, title = "", initialValue = "", onConfir
         value={value}
         onChangeText={setValue}
         selectTextOnFocus
-        style={{
-          borderWidth: 1,
-          borderColor: colors.surface.border,
-          borderRadius: 8,
-          paddingHorizontal: 12,
-          paddingVertical: 10,
-          color: colors.neutral.DEFAULT,
-          fontSize: 14,
-        }}
+        className="border border-border rounded-md px-md py-[10px] text-sm text-neutral"
       />
     </Dialog>
   );
 }
 
-export default function FileActionSheet({ file = null, onClose = () => {} }) {
-  const { colors } = useTheme();
+/**
+ * Single-file action list. Move/Copy delegate to the caller (`onRequestMove`/
+ * `onRequestCopy`) instead of managing their own nested picker sheet — the
+ * picker is owned by `FilesBrowserContent` so only one bottom sheet is ever
+ * open at a time.
+ */
+export default function FileActionSheet({
+  file = null,
+  onClose = () => {},
+  onRequestMove = () => {},
+  onRequestCopy = () => {},
+}) {
   const [deleteFile, { isLoading: isDeleting }] = useDeleteFileMutation();
   const [renameFile, { isLoading: isRenaming }] = useRenameFileMutation();
   const [toggleFileFavorite, { isLoading: isTogglingFav }] = useToggleFileFavoriteMutation();
@@ -100,7 +100,20 @@ export default function FileActionSheet({ file = null, onClose = () => {} }) {
   async function handleDownload() {
     setIsDownloading(true);
     try {
-      await backgroundTransfer.download(file.id, file.downloadUrl, file.name);
+      const uri = await backgroundTransfer.download(file.id, file.downloadUrl, file.name);
+      const isMedia = file.mimeType?.startsWith("image/") || file.mimeType?.startsWith("video/");
+      if (isMedia) {
+        await backgroundTransfer.saveToGallery(uri, file.mimeType);
+      }
+    } catch (ex) {
+      if (ex.message === "MEDIA_LIBRARY_PERMISSION_DENIED") {
+        Alert.alert(
+          "Permission required",
+          "Go to Settings → Privacy → Photos and grant access to save downloads to your Gallery."
+        );
+      } else {
+        throw ex;
+      }
     } finally {
       setIsDownloading(false);
       onClose();
@@ -119,6 +132,7 @@ export default function FileActionSheet({ file = null, onClose = () => {} }) {
   }
 
   async function handleToggleFavourite() {
+    haptics.success();
     await toggleFileFavorite({ id: file.id }).unwrap();
     onClose();
   }
@@ -139,6 +153,7 @@ export default function FileActionSheet({ file = null, onClose = () => {} }) {
 
   async function handleDeleteConfirm() {
     setShowDeleteConfirm(false);
+    haptics.warning();
     await deleteFile({ id: file.id });
     onClose();
   }
@@ -152,48 +167,48 @@ export default function FileActionSheet({ file = null, onClose = () => {} }) {
   const isFavourite = file.isFavorite ?? false;
   const isOffline = file.isOffline ?? false;
 
-  const actions = [
-    {
-      icon: Download,
-      label: "Download",
-      onPress: handleDownload,
-      loading: isDownloading,
-    },
-    {
-      icon: Share2,
-      label: "Share",
-      onPress: handleShare,
-      loading: isSharing,
-    },
+  const quickActions = [
+    { icon: Download, label: "Download", onPress: handleDownload, loading: isDownloading, tint: "alt" },
+    { icon: Share2, label: "Share", onPress: handleShare, loading: isSharing, tint: "alt" },
     {
       icon: isOffline ? WifiOff : Wifi,
       label: isOffline ? "Remove offline" : "Mark offline",
       onPress: handleOfflineToggle,
       loading: isTogglingOffline,
+      tint: isOffline ? "primary" : "neutral",
     },
     {
       icon: Star,
       label: isFavourite ? "Unfavourite" : "Favourite",
       onPress: handleToggleFavourite,
       loading: isTogglingFav,
-      iconColor: isFavourite ? colors.warning.DEFAULT : undefined,
-    },
-    {
-      icon: Pencil,
-      label: "Rename",
-      onPress: () => setShowRenamePrompt(true),
-      loading: isRenaming,
-    },
-    { icon: FolderInput, label: "Move", onPress: () => {}, stub: true },
-    { icon: Copy, label: "Copy", onPress: () => {}, stub: true },
-    {
-      icon: Trash2,
-      label: "Delete",
-      onPress: () => setShowDeleteConfirm(true),
-      loading: isDeleting,
-      danger: true,
+      tint: isFavourite ? "warning" : "neutral",
     },
   ];
+
+  const editActions = [
+    { icon: Pencil, label: "Rename", onPress: () => setShowRenamePrompt(true), loading: isRenaming, tint: "neutral" },
+    { icon: FolderInput, label: "Move", onPress: () => onRequestMove(file), tint: "neutral" },
+    { icon: Copy, label: "Copy", onPress: () => onRequestCopy(file), tint: "neutral" },
+  ];
+
+  const dangerActions = [
+    { icon: Trash2, label: "Delete", onPress: () => setShowDeleteConfirm(true), loading: isDeleting, danger: true },
+  ];
+
+  function renderRow({ icon, label, onPress, loading = false, danger = false, tint = "neutral" }) {
+    return (
+      <MenuSheetRow
+        key={label}
+        icon={icon}
+        label={label}
+        onPress={onPress}
+        loading={loading}
+        danger={danger}
+        tint={danger ? "danger" : tint}
+      />
+    );
+  }
 
   return (
     <>
@@ -201,15 +216,11 @@ export default function FileActionSheet({ file = null, onClose = () => {} }) {
         <Text size="sm" bold className="text-secondary mb-2 px-1">
           {file.name}
         </Text>
-        {actions.map(({ icon: Icon, label, onPress, loading = false, danger = false, stub = false, iconColor }) => (
-          <Button key={label} variant={danger ? "destructive" : "ghost"} onPress={onPress} disabled={stub || loading}>
-            {loading ? <ButtonSpinner /> : <Icon size={18} color={iconColor} />}
-            <ButtonText>
-              {label}
-              {stub ? " (soon)" : ""}
-            </ButtonText>
-          </Button>
-        ))}
+        <View className="gap-1">{quickActions.map(renderRow)}</View>
+        <Divider spacingSize="sm" />
+        <View className="gap-1">{editActions.map(renderRow)}</View>
+        <Divider spacingSize="sm" />
+        <View className="gap-1">{dangerActions.map(renderRow)}</View>
       </View>
 
       <ConfirmDialog
