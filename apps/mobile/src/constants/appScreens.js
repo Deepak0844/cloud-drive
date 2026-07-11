@@ -19,6 +19,7 @@ export const AppScreens = {
   FILE_DETAIL: "FileDetail",
   SEARCH: "Search",
   SETTINGS: "Settings",
+  NOTIFICATIONS: "Notifications",
   ADMIN_DASHBOARD: "AdminDashboard",
   ADMIN_USERS: "AdminUsers",
   ADMIN_QUOTA: "AdminQuota",

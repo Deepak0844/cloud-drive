@@ -13,6 +13,7 @@ import GlassHeader from "@components/ui/header/GlassHeader";
 import Skeleton from "@components/ui/skeleton/Skeleton";
 import EmptyState from "@components/ui/empty-state/EmptyState";
 import Text from "@components/ui/text/Text";
+import DrawerMenuButton from "@components/ui/glass/DrawerMenuButton";
 import FileListItem from "@screens/files/components/FileListItem";
 
 function SectionHeader({ title }) {
@@ -47,7 +48,7 @@ export default function RecentScreen({ navigation = {} }) {
 
   return (
     <ScreenLayout>
-      <GlassHeader title="Recent" accentColor="#fb923c" />
+      <GlassHeader title="Recent" left={<DrawerMenuButton navigation={navigation} />} accentColor="#fb923c" />
 
       <Skeleton loading={isLoading}>
         <SectionList
@@ -56,7 +57,7 @@ export default function RecentScreen({ navigation = {} }) {
           renderItem={({ item }) => (
             <FileListItem
               item={item}
-              onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { fileId: item.id })}
+              onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
               onLongPress={() => {}}
             />
           )}

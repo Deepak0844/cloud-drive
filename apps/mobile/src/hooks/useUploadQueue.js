@@ -24,8 +24,8 @@ export function useUploadQueue() {
   }, [refreshStatus]);
 
   const enqueue = useCallback(
-    async (localUri, fileName, mimeType) => {
-      await uploadQueue.enqueue(localUri, fileName, mimeType);
+    async (localUri, fileName, mimeType, folderId = null) => {
+      await uploadQueue.enqueue(localUri, fileName, mimeType, folderId);
       refreshStatus();
     },
     [refreshStatus]

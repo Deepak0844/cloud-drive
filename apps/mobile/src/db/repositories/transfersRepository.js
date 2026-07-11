@@ -15,6 +15,10 @@ function getByStatus(statuses) {
   return db.select().from(transfers).where(inArray(transfers.status, statuses));
 }
 
+function getById(id) {
+  return db.select().from(transfers).where(eq(transfers.id, id));
+}
+
 function updateProgress(id, progress, resumeData = null) {
   return db
     .update(transfers)
@@ -47,6 +51,7 @@ function clearCompleted() {
 const transfersRepository = {
   upsertTransfer,
   getByStatus,
+  getById,
   updateProgress,
   updateUploadChunks,
   markComplete,

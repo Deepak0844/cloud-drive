@@ -19,6 +19,7 @@ export const transfers = sqliteTable("transfers", {
   url: text("url"),
   dest: text("dest"),
   mimeType: text("mime_type"),
+  folderId: text("folder_id"),
   progress: real("progress"),
   resumeData: text("resume_data"),
   uploadId: text("upload_id"),

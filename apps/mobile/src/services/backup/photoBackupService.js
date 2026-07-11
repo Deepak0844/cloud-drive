@@ -1,5 +1,6 @@
-import * as MediaLibrary from "expo-media-library";
+import * as MediaLibrary from "expo-media-library/legacy";
 import NetInfo from "@react-native-community/netinfo";
+import Battery, { BatteryState } from "expo-battery";
 
 // Store
 import Store from "@store";
@@ -11,14 +12,6 @@ import transfersRepository from "@db/repositories/transfersRepository";
 // Lib
 import uploadQueue from "@lib/uploadQueue";
 
-let Battery = null;
-try {
-  // eslint-disable-next-line no-undef
-  Battery = require("expo-battery");
-} catch {
-  /* native module absent in current build */
-}
-
 let subscription = null;
 
 async function canUpload() {
@@ -28,7 +21,8 @@ async function canUpload() {
     if (net.type !== "wifi") return false;
   }
   if (chargingOnly && Battery) {
-    const charging = await Battery.isChargingAsync();
+    const state = await Battery.getBatteryStateAsync();
+    const charging = state === BatteryState.CHARGING;
     if (!charging) return false;
   }
   return true;

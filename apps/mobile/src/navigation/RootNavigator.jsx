@@ -16,8 +16,7 @@ export default function RootNavigator() {
       duration: 400,
       useNativeDriver: true,
     }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [opacity]);
 
   return (
     <Animated.View className="flex-1" style={{ opacity }}>

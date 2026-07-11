@@ -23,7 +23,7 @@ async function drainQueue() {
   }
 }
 
-async function enqueue(localUri, fileName, mimeType) {
+async function enqueue(localUri, fileName, mimeType, folderId = null) {
   const transferId = uuid.v4();
   await transfersRepository.upsertTransfer({
     id: transferId,
@@ -33,6 +33,7 @@ async function enqueue(localUri, fileName, mimeType) {
     name: fileName,
     dest: localUri,
     mimeType,
+    folderId,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });

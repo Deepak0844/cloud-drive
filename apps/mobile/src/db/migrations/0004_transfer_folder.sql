@@ -1,0 +1,1 @@
+ALTER TABLE `transfers` ADD `folder_id` text;
