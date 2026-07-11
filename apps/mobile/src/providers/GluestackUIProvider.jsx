@@ -8,11 +8,10 @@ export default function GluestackUIProvider({ mode = "system", children, ...prop
 
   useEffect(() => {
     setColorScheme(mode);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode, setColorScheme]);
 
   return (
-    <View style={{ flex: 1 }} {...props}>
+    <View className="flex-1" {...props}>
       <OverlayProvider>{children}</OverlayProvider>
     </View>
   );

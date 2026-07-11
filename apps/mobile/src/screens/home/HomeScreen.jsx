@@ -1,12 +1,12 @@
 import React from "react";
-import { View, ScrollView, Pressable } from "react-native";
-import { DrawerActions } from "@react-navigation/native";
+import { View, ScrollView, Pressable, RefreshControl } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import { Search, Settings, Menu } from "lucide-react-native";
+import { Search, Bell } from "lucide-react-native";
 
 // Rtk
 import { useGetQuotaUsageQuery, useGetQuotaBreakdownQuery } from "@api/quotaApi";
 import { useGetRecentFilesQuery } from "@api/fileApi";
+import { useGetNotificationsQuery } from "@api/notificationApi";
 
 // Utils
 import { NumberUtils } from "@shared-utils/utils";
@@ -22,6 +22,7 @@ import ScreenLayout from "@components/ui/screen/ScreenLayout";
 import GlassHeader from "@components/ui/header/GlassHeader";
 import IconButton from "@components/ui/icon-button/IconButton";
 import GlassCard from "@components/ui/glass/GlassCard";
+import DrawerMenuButton from "@components/ui/glass/DrawerMenuButton";
 import Skeleton from "@components/ui/skeleton/Skeleton";
 import Text from "@components/ui/text/Text";
 import EmptyState from "@components/ui/empty-state/EmptyState";
@@ -66,7 +67,7 @@ function QuotaRing({ usedBytes = 0, totalBytes = 1, colors = {} }) {
   );
 }
 
-function StorageBar({ label = "", bytes = 0, totalBytes = 1, color = "#7c3aed" }) {
+function StorageBar({ label = "", bytes = 0, totalBytes = 1, colorClassName }) {
   const pct = totalBytes > 0 ? Math.min(bytes / totalBytes, 1) : 0;
   return (
     <View className="gap-1">
@@ -79,13 +80,13 @@ function StorageBar({ label = "", bytes = 0, totalBytes = 1, color = "#7c3aed" }
         </Text>
       </View>
       <View className="h-1.5 rounded-full bg-neutral-subtle">
-        <View className="h-1.5 rounded-full" style={{ width: `${Math.round(pct * 100)}%`, backgroundColor: color }} />
+        <View className={`h-1.5 rounded-full ${colorClassName}`} style={{ width: `${Math.round(pct * 100)}%` }} />
       </View>
     </View>
   );
 }
 
-function StorageCard({ quota = null, breakdown = [], categoryColors = {}, onRetry = () => {} }) {
+function StorageCard({ quota = null, breakdown = [], categoryColorClassNames = {}, onRetry = () => {} }) {
   const { colors } = useTheme();
 
   if (!quota) {
@@ -120,7 +121,7 @@ function StorageCard({ quota = null, breakdown = [], categoryColors = {}, onRetr
               label={item.category.charAt(0).toUpperCase() + item.category.slice(1)}
               bytes={item.total_size_bytes ?? 0}
               totalBytes={quota.quota_bytes ?? 1}
-              color={categoryColors[item.category] ?? colors.neutral.DEFAULT}
+              colorClassName={categoryColorClassNames[item.category] ?? "bg-neutral"}
             />
           ))}
         </View>
@@ -145,7 +146,7 @@ function RecentFilesList({ items = [], onNavigate = () => {}, onSeeAll = () => {
       {items.length > 0 ? (
         <View className="gap-2">
           {items.map((item) => (
-            <FileListItem key={item.id} item={item} onPress={() => onNavigate(item.id)} onLongPress={() => {}} />
+            <FileListItem key={item.id} item={item} onPress={() => onNavigate(item)} onLongPress={() => {}} />
           ))}
         </View>
       ) : (
@@ -157,18 +158,31 @@ function RecentFilesList({ items = [], onNavigate = () => {}, onSeeAll = () => {
 
 export default function HomeScreen({ navigation = {} }) {
   const { colors } = useTheme();
-  const { data: quota, isLoading: quotaLoading, refetch: refetchQuota } = useGetQuotaUsageQuery();
+  const {
+    data: quota,
+    isLoading: quotaLoading,
+    isFetching: quotaFetching,
+    refetch: refetchQuota,
+  } = useGetQuotaUsageQuery();
   const { data: breakdown } = useGetQuotaBreakdownQuery();
-  const { data: recent, isLoading: recentLoading, refetch: refetchRecent } = useGetRecentFilesQuery({ limit: 6 });
+  const {
+    data: recent,
+    isLoading: recentLoading,
+    isFetching: recentFetching,
+    refetch: refetchRecent,
+  } = useGetRecentFilesQuery({ limit: 6 });
+  const { data: notifications } = useGetNotificationsQuery();
 
   const isLoading = quotaLoading || recentLoading;
+  const isRefreshing = quotaFetching || recentFetching;
+  const unreadCount = (Array.isArray(notifications) ? notifications : []).filter((n) => n.is_read === false).length;
 
-  const categoryColors = {
-    images: colors.alt.DEFAULT,
-    video: colors.primary.DEFAULT,
-    audio: colors.warning.DEFAULT,
-    docs: colors.success.DEFAULT,
-    other: colors.neutral.DEFAULT,
+  const categoryColorClassNames = {
+    images: "bg-alt",
+    video: "bg-primary",
+    audio: "bg-warning",
+    docs: "bg-success",
+    other: "bg-neutral",
   };
 
   function handleRetry() {
@@ -176,14 +190,7 @@ export default function HomeScreen({ navigation = {} }) {
     refetchRecent();
   }
 
-  const headerLeft = (
-    <IconButton
-      icon={<Menu size={20} color={colors.neutral.DEFAULT} />}
-      onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-      variant="ghost"
-      size="sm"
-    />
-  );
+  const headerLeft = <DrawerMenuButton navigation={navigation} />;
 
   const headerRight = (
     <View className="flex-row gap-1">
@@ -193,13 +200,21 @@ export default function HomeScreen({ navigation = {} }) {
         variant="ghost"
         size="sm"
       />
-      <IconButton
-        icon={<Settings size={17} color={colors.primary.light} />}
-        onPress={() => navigation.navigate(AppScreens.SETTINGS)}
-        variant="ghost"
-        size="sm"
-        className="bg-primary/[15] border border-primary/30"
-      />
+      <View>
+        <IconButton
+          icon={<Bell size={19} color={colors.neutral.DEFAULT} />}
+          onPress={() => navigation.navigate(AppScreens.NOTIFICATIONS)}
+          variant="ghost"
+          size="sm"
+        />
+        {unreadCount > 0 ? (
+          <View className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-0.5 rounded-full bg-danger items-center justify-center">
+            <Text size="2xs" bold className="text-danger-foreground">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 
@@ -223,16 +238,20 @@ export default function HomeScreen({ navigation = {} }) {
       />
 
       <Skeleton loading={isLoading}>
-        <ScrollView className="flex-1 p-4" contentContainerClassName="gap-4 pb-4">
+        <ScrollView
+          className="flex-1 p-4"
+          contentContainerClassName="gap-4 pb-4"
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRetry} />}
+        >
           <StorageCard
             quota={quota}
             breakdown={Array.isArray(breakdown) ? breakdown : []}
-            categoryColors={categoryColors}
+            categoryColorClassNames={categoryColorClassNames}
             onRetry={handleRetry}
           />
           <RecentFilesList
             items={recent?.items ?? []}
-            onNavigate={(id) => navigation.navigate(AppScreens.FILE_DETAIL, { fileId: id })}
+            onNavigate={(item) => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
             onSeeAll={() => navigation.navigate(AppScreens.RECENT)}
           />
         </ScrollView>

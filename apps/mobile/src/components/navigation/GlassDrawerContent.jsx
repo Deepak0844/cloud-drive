@@ -4,6 +4,9 @@ import { DrawerContentScrollView } from "@react-navigation/drawer";
 import { BlurView } from "expo-blur";
 import { useColorScheme } from "nativewind";
 
+// Constants
+import { AppScreens } from "@constants/appScreens";
+
 // Rtk
 import { useGetQuotaUsageQuery } from "@api/quotaApi";
 import { useGetMeQuery } from "@api/authApi";
@@ -22,10 +25,14 @@ import Text from "@components/ui/text/Text";
 
 function getActiveRouteName(state, nested) {
   const route = state.routes[state.index];
-  if (nested && route.state) {
-    return route.state.routes[route.state.index]?.name;
+  if (!nested || !route.state) {
+    return route.name;
   }
-  return route.name;
+  const innerRoute = route.state.routes[route.state.index];
+  if (innerRoute?.state) {
+    return innerRoute.state.routes[innerRoute.state.index]?.name;
+  }
+  return innerRoute?.name;
 }
 
 function DrawerNavItem({ icon: Icon, label, accentColor, isActive, onPress }) {
@@ -66,7 +73,11 @@ export default function GlassDrawerContent({ items, nested = false, ...props }) 
 
   function handleNavigate(screen) {
     if (nested) {
-      navigation.navigate("Root", { screen });
+      if (screen === AppScreens.HOME) {
+        navigation.navigate("Root", { screen: "Tabs", params: { screen: AppScreens.HOME } });
+      } else {
+        navigation.navigate("Root", { screen });
+      }
     } else {
       navigation.navigate(screen);
     }

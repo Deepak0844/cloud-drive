@@ -21,7 +21,7 @@ function formatTime(seconds = 0) {
   return `${minutes}:${paddedSeconds}`;
 }
 
-export default function VideoPlayer({ uri = "", fallbackUri = "" }) {
+export default function VideoPlayer({ uri = "", fallbackUri = "", extension = "" }) {
   const { colors } = useTheme();
   const headers = TokenStorage.getAuthHeaders();
 
@@ -40,6 +40,10 @@ export default function VideoPlayer({ uri = "", fallbackUri = "" }) {
   const [isBuffering, setIsBuffering] = useState(true);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
+  const fallbackUriRef = useRef(fallbackUri);
+  fallbackUriRef.current = fallbackUri;
+  const headersRef = useRef(headers);
+  headersRef.current = headers;
 
   useEffect(() => {
     const playingSub = player.addListener("playingChange", ({ isPlaying: playing }) => {
@@ -52,12 +56,12 @@ export default function VideoPlayer({ uri = "", fallbackUri = "" }) {
     const statusSub = player.addListener("statusChange", ({ status }) => {
       setIsBuffering(status === "loading");
       if (status === "readyToPlay" && player.duration > 0) setDuration(player.duration);
-      if (status === "error" && fallbackUri && !fallbackTriggered.current) {
+      if (status === "error" && fallbackUriRef.current && !fallbackTriggered.current) {
         fallbackTriggered.current = true;
         setIsBuffering(true);
         setPosition(0);
         setDuration(0);
-        player.replaceAsync({ uri: fallbackUri, headers }).catch(() => {});
+        player.replaceAsync({ uri: fallbackUriRef.current, headers: headersRef.current }).catch(() => {});
       }
     });
     return () => {
@@ -66,8 +70,7 @@ export default function VideoPlayer({ uri = "", fallbackUri = "" }) {
       statusSub.remove();
       player.release();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [player]);
 
   function togglePlay() {
     if (isPlaying) {
@@ -80,6 +83,15 @@ export default function VideoPlayer({ uri = "", fallbackUri = "" }) {
   return (
     <View className="bg-black" style={{ width, height: HEIGHT + 40 }}>
       <VideoView player={player} style={{ width, height: HEIGHT }} contentFit="contain" nativeControls={false} />
+
+      {duration > 0 && (
+        <View className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/55">
+          <Text size="xs" className="text-neutral-foreground">
+            {formatTime(duration)}
+            {extension ? ` · ${extension.toUpperCase()}` : ""}
+          </Text>
+        </View>
+      )}
 
       {isBuffering && (
         <View className="absolute inset-x-0 top-0 items-center justify-center bg-black/40" style={{ height: HEIGHT }}>

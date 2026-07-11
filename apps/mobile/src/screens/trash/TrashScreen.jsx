@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { SectionList, View } from "react-native";
-import { Folder, File, RotateCcw, Trash2 } from "lucide-react-native";
+import { Folder, File, RotateCcw, Trash2, TriangleAlert } from "lucide-react-native";
 
 // Rtk
 import {
@@ -26,6 +26,7 @@ import Text from "@components/ui/text/Text";
 import IconButton from "@components/ui/icon-button/IconButton";
 import Button, { ButtonText, ButtonSpinner } from "@components/ui/button/Button";
 import { Dialog } from "@components/ui/alert-dialog/AlertDialog";
+import DrawerMenuButton from "@components/ui/glass/DrawerMenuButton";
 
 function SectionHeader({ title }) {
   return (
@@ -35,9 +36,19 @@ function SectionHeader({ title }) {
   );
 }
 
+function formatDeletedDate(ts) {
+  if (!ts) return null;
+  return new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).format(new Date(ts));
+}
+
 function TrashItemRow({ item = {}, onRestore = () => {}, onDelete = () => {} }) {
   const { colors } = useTheme();
   const isFolder = item.type === "folder";
+  const deletedAt = formatDeletedDate(item.deleted_at ?? item.deletedAt);
+  const meta = [item.size > 0 ? NumberUtils.formatBytes(item.size) : null, deletedAt ? `Deleted ${deletedAt}` : null]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <GlassCard className="mx-4 my-1">
       <View className="flex-row items-center gap-3">
@@ -54,9 +65,9 @@ function TrashItemRow({ item = {}, onRestore = () => {}, onDelete = () => {} }) 
           <Text size="sm" bold numberOfLines={1}>
             {item.name}
           </Text>
-          {item.size > 0 ? (
+          {meta.length > 0 ? (
             <Text size="xs" className="text-secondary">
-              {NumberUtils.formatBytes(item.size)}
+              {meta}
             </Text>
           ) : null}
         </View>
@@ -79,13 +90,14 @@ function TrashItemRow({ item = {}, onRestore = () => {}, onDelete = () => {} }) 
   );
 }
 
-export default function TrashScreen() {
+export default function TrashScreen({ navigation = {} }) {
   const { colors } = useTheme();
   const { data, isLoading, isFetching, refetch } = useGetTrashQuery();
   const [restoreItems] = useRestoreItemsMutation();
   const [permanentlyDelete] = usePermanentlyDeleteItemsMutation();
   const [emptyTrash, { isLoading: isEmptying }] = useEmptyTrashMutation();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   const folders = data?.folders ?? [];
   const files = data?.files ?? [];
@@ -103,16 +115,52 @@ export default function TrashScreen() {
     }
   }
 
-  const emptyAllButton = (
-    <Button variant="destructive" size="sm" onPress={() => setConfirmOpen(true)} disabled={isEmptying}>
-      {isEmptying ? <ButtonSpinner /> : null}
-      <ButtonText>Empty All</ButtonText>
-    </Button>
-  );
+  async function handleConfirmDeleteItem() {
+    const target = itemToDelete;
+    setItemToDelete(null);
+    if (target) {
+      await permanentlyDelete({ items: [{ id: target.id, type: target.type }] });
+    }
+  }
+
+  const totalItems = folders.length + files.length;
+
+  const emptyAllButton =
+    totalItems > 0 ? (
+      <Button variant="destructive" size="sm" onPress={() => setConfirmOpen(true)} disabled={isEmptying}>
+        {isEmptying ? <ButtonSpinner /> : null}
+        <ButtonText>Empty Trash</ButtonText>
+      </Button>
+    ) : null;
 
   return (
     <ScreenLayout>
-      <GlassHeader title="Trash" right={emptyAllButton} accentColor={colors.danger.DEFAULT} />
+      <GlassHeader
+        titleElement={
+          <View className="flex-1">
+            <Text size="xl" bold className="text-danger-light">
+              Trash
+            </Text>
+            {totalItems > 0 ? (
+              <Text size="xs" className="text-secondary">
+                {totalItems} item{totalItems === 1 ? "" : "s"}
+              </Text>
+            ) : null}
+          </View>
+        }
+        left={<DrawerMenuButton navigation={navigation} />}
+        right={emptyAllButton}
+        accentColor={colors.danger.DEFAULT}
+      />
+
+      {totalItems > 0 ? (
+        <View className="flex-row items-center gap-2.5 mx-4 mt-3 px-3.5 py-2.5 rounded-xl border bg-warning/10 border-warning/20">
+          <TriangleAlert size={16} color={colors.warning.DEFAULT} />
+          <Text size="xs" className="flex-1 text-warning-light">
+            Items are permanently deleted after 30 days
+          </Text>
+        </View>
+      ) : null}
 
       <Skeleton loading={isLoading}>
         <SectionList
@@ -122,7 +170,7 @@ export default function TrashScreen() {
             <TrashItemRow
               item={item}
               onRestore={() => restoreItems({ items: [{ id: item.id, type: item.type }] })}
-              onDelete={() => permanentlyDelete({ items: [{ id: item.id, type: item.type }] })}
+              onDelete={() => setItemToDelete(item)}
             />
           )}
           renderSectionHeader={({ section }) => <SectionHeader title={section.title} />}
@@ -147,6 +195,20 @@ export default function TrashScreen() {
       >
         <Text size="sm" className="text-secondary">
           All items will be permanently deleted. This cannot be undone.
+        </Text>
+      </Dialog>
+
+      <Dialog
+        isOpen={!!itemToDelete}
+        onClose={() => setItemToDelete(null)}
+        title="Delete permanently"
+        onCancel={() => setItemToDelete(null)}
+        onConfirm={handleConfirmDeleteItem}
+        confirmLabel="Delete"
+        confirmVariant="destructive"
+      >
+        <Text size="sm" className="text-secondary">
+          {`Permanently delete "${itemToDelete?.name ?? ""}"? This cannot be undone.`}
         </Text>
       </Dialog>
     </ScreenLayout>

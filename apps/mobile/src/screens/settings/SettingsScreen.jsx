@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { View, Pressable, Switch, ScrollView } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Pressable, Switch, ScrollView, RefreshControl } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
-import { Sun, Moon, Monitor, Trash2, LogOut } from "lucide-react-native";
+import { Sun, Moon, Monitor, Trash2, LogOut, Lock, ChevronRight, Pencil } from "lucide-react-native";
 
 // Actions
 import { setColorMode } from "@redux-slices/themeSlice";
@@ -33,8 +33,12 @@ import GlassHeader from "@components/ui/header/GlassHeader";
 import GlassCard from "@components/ui/glass/GlassCard";
 import Text from "@components/ui/text/Text";
 import Button, { ButtonText } from "@components/ui/button/Button";
+import DrawerMenuButton from "@components/ui/glass/DrawerMenuButton";
+import ChangePasswordDialog from "./components/ChangePasswordDialog";
+import QuotaRequestDialog from "./components/QuotaRequestDialog";
+import EditProfileDialog from "./components/EditProfileDialog";
 
-function QuotaBar({ usedBytes = 0, totalBytes = 1 }) {
+function QuotaBar({ usedBytes = 0, totalBytes = 1, onRequestMore = () => {} }) {
   const pct = totalBytes > 0 ? Math.min(usedBytes / totalBytes, 1) : 0;
   return (
     <GlassCard>
@@ -42,12 +46,25 @@ function QuotaBar({ usedBytes = 0, totalBytes = 1 }) {
         <Text size="sm" bold>
           Storage
         </Text>
-        <Text size="sm" className="text-secondary">
-          {NumberUtils.formatBytes(usedBytes)} / {NumberUtils.formatBytes(totalBytes)}
+        <Text size="sm" bold className="text-primary-light">
+          {(pct * 100).toFixed(1)}%
         </Text>
       </View>
-      <View className="h-2 rounded-full bg-neutral-subtle">
+      <View className="h-2 rounded-full bg-neutral-subtle mb-2">
         <View className="h-2 rounded-full bg-primary" style={{ width: `${Math.round(pct * 100)}%` }} />
+      </View>
+      <View className="flex-row justify-between items-center">
+        <Text size="xs" className="text-secondary">
+          {NumberUtils.formatBytes(usedBytes)} used / {NumberUtils.formatBytes(totalBytes)} total
+        </Text>
+        <Pressable
+          onPress={onRequestMore}
+          className="h-7 px-2.5 rounded-lg border items-center justify-center bg-primary-subtle border-primary"
+        >
+          <Text size="2xs" bold className="text-primary-light">
+            Request more ↗
+          </Text>
+        </Pressable>
       </View>
     </GlassCard>
   );
@@ -59,15 +76,15 @@ const COLOR_MODES = [
   { label: "System", value: "system", Icon: Monitor },
 ];
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation = {} }) {
   const dispatch = useDispatch();
   const { colors } = useTheme();
   const colorMode = useSelector((s) => s.theme.colorMode);
 
   // Auth
-  const { data: me } = useGetMeQuery();
+  const { data: me, isFetching: fetchingMe, refetch: refetchMe } = useGetMeQuery();
   const [logout, { isLoading: loggingOut }] = useLogoutMutation();
-  const { data: quota } = useGetQuotaUsageQuery();
+  const { data: quota, isFetching: fetchingQuota, refetch: refetchQuota } = useGetQuotaUsageQuery();
 
   // Biometric
   const { isAvailable, isEnabled, authenticate, setEnabled } = useBiometric();
@@ -82,6 +99,11 @@ export default function SettingsScreen() {
   const [offlineCount, setOfflineCount] = useState(0);
   const [clearingOffline, setClearingOffline] = useState(false);
 
+  // Dialogs
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showQuotaRequest, setShowQuotaRequest] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+
   // Auto-backup
   const {
     enabled: backupEnabled,
@@ -95,12 +117,12 @@ export default function SettingsScreen() {
   } = usePhotoBackup();
   const [pendingBackupCount, setPendingBackupCount] = useState(0);
 
-  async function loadStorageStats() {
+  const loadStorageStats = useCallback(async () => {
     const files = await getMarkedFiles();
     setOfflineCount(files.length);
     setDbSizeBytes(itemsRepository.getDbSizeBytes());
     setPendingBackupCount(await getPendingCount());
-  }
+  }, [getMarkedFiles, getPendingCount]);
 
   useEffect(() => {
     loadStorageStats();
@@ -109,8 +131,7 @@ export default function SettingsScreen() {
       setBiometricEnabled(enabled);
       setBiometricLoading(false);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAvailable, isEnabled, loadStorageStats]);
 
   async function handleBiometricToggle(value) {
     setBiometricError("");
@@ -155,23 +176,56 @@ export default function SettingsScreen() {
 
   const biometricRowDisabled = biometricLoading || !biometricAvailable;
   const lastBackupLabel = lastBackupTimestamp ? new Date(lastBackupTimestamp).toLocaleString() : "Never";
+  const isRefreshing = fetchingMe || fetchingQuota;
 
   return (
     <ScreenLayout>
-      <GlassHeader title="Settings" />
+      <GlassHeader title="Settings" left={<DrawerMenuButton navigation={navigation} />} />
 
-      <ScrollView className="flex-1 p-4" contentContainerClassName="gap-4 pb-8">
-        {quota ? <QuotaBar usedBytes={quota.used_bytes ?? 0} totalBytes={quota.quota_bytes ?? 1} /> : null}
+      <ScrollView
+        className="flex-1 p-4"
+        contentContainerClassName="gap-4 pb-8"
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={() => {
+              refetchMe();
+              refetchQuota();
+              loadStorageStats();
+            }}
+          />
+        }
+      >
+        {quota ? (
+          <QuotaBar
+            usedBytes={quota.used_bytes ?? 0}
+            totalBytes={quota.quota_bytes ?? 1}
+            onRequestMore={() => setShowQuotaRequest(true)}
+          />
+        ) : null}
 
         {/* Profile */}
         {me ? (
           <GlassCard>
-            <Text bold className="mb-1">
-              {me.name ?? me.email}
-            </Text>
-            <Text size="sm" className="text-secondary">
-              {me.email}
-            </Text>
+            <View className="flex-row items-center">
+              <View className="flex-1">
+                <Text bold className="mb-1">
+                  {me.name ?? me.email}
+                </Text>
+                <Text size="sm" className="text-secondary">
+                  {me.email}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setShowEditProfile(true)}
+                className="flex-row items-center gap-1.5 h-8 px-3 rounded-lg border bg-primary-subtle border-primary"
+              >
+                <Pencil size={12} color={colors.primary.light} />
+                <Text size="xs" bold className="text-primary-light">
+                  Edit
+                </Text>
+              </Pressable>
+            </View>
           </GlassCard>
         ) : null}
 
@@ -188,14 +242,10 @@ export default function SettingsScreen() {
                 <Pressable
                   key={value}
                   onPress={() => dispatch(setColorMode(value))}
-                  style={{
-                    borderColor: active ? colors.primary.DEFAULT : colors.surface.border,
-                    backgroundColor: active ? colors.primary.subtle : colors.surface.card,
-                  }}
-                  className="flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-full border"
+                  className={`flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-full border ${active ? "border-primary bg-primary-subtle" : "border-border bg-surface"}`}
                 >
                   <Icon size={13} color={iconColor} strokeWidth={active ? 2.5 : 1.8} />
-                  <Text size="sm" style={{ color: iconColor, fontWeight: active ? "600" : "400" }}>
+                  <Text size="sm" className={active ? "text-primary font-semibold" : "text-neutral font-normal"}>
                     {label}
                   </Text>
                 </Pressable>
@@ -205,11 +255,24 @@ export default function SettingsScreen() {
         </GlassCard>
 
         {/* Security */}
-        <GlassCard style={{ opacity: biometricRowDisabled ? 0.4 : 1 }}>
+        <GlassCard>
           <Text bold className="mb-3">
             Security
           </Text>
-          <View className="flex-row items-center justify-between">
+          <Pressable
+            onPress={() => setShowChangePassword(true)}
+            className="flex-row items-center gap-2 mb-3"
+            android_ripple={{ color: colors.ripple.glass }}
+          >
+            <Lock size={15} color={colors.primary.light} />
+            <Text size="sm" className="flex-1">
+              Change Password
+            </Text>
+            <ChevronRight size={16} color={colors.neutral.light} />
+          </Pressable>
+          <View
+            className={`flex-row items-center justify-between ${biometricRowDisabled ? "opacity-40" : "opacity-100"}`}
+          >
             <Text size="sm">Biometric Lock</Text>
             <Switch
               value={biometricEnabled}
@@ -308,11 +371,10 @@ export default function SettingsScreen() {
           <Pressable
             onPress={handleClearOffline}
             disabled={clearingOffline || offlineCount === 0}
-            style={{ opacity: clearingOffline || offlineCount === 0 ? 0.4 : 1 }}
-            className="flex-row items-center gap-2"
+            className={`flex-row items-center gap-2 ${clearingOffline || offlineCount === 0 ? "opacity-40" : "opacity-100"}`}
           >
             <Trash2 size={14} color={colors.danger.DEFAULT} />
-            <Text size="sm" style={{ color: colors.danger.DEFAULT }}>
+            <Text size="sm" className="text-danger">
               {clearingOffline ? "Clearing…" : "Clear cache"}
             </Text>
           </Pressable>
@@ -324,6 +386,18 @@ export default function SettingsScreen() {
           <ButtonText>{loggingOut ? "Logging out…" : "Log Out"}</ButtonText>
         </Button>
       </ScrollView>
+
+      <ChangePasswordDialog visible={showChangePassword} onClose={() => setShowChangePassword(false)} />
+      <EditProfileDialog
+        visible={showEditProfile}
+        currentName={me?.name ?? ""}
+        onClose={() => setShowEditProfile(false)}
+      />
+      <QuotaRequestDialog
+        visible={showQuotaRequest}
+        currentQuotaBytes={quota?.quota_bytes ?? 0}
+        onClose={() => setShowQuotaRequest(false)}
+      />
     </ScreenLayout>
   );
 }
