@@ -6,6 +6,10 @@ import axios from "axios";
 import { Buffer } from "buffer";
 import uuid from "react-native-uuid";
 
+// Lib
+import nativeTransfer from "@lib/nativeTransfer";
+import { totalChunksFor } from "@lib/nativeTransfer/chunkPlan";
+
 // Db
 import transfersRepository from "@db/repositories/transfersRepository";
 import photoBackupsRepository from "@db/repositories/photoBackupsRepository";
@@ -29,9 +33,6 @@ import Config from "@config";
 
 const UPLOAD_TASK = "background-upload-task";
 export const MAX_ZIP_ITEMS = 20;
-
-// Map of fileId → DownloadResumable for in-progress downloads.
-const _activeDownloads = new Map();
 
 // ─── Notification helpers ─────────────────────────────────────────────────────
 
@@ -82,91 +83,164 @@ async function saveToGallery(uri, mimeType) {
 
 // ─── Download ─────────────────────────────────────────────────────────────────
 
+/**
+ * Hands the download to the native BackgroundChunkTransfer module (single request, no
+ * chunking — server-side Range support plus the OS's native resumability handle resume) so it
+ * survives backgrounding, mirroring _uploadViaNative. Resolves on "complete" (to the local file
+ * uri, preserving download()'s existing Promise-resolves-to-uri contract) or "paused"/"cancelled"
+ * (both resolve to null — not failures), rejects on "failed".
+ */
+function _downloadViaNative({ transferId, fileId, url, destPath, fileName, baseUrl }) {
+  return new Promise((resolve, reject) => {
+    const unsubscribe = nativeTransfer.addTransferListener((event) => {
+      if (event.transferId !== transferId) return;
+      if (event.status === "complete") {
+        unsubscribe();
+        resolve(event.localUri);
+      } else if (event.status === "failed") {
+        unsubscribe();
+        reject(new Error(`Download failed for transfer ${transferId}`));
+      } else if (event.status === "paused" || event.status === "cancelled") {
+        unsubscribe();
+        resolve(null);
+      }
+    });
+
+    nativeTransfer.startDownload({ transferId, fileId, url, destPath, fileName, baseUrl });
+  });
+}
+
 async function download(fileId, url, fileName) {
+  const existing = (await transfersRepository.getByStatus(["paused", "pending", "active"])).find(
+    (r) => r.fileId === fileId && r.type === "download"
+  );
+  const transferId = existing?.id ?? uuid.v4();
+  // A resumed download must keep using the SAME destination path/name it started with —
+  // mirrors upload()'s resume trusting row.uploadId/row.uploadedChunks over fresh call
+  // arguments, since the partial file (or, on iOS, the transferId-keyed resumeData) is only
+  // valid for the original path.
+  const resolvedFileName = existing?.name ?? fileName;
   const destDir = `${FileSystem.documentDirectory}downloads/${fileId}`;
-  const dest = `${destDir}/${fileName}`;
-  const headers = TokenStorage.getAuthHeaders();
+  const destPath = existing?.dest ?? `${destDir}/${resolvedFileName}`;
 
   // Runs on every call, including resumes, so the download self-heals if the
   // directory was ever removed (e.g. OS storage cleanup between app launches).
   await FileSystem.makeDirectoryAsync(destDir, { intermediates: true }).catch(() => {});
 
-  const existing = (await transfersRepository.getByStatus(["paused", "pending"])).find(
-    (r) => r.fileId === fileId && r.type === "download"
-  );
-
-  const notifId = await _showProgressNotification(`Downloading ${fileName}`, 0);
-  const transferId = existing?.id ?? uuid.v4();
-
-  let resumable;
-
-  if (existing?.resumeData) {
-    resumable = FileSystem.createDownloadResumable(
-      url,
-      dest,
-      { headers },
-      (evt) => _onDownloadProgress(transferId, notifId, resumable, evt),
-      JSON.parse(existing.resumeData)
-    );
-  } else {
+  if (!existing) {
     await transfersRepository.upsertTransfer({
       id: transferId,
       fileId,
       type: "download",
       status: "active",
       url,
-      dest,
-      name: fileName,
+      dest: destPath,
+      name: resolvedFileName,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    resumable = FileSystem.createDownloadResumable(url, dest, { headers }, (evt) =>
-      _onDownloadProgress(transferId, notifId, resumable, evt)
-    );
+  } else {
+    // Resuming a paused/pending row — flip it back to "active" (mirrors upload()'s resume
+    // branch). Native only ever touches progress/uploaded_chunks/updated_at, never status, so
+    // without this the row would stay stuck showing "paused" for the rest of the transfer.
+    await transfersRepository.upsertTransfer({
+      ...existing,
+      status: "active",
+      updatedAt: new Date().toISOString(),
+    });
   }
 
-  _activeDownloads.set(fileId, resumable);
+  const localUri = await _downloadViaNative({
+    transferId,
+    fileId,
+    url,
+    destPath,
+    fileName: resolvedFileName,
+    baseUrl: Config.API_SERVICE_URL,
+  });
 
-  try {
-    const result = await resumable.downloadAsync();
-    _activeDownloads.delete(fileId);
-    if (!result) {
-      // Paused mid-flight (e.g. app backgrounded via pauseAll()) — leave the
-      // transfer row as-is so it can resume later; this isn't a failure.
-      await Notifications.dismissNotificationAsync(notifId);
-      return null;
-    }
+  if (localUri !== null) {
     await transfersRepository.markComplete(transferId);
-    await Notifications.dismissNotificationAsync(notifId);
-    await _showCompleteNotification(`Downloaded ${fileName}`);
-    return result.uri;
-  } catch (ex) {
-    _activeDownloads.delete(fileId);
-    await transfersRepository.markFailed(transferId, (existing?.retryCount ?? 0) + 1);
-    await Notifications.dismissNotificationAsync(notifId);
-    throw ex;
   }
-}
-
-async function _onDownloadProgress(transferId, notifId, resumable, { totalBytesWritten, totalBytesExpectedToWrite }) {
-  const pct = totalBytesExpectedToWrite > 0 ? Math.round((totalBytesWritten / totalBytesExpectedToWrite) * 100) : 0;
-  const snapshot = resumable.savable ? JSON.stringify(resumable.savable()) : null;
-  await transfersRepository.updateProgress(transferId, pct, snapshot);
-  await _updateProgressNotification(notifId, pct);
+  return localUri;
 }
 
 // ─── Upload ───────────────────────────────────────────────────────────────────
+
+const CHUNK_SIZE = 5 * 1024 * 1024;
+
+/**
+ * Runs the photo-backup completion bookkeeping and cache invalidation shared by both the
+ * native (Android) and legacy JS (iOS) upload paths, once a file has genuinely finalized.
+ */
+async function _onUploadComplete(transferId, cloudFileId) {
+  const alreadyBacked = await photoBackupsRepository.isAlreadyBacked(transferId).catch(() => false);
+  if (!alreadyBacked && cloudFileId) {
+    await photoBackupsRepository.markBackedUp(transferId, cloudFileId).catch(() => {});
+    Store.dispatch(setLastBackupTimestamp(Date.now()));
+  }
+  Store.dispatch(api.util.invalidateTags([ApiTagTypes.FILES, ApiTagTypes.FOLDERS, ApiTagTypes.QUOTA]));
+}
+
+/**
+ * Android: hands the chunk loop to the native BackgroundChunkTransfer module (see
+ * apps/mobile/modules/background-chunk-transfer) so it survives backgrounding — init/status
+ * stay in JS (a fresh upload always starts foregrounded), finalize is native (the last chunk can
+ * land while backgrounded). Resolves on "complete"/"paused"/"cancelled" (paused/cancelled aren't
+ * failures — the row just goes back to "pending"/"paused" for a later drainQueue() to pick up),
+ * rejects on "failed" so uploadQueue.js's existing try/catch keeps working unchanged.
+ */
+function _uploadViaNative({
+  transferId,
+  localUri,
+  fileName,
+  mimeType,
+  folderId,
+  baseUrl,
+  uploadId,
+  totalChunks,
+  startChunk,
+  retryCount,
+}) {
+  return new Promise((resolve, reject) => {
+    const unsubscribe = nativeTransfer.addTransferListener((event) => {
+      if (event.transferId !== transferId) return;
+      if (event.status === "complete") {
+        unsubscribe();
+        resolve(event.cloudFileId);
+      } else if (event.status === "failed") {
+        unsubscribe();
+        reject(new Error(`Upload failed for transfer ${transferId}`));
+      } else if (event.status === "paused" || event.status === "cancelled") {
+        unsubscribe();
+        resolve(null);
+      }
+    });
+
+    nativeTransfer.startUpload({
+      transferId,
+      localUri,
+      fileName,
+      mimeType,
+      folderId,
+      baseUrl,
+      uploadId,
+      totalChunks,
+      startChunk,
+      retryCount,
+    });
+  });
+}
 
 async function upload(transferId, localUri, fileName, mimeType) {
   const [row] = await transfersRepository.getById(transferId);
 
   const token = await TokenStorage.getAccessToken();
   const baseUrl = Config.API_SERVICE_URL;
-  const CHUNK_SIZE = 5 * 1024 * 1024;
 
   const fileInfo = await FileSystem.getInfoAsync(localUri, { size: true });
   const totalSize = fileInfo.size;
-  const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
+  const totalChunks = totalChunksFor(totalSize);
 
   let uploadId = row?.uploadId;
   let startChunk = row?.uploadedChunks ?? 0;
@@ -192,6 +266,28 @@ async function upload(transferId, localUri, fileName, mimeType) {
     startChunk = statusRes.data.data.uploadedChunks ?? startChunk;
   }
 
+  if (nativeTransfer.isNativeAvailable) {
+    const cloudFileId = await _uploadViaNative({
+      transferId,
+      localUri,
+      fileName,
+      mimeType,
+      folderId: row?.folderId ?? null,
+      baseUrl,
+      uploadId,
+      totalChunks,
+      startChunk,
+      retryCount: row?.retryCount ?? 0,
+    });
+    if (cloudFileId !== null) {
+      await _onUploadComplete(transferId, cloudFileId);
+    }
+    return;
+  }
+
+  // Legacy JS chunk-loop path — unreachable now that both platforms are native (isNativeAvailable
+  // is always true), kept only as the fallback this plan's Phase 7 note describes; removal is
+  // deliberately deferred until the native path has been stable for a full release cycle.
   // Register iOS background task so the OS grants extended execution time.
   TaskManager.defineTask(UPLOAD_TASK, () => TaskManager.TaskManagerTaskResult.SUCCESS);
 
@@ -232,18 +328,12 @@ async function upload(transferId, localUri, fileName, mimeType) {
   const cloudFileId = finalizeRes.data?.data?._id ?? finalizeRes.data?.data?.id ?? null;
 
   await transfersRepository.markComplete(row.id);
+  await _onUploadComplete(transferId, cloudFileId);
 
-  const alreadyBacked = await photoBackupsRepository.isAlreadyBacked(transferId).catch(() => false);
-  if (!alreadyBacked && cloudFileId) {
-    await photoBackupsRepository.markBackedUp(transferId, cloudFileId).catch(() => {});
-    Store.dispatch(setLastBackupTimestamp(Date.now()));
-  }
-
-  // Notification/cache-refresh failures here must not undo the upload success recorded above.
+  // Notification failures here must not undo the upload success recorded above.
   try {
     await Notifications.dismissNotificationAsync(notifId);
     await _showCompleteNotification(`Uploaded ${fileName}`);
-    Store.dispatch(api.util.invalidateTags([ApiTagTypes.FILES, ApiTagTypes.FOLDERS, ApiTagTypes.QUOTA]));
   } catch {
     // best-effort — upload already succeeded and is recorded as complete
   }
@@ -287,24 +377,6 @@ async function downloadZip(items) {
   }
 }
 
-// ─── pauseAll ─────────────────────────────────────────────────────────────────
-
-async function pauseAll() {
-  for (const [fileId, resumable] of _activeDownloads.entries()) {
-    try {
-      await resumable.pauseAsync();
-      const snapshot = resumable.savable();
-      const rows = await transfersRepository.getByStatus(["active"]);
-      const row = rows.find((r) => r.fileId === fileId);
-      if (row) {
-        await transfersRepository.updateProgress(row.id, row.progress, JSON.stringify(snapshot));
-      }
-    } catch (_ex) {
-      // already complete or failed — pause on a finished download throws, safe to ignore
-    }
-  }
-}
-
-const backgroundTransfer = { download, upload, downloadZip, saveToGallery, pauseAll };
+const backgroundTransfer = { download, upload, downloadZip, saveToGallery };
 
 export default backgroundTransfer;

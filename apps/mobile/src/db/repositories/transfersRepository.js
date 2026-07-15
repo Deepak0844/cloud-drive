@@ -44,6 +44,13 @@ function markFailed(id, retryCount) {
     .where(eq(transfers.id, id));
 }
 
+function markCancelled(id) {
+  return db
+    .update(transfers)
+    .set({ status: "cancelled", updatedAt: new Date().toISOString() })
+    .where(eq(transfers.id, id));
+}
+
 function clearCompleted() {
   return db.delete(transfers).where(eq(transfers.status, "complete"));
 }
@@ -56,6 +63,7 @@ const transfersRepository = {
   updateUploadChunks,
   markComplete,
   markFailed,
+  markCancelled,
   clearCompleted,
 };
 

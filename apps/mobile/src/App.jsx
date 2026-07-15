@@ -31,7 +31,6 @@ import { useBiometric } from "@hooks/useBiometric";
 import { useNetworkStatus } from "@hooks/useNetworkStatus";
 
 // Lib / Services
-import backgroundTransfer from "@lib/backgroundTransfer";
 import syncService from "@services/sync/syncService";
 import photoBackupService from "@services/backup/photoBackupService";
 
@@ -114,7 +113,8 @@ function AppContent() {
   useEffect(() => {
     const sub = AppState.addEventListener("change", async (next) => {
       if (appState.current === "active" && next.match(/inactive|background/)) {
-        await backgroundTransfer.pauseAll();
+        // No pauseAll() needed — native code now owns background survival for both
+        // uploads and downloads directly, on both platforms.
         if (isAuthenticated && !biometricLockedRef.current && (await isEnabled())) {
           setBiometricLocked(true);
         }

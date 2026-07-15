@@ -1,20 +1,44 @@
 import transfersRepository from "@db/repositories/transfersRepository";
 import uploadQueue from "@lib/uploadQueue";
 import backgroundTransfer from "@lib/backgroundTransfer";
+import nativeTransfer from "@lib/nativeTransfer";
 
 async function drainUploadQueue() {
   await uploadQueue.drainQueue();
 }
 
-async function resumeTransfers() {
-  const active = await transfersRepository.getByStatus(["active", "paused"]);
-  for (const row of active) {
-    if (row.type === "download") {
+/**
+ * Reconciles "active" transfer rows against native in-flight state instead of blindly
+ * re-invoking — the native engine survives backgrounding on its own, so an "active" row usually
+ * just means a transfer that's still genuinely running (re-invoking would start a second
+ * concurrent transfer for the same work). Only a row that native confirms it does NOT currently
+ * own gets re-invoked (e.g. the process was killed mid-transfer and the OS restarted the app
+ * fresh). "paused" rows are deliberately excluded — pausing is now a real, explicit user action
+ * (in-app or from the notification), and auto-resuming a paused row on every foreground open
+ * would silently defeat the Pause button.
+ */
+async function reconcileActiveTransfers() {
+  const activeRows = await transfersRepository.getByStatus(["active"]);
+  if (activeRows.length === 0) return;
+
+  const nativeActiveTransferId = await nativeTransfer.getActiveTransferId();
+
+  for (const row of activeRows) {
+    if (row.id === nativeActiveTransferId) continue; // still genuinely running, leave it alone
+    if (row.type === "upload") {
+      backgroundTransfer
+        .upload(row.id, row.dest, row.name, row.mimeType)
+        .catch(() => transfersRepository.markFailed(row.id, (row.retryCount ?? 0) + 1));
+    } else if (row.type === "download") {
       backgroundTransfer
         .download(row.fileId, row.url, row.name)
         .catch(() => transfersRepository.markFailed(row.id, (row.retryCount ?? 0) + 1));
     }
   }
+}
+
+async function resumeTransfers() {
+  await reconcileActiveTransfers();
   await drainUploadQueue();
 }
 

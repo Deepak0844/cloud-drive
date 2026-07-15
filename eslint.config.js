@@ -43,6 +43,17 @@ export default [
     },
   },
   {
+    // Expo config plugins are loaded via synchronous require() by prebuild tooling, so they're
+    // always CommonJS regardless of where they live in the tree (e.g. a local module's
+    // app.plugin.js) — needs Node globals rather than the browser/RN globals above.
+    files: ["apps/mobile/**/app.plugin.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  {
     files: ["**/*.js", "**/*.jsx", "**/*.mjs"],
   },
   // Disable react-refresh warning for shadcn/ui generated files.

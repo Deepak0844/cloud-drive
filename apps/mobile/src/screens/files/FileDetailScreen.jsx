@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, ScrollView, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, ScrollView, Alert, Pressable } from "react-native";
 import { Download, Share2, Star } from "lucide-react-native";
 import * as Sharing from "expo-sharing";
 
@@ -9,8 +9,12 @@ import { useToggleFileFavoriteMutation } from "@api/fileApi";
 // Utils
 import { NumberUtils } from "@shared-utils/utils";
 
+// Db
+import transfersRepository from "@db/repositories/transfersRepository";
+
 // Lib
 import backgroundTransfer from "@lib/backgroundTransfer";
+import nativeTransfer from "@lib/nativeTransfer";
 import haptics from "@lib/haptics";
 
 // Theme
@@ -56,6 +60,7 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
   const [file, setFile] = useState(fileParam);
   const [downloading, setDownloading] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [activeDownloadRow, setActiveDownloadRow] = useState(null);
 
   const [toggleFileFavorite] = useToggleFileFavoriteMutation();
 
@@ -69,6 +74,34 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
   // ExoPlayer's DefaultExtractorsFactory sniffs content bytes and selects the right extractor
   // (MP4, Matroska, AVI, WebM, …) regardless of the Content-Type header.
   const videoUri = file?.previewUrl;
+
+  // Tracks this file's in-progress download row (if any) so Pause/Resume/Stop controls can
+  // target it — native emits an event on every state change on both platforms.
+  useEffect(() => {
+    if (!file?.id) return undefined;
+    let mounted = true;
+
+    async function refresh() {
+      const rows = await transfersRepository.getByStatus(["active", "paused"]);
+      const row = rows.find((r) => r.fileId === file.id && r.type === "download");
+      if (mounted) setActiveDownloadRow(row ?? null);
+    }
+
+    refresh();
+    const unsubscribe = nativeTransfer.addTransferListener(refresh);
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [file?.id]);
+
+  function handlePauseDownload() {
+    if (activeDownloadRow) nativeTransfer.pause(activeDownloadRow.id);
+  }
+
+  function handleStopDownload() {
+    if (activeDownloadRow) nativeTransfer.cancel(activeDownloadRow.id);
+  }
 
   async function onDownload() {
     if (!file?.downloadUrl) return;
@@ -185,6 +218,45 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
             <Download size={18} />
             <ButtonText>{downloading ? "Downloading…" : "Download"}</ButtonText>
           </Button>
+          {activeDownloadRow ? (
+            <View className="gap-1">
+              <View className="flex-row justify-between">
+                <Text size="xs" className="text-secondary">
+                  {activeDownloadRow.status === "paused" ? "Paused" : "Downloading…"}
+                </Text>
+                <Text size="xs" className="text-secondary">
+                  {activeDownloadRow.progress ?? 0}%
+                </Text>
+              </View>
+              <View className="h-1.5 bg-neutral-subtle rounded-full overflow-hidden">
+                <View
+                  className="h-full bg-primary rounded-full"
+                  style={{ width: `${activeDownloadRow.progress ?? 0}%` }}
+                />
+              </View>
+              <View className="flex-row justify-end gap-3">
+                {activeDownloadRow.status === "active" && (
+                  <Pressable onPress={handlePauseDownload} className="px-2 py-1">
+                    <Text size="xs" className="text-primary">
+                      Pause
+                    </Text>
+                  </Pressable>
+                )}
+                {activeDownloadRow.status === "paused" && (
+                  <Pressable onPress={onDownload} className="px-2 py-1">
+                    <Text size="xs" className="text-primary">
+                      Resume
+                    </Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={handleStopDownload} className="px-2 py-1">
+                  <Text size="xs" className="text-primary">
+                    Stop
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
           <Button variant="outline" size="lg" onPress={onShare} disabled={sharing}>
             <Share2 size={18} />
             <ButtonText>{sharing ? "Preparing…" : "Share"}</ButtonText>
