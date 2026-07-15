@@ -380,6 +380,20 @@ public final class BackgroundChunkTransferManager: NSObject {
 
   // MARK: - Notifications (silent, throttled to whole-percent, in-place updates only)
 
+  /// iOS does NOT replace an already-*delivered* (visible) notification just because a new
+  /// request shares its identifier — that same-identifier replacement only applies to *pending*
+  /// (not-yet-fired) requests. Since every notification here uses trigger: nil (immediate
+  /// delivery), calling add() alone would stack a new visible notification on every update
+  /// instead of updating in place. Explicitly clearing the old one first is what makes this
+  /// behave like Android's mutable notify(id, ...).
+  private func postNotification(_ content: UNMutableNotificationContent) {
+    let center = UNUserNotificationCenter.current()
+    center.removeDeliveredNotifications(withIdentifiers: [Self.notificationIdentifier])
+    center.removePendingNotificationRequests(withIdentifiers: [Self.notificationIdentifier])
+    let request = UNNotificationRequest(identifier: Self.notificationIdentifier, content: content, trigger: nil)
+    center.add(request)
+  }
+
   private func showActiveNotification(params: UploadParams, progress: Int) {
     guard progress != lastNotifiedPercent else { return }
     lastNotifiedPercent = progress
@@ -390,9 +404,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     content.categoryIdentifier = Self.categoryActive
     content.userInfo = params.with(startChunk: currentUploadedChunks).asUserInfo
     content.sound = nil
-
-    let request = UNNotificationRequest(identifier: Self.notificationIdentifier, content: content, trigger: nil)
-    UNUserNotificationCenter.current().add(request)
+    postNotification(content)
   }
 
   private func showPausedNotification(_ params: UploadParams) {
@@ -401,9 +413,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     content.categoryIdentifier = Self.categoryPaused
     content.userInfo = params.asUserInfo
     content.sound = nil
-
-    let request = UNNotificationRequest(identifier: Self.notificationIdentifier, content: content, trigger: nil)
-    UNUserNotificationCenter.current().add(request)
+    postNotification(content)
     lastNotifiedPercent = -1
   }
 
@@ -412,9 +422,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     content.title = "Uploaded \(fileName)"
     content.body = "Tap to open"
     content.sound = nil
-
-    let request = UNNotificationRequest(identifier: Self.notificationIdentifier, content: content, trigger: nil)
-    UNUserNotificationCenter.current().add(request)
+    postNotification(content)
     lastNotifiedPercent = -1
   }
 
@@ -435,9 +443,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     content.categoryIdentifier = Self.categoryActive
     content.userInfo = params.asUserInfo
     content.sound = nil
-
-    let request = UNNotificationRequest(identifier: Self.notificationIdentifier, content: content, trigger: nil)
-    UNUserNotificationCenter.current().add(request)
+    postNotification(content)
   }
 
   private func showPausedDownloadNotification(_ params: DownloadParams) {
@@ -446,9 +452,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     content.categoryIdentifier = Self.categoryPaused
     content.userInfo = params.asUserInfo
     content.sound = nil
-
-    let request = UNNotificationRequest(identifier: Self.notificationIdentifier, content: content, trigger: nil)
-    UNUserNotificationCenter.current().add(request)
+    postNotification(content)
     lastNotifiedPercent = -1
   }
 
@@ -457,9 +461,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     content.title = "Downloaded \(fileName)"
     content.body = "Tap to open"
     content.sound = nil
-
-    let request = UNNotificationRequest(identifier: Self.notificationIdentifier, content: content, trigger: nil)
-    UNUserNotificationCenter.current().add(request)
+    postNotification(content)
     lastNotifiedPercent = -1
   }
 }
@@ -494,14 +496,22 @@ extension BackgroundChunkTransferManager: UNUserNotificationCenterDelegate {
     }
   }
 
-  /// Lets the silent progress notification show while the app is in the foreground too — without
-  /// this, foreground-delivered local notifications are suppressed by default.
+  /// Lets the notification show while the app is in the foreground too — without this,
+  /// foreground-delivered local notifications are suppressed by default. Progress-tick updates
+  /// (categoryActive) only get the list entry, not a banner — otherwise every chunk/percent
+  /// change would pop up and interrupt whatever the user is doing in the foreground. Paused,
+  /// complete, and other one-off state changes still banner, since those are discrete events
+  /// worth surfacing, not a continuous stream of ticks.
   public func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
-    completionHandler([.banner, .list])
+    if notification.request.content.categoryIdentifier == Self.categoryActive {
+      completionHandler([.list])
+    } else {
+      completionHandler([.banner, .list])
+    }
   }
 }
 
