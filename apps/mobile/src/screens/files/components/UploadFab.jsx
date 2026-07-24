@@ -40,8 +40,13 @@ export default function UploadFab({ folderId = null, onCreateFolder = null }) {
       setCameraDenied(true);
       return;
     }
-    setShowPickerSheet(false);
+    // Sheet closes only after the native camera UI has fully resolved — closing it first would
+    // unmount GlassBottomSheet's RN Modal (~220ms close animation) while the camera is still
+    // presented on top of it, tearing down the camera's parent view controller mid-presentation
+    // and freezing the app (the camera's completion callback is orphaned, its promise never
+    // resolves, and the view hierarchy is left corrupted).
     const result = await ImagePicker.launchCameraAsync();
+    setShowPickerSheet(false);
     if (!result.canceled && result.assets?.[0]) {
       const { uri, fileName, mimeType } = result.assets[0];
       const name = fileName ?? `photo-${Date.now()}.jpg`;
@@ -55,28 +60,45 @@ export default function UploadFab({ folderId = null, onCreateFolder = null }) {
   }
 
   async function pickFile() {
+    // See takePhoto's comment — sheet closes only after the picker resolves, not before.
+    // multiple: several files can be selected at once; each is enqueued and the queue drains them
+    // one at a time (see uploadQueue.js).
+    const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: true });
     setShowPickerSheet(false);
-    const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
-    if (!result.canceled && result.assets?.[0]) {
-      const { uri, name, mimeType } = result.assets[0];
-      try {
-        await enqueue(uri, name, mimeType ?? "application/octet-stream", folderId);
-      } catch {
-        reportUploadError(name);
+    if (!result.canceled) {
+      for (const asset of result.assets ?? []) {
+        const { uri, name, mimeType } = asset;
+        try {
+          await enqueue(uri, name, mimeType ?? "application/octet-stream", folderId);
+        } catch {
+          reportUploadError(name);
+        }
       }
     }
   }
 
   async function pickPhoto() {
+    // See takePhoto's comment — sheet closes only after the picker resolves, not before.
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images", "videos"],
+      allowsMultipleSelection: true,
+    });
     setShowPickerSheet(false);
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images", "videos"] });
-    if (!result.canceled && result.assets?.[0]) {
-      const { uri, fileName, mimeType } = result.assets[0];
-      const name = fileName ?? "photo.jpg";
-      try {
-        await enqueue(uri, name, mimeType ?? "image/jpeg", folderId);
-      } catch {
-        reportUploadError(name);
+    if (!result.canceled) {
+      const assets = result.assets ?? [];
+      for (let i = 0; i < assets.length; i++) {
+        const { uri, type, fileName, mimeType } = assets[i];
+        // mediaTypes includes videos, so the fallback name/mime must be media-aware — a video
+        // without a fileName would otherwise be stored as .jpg / image/jpeg, breaking thumbnailing
+        // and playback. The index keeps each row's dest path distinct within a multi-select batch.
+        const isVideo = type === "video" || mimeType?.startsWith("video/");
+        const name = fileName ?? `${isVideo ? "video" : "photo"}-${Date.now()}-${i}.${isVideo ? "mp4" : "jpg"}`;
+        const resolvedMime = mimeType ?? (isVideo ? "video/mp4" : "image/jpeg");
+        try {
+          await enqueue(uri, name, resolvedMime, folderId);
+        } catch {
+          reportUploadError(name);
+        }
       }
     }
   }

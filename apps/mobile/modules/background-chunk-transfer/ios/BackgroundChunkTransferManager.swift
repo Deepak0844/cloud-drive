@@ -102,7 +102,17 @@ public final class BackgroundChunkTransferManager: NSObject {
 
   // MARK: - Public API
 
+  /// Whatever transfer currently owns the single tracking slot, regardless of kind — used by the
+  /// busy guard below. Only one of currentParams/currentDownloadParams is ever non-nil at a time.
+  private var activeTransferId: String? {
+    currentParams?.transferId ?? currentDownloadParams?.transferId
+  }
+
   func startUpload(_ params: UploadParams) {
+    if let activeId = activeTransferId, activeId != params.transferId {
+      emitEvent(transferId: params.transferId, type: "upload", status: "busy", progress: nil)
+      return
+    }
     isStoppedByUser = false
     currentParams = params
     currentUploadedChunks = params.startChunk
@@ -114,6 +124,10 @@ public final class BackgroundChunkTransferManager: NSObject {
   }
 
   func startDownload(_ params: DownloadParams) {
+    if let activeId = activeTransferId, activeId != params.transferId {
+      emitEvent(transferId: params.transferId, type: "download", status: "busy", progress: nil)
+      return
+    }
     isStoppedByUser = false
     currentDownloadParams = params
     currentDownloadedBytes = 0
@@ -128,6 +142,12 @@ public final class BackgroundChunkTransferManager: NSObject {
 
   func pause(transferId: String) {
     if currentParams?.transferId == transferId {
+      // Once the last chunk lands, finalizeUpload reuses this same currentTask slot for the
+      // finalize POST. Cancelling that client-side doesn't undo it server-side — the server may
+      // have already created the file and discarded uploadId by the time this cancel lands,
+      // leaving the row stuck "paused" with a uploadId Resume's uploadStatus lookup 404s on.
+      // Finalize is a point of no return, so just let it resolve to "complete"/"failed" instead.
+      guard let currentTask, taskMeta[currentTask.taskIdentifier]?.kind.isFinalize != true else { return }
       stopActiveTransfer(transferId: transferId, status: "paused")
     } else if currentDownloadParams?.transferId == transferId {
       pauseDownload(transferId: transferId)
@@ -139,6 +159,16 @@ public final class BackgroundChunkTransferManager: NSObject {
       stopActiveTransfer(transferId: transferId, status: "cancelled")
     } else if currentDownloadParams?.transferId == transferId {
       cancelDownload(transferId: transferId)
+    } else {
+      // Not currently in flight — the transfer was already paused, which evicts it from
+      // currentParams/currentDownloadParams (see stopActiveTransfer/pauseDownload). Stop still
+      // needs to take effect for a paused row (both upload and download Stop buttons render
+      // regardless of status), so mark it cancelled directly rather than silently no-op'ing.
+      // Mirrors Android's handleStopSignal, which already marks cancelled unconditionally.
+      let wasDownload = pausedResumeData.removeValue(forKey: transferId) != nil
+      // SQLite write precedes the emit so a JS listener re-querying on the event sees "cancelled".
+      SqliteProgressWriter.markCancelled(transferId: transferId)
+      emitEvent(transferId: transferId, type: wasDownload ? "download" : "upload", status: "cancelled", progress: nil)
     }
   }
 
@@ -149,15 +179,22 @@ public final class BackgroundChunkTransferManager: NSObject {
     guard let params = currentParams, params.transferId == transferId else { return }
     isStoppedByUser = true
     currentTask?.cancel()
+
+    // SQLite write precedes the emit so a JS listener re-querying on the event sees the final
+    // status, not the still-"active" row it would otherwise race against.
+    if status == "paused" {
+      SqliteProgressWriter.markPaused(transferId: transferId)
+    } else {
+      SqliteProgressWriter.markCancelled(transferId: transferId)
+    }
+
     emitEvent(transferId: transferId, type: "upload", status: status, progress: nil)
     currentParams = nil
     TransferEventBus.activeTransferId = nil
 
     if status == "paused" {
-      SqliteProgressWriter.markPaused(transferId: transferId)
       showPausedNotification(params.with(startChunk: currentUploadedChunks))
     } else {
-      SqliteProgressWriter.markCancelled(transferId: transferId)
       clearNotification()
     }
   }
@@ -171,10 +208,11 @@ public final class BackgroundChunkTransferManager: NSObject {
         self?.pausedResumeData[transferId] = resumeData
       }
     }
+    // SQLite write precedes the emit so a JS listener re-querying on the event sees "paused".
+    SqliteProgressWriter.markPaused(transferId: transferId)
     emitEvent(transferId: transferId, type: "download", status: "paused", progress: nil)
     currentDownloadParams = nil
     TransferEventBus.activeTransferId = nil
-    SqliteProgressWriter.markPaused(transferId: transferId)
     showPausedDownloadNotification(params)
   }
 
@@ -183,10 +221,11 @@ public final class BackgroundChunkTransferManager: NSObject {
     isStoppedByUser = true
     currentDownloadTask?.cancel()
     pausedResumeData.removeValue(forKey: transferId)
+    // SQLite write precedes the emit so a JS listener re-querying on the event sees "cancelled".
+    SqliteProgressWriter.markCancelled(transferId: transferId)
     emitEvent(transferId: transferId, type: "download", status: "cancelled", progress: nil)
     currentDownloadParams = nil
     TransferEventBus.activeTransferId = nil
-    SqliteProgressWriter.markCancelled(transferId: transferId)
     clearNotification()
   }
 
@@ -287,20 +326,22 @@ public final class BackgroundChunkTransferManager: NSObject {
 
   private func failTransfer(_ params: UploadParams, reason: String) {
     NSLog("[BackgroundChunkTransfer] #uploadChunk :: transfer failed - \(params.transferId) - \(reason)")
+    // SQLite write precedes the emit so a JS listener re-querying on the event sees "failed".
+    SqliteProgressWriter.markFailed(transferId: params.transferId, retryCount: params.retryCount + 1)
     emitEvent(transferId: params.transferId, type: "upload", status: "failed", progress: nil)
     currentParams = nil
     TransferEventBus.activeTransferId = nil
-    SqliteProgressWriter.markFailed(transferId: params.transferId, retryCount: params.retryCount + 1)
     clearNotification()
   }
 
   private func failDownload(_ params: DownloadParams, reason: String) {
     NSLog("[BackgroundChunkTransfer] #downloadFile :: transfer failed - \(params.transferId) - \(reason)")
+    // SQLite write precedes the emit so a JS listener re-querying on the event sees "failed".
+    SqliteProgressWriter.markFailed(transferId: params.transferId, retryCount: 0)
     emitEvent(transferId: params.transferId, type: "download", status: "failed", progress: nil)
     currentDownloadParams = nil
     currentDownloadTask = nil
     TransferEventBus.activeTransferId = nil
-    SqliteProgressWriter.markFailed(transferId: params.transferId, retryCount: 0)
     clearNotification()
   }
 
@@ -394,6 +435,18 @@ public final class BackgroundChunkTransferManager: NSObject {
     center.add(request)
   }
 
+  /// Used only for the paused-state notification, which is commonly posted from within
+  /// didReceive's Pause-action handling itself — replacing the same-identifier notification the
+  /// user just tapped an action on, while iOS is still finishing its own handling of that tap,
+  /// can silently drop the replacement. A short defer sidesteps that race. Progress-tick
+  /// notifications don't use this: they fire far too often for a fixed delay to be safe (updates
+  /// could arrive out of order and show stale progress).
+  private func postNotificationDeferred(_ content: UNMutableNotificationContent) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+      self?.postNotification(content)
+    }
+  }
+
   private func showActiveNotification(params: UploadParams, progress: Int) {
     guard progress != lastNotifiedPercent else { return }
     lastNotifiedPercent = progress
@@ -413,7 +466,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     content.categoryIdentifier = Self.categoryPaused
     content.userInfo = params.asUserInfo
     content.sound = nil
-    postNotification(content)
+    postNotificationDeferred(content)
     lastNotifiedPercent = -1
   }
 
@@ -452,7 +505,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     content.categoryIdentifier = Self.categoryPaused
     content.userInfo = params.asUserInfo
     content.sound = nil
-    postNotification(content)
+    postNotificationDeferred(content)
     lastNotifiedPercent = -1
   }
 
@@ -584,10 +637,13 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
       }
     case .finalize:
       let cloudFileId = parseCloudFileId(from: responseData)
+      // SQLite write precedes the emit so the JS listener's refreshNow, which fires on this event
+      // and re-queries getByStatus(["active","pending","paused"]), sees the row as "complete" (and
+      // thus gone) instead of racing a still-"active" read that leaves it stuck in the sheet.
+      SqliteProgressWriter.markComplete(transferId: params.transferId)
       emitEvent(transferId: params.transferId, type: "upload", status: "complete", progress: 100.0, cloudFileId: cloudFileId)
       currentParams = nil
       TransferEventBus.activeTransferId = nil
-      SqliteProgressWriter.markComplete(transferId: params.transferId)
       showCompleteNotification(fileName: params.fileName)
     }
   }
@@ -696,11 +752,12 @@ extension BackgroundChunkTransferManager: URLSessionDownloadDelegate {
     }
 
     downloadTaskIds.remove(downloadTask.taskIdentifier)
+    // SQLite write precedes the emit so a JS listener re-querying on the event sees "complete".
+    SqliteProgressWriter.markComplete(transferId: params.transferId)
     currentDownloadParams = nil
     currentDownloadTask = nil
     TransferEventBus.activeTransferId = nil
     emitEvent(transferId: params.transferId, type: "download", status: "complete", progress: 100.0, localUri: params.destPath)
-    SqliteProgressWriter.markComplete(transferId: params.transferId)
     showDownloadCompleteNotification(fileName: params.fileName)
   }
 }

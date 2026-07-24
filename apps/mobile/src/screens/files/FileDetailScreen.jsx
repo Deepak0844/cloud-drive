@@ -14,7 +14,7 @@ import transfersRepository from "@db/repositories/transfersRepository";
 
 // Lib
 import backgroundTransfer from "@lib/backgroundTransfer";
-import nativeTransfer from "@lib/nativeTransfer";
+import nativeTransfer, { BusyError } from "@lib/nativeTransfer";
 import haptics from "@lib/haptics";
 
 // Theme
@@ -118,6 +118,11 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
           "Permission required",
           "Go to Settings → Privacy → Photos and grant access to save downloads to your Gallery."
         );
+      } else if (ex instanceof BusyError) {
+        Alert.alert(
+          "Transfer in progress",
+          "Another upload or download is already running — try again once it finishes."
+        );
       } else {
         Alert.alert("Download failed", "This file may no longer be available.");
       }
@@ -133,8 +138,15 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
       const uri = await backgroundTransfer.download(file.id, file.downloadUrl, file.name);
       if (!uri) return;
       await Sharing.shareAsync(uri);
-    } catch {
-      Alert.alert("Share failed", "This file may no longer be available.");
+    } catch (ex) {
+      if (ex instanceof BusyError) {
+        Alert.alert(
+          "Transfer in progress",
+          "Another upload or download is already running — try again once it finishes."
+        );
+      } else {
+        Alert.alert("Share failed", "This file may no longer be available.");
+      }
     } finally {
       setSharing(false);
     }

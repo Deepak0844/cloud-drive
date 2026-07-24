@@ -7,7 +7,7 @@ import { Buffer } from "buffer";
 import uuid from "react-native-uuid";
 
 // Lib
-import nativeTransfer from "@lib/nativeTransfer";
+import nativeTransfer, { BusyError } from "@lib/nativeTransfer";
 import { totalChunksFor } from "@lib/nativeTransfer/chunkPlan";
 
 // Db
@@ -88,7 +88,10 @@ async function saveToGallery(uri, mimeType) {
  * chunking — server-side Range support plus the OS's native resumability handle resume) so it
  * survives backgrounding, mirroring _uploadViaNative. Resolves on "complete" (to the local file
  * uri, preserving download()'s existing Promise-resolves-to-uri contract) or "paused"/"cancelled"
- * (both resolve to null — not failures), rejects on "failed".
+ * (both resolve to null — not failures), rejects on "failed". "busy" (another transfer is already
+ * active) deletes the just-created row — unlike uploads, nothing ever drains a pending download
+ * row automatically, so leaving one behind would orphan it — and rejects with BusyError so the
+ * caller (FileDetailScreen/FileActionSheet) can show a distinct "try again" message.
  */
 function _downloadViaNative({ transferId, fileId, url, destPath, fileName, baseUrl }) {
   return new Promise((resolve, reject) => {
@@ -100,13 +103,28 @@ function _downloadViaNative({ transferId, fileId, url, destPath, fileName, baseU
       } else if (event.status === "failed") {
         unsubscribe();
         reject(new Error(`Download failed for transfer ${transferId}`));
+      } else if (event.status === "busy") {
+        unsubscribe();
+        transfersRepository
+          .deleteById(transferId)
+          .catch(() => {})
+          .finally(() => reject(new BusyError(transferId)));
       } else if (event.status === "paused" || event.status === "cancelled") {
         unsubscribe();
         resolve(null);
       }
     });
 
-    nativeTransfer.startDownload({ transferId, fileId, url, destPath, fileName, baseUrl });
+    // Rejects the whole promise on a native-side argument/decode error too — previously nothing
+    // awaited this call's own rejection, so a bad argument (or any other synchronous native
+    // failure) left this promise hanging forever with no visible error and a leaked listener,
+    // rather than surfacing as a normal caught exception.
+    Promise.resolve(nativeTransfer.startDownload({ transferId, fileId, url, destPath, fileName, baseUrl })).catch(
+      (ex) => {
+        unsubscribe();
+        reject(ex);
+      }
+    );
   });
 }
 
@@ -170,6 +188,25 @@ async function download(fileId, url, fileName) {
 const CHUNK_SIZE = 5 * 1024 * 1024;
 
 /**
+ * The server's uploadStatus endpoint returns `uploadedChunks` as an array of received chunk
+ * indices — chunks can land out of order and gaps are possible (see chunkedService.js and its
+ * tests, e.g. [0, 2]) — not a plain count. Both the native engine and the legacy chunk loop
+ * upload strictly sequentially from a single numeric startChunk offset, so resuming must use the
+ * length of the contiguous run from 0, not the array itself: passing the raw array through to
+ * native's startChunk: Int field failed to decode, and because nothing awaited that native call's
+ * own rejection, every resume just hung forever with no visible error.
+ */
+function contiguousChunkCount(uploadedChunks) {
+  const sorted = [...uploadedChunks].sort((a, b) => a - b);
+  let expected = 0;
+  for (const idx of sorted) {
+    if (idx !== expected) break;
+    expected += 1;
+  }
+  return expected;
+}
+
+/**
  * Runs the photo-backup completion bookkeeping and cache invalidation shared by both the
  * native (Android) and legacy JS (iOS) upload paths, once a file has genuinely finalized.
  */
@@ -188,7 +225,10 @@ async function _onUploadComplete(transferId, cloudFileId) {
  * stay in JS (a fresh upload always starts foregrounded), finalize is native (the last chunk can
  * land while backgrounded). Resolves on "complete"/"paused"/"cancelled" (paused/cancelled aren't
  * failures — the row just goes back to "pending"/"paused" for a later drainQueue() to pick up),
- * rejects on "failed" so uploadQueue.js's existing try/catch keeps working unchanged.
+ * rejects on "failed" so uploadQueue.js's existing try/catch keeps working unchanged. "busy"
+ * (another transfer is already active) resets the row to "pending" — unlike downloads, the
+ * upload queue's drainQueue() already retries pending rows on the next enqueue/foreground event,
+ * so no error needs to surface to the caller.
  */
 function _uploadViaNative({
   transferId,
@@ -211,23 +251,38 @@ function _uploadViaNative({
       } else if (event.status === "failed") {
         unsubscribe();
         reject(new Error(`Upload failed for transfer ${transferId}`));
+      } else if (event.status === "busy") {
+        unsubscribe();
+        transfersRepository
+          .updateStatus(transferId, "pending")
+          .catch(() => {})
+          .finally(() => resolve(null));
       } else if (event.status === "paused" || event.status === "cancelled") {
         unsubscribe();
         resolve(null);
       }
     });
 
-    nativeTransfer.startUpload({
-      transferId,
-      localUri,
-      fileName,
-      mimeType,
-      folderId,
-      baseUrl,
-      uploadId,
-      totalChunks,
-      startChunk,
-      retryCount,
+    // Rejects the whole promise on a native-side argument/decode error too — see
+    // _downloadViaNative's matching comment. This is exactly what silently hung every Resume:
+    // a malformed startChunk failed to decode on the native side, and with nothing awaiting this
+    // call's own rejection, the promise just hung forever with no visible error.
+    Promise.resolve(
+      nativeTransfer.startUpload({
+        transferId,
+        localUri,
+        fileName,
+        mimeType,
+        folderId,
+        baseUrl,
+        uploadId,
+        totalChunks,
+        startChunk,
+        retryCount,
+      })
+    ).catch((ex) => {
+      unsubscribe();
+      reject(ex);
     });
   });
 }
@@ -263,7 +318,14 @@ async function upload(transferId, localUri, fileName, mimeType) {
     const statusRes = await axios.get(`${baseUrl}${FileUrls.uploadStatus}?uploadId=${uploadId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    startChunk = statusRes.data.data.uploadedChunks ?? startChunk;
+    const serverUploadedChunks = statusRes.data.data.uploadedChunks;
+    startChunk = Array.isArray(serverUploadedChunks) ? contiguousChunkCount(serverUploadedChunks) : startChunk;
+
+    // Resuming a paused/pending row — flip it back to "active" (mirrors download()'s equivalent
+    // resume branch). Native only ever touches progress/uploaded_chunks/updated_at, never status,
+    // so without this the row stays stuck showing "paused" — and the UI stuck offering a
+    // "Resume" button — for the rest of the transfer, even while it's genuinely uploading.
+    await transfersRepository.upsertTransfer({ ...row, status: "active", updatedAt: new Date().toISOString() });
   }
 
   if (nativeTransfer.isNativeAvailable) {
@@ -280,7 +342,16 @@ async function upload(transferId, localUri, fileName, mimeType) {
       retryCount: row?.retryCount ?? 0,
     });
     if (cloudFileId !== null) {
+      // Without this, the row stays "active" forever — UploadProgressSheet queries
+      // getByStatus(["active", "pending", "paused"]), so a completed upload would never drop out
+      // of the sheet's list and the sheet would never auto-close. Mirrors download()'s equivalent
+      // markComplete call above.
+      await transfersRepository.markComplete(transferId);
       await _onUploadComplete(transferId, cloudFileId);
+      // localUri is the durable documentDirectory copy uploadQueue.js made at enqueue time, not
+      // the picker's original (possibly already-purged) source — safe to delete now that the
+      // upload it exists solely to support has finished.
+      await FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
     }
     return;
   }
@@ -329,6 +400,7 @@ async function upload(transferId, localUri, fileName, mimeType) {
 
   await transfersRepository.markComplete(row.id);
   await _onUploadComplete(transferId, cloudFileId);
+  await FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
 
   // Notification failures here must not undo the upload success recorded above.
   try {

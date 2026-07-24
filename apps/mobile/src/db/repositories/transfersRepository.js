@@ -55,6 +55,14 @@ function clearCompleted() {
   return db.delete(transfers).where(eq(transfers.status, "complete"));
 }
 
+function deleteById(id) {
+  return db.delete(transfers).where(eq(transfers.id, id));
+}
+
+function updateStatus(id, status) {
+  return db.update(transfers).set({ status, updatedAt: new Date().toISOString() }).where(eq(transfers.id, id));
+}
+
 const transfersRepository = {
   upsertTransfer,
   getByStatus,
@@ -65,6 +73,8 @@ const transfersRepository = {
   markFailed,
   markCancelled,
   clearCompleted,
+  deleteById,
+  updateStatus,
 };
 
 export default transfersRepository;

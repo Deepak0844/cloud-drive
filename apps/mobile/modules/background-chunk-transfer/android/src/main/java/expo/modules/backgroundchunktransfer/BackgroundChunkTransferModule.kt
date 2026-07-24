@@ -30,38 +30,50 @@ class BackgroundChunkTransferModule : Module() {
 
     Function("startUpload") { options: StartUploadOptions ->
       val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val activeId = TransferEventBus.activeTransferId
 
-      val intent = Intent(context, BackgroundChunkTransferService::class.java).apply {
-        putExtra("transferId", options.transferId)
-        putExtra("localUri", options.localUri)
-        putExtra("fileName", options.fileName)
-        putExtra("mimeType", options.mimeType)
-        putExtra("folderId", options.folderId)
-        putExtra("baseUrl", options.baseUrl)
-        putExtra("uploadId", options.uploadId)
-        putExtra("totalChunks", options.totalChunks)
-        putExtra("startChunk", options.startChunk)
-        putExtra("retryCount", options.retryCount)
+      // Primary busy guard: must run BEFORE startForegroundService, not as an early return inside
+      // onStartCommand — a service started via startForegroundService() is contractually required
+      // to call startForeground() in time, and skipping that throws
+      // ForegroundServiceDidNotStartInTimeException. Refusing here means that call never happens.
+      if (activeId != null && activeId != options.transferId) {
+        emitBusy(options.transferId, "upload")
+      } else {
+        val intent = Intent(context, BackgroundChunkTransferService::class.java).apply {
+          putExtra("transferId", options.transferId)
+          putExtra("localUri", options.localUri)
+          putExtra("fileName", options.fileName)
+          putExtra("mimeType", options.mimeType)
+          putExtra("folderId", options.folderId)
+          putExtra("baseUrl", options.baseUrl)
+          putExtra("uploadId", options.uploadId)
+          putExtra("totalChunks", options.totalChunks)
+          putExtra("startChunk", options.startChunk)
+          putExtra("retryCount", options.retryCount)
+        }
+        ContextCompat.startForegroundService(context, intent)
       }
-
-      ContextCompat.startForegroundService(context, intent)
       null
     }
 
     Function("startDownload") { options: StartDownloadOptions ->
       val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+      val activeId = TransferEventBus.activeTransferId
 
-      val intent = Intent(context, BackgroundChunkTransferService::class.java).apply {
-        action = BackgroundChunkTransferService.ACTION_START_DOWNLOAD
-        putExtra("transferId", options.transferId)
-        putExtra("fileId", options.fileId)
-        putExtra("url", options.url)
-        putExtra("destPath", options.destPath)
-        putExtra("fileName", options.fileName)
-        putExtra("baseUrl", options.baseUrl)
+      if (activeId != null && activeId != options.transferId) {
+        emitBusy(options.transferId, "download")
+      } else {
+        val intent = Intent(context, BackgroundChunkTransferService::class.java).apply {
+          action = BackgroundChunkTransferService.ACTION_START_DOWNLOAD
+          putExtra("transferId", options.transferId)
+          putExtra("fileId", options.fileId)
+          putExtra("url", options.url)
+          putExtra("destPath", options.destPath)
+          putExtra("fileName", options.fileName)
+          putExtra("baseUrl", options.baseUrl)
+        }
+        ContextCompat.startForegroundService(context, intent)
       }
-
-      ContextCompat.startForegroundService(context, intent)
       null
     }
 
@@ -87,5 +99,18 @@ class BackgroundChunkTransferModule : Module() {
       context.startService(intent)
       null
     }
+  }
+
+  private fun emitBusy(transferId: String, type: String) {
+    TransferEventBus.emit(
+      mapOf(
+        "transferId" to transferId,
+        "type" to type,
+        "status" to "busy",
+        "progress" to null,
+        "cloudFileId" to null,
+        "localUri" to null
+      )
+    )
   }
 }

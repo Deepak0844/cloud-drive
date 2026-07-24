@@ -61,6 +61,13 @@ class BackgroundChunkTransferService : Service() {
   // cancelling currentCall surfaces as a plain IOException, not CancellationException, so a type
   // check alone isn't enough to avoid the markFailed() race.
   private var isStoppedByUser = false
+  // finalizeUpload() reuses the same currentCall slot as chunk uploads (see executeAuthenticated).
+  // Cancelling that call client-side doesn't undo it server-side — finalize may have already
+  // created the file and consumed uploadId by the time the cancel lands, leaving the row stuck
+  // "paused" with a uploadId Resume's uploadStatus lookup then 404s on. Mirrors iOS's
+  // TransferTaskKind.isFinalize guard in pause(). Only guards pause, not cancel — cancel is a
+  // terminal "discard" action with no later Resume to race.
+  private var isFinalizingUpload = false
 
   override fun onBind(intent: Intent?): IBinder? = null
 
@@ -78,6 +85,17 @@ class BackgroundChunkTransferService : Service() {
         val params = DownloadParams.fromIntent(intent)
         if (params == null) {
           stopSelf(startId)
+          return START_NOT_STICKY
+        }
+
+        // Backstop only — BackgroundChunkTransferModule.startDownload already guards the common
+        // case synchronously before ever calling startForegroundService. This only catches the
+        // narrow race where two start calls both pass that check before either's onStartCommand
+        // has set currentTransferId. Must still call startForeground (contractual requirement
+        // for a service launched via startForegroundService), then leave the active job alone.
+        if (currentTransferId != null && currentTransferId != params.transferId) {
+          reassertForeground()
+          emitEvent(params.transferId, "download", "busy", null)
           return START_NOT_STICKY
         }
 
@@ -113,6 +131,13 @@ class BackgroundChunkTransferService : Service() {
       return START_NOT_STICKY
     }
 
+    // Backstop only — see the matching comment in the ACTION_START_DOWNLOAD branch above.
+    if (currentTransferId != null && currentTransferId != params.transferId) {
+      reassertForeground()
+      emitEvent(params.transferId, "upload", "busy", null)
+      return START_NOT_STICKY
+    }
+
     val notification = buildNotification("Uploading ${params.fileName}", initialProgress(params), params.transferId)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -137,6 +162,27 @@ class BackgroundChunkTransferService : Service() {
     return START_REDELIVER_INTENT
   }
 
+  /**
+   * Re-satisfies the startForeground contract for a busy-rejected start call that reused this
+   * already-foregrounded Service instance — rebuilds whatever notification the currently active
+   * transfer already has showing, so a would-be-intruding start doesn't wipe or freeze it.
+   */
+  private fun reassertForeground() {
+    val transferId = currentTransferId ?: return
+    val title = when {
+      currentParams != null -> "Uploading ${currentParams!!.fileName}"
+      currentDownloadParams != null -> "Downloading ${currentDownloadParams!!.fileName}"
+      else -> "Transfer in progress"
+    }
+    val progress = lastNotifiedPercent.coerceAtLeast(0)
+    val notification = buildNotification(title, progress, transferId)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+    } else {
+      startForeground(NOTIFICATION_ID, notification)
+    }
+  }
+
   /** Handles both notification-button taps and direct pause()/cancel() module calls. */
   private fun handleStopSignal(intent: Intent, startId: Int, isCancel: Boolean) {
     val transferId = intent.getStringExtra("transferId")
@@ -147,6 +193,14 @@ class BackgroundChunkTransferService : Service() {
     val downloadedBytesAtSignalTime = currentDownloadedBytes
     val totalBytesAtSignalTime = currentTotalBytes
     val type = if (downloadParamsAtSignalTime != null) "download" else "upload"
+
+    if (isActiveJob && !isCancel && isFinalizingUpload && currentParams != null) {
+      // See isFinalizingUpload's declaration comment — finalize is a point of no return, so a
+      // pause request that lands while it's in flight is ignored entirely rather than racing it.
+      // currentParams != null scopes this to an active upload (a download sets
+      // currentDownloadParams instead), so the guard can never touch a download's pause.
+      return
+    }
 
     if (isActiveJob) {
       isStoppedByUser = true
@@ -205,6 +259,7 @@ class BackgroundChunkTransferService : Service() {
     if (params.totalChunks > 0) (params.startChunk * 100) / params.totalChunks else 0
 
   private suspend fun runUpload(params: UploadParams) {
+    isFinalizingUpload = false
     try {
       val file = RandomAccessFile(Uri.parse(params.localUri).path, "r")
       file.use { raf ->
@@ -226,7 +281,16 @@ class BackgroundChunkTransferService : Service() {
         }
       }
 
-      val cloudFileId = finalizeUpload(params)
+      isFinalizingUpload = true
+      // Reset in a finally so isFinalizingUpload is true ONLY for the duration of the finalize
+      // call itself — never left set after it returns or throws. Otherwise the flag stayed true
+      // after the upload completed and poisoned the pause guard of the next transfer (including a
+      // later download, since the guard didn't check job type), silently dropping its pause.
+      val cloudFileId = try {
+        finalizeUpload(params)
+      } finally {
+        isFinalizingUpload = false
+      }
       SqliteProgressWriter.markComplete(applicationContext, params.transferId)
       showCompleteNotification("Uploaded ${params.fileName}")
       emitEvent(params.transferId, "upload", "complete", 100.0, cloudFileId = cloudFileId)

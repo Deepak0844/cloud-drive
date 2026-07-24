@@ -11,6 +11,7 @@ import { useOfflineFiles } from "@hooks/useOfflineFiles";
 
 // Lib
 import backgroundTransfer from "@lib/backgroundTransfer";
+import { BusyError } from "@lib/nativeTransfer";
 import haptics from "@lib/haptics";
 
 // Components
@@ -111,6 +112,11 @@ export default function FileActionSheet({
           "Permission required",
           "Go to Settings → Privacy → Photos and grant access to save downloads to your Gallery."
         );
+      } else if (ex instanceof BusyError) {
+        Alert.alert(
+          "Transfer in progress",
+          "Another upload or download is already running — try again once it finishes."
+        );
       } else {
         throw ex;
       }
@@ -124,7 +130,21 @@ export default function FileActionSheet({
     setIsSharing(true);
     try {
       const uri = await backgroundTransfer.download(file.id, file.downloadUrl, file.name);
+      // download() resolves null when the transfer was paused/cancelled — mirrors
+      // FileDetailScreen.handleShare's guard; without it Sharing.shareAsync(null) throws.
+      if (!uri) {
+        return;
+      }
       await Sharing.shareAsync(uri);
+    } catch (ex) {
+      if (ex instanceof BusyError) {
+        Alert.alert(
+          "Transfer in progress",
+          "Another upload or download is already running — try again once it finishes."
+        );
+      } else {
+        throw ex;
+      }
     } finally {
       setIsSharing(false);
       onClose();
