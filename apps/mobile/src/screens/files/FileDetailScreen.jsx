@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, Alert, Pressable } from "react-native";
 import { Download, Share2, Star } from "lucide-react-native";
 import * as Sharing from "expo-sharing";
@@ -16,6 +16,9 @@ import transfersRepository from "@db/repositories/transfersRepository";
 import backgroundTransfer from "@lib/backgroundTransfer";
 import nativeTransfer, { BusyError } from "@lib/nativeTransfer";
 import haptics from "@lib/haptics";
+
+// Hooks
+import { useAppStateActive } from "@hooks/useAppStateActive";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -77,23 +80,21 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
 
   // Tracks this file's in-progress download row (if any) so Pause/Resume/Stop controls can
   // target it — native emits an event on every state change on both platforms.
-  useEffect(() => {
-    if (!file?.id) return undefined;
-    let mounted = true;
-
-    async function refresh() {
-      const rows = await transfersRepository.getByStatus(["active", "paused"]);
-      const row = rows.find((r) => r.fileId === file.id && r.type === "download");
-      if (mounted) setActiveDownloadRow(row ?? null);
-    }
-
-    refresh();
-    const unsubscribe = nativeTransfer.addTransferListener(refresh);
-    return () => {
-      mounted = false;
-      unsubscribe();
-    };
+  const refreshDownloadRow = useCallback(async () => {
+    if (!file?.id) return;
+    const rows = await transfersRepository.getByStatus(["active", "paused"]);
+    const row = rows.find((r) => r.fileId === file.id && r.type === "download");
+    setActiveDownloadRow(row ?? null);
   }, [file?.id]);
+
+  useEffect(() => {
+    refreshDownloadRow();
+    const unsubscribe = nativeTransfer.addTransferListener(refreshDownloadRow);
+    return unsubscribe;
+  }, [refreshDownloadRow]);
+
+  // Native events fired while backgrounded are missed (JS suspended), so re-query on foreground.
+  useAppStateActive(refreshDownloadRow);
 
   function handlePauseDownload() {
     if (activeDownloadRow) nativeTransfer.pause(activeDownloadRow.id);

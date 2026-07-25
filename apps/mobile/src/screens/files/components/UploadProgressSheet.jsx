@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Pressable, Alert } from "react-native";
 
 // DB
@@ -7,6 +7,9 @@ import transfersRepository from "@db/repositories/transfersRepository";
 // Components
 import GlassBottomSheet from "@components/ui/glass/GlassBottomSheet";
 import Text from "@components/ui/text/Text";
+
+// Hooks
+import { useAppStateActive } from "@hooks/useAppStateActive";
 
 // Lib
 import backgroundTransfer from "@lib/backgroundTransfer";
@@ -104,33 +107,28 @@ export default function UploadProgressSheet() {
     hadRows.current = hasRows;
   }, [rows.length]);
 
+  const refreshNow = useCallback(async () => {
+    const all = await transfersRepository.getByStatus(["active", "pending", "paused"]);
+    setRows(all.filter((r) => r.type === "upload"));
+  }, []);
+
   useEffect(() => {
-    let mounted = true;
-
-    async function refreshNow() {
-      const all = await transfersRepository.getByStatus(["active", "pending", "paused"]);
-      if (mounted) setRows(all.filter((r) => r.type === "upload"));
-    }
-
     refreshNow();
 
     // Native engine emits an event on every state change on both platforms, so refresh
     // reactively instead of polling. The interval fallback below is unreachable dead code,
     // kept only pending Phase 7's formal removal of the legacy path (see backgroundTransfer.js).
     if (nativeTransfer.isNativeAvailable) {
-      const unsubscribe = nativeTransfer.addTransferListener(refreshNow);
-      return () => {
-        mounted = false;
-        unsubscribe();
-      };
+      return nativeTransfer.addTransferListener(refreshNow);
     }
 
     const interval = setInterval(refreshNow, 1000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+    return () => clearInterval(interval);
+  }, [refreshNow]);
+
+  // Native events fired while the app was backgrounded are missed (JS is suspended), so re-query
+  // on foreground — otherwise the sheet shows the pre-background % until the next event lands.
+  useAppStateActive(refreshNow);
 
   const hasRows = rows.length > 0;
 

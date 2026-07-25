@@ -69,6 +69,27 @@ enum SqliteProgressWriter {
     }
   }
 
+  /// Reads the last-persisted contiguous uploaded-chunk count for a transfer, used to re-establish
+  /// the upload window after a background relaunch (the in-memory progress is gone). Returns 0 if the
+  /// row is missing or uploaded_chunks is NULL.
+  static func readUploadedChunks(transferId: String) -> Int {
+    var result = 0
+    withDatabase { db in
+      var statement: OpaquePointer?
+      guard sqlite3_prepare_v2(db, "SELECT uploaded_chunks FROM transfers WHERE id = ?", -1, &statement, nil) == SQLITE_OK,
+        let statement
+      else {
+        return
+      }
+      defer { sqlite3_finalize(statement) }
+      bindText(statement, 1, transferId)
+      if sqlite3_step(statement) == SQLITE_ROW, sqlite3_column_type(statement, 0) != SQLITE_NULL {
+        result = Int(sqlite3_column_int(statement, 0))
+      }
+    }
+    return result
+  }
+
   static func markComplete(transferId: String) {
     withDatabase { db in
       exec(

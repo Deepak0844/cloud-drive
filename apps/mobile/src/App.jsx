@@ -22,6 +22,7 @@ import { DatabaseGate, DrizzleStudioPlugin } from "@providers/DatabaseGate";
 import AppStatusBar from "@components/statusBar/AppStatusBar";
 import ErrorHandler from "@components/error_handler/ErrorHandler";
 import BiometricLockScreen from "@components/auth/BiometricLockScreen";
+import TransferResumeOnLaunch from "@components/transfer/TransferResumeOnLaunch";
 
 // Navigation
 import RootNavigator from "@navigation/RootNavigator";
@@ -133,6 +134,7 @@ function AppContent() {
         <GestureHandlerRootView className="flex-1">
           {isDev && <DrizzleStudioPlugin />}
           <DatabaseGate>
+            <TransferResumeOnLaunch />
             <AppStatusBar variant="gradient-light" />
             <NavigationContainer>
               <RootNavigator />
