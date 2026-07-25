@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import UserNotifications
 
 enum TransferTaskKind {
@@ -109,6 +110,10 @@ public final class BackgroundChunkTransferManager: NSObject {
   // keychain read (SecureStoreReader) fails while the device is locked, which would stall a
   // backgrounded upload; caching avoids that. Refreshed on a 401, cleared on terminal states.
   private var cachedAccessToken: String?
+  // Keeps the app alive across the finalize request when the last chunk lands in the background, so
+  // the transfer flips to "complete" without waiting for iOS's next app wake (otherwise it sits at
+  // 100% "active" until the user opens the app).
+  private var finalizeBackgroundTask: UIBackgroundTaskIdentifier = .invalid
 
   private var taskMeta: [Int: TransferTaskMeta] = [:]
   private var responseBuffers: [Int: Data] = [:]
@@ -199,7 +204,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     TransferResumeStore.write(params)
     emitEvent(transferId: params.transferId, type: "upload", status: "active", progress: initialProgress(params))
     // Live Activity is the progress surface while it exists.
-    TransferActivityController.shared.start(fileName: params.fileName, type: "upload")
+    TransferActivityController.shared.start(transferId: params.transferId, fileName: params.fileName, type: "upload")
     TransferActivityController.shared.update(progress: initialProgress(params))
     if TransferActivityController.shared.isActive {
       // The Activity owns the surface — clear any progress notification orphaned by a prior process
@@ -312,7 +317,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     lastNotifiedPercent = -1
     TransferEventBus.activeTransferId = params.transferId
     emitEvent(transferId: params.transferId, type: "download", status: "active", progress: 0)
-    TransferActivityController.shared.start(fileName: params.fileName, type: "download")
+    TransferActivityController.shared.start(transferId: params.transferId, fileName: params.fileName, type: "download")
     if TransferActivityController.shared.isActive {
       // See startUpload — the Activity is the surface; clear any orphaned progress notification.
       clearNotification()
@@ -337,6 +342,24 @@ public final class BackgroundChunkTransferManager: NSObject {
     }
   }
 
+  /// Restarts a paused upload natively — invoked by the Live Activity's Resume button (a
+  /// LiveActivityIntent), which may run in the background with no JS. Rebuilds params from the durable
+  /// resume record + the last-saved contiguous offset, flips the row back to "active", and re-enters
+  /// startUpload (which re-adopts the Live Activity and refills the window). No-op if another transfer
+  /// already holds the single slot or the record is gone (completed/cancelled). Uploads only — a
+  /// paused download has no resume record here and is resumed via the notification path instead.
+  func resume(transferId: String) {
+    guard currentParams == nil, currentDownloadParams == nil else { return }
+    guard let restored = TransferResumeStore.read(transferId: transferId) else { return }
+    let offset = SqliteProgressWriter.readUploadedChunks(transferId: transferId)
+    // startUpload sets currentParams synchronously FIRST; only then flip the SQLite status to
+    // "active". Doing it the other way round leaves a window where status == "active" but
+    // currentParams == nil, in which a straggler completion from the just-cancelled pause tasks would
+    // trip the background-rehydrate path and race a second scheduler against this resume.
+    startUpload(restored.with(startChunk: offset))
+    SqliteProgressWriter.markActive(transferId: transferId)
+  }
+
   func cancel(transferId: String) {
     if currentParams?.transferId == transferId {
       stopActiveTransfer(transferId: transferId, status: "cancelled")
@@ -353,8 +376,8 @@ public final class BackgroundChunkTransferManager: NSObject {
       SqliteProgressWriter.markCancelled(transferId: transferId)
       TransferResumeStore.remove(transferId: transferId)
       emitEvent(transferId: transferId, type: wasDownload ? "download" : "upload", status: "cancelled", progress: nil)
-      // Already-paused rows had their Activity ended at pause time, so this is a safe no-op; kept
-      // for symmetry with the in-flight cancel paths above.
+      // A paused transfer keeps its Live Activity on screen (paused state), so Stopping it here ends
+      // that card.
       TransferActivityController.shared.end(state: "cancelled", progress: 0)
     }
   }
@@ -372,13 +395,13 @@ public final class BackgroundChunkTransferManager: NSObject {
     // status, not the still-"active" row it would otherwise race against.
     if status == "paused" {
       SqliteProgressWriter.markPaused(transferId: transferId)
+      // Keep the resume record on pause — resume(transferId:) reads it to restart natively from a
+      // Live Activity / notification button. A straggler cancellation can't auto-resume a paused
+      // transfer because the rehydrate path guards on the SQLite status being "active".
     } else {
       SqliteProgressWriter.markCancelled(transferId: transferId)
+      TransferResumeStore.remove(transferId: transferId)
     }
-    // Remove the resume record on BOTH pause and cancel: the native interrupted-chunk requeue reads
-    // this record, and a user-paused upload must not auto-resume from a straggler cancellation. A
-    // later Resume (UI/notification) writes a fresh record at startUpload.
-    TransferResumeStore.remove(transferId: transferId)
 
     emitEvent(transferId: transferId, type: "upload", status: status, progress: nil)
     currentParams = nil
@@ -388,11 +411,15 @@ public final class BackgroundChunkTransferManager: NSObject {
     let pausedProgress = params.totalChunks > 0
       ? (Double(resumeOffset) * 100.0) / Double(params.totalChunks)
       : 0
-    TransferActivityController.shared.end(state: status == "paused" ? "paused" : "cancelled", progress: pausedProgress)
 
     if status == "paused" {
+      // Keep the Live Activity on screen, flipped to its paused state (with the Resume button),
+      // rather than ending it — on iOS the card is the sole control surface. The paused notification
+      // only fires as a fallback when there is no live Activity (see showPausedNotification's guard).
+      TransferActivityController.shared.markPaused(progress: pausedProgress)
       showPausedNotification(params.with(startChunk: resumeOffset))
     } else {
+      TransferActivityController.shared.end(state: "cancelled", progress: pausedProgress)
       clearNotification()
     }
   }
@@ -414,7 +441,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     let pausedProgress = currentTotalBytes > 0
       ? (Double(currentDownloadedBytes) * 100.0) / Double(currentTotalBytes)
       : 0
-    TransferActivityController.shared.end(state: "paused", progress: pausedProgress)
+    TransferActivityController.shared.markPaused(progress: pausedProgress)
     showPausedDownloadNotification(params)
   }
 
@@ -446,6 +473,22 @@ public final class BackgroundChunkTransferManager: NSObject {
     let token = SecureStoreReader.readValue(key: "access_token")
     cachedAccessToken = token
     return token
+  }
+
+  /// Requests a short background-execution assertion so the app stays alive long enough to send the
+  /// finalize request and process its completion (flip to "complete") without waiting for iOS's next
+  /// background-session wake. Ended in the finalize completion / failure paths.
+  private func beginFinalizeAssertion() {
+    endFinalizeAssertion()
+    finalizeBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "transfer-finalize") { [weak self] in
+      self?.endFinalizeAssertion()
+    }
+  }
+
+  private func endFinalizeAssertion() {
+    guard finalizeBackgroundTask != .invalid else { return }
+    UIApplication.shared.endBackgroundTask(finalizeBackgroundTask)
+    finalizeBackgroundTask = .invalid
   }
 
   private func uploadChunk(_ params: UploadParams, chunkIndex: Int) {
@@ -487,12 +530,21 @@ public final class BackgroundChunkTransferManager: NSObject {
     }
   }
 
+  /// Finalizes the upload SYNCHRONOUSLY, inside the last chunk's delegate callback, on a regular
+  /// (non-background) session. This is deliberate: a background-session finalize would need a separate
+  /// OS wake to deliver its completion, so a transfer that hits 100% while the app is backgrounded
+  /// would sit at "active" until the user opened the app. Running it inline here — and holding a brief
+  /// background-execution assertion — means the finalize completes and the row flips to "complete"
+  /// before the app suspends. isFinalizing is already true, so pause is blocked and no new chunks are
+  /// scheduled while this runs.
   private func finalizeUpload(_ params: UploadParams) {
+    beginFinalizeAssertion()
+    defer { endFinalizeAssertion() }
+
     guard let token = accessToken() else {
       failTransfer(params, reason: "No access token available")
       return
     }
-
     guard let sourceUrl = localFileUrl(from: params.localUri),
           let attrs = try? FileManager.default.attributesOfItem(atPath: sourceUrl.path),
           let size = attrs[.size] as? Int else {
@@ -510,38 +562,71 @@ public final class BackgroundChunkTransferManager: NSObject {
       "folderId": params.folderId ?? NSNull(),
       "totalSize": size
     ]
-
     guard let jsonData = try? JSONSerialization.data(withJSONObject: body) else {
       failTransfer(params, reason: "Cannot encode finalize body")
       return
     }
 
-    let tempUrl = FileManager.default.temporaryDirectory
-      .appendingPathComponent("finalize-\(params.transferId).json")
-    do {
-      try jsonData.write(to: tempUrl, options: .atomic)
-    } catch {
-      failTransfer(params, reason: "Cannot write finalize temp file - \(error.localizedDescription)")
+    var (respData, statusCode) = syncFinalizeRequest(baseUrl: params.baseUrl, token: token, body: jsonData)
+    // Mirror the chunk path's 401-then-retry-once: refresh the token and retry the finalize once.
+    if statusCode == 401,
+      let newToken = try? TokenRefresher.refresh(session: URLSession(configuration: .ephemeral), baseUrl: params.baseUrl) {
+      cachedAccessToken = newToken
+      (respData, statusCode) = syncFinalizeRequest(baseUrl: params.baseUrl, token: newToken, body: jsonData)
+    }
+
+    guard let statusCode, (200...299).contains(statusCode) else {
+      failTransfer(params, reason: "Finalize failed - HTTP \(statusCode ?? -1)")
       return
     }
 
-    let url = URL(string: "\(params.baseUrl)/api/v1/files/upload/finalize")!
+    let cloudFileId = parseCloudFileId(from: respData)
+    // SQLite write precedes the emit so the JS listener's refreshNow sees the row as "complete".
+    SqliteProgressWriter.markComplete(transferId: params.transferId)
+    TransferResumeStore.remove(transferId: params.transferId)
+    // Delete the durable documentDirectory upload copy (JS's own deleteAsync stays idempotent).
+    try? FileManager.default.removeItem(at: sourceUrl)
+    // Notification first (no-ops while the Activity is up), then end the Activity on "Uploaded".
+    showCompleteNotification(fileName: params.fileName)
+    emitEvent(transferId: params.transferId, type: "upload", status: "complete", progress: 100.0, cloudFileId: cloudFileId)
+    currentParams = nil
+    cachedAccessToken = nil
+    TransferEventBus.activeTransferId = nil
+    TransferActivityController.shared.end(state: "uploaded", progress: 100.0)
+  }
+
+  /// Sends the finalize POST and blocks the calling (delegate) queue until it completes, returning the
+  /// response body + status. On a non-background ephemeral session so the completion is delivered
+  /// in-process rather than via an OS wake; the timeout bounds the block if the network stalls.
+  private func syncFinalizeRequest(baseUrl: String, token: String, body: Data) -> (Data?, Int?) {
+    let url = URL(string: "\(baseUrl)/api/v1/files/upload/finalize")!
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = body
 
-    let task = session.uploadTask(with: request, fromFile: tempUrl)
-    let meta = TransferTaskMeta(transferId: params.transferId, kind: .finalize, tempFileUrl: tempUrl)
-    taskMeta[task.taskIdentifier] = meta
-    task.taskDescription = meta.taskDescriptionValue
+    let semaphore = DispatchSemaphore(value: 0)
+    var respData: Data?
+    var statusCode: Int?
+    let task = URLSession(configuration: .ephemeral).dataTask(with: request) { data, response, _ in
+      respData = data
+      statusCode = (response as? HTTPURLResponse)?.statusCode
+      semaphore.signal()
+    }
     task.resume()
+    if semaphore.wait(timeout: .now() + 25) == .timedOut {
+      task.cancel()
+      return (nil, nil)
+    }
+    return (respData, statusCode)
   }
 
   // MARK: - Helpers
 
   private func failTransfer(_ params: UploadParams, reason: String) {
     NSLog("[BackgroundChunkTransfer] #uploadChunk :: transfer failed - \(params.transferId) - \(reason)")
+    endFinalizeAssertion()
     // One chunk failing fails the whole transfer — cancel its still-in-flight siblings.
     cancelAllChunkTasks()
     // SQLite write precedes the emit so a JS listener re-querying on the event sees "failed".
@@ -688,6 +773,10 @@ public final class BackgroundChunkTransferManager: NSObject {
   }
 
   private func showPausedNotification(_ params: UploadParams) {
+    // On iOS the Live Activity is the sole surface: while it is up (paused state, with its Resume
+    // button) no paused notification is posted. This fires only as a fallback when Live Activities
+    // are unavailable.
+    guard !TransferActivityController.shared.isActive else { return }
     let content = UNMutableNotificationContent()
     content.title = "Paused: \(params.fileName)"
     content.categoryIdentifier = Self.categoryPaused
@@ -698,6 +787,9 @@ public final class BackgroundChunkTransferManager: NSObject {
   }
 
   private func showCompleteNotification(fileName: String) {
+    // Suppressed while a Live Activity is up — it shows the "Uploaded" terminal state itself. Called
+    // before the Activity is ended (see the completion path), so isActive still reflects the card.
+    guard !TransferActivityController.shared.isActive else { return }
     let content = UNMutableNotificationContent()
     content.title = "Uploaded \(fileName)"
     content.body = "Tap to open"
@@ -729,6 +821,7 @@ public final class BackgroundChunkTransferManager: NSObject {
   }
 
   private func showPausedDownloadNotification(_ params: DownloadParams) {
+    guard !TransferActivityController.shared.isActive else { return }
     let content = UNMutableNotificationContent()
     content.title = "Paused: \(params.fileName)"
     content.categoryIdentifier = Self.categoryPaused
@@ -739,6 +832,7 @@ public final class BackgroundChunkTransferManager: NSObject {
   }
 
   private func showDownloadCompleteNotification(fileName: String) {
+    guard !TransferActivityController.shared.isActive else { return }
     let content = UNMutableNotificationContent()
     content.title = "Downloaded \(fileName)"
     content.body = "Tap to open"
@@ -821,7 +915,7 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
     guard let meta = taskMeta.removeValue(forKey: task.taskIdentifier)
       ?? TransferTaskMeta(taskDescription: task.taskDescription) else { return }
     inFlightChunkTasks.removeValue(forKey: task.taskIdentifier)
-    let responseData = responseBuffers.removeValue(forKey: task.taskIdentifier)
+    _ = responseBuffers.removeValue(forKey: task.taskIdentifier)  // clear any buffered chunk response body
     let statusCode = (task.response as? HTTPURLResponse)?.statusCode
 
     NSLog("[BackgroundChunkTransfer] #didComplete :: id=\(meta.transferId) kind=\(meta.kind) err=\((error as NSError?)?.code ?? 0) status=\(statusCode ?? -1) hasParams=\(currentParams != nil) stopped=\(isStoppedByUser) inflight=\(inFlightChunkTasks.count) pending=\(pendingChunkQueue.count)")
@@ -839,14 +933,16 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
     // straggler, dropped by the guard below). If the record is missing (user force-quit — iOS does not
     // relaunch background sessions then), there is nothing to continue; the JS reconcile on the next
     // manual open handles it.
-    if currentParams == nil, let restored = TransferResumeStore.read(transferId: meta.transferId) {
+    if currentParams == nil,
+      SqliteProgressWriter.readStatus(transferId: meta.transferId) == "active",
+      let restored = TransferResumeStore.read(transferId: meta.transferId) {
       let savedOffset = SqliteProgressWriter.readUploadedChunks(transferId: meta.transferId)
       isStoppedByUser = false
       currentParams = restored
       lastNotifiedPercent = -1
       resetUploadWindow(startChunk: savedOffset, totalChunks: restored.totalChunks)
       TransferEventBus.activeTransferId = restored.transferId
-      TransferActivityController.shared.start(fileName: restored.fileName, type: "upload")
+      TransferActivityController.shared.start(transferId: restored.transferId, fileName: restored.fileName, type: "upload")
       NSLog("[BackgroundChunkTransfer] #rehydrate :: \(restored.transferId) from chunk \(savedOffset)")
     }
 
@@ -892,24 +988,9 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
     case .chunk(let index):
       markChunkComplete(index, params: params)
     case .finalize:
-      let cloudFileId = parseCloudFileId(from: responseData)
-      // SQLite write precedes the emit so the JS listener's refreshNow, which fires on this event
-      // and re-queries getByStatus(["active","pending","paused"]), sees the row as "complete" (and
-      // thus gone) instead of racing a still-"active" read that leaves it stuck in the sheet.
-      SqliteProgressWriter.markComplete(transferId: params.transferId)
-      TransferResumeStore.remove(transferId: params.transferId)
-      // When this finalize lands headless (background relaunch), JS never runs to delete the durable
-      // documentDirectory upload copy it made at enqueue time, so it would orphan. Delete it here;
-      // the JS path's own deleteAsync stays idempotent when JS is running.
-      if let sourceUrl = localFileUrl(from: params.localUri) {
-        try? FileManager.default.removeItem(at: sourceUrl)
-      }
-      emitEvent(transferId: params.transferId, type: "upload", status: "complete", progress: 100.0, cloudFileId: cloudFileId)
-      currentParams = nil
-      cachedAccessToken = nil
-      TransferEventBus.activeTransferId = nil
-      TransferActivityController.shared.end(state: "uploaded", progress: 100.0)
-      showCompleteNotification(fileName: params.fileName)
+      // Finalize now runs synchronously in finalizeUpload on a non-background session (so it completes
+      // before the app suspends), so no background finalize task reaches this delegate anymore.
+      break
     }
   }
 
@@ -1029,9 +1110,11 @@ extension BackgroundChunkTransferManager: URLSessionDownloadDelegate {
     currentDownloadParams = nil
     currentDownloadTask = nil
     TransferEventBus.activeTransferId = nil
-    TransferActivityController.shared.end(state: "downloaded", progress: 100.0)
     emitEvent(transferId: params.transferId, type: "download", status: "complete", progress: 100.0, localUri: params.destPath)
+    // Notification first (no-ops while the Activity is up), then end the Activity on the "Downloaded"
+    // terminal state — the card is the only surface on iOS, notification is the fallback.
     showDownloadCompleteNotification(fileName: params.fileName)
+    TransferActivityController.shared.end(state: "downloaded", progress: 100.0)
   }
 }
 

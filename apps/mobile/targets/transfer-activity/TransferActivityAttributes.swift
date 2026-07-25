@@ -21,6 +21,9 @@ struct TransferActivityAttributes: ActivityAttributes {
   }
 
   // Fixed for the life of the Activity.
+  // The transfer's id, so the Live Activity's Pause/Resume/Stop buttons (TransferControlIntent) can
+  // address it.
+  var transferId: String
   var fileName: String
   // "upload" | "download".
   var transferType: String

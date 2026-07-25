@@ -90,6 +90,38 @@ enum SqliteProgressWriter {
     return result
   }
 
+  /// Reads the current status of a transfer ("active" | "paused" | "cancelled" | "complete" |
+  /// "failed"), or nil if the row is missing. Used to gate background rehydrate so a paused/cancelled
+  /// transfer is not auto-resumed by a straggler task completion.
+  static func readStatus(transferId: String) -> String? {
+    var result: String?
+    withDatabase { db in
+      var statement: OpaquePointer?
+      guard sqlite3_prepare_v2(db, "SELECT status FROM transfers WHERE id = ?", -1, &statement, nil) == SQLITE_OK,
+        let statement
+      else {
+        return
+      }
+      defer { sqlite3_finalize(statement) }
+      bindText(statement, 1, transferId)
+      if sqlite3_step(statement) == SQLITE_ROW, let cString = sqlite3_column_text(statement, 0) {
+        result = String(cString: cString)
+      }
+    }
+    return result
+  }
+
+  /// Flips a transfer back to "active" — used when a Live Activity / notification Resume restarts it
+  /// natively (no JS running), so the row and the UI reflect the resumed state.
+  static func markActive(transferId: String) {
+    withDatabase { db in
+      exec(db, sql: "UPDATE transfers SET status = 'active', updated_at = ? WHERE id = ?") { statement in
+        bindText(statement, 1, nowIso())
+        bindText(statement, 2, transferId)
+      }
+    }
+  }
+
   static func markComplete(transferId: String) {
     withDatabase { db in
       exec(

@@ -15,5 +15,5 @@ module.exports = {
   name: "TransferActivity",
   // Must be >= 16.1 (ActivityKit) and match the app/module deployment target (16.4).
   deploymentTarget: "16.4",
-  frameworks: ["SwiftUI", "WidgetKit", "ActivityKit"],
+  frameworks: ["SwiftUI", "WidgetKit", "ActivityKit", "AppIntents"],
 };

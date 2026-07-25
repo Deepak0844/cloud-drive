@@ -38,28 +38,30 @@ final class TransferActivityController {
   /// progress surface — if Live Activities are disabled or the request throws. Ends any stale
   /// Activity first, so a previous transfer whose `end` was somehow missed can't strand a second
   /// card alongside the new one.
-  func start(fileName: String, type: String) {
+  func start(transferId: String, fileName: String, type: String) {
     guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
-    // Reconcile Activities that outlived a previous process. ActivityKit keeps Live Activities
-    // alive across app termination, but this singleton is fresh on a cold/background relaunch, so
-    // the in-memory `activity` slot is nil even while a card is still on the Lock Screen. When the
-    // resume flow re-invokes startUpload, requesting a new Activity here would stack a SECOND card
-    // beside the orphaned one (the reported duplicate). Single-transfer model: adopt the first
-    // survivor — it is the resuming transfer's own card — and end any extras, rather than creating
-    // a new one. The caller pushes the current progress via update() immediately after this.
+    // Reconcile Activities that outlived a previous process, or a paused card still on screen.
+    // ActivityKit keeps Live Activities alive across termination and while paused, but this singleton
+    // may be fresh (cold/background relaunch) with a nil slot. Adopt the card that belongs to THIS
+    // transfer (matched by transferId, now carried in the attributes) so the resume flow re-attaches
+    // to its own card instead of stacking a second one; end any other stale cards so a previous
+    // transfer's leftover card can't be mistaken for this one.
     let survivors = Activity<TransferActivityAttributes>.activities
-    if let adopted = survivors.first {
-      for extra in survivors.dropFirst() {
-        Task { await extra.end(nil, dismissalPolicy: .immediate) }
+    if let mine = survivors.first(where: { $0.attributes.transferId == transferId }) {
+      for other in survivors where other.id != mine.id {
+        Task { await other.end(nil, dismissalPolicy: .immediate) }
       }
       lock.lock()
-      activity = adopted
+      activity = mine
       lock.unlock()
       return
     }
+    for stale in survivors {
+      Task { await stale.end(nil, dismissalPolicy: .immediate) }
+    }
 
-    let attributes = TransferActivityAttributes(fileName: fileName, transferType: type)
+    let attributes = TransferActivityAttributes(transferId: transferId, fileName: fileName, transferType: type)
     let state = TransferActivityAttributes.ContentState(progress: 0, state: "active")
     let content = ActivityContent(state: state, staleDate: nil)
 
@@ -86,7 +88,19 @@ final class TransferActivityController {
     }
   }
 
-  /// Ends the live Activity with a terminal state ("uploaded" | "downloaded" | "paused" | "failed"
+  /// Flips the live Activity to the paused state WITHOUT ending it, so the card stays on screen with
+  /// its Resume button. Used on pause: on iOS the Activity is the sole surface (no paused
+  /// notification), so the card must persist rather than being dismissed.
+  func markPaused(progress: Double) {
+    guard let current = currentActivity else { return }
+    let state = TransferActivityAttributes.ContentState(progress: progress, state: "paused")
+    let content = ActivityContent(state: state, staleDate: nil)
+    Task {
+      await current.update(content)
+    }
+  }
+
+  /// Ends the live Activity with a terminal state ("uploaded" | "downloaded" | "failed"
   /// | "cancelled"), leaving the final card on screen briefly before the system dismisses it. The
   /// slot is cleared synchronously so `isActive` flips to false immediately (before the async end
   /// resolves), letting the caller's follow-up notification through.
