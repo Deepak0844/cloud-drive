@@ -24,13 +24,16 @@
     },
     "ios": {
       "bundleIdentifier": "com.clouddrive.app",
+      "appleTeamId": "G8JZV79B8A",
       "infoPlist": {
         "UIBackgroundModes": ["remote-notification", "fetch"],
+        "NSSupportsLiveActivities": true,
         "NSPhotoLibraryUsageDescription": "Used to back up your photos to cloud-drive.",
         "NSPhotoLibraryAddUsageDescription": "Used to save files from cloud-drive to your photo library."
       }
     },
     "plugins": [
+      "@bacons/apple-targets",
       [
         "expo-build-properties",
         {
