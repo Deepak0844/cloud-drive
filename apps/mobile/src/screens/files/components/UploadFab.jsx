@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View } from "react-native";
 import { useDispatch } from "react-redux";
-import { Plus, FolderOpen, FolderPlus, Camera, Image as ImageIcon } from "lucide-react-native";
+import { Upload, FolderOpen, FolderPlus, Camera, Image as ImageIcon } from "lucide-react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 
@@ -105,16 +105,16 @@ export default function UploadFab({ folderId = null, onCreateFolder = null }) {
 
   return (
     <>
-      <View className="absolute bottom-6 right-6">
+      <View className="absolute bottom-8 right-6">
         {activeCount > 0 ? (
-          <View className="absolute -top-2 -right-2 z-10 bg-primary rounded-full w-5 h-5 items-center justify-center">
+          <View className="absolute -top-2 -right-2 bg-primary rounded-full min-w-5 h-5 px-1 items-center justify-center border-2 border-background">
             <Text size="xs" className="text-white font-bold">
               {activeCount}
             </Text>
           </View>
         ) : null}
         <IconButton
-          icon={<Plus size={24} color="white" />}
+          icon={<Upload size={22} color="white" />}
           variant="primary"
           size="lg"
           onPress={() => setShowPickerSheet(true)}

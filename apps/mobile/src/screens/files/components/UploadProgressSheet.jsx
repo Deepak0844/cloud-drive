@@ -34,7 +34,7 @@ function RowAction({ label, onPress }) {
 }
 
 function UploadRow({ row }) {
-  const pct = row.progress ?? 0;
+  const pct = Math.round(row.progress ?? 0);
 
   const handlePause = () => nativeTransfer.pause(row.id);
   const handleResume = () =>
