@@ -1,5 +1,3 @@
-import * as faceapi from "face-api.js";
-import canvas from "canvas";
 import path from "path";
 import fs from "fs";
 
@@ -9,8 +7,23 @@ import File from "#models/File.js";
 // Utils
 import logger from "#utils/logger.js";
 
-const { Canvas, Image, ImageData } = canvas;
-faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
+// On Pi Zero 2W (ENABLE_FACE_API=false) @tensorflow/tfjs-node has no ARMv7
+// prebuilt binary, so we skip the import entirely and stub out the service.
+const faceApiEnabled = process.env.ENABLE_FACE_API !== "false";
+
+let faceapi = null;
+let canvasLib = null;
+
+if (faceApiEnabled) {
+  try {
+    faceapi = await import("face-api.js");
+    canvasLib = (await import("canvas")).default;
+    const { Canvas, Image, ImageData } = canvasLib;
+    faceapi.env.monkeyPatch({ Canvas, Image, ImageData });
+  } catch (err) {
+    logger.warn("Face API unavailable (native bindings missing):", err.message);
+  }
+}
 
 let modelsLoaded = false;
 
@@ -18,6 +31,9 @@ let modelsLoaded = false;
  * Load face-api models from the filesystem
  */
 async function loadModels() {
+  if (!faceapi) {
+    return;
+  }
   if (modelsLoaded) {
     return;
   }
@@ -45,6 +61,9 @@ async function loadModels() {
  * @param {Object} file - File model instance
  */
 async function detectFaces(file) {
+  if (!faceApiEnabled || !faceapi) {
+    return;
+  }
   if (file.category !== "image") {
     return;
   }
@@ -55,7 +74,7 @@ async function detectFaces(file) {
   }
 
   try {
-    const img = await canvas.loadImage(file.storage_path);
+    const img = await canvasLib.loadImage(file.storage_path);
     const detections = await faceapi.detectAllFaces(img).withFaceLandmarks().withFaceDescriptors();
 
     if (detections.length > 0) {

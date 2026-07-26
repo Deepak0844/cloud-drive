@@ -38,7 +38,7 @@ RUN npm ci --workspace=cloud-drive-web --include-workspace-root
 COPY apps/web/ ./apps/web/
 
 # Build the Vite app → outputs to apps/web/dist
-RUN npm run build --workspace=cloud-drive-web
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build --workspace=cloud-drive-web
 
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
 FROM nginx:${NGINX_VERSION}

@@ -1,0 +1,43 @@
+# =============================================================================
+# docker-compose.pi.yml — Raspberry Pi Zero 2W overlay (server only)
+#
+# Frontend runs on Vercel — no web service here.
+# Images must be cross-compiled on Mac (linux/arm/v7) and transferred to the Pi:
+#
+#   make pi-build                              # Mac: cross-compile
+#   make pi-save                               # Mac: export to cloud-drive-pi.tar.gz
+#   scp cloud-drive-pi.tar.gz pi@<IP>:~/cloud-drive/
+#   ssh pi@<IP> "docker load < ~/cloud-drive/cloud-drive-pi.tar.gz && make pi"
+#
+# Usage on Pi:
+#   make pi          # start
+#   make pi-down     # stop
+#   make logs-pi     # tail logs
+# =============================================================================
+
+services:
+  server:
+    image: cloud-drive-server:pi
+    platform: linux/arm/v7
+    build:
+      args:
+        NODE_VERSION: "22-bookworm-slim"
+        ENABLE_FACE_API: "false"
+    env_file:
+      - apps/server/env/.env.production
+    environment:
+      - NODE_ENV=production
+      - NAS_STORAGE_PATH=/storage
+      - ENABLE_FACE_API=false
+    ports:
+      - "${SERVER_PORT:-9000}:9000"
+    volumes:
+      - ${NAS_HOST_PATH:?NAS_HOST_PATH must be set in .env.prod}:/storage
+    networks: [app-net]
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+
+networks:
+  app-net:

@@ -18,9 +18,14 @@ PROD_COMPOSE    := docker compose -p cloud-drive-prod \
                    -f docker-compose.yml -f docker-compose.prod.yml \
                    --env-file .env.prod
 
+PI_COMPOSE      := docker compose -p cloud-drive-pi \
+                   -f docker-compose.yml -f docker-compose.pi.yml \
+                   --env-file .env.prod
+
 .PHONY: dev dev-build dev-down logs-dev \
         staging staging-down logs-staging \
-        prod prod-down logs-prod
+        prod prod-down logs-prod \
+        pi-build pi-save pi pi-down logs-pi
 
 # ── Dev ───────────────────────────────────────────────────────────────────────
 dev:
@@ -54,3 +59,26 @@ prod-down:
 
 logs-prod:
 	$(PROD_COMPOSE) logs -f
+
+# ── Pi Zero 2W ────────────────────────────────────────────────────────────────
+# pi-build and pi-save run on Mac.
+# pi / pi-down / logs-pi run on the Pi after: docker load < cloud-drive-pi.tar.gz
+pi-build:
+	docker buildx build --platform linux/arm/v7 \
+	  --build-arg ENABLE_FACE_API=false \
+	  --build-arg NODE_VERSION=22-bookworm-slim \
+	  -t cloud-drive-server:pi \
+	  -f apps/server/Dockerfile \
+	  --load .
+
+pi-save:
+	docker save cloud-drive-server:pi | gzip > cloud-drive-pi.tar.gz
+
+pi:
+	$(PI_COMPOSE) up -d
+
+pi-down:
+	$(PI_COMPOSE) down
+
+logs-pi:
+	$(PI_COMPOSE) logs -f
