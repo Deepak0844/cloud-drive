@@ -4,12 +4,6 @@ import UserNotifications
 
 enum TransferTaskKind {
   case chunk(index: Int)
-  case finalize
-
-  var isFinalize: Bool {
-    if case .finalize = self { return true }
-    return false
-  }
 }
 
 struct TransferTaskMeta {
@@ -19,41 +13,30 @@ struct TransferTaskMeta {
 }
 
 extension TransferTaskMeta {
-  /// Stored on each task's `taskDescription` so the transfer id + chunk index survive a background
-  /// relaunch (the in-memory taskMeta cache does not). Format: "<transferId>|chunk|<index>" or
-  /// "<transferId>|finalize".
+  /// Stored on each chunk task's `taskDescription` so the transfer id + chunk index survive a
+  /// background relaunch (the in-memory taskMeta cache does not). Format: "<transferId>|chunk|<index>".
+  /// (Finalize runs as a synchronous request, not a background task, so it has no descriptor.)
   var taskDescriptionValue: String {
     switch kind {
     case .chunk(let index): return "\(transferId)|chunk|\(index)"
-    case .finalize: return "\(transferId)|finalize"
     }
   }
 
-  /// Rebuilds the metadata from a relaunched task's `taskDescription`. The temp-file URL is
-  /// re-derived from the deterministic names used when the task was created (chunk-<id>-<index>.bin
-  /// / finalize-<id>.json); that temp file may already be gone, which is fine — the next chunk is
-  /// read from the durable source file, not the temp.
+  /// Rebuilds the metadata from a relaunched chunk task's `taskDescription`. The temp-file URL is
+  /// re-derived from the deterministic name used when the task was created (chunk-<id>-<index>.bin);
+  /// that temp file may already be gone, which is fine — the next chunk is read from the durable
+  /// source file, not the temp.
   init?(taskDescription: String?) {
-    guard let parts = taskDescription?.components(separatedBy: "|"), parts.count >= 2 else { return nil }
-    let transferId = parts[0]
-    let tmp = FileManager.default.temporaryDirectory
-    switch parts[1] {
-    case "chunk":
-      guard parts.count == 3, let index = Int(parts[2]) else { return nil }
-      self.init(
-        transferId: transferId,
-        kind: .chunk(index: index),
-        tempFileUrl: tmp.appendingPathComponent("chunk-\(transferId)-\(index).bin")
-      )
-    case "finalize":
-      self.init(
-        transferId: transferId,
-        kind: .finalize,
-        tempFileUrl: tmp.appendingPathComponent("finalize-\(transferId).json")
-      )
-    default:
+    guard let parts = taskDescription?.components(separatedBy: "|"), parts.count == 3, parts[1] == "chunk",
+      let index = Int(parts[2])
+    else {
       return nil
     }
+    self.init(
+      transferId: parts[0],
+      kind: .chunk(index: index),
+      tempFileUrl: FileManager.default.temporaryDirectory.appendingPathComponent("chunk-\(parts[0])-\(index).bin")
+    )
   }
 }
 
@@ -131,11 +114,20 @@ public final class BackgroundChunkTransferManager: NSObject {
 
   private var backgroundCompletionHandler: (() -> Void)?
 
+  // All mutable state above is accessed only on this serial queue. The public entry points
+  // (startUpload/startDownload/pause/resume/cancel) hop onto it, and the URLSession delegate callbacks
+  // run on it too (it backs the delegateQueue below), so a Live Activity / notification button tap can
+  // never race a chunk-completion callback mutating these collections.
+  private let workQueue = DispatchQueue(label: "expo.modules.backgroundchunktransfer.work")
+
   private lazy var session: URLSession = {
     let config = URLSessionConfiguration.background(withIdentifier: Self.sessionIdentifier)
     config.isDiscretionary = false
     config.sessionSendsLaunchEvents = true
-    return URLSession(configuration: config, delegate: self, delegateQueue: nil)
+    let delegateQueue = OperationQueue()
+    delegateQueue.maxConcurrentOperationCount = 1
+    delegateQueue.underlyingQueue = workQueue
+    return URLSession(configuration: config, delegate: self, delegateQueue: delegateQueue)
   }()
 
   private override init() {
@@ -175,7 +167,7 @@ public final class BackgroundChunkTransferManager: NSObject {
   /// checkpoint) so the system-provided completion handler runs once all relaunch-driven
   /// delegate callbacks have drained.
   public func setBackgroundCompletionHandler(_ handler: @escaping () -> Void) {
-    backgroundCompletionHandler = handler
+    workQueue.async { [weak self] in self?.backgroundCompletionHandler = handler }
   }
 
   // MARK: - Public API
@@ -186,7 +178,9 @@ public final class BackgroundChunkTransferManager: NSObject {
     currentParams?.transferId ?? currentDownloadParams?.transferId
   }
 
-  func startUpload(_ params: UploadParams) {
+  func startUpload(_ params: UploadParams) { workQueue.async { [weak self] in self?._startUpload(params) } }
+
+  private func _startUpload(_ params: UploadParams) {
     if let activeId = activeTransferId, activeId != params.transferId {
       emitEvent(transferId: params.transferId, type: "upload", status: "busy", progress: nil)
       return
@@ -305,7 +299,9 @@ public final class BackgroundChunkTransferManager: NSObject {
     }
   }
 
-  func startDownload(_ params: DownloadParams) {
+  func startDownload(_ params: DownloadParams) { workQueue.async { [weak self] in self?._startDownload(params) } }
+
+  private func _startDownload(_ params: DownloadParams) {
     if let activeId = activeTransferId, activeId != params.transferId {
       emitEvent(transferId: params.transferId, type: "download", status: "busy", progress: nil)
       return
@@ -328,7 +324,9 @@ public final class BackgroundChunkTransferManager: NSObject {
     beginDownloadTask(params: params, resumeData: resumeData)
   }
 
-  func pause(transferId: String) {
+  func pause(transferId: String) { workQueue.async { [weak self] in self?._pause(transferId: transferId) } }
+
+  private func _pause(transferId: String) {
     if currentParams?.transferId == transferId {
       // Once the last chunk lands, finalizeUpload posts the finalize request. Cancelling that
       // client-side doesn't undo it server-side — the server may have already created the file and
@@ -348,7 +346,9 @@ public final class BackgroundChunkTransferManager: NSObject {
   /// startUpload (which re-adopts the Live Activity and refills the window). No-op if another transfer
   /// already holds the single slot or the record is gone (completed/cancelled). Uploads only — a
   /// paused download has no resume record here and is resumed via the notification path instead.
-  func resume(transferId: String) {
+  func resume(transferId: String) { workQueue.async { [weak self] in self?._resume(transferId: transferId) } }
+
+  private func _resume(transferId: String) {
     guard currentParams == nil, currentDownloadParams == nil else { return }
     guard let restored = TransferResumeStore.read(transferId: transferId) else { return }
     let offset = SqliteProgressWriter.readUploadedChunks(transferId: transferId)
@@ -356,11 +356,13 @@ public final class BackgroundChunkTransferManager: NSObject {
     // "active". Doing it the other way round leaves a window where status == "active" but
     // currentParams == nil, in which a straggler completion from the just-cancelled pause tasks would
     // trip the background-rehydrate path and race a second scheduler against this resume.
-    startUpload(restored.with(startChunk: offset))
+    _startUpload(restored.with(startChunk: offset))
     SqliteProgressWriter.markActive(transferId: transferId)
   }
 
-  func cancel(transferId: String) {
+  func cancel(transferId: String) { workQueue.async { [weak self] in self?._cancel(transferId: transferId) } }
+
+  private func _cancel(transferId: String) {
     if currentParams?.transferId == transferId {
       stopActiveTransfer(transferId: transferId, status: "cancelled")
     } else if currentDownloadParams?.transferId == transferId {
@@ -429,7 +431,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     isStoppedByUser = true
     currentDownloadTask?.cancel { [weak self] resumeData in
       guard let resumeData else { return }
-      DispatchQueue.main.async {
+      self?.workQueue.async {
         self?.pausedResumeData[transferId] = resumeData
       }
     }
@@ -918,8 +920,6 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
     _ = responseBuffers.removeValue(forKey: task.taskIdentifier)  // clear any buffered chunk response body
     let statusCode = (task.response as? HTTPURLResponse)?.statusCode
 
-    NSLog("[BackgroundChunkTransfer] #didComplete :: id=\(meta.transferId) kind=\(meta.kind) err=\((error as NSError?)?.code ?? 0) status=\(statusCode ?? -1) hasParams=\(currentParams != nil) stopped=\(isStoppedByUser) inflight=\(inFlightChunkTasks.count) pending=\(pendingChunkQueue.count)")
-
     if isStoppedByUser {
       try? FileManager.default.removeItem(at: meta.tempFileUrl)
       return
@@ -984,13 +984,10 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
     // Success — each chunk's temp file is deleted as soon as its upload is acknowledged.
     try? FileManager.default.removeItem(at: meta.tempFileUrl)
 
-    switch meta.kind {
-    case .chunk(let index):
+    // Only chunk tasks run on the background session (finalize is a synchronous request), so this is
+    // always a chunk completion.
+    if case .chunk(let index) = meta.kind {
       markChunkComplete(index, params: params)
-    case .finalize:
-      // Finalize now runs synchronously in finalizeUpload on a non-background session (so it completes
-      // before the app suspends), so no background finalize task reaches this delegate anymore.
-      break
     }
   }
 
@@ -1006,26 +1003,18 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
     // Update the cache so the rest of the in-flight window's chunks pick up the refreshed token.
     cachedAccessToken = newToken
 
-    let url: URL
-    switch meta.kind {
-    case .chunk(let index):
-      url = URL(string: "\(params.baseUrl)/api/v1/files/upload/chunk?uploadId=\(params.uploadId)&chunkIndex=\(index)")!
-    case .finalize:
-      url = URL(string: "\(params.baseUrl)/api/v1/files/upload/finalize")!
-    }
+    guard case .chunk(let index) = meta.kind else { return }
+    let url = URL(string: "\(params.baseUrl)/api/v1/files/upload/chunk?uploadId=\(params.uploadId)&chunkIndex=\(index)")!
 
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
-    request.setValue(meta.kind.isFinalize ? "application/json" : "application/octet-stream", forHTTPHeaderField: "Content-Type")
+    request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
 
     let retryTask = session.uploadTask(with: request, fromFile: meta.tempFileUrl)
     taskMeta[retryTask.taskIdentifier] = meta
     retryTask.taskDescription = meta.taskDescriptionValue
-    // Chunk retries rejoin the in-flight window; the finalize retry is the single finalize task.
-    if case .chunk = meta.kind {
-      inFlightChunkTasks[retryTask.taskIdentifier] = retryTask
-    }
+    inFlightChunkTasks[retryTask.taskIdentifier] = retryTask  // the retry rejoins the in-flight window
     retryTask.resume()
   }
 
