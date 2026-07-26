@@ -14,17 +14,26 @@
         "backgroundColor": "#0f172a"
       },
       "softwareKeyboardLayoutMode": "pan",
-      "permissions": ["FOREGROUND_SERVICE", "RECEIVE_BOOT_COMPLETED", "READ_MEDIA_IMAGES", "READ_MEDIA_VIDEO"]
+      "permissions": [
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_DATA_SYNC",
+        "RECEIVE_BOOT_COMPLETED",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.clouddrive.app",
+      "appleTeamId": "G8JZV79B8A",
       "infoPlist": {
         "UIBackgroundModes": ["remote-notification", "fetch"],
+        "NSSupportsLiveActivities": true,
         "NSPhotoLibraryUsageDescription": "Used to back up your photos to cloud-drive.",
         "NSPhotoLibraryAddUsageDescription": "Used to save files from cloud-drive to your photo library."
       }
     },
     "plugins": [
+      "@bacons/apple-targets",
       [
         "expo-build-properties",
         {
@@ -49,7 +58,8 @@
       "expo-secure-store",
       "expo-image",
       "expo-video",
-      "expo-audio"
+      "expo-audio",
+      "./modules/background-chunk-transfer/app.plugin.js"
     ]
   }
 }

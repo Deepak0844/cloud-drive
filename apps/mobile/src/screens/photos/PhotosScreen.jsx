@@ -3,16 +3,12 @@ import { SectionList, View } from "react-native";
 
 // Rtk
 import { useGetFilesQuery } from "@api/fileApi";
-import { useGetQuotaBreakdownQuery } from "@api/quotaApi";
 
 // Constants
 import { AppScreens } from "@constants/appScreens";
 
 // Hooks
 import { useResponsive } from "@hooks/useResponsive";
-
-// Utils
-import { NumberUtils } from "@shared-utils/utils";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -31,19 +27,6 @@ function SectionHeader({ title }) {
     <Text size="xs" className="text-secondary uppercase tracking-widest px-4 pt-4 pb-1 font-semibold">
       {title}
     </Text>
-  );
-}
-
-function StatChip({ value, label, valueClassName }) {
-  return (
-    <View className="flex-1 items-center py-2.5 rounded-xl bg-glass-surface-bg border border-glass-surface-border">
-      <Text size="lg" bold className={valueClassName}>
-        {value}
-      </Text>
-      <Text size="2xs" className="text-secondary mt-0.5">
-        {label}
-      </Text>
-    </View>
   );
 }
 
@@ -90,8 +73,6 @@ export default function PhotosScreen({ navigation = {} }) {
     isFetching: videosFetching,
     refetch: refetchVideos,
   } = useGetFilesQuery({ category: "video", recursive: true, pg: videoPage });
-  const { data: breakdown } = useGetQuotaBreakdownQuery();
-
   const isLoading = imagesLoading || videosLoading;
   const isFetching = imagesFetching || videosFetching;
 
@@ -101,13 +82,6 @@ export default function PhotosScreen({ navigation = {} }) {
   }, [imageData, videoData]);
 
   const sections = groupByMonth(merged, columns);
-
-  const photoCount = imageData?.pagination?.total ?? imageData?.items?.length ?? 0;
-  const videoCount = videoData?.pagination?.total ?? videoData?.items?.length ?? 0;
-  const breakdownRows = Array.isArray(breakdown) ? breakdown : [];
-  const usedBytes = breakdownRows
-    .filter((row) => ["images", "image", "video", "videos"].includes(row.category))
-    .reduce((sum, row) => sum + (row.total_size_bytes ?? 0), 0);
 
   function handleRefresh() {
     if (imagePage === 1) {
@@ -141,18 +115,12 @@ export default function PhotosScreen({ navigation = {} }) {
         accentColor={colors.alt.DEFAULT}
       />
 
-      <View className="flex-row gap-2.5 px-4 py-3">
-        <StatChip value={String(photoCount)} label="Photos" />
-        <StatChip value={String(videoCount)} label="Videos" />
-        <StatChip value={NumberUtils.formatBytes(usedBytes)} label="Used" valueClassName="text-alt" />
-      </View>
-
       <Skeleton loading={isLoading}>
         <SectionList
           sections={sections}
           keyExtractor={(row) => row[0]?.id ?? "row"}
           renderItem={({ item: row }) => (
-            <View className="flex-row">
+            <View className="flex-row px-4">
               {row.map((file) => (
                 <FileGrid
                   key={file.id}

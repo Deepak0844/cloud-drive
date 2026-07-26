@@ -24,6 +24,12 @@ function serveWithRange(res, filePath, mimeType, rangeHeader, userKey, iv) {
     "Content-Disposition": "inline",
     "Accept-Ranges": "bytes",
     "Cache-Control": "private, no-store", // no-store prevents caching error responses
+    // iOS's URLSessionDownloadTask.cancel(byProducingResumeData:) silently refuses to produce
+    // resume data unless the response carries an ETag or Last-Modified — without one, a paused
+    // background download on iOS restarts from byte 0 instead of resuming. no-store above means
+    // these headers only serve that validation purpose here, not actual response caching.
+    ETag: `"${fileSize}-${stat.mtimeMs}"`,
+    "Last-Modified": stat.mtime.toUTCString(),
   };
 
   let fileStream;

@@ -2,7 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 
 // Db
 import transfersRepository from "@db/repositories/transfersRepository";
+
+// Hooks
+import { useAppStateActive } from "@hooks/useAppStateActive";
+
+// Lib
 import uploadQueue from "@lib/uploadQueue";
+import nativeTransfer from "@lib/nativeTransfer";
 
 export function useUploadQueue() {
   const [queueStatus, setQueueStatus] = useState({ pending: 0, active: 0, paused: 0 });
@@ -17,11 +23,15 @@ export function useUploadQueue() {
     });
   }, []);
 
+  // The native engine emits an event on every state change on both platforms, so drive the badge
+  // reactively off those events rather than polling.
   useEffect(() => {
     refreshStatus();
-    const interval = setInterval(refreshStatus, 1500);
-    return () => clearInterval(interval);
+    return nativeTransfer.addTransferListener(refreshStatus);
   }, [refreshStatus]);
+
+  // Events fired while backgrounded are missed (JS suspended), so re-count on foreground too.
+  useAppStateActive(refreshStatus);
 
   const enqueue = useCallback(
     async (localUri, fileName, mimeType, folderId = null) => {

@@ -1,0 +1,7 @@
+{
+  "name": "background-chunk-transfer",
+  "version": "1.0.0",
+  "description": "Local Expo module: native background chunked upload/download engine",
+  "main": "index.js",
+  "private": true
+}

@@ -22,6 +22,7 @@ import { DatabaseGate, DrizzleStudioPlugin } from "@providers/DatabaseGate";
 import AppStatusBar from "@components/statusBar/AppStatusBar";
 import ErrorHandler from "@components/error_handler/ErrorHandler";
 import BiometricLockScreen from "@components/auth/BiometricLockScreen";
+import TransferResumeOnLaunch from "@components/transfer/TransferResumeOnLaunch";
 
 // Navigation
 import RootNavigator from "@navigation/RootNavigator";
@@ -31,7 +32,6 @@ import { useBiometric } from "@hooks/useBiometric";
 import { useNetworkStatus } from "@hooks/useNetworkStatus";
 
 // Lib / Services
-import backgroundTransfer from "@lib/backgroundTransfer";
 import syncService from "@services/sync/syncService";
 import photoBackupService from "@services/backup/photoBackupService";
 
@@ -114,7 +114,8 @@ function AppContent() {
   useEffect(() => {
     const sub = AppState.addEventListener("change", async (next) => {
       if (appState.current === "active" && next.match(/inactive|background/)) {
-        await backgroundTransfer.pauseAll();
+        // No pauseAll() needed — native code now owns background survival for both
+        // uploads and downloads directly, on both platforms.
         if (isAuthenticated && !biometricLockedRef.current && (await isEnabled())) {
           setBiometricLocked(true);
         }
@@ -133,6 +134,7 @@ function AppContent() {
         <GestureHandlerRootView className="flex-1">
           {isDev && <DrizzleStudioPlugin />}
           <DatabaseGate>
+            <TransferResumeOnLaunch />
             <AppStatusBar variant="gradient-light" />
             <NavigationContainer>
               <RootNavigator />

@@ -232,9 +232,9 @@ export default function FilesBrowserContent({ folderId = null, path = [], naviga
   function renderSelectableRow(item, RowComponent, onPress, extraProps = {}) {
     const isSelected = Boolean(selected[item.id]);
     return (
-      <View className="flex-row items-center">
+      <View className="flex-row items-center px-4">
         {selectionMode ? (
-          <Pressable onPress={() => toggleSelect(item)} className="pl-3">
+          <Pressable onPress={() => toggleSelect(item)} className="pl-2 mr-2">
             {isSelected ? (
               <CheckCircle2 size={20} color={colors.primary.DEFAULT} />
             ) : (
@@ -336,6 +336,7 @@ export default function FilesBrowserContent({ folderId = null, path = [], naviga
             });
           }}
           renderSectionHeader={({ section }) => <SectionHeader title={section.title} />}
+          ItemSeparatorComponent={() => <View className="h-2" />}
           refreshing={isOnline && isFetching && !isLoading}
           onRefresh={isOnline ? refetch : undefined}
           stickySectionHeadersEnabled={false}

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, ScrollView, Alert } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, ScrollView, Alert, Pressable } from "react-native";
 import { Download, Share2, Star } from "lucide-react-native";
 import * as Sharing from "expo-sharing";
 
@@ -9,9 +9,16 @@ import { useToggleFileFavoriteMutation } from "@api/fileApi";
 // Utils
 import { NumberUtils } from "@shared-utils/utils";
 
+// Db
+import transfersRepository from "@db/repositories/transfersRepository";
+
 // Lib
 import backgroundTransfer from "@lib/backgroundTransfer";
+import nativeTransfer, { BusyError } from "@lib/nativeTransfer";
 import haptics from "@lib/haptics";
+
+// Hooks
+import { useAppStateActive } from "@hooks/useAppStateActive";
 
 // Theme
 import { useTheme } from "@theme/useTheme";
@@ -56,6 +63,7 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
   const [file, setFile] = useState(fileParam);
   const [downloading, setDownloading] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [activeDownloadRow, setActiveDownloadRow] = useState(null);
 
   const [toggleFileFavorite] = useToggleFileFavoriteMutation();
 
@@ -65,10 +73,35 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
   const isFavourite = file?.isFavorite ?? false;
   const locationName = file?.folder?.name ?? null;
 
-  // previewUrl serves the raw decrypted file with AES-CTR range support (206 + Content-Length).
-  // ExoPlayer's DefaultExtractorsFactory sniffs content bytes and selects the right extractor
-  // (MP4, Matroska, AVI, WebM, …) regardless of the Content-Type header.
+  // previewUrl serves the raw decrypted file with AES-CTR range support. ExoPlayer sniffs content
+  // bytes to select the right extractor regardless of the Content-Type header.
   const videoUri = file?.previewUrl;
+
+  // Tracks this file's in-progress download row (if any) so Pause/Resume/Stop controls can
+  // target it — native emits an event on every state change on both platforms.
+  const refreshDownloadRow = useCallback(async () => {
+    if (!file?.id) return;
+    const rows = await transfersRepository.getByStatus(["active", "paused"]);
+    const row = rows.find((r) => r.fileId === file.id && r.type === "download");
+    setActiveDownloadRow(row ?? null);
+  }, [file?.id]);
+
+  useEffect(() => {
+    refreshDownloadRow();
+    const unsubscribe = nativeTransfer.addTransferListener(refreshDownloadRow);
+    return unsubscribe;
+  }, [refreshDownloadRow]);
+
+  // Native events fired while backgrounded are missed (JS suspended), so re-query on foreground.
+  useAppStateActive(refreshDownloadRow);
+
+  function handlePauseDownload() {
+    if (activeDownloadRow) nativeTransfer.pause(activeDownloadRow.id);
+  }
+
+  function handleStopDownload() {
+    if (activeDownloadRow) nativeTransfer.cancel(activeDownloadRow.id);
+  }
 
   async function onDownload() {
     if (!file?.downloadUrl) return;
@@ -85,6 +118,11 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
           "Permission required",
           "Go to Settings → Privacy → Photos and grant access to save downloads to your Gallery."
         );
+      } else if (ex instanceof BusyError) {
+        Alert.alert(
+          "Transfer in progress",
+          "Another upload or download is already running — try again once it finishes."
+        );
       } else {
         Alert.alert("Download failed", "This file may no longer be available.");
       }
@@ -100,8 +138,15 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
       const uri = await backgroundTransfer.download(file.id, file.downloadUrl, file.name);
       if (!uri) return;
       await Sharing.shareAsync(uri);
-    } catch {
-      Alert.alert("Share failed", "This file may no longer be available.");
+    } catch (ex) {
+      if (ex instanceof BusyError) {
+        Alert.alert(
+          "Transfer in progress",
+          "Another upload or download is already running — try again once it finishes."
+        );
+      } else {
+        Alert.alert("Share failed", "This file may no longer be available.");
+      }
     } finally {
       setSharing(false);
     }
@@ -185,6 +230,45 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
             <Download size={18} />
             <ButtonText>{downloading ? "Downloading…" : "Download"}</ButtonText>
           </Button>
+          {activeDownloadRow ? (
+            <View className="gap-1">
+              <View className="flex-row justify-between">
+                <Text size="xs" className="text-secondary">
+                  {activeDownloadRow.status === "paused" ? "Paused" : "Downloading…"}
+                </Text>
+                <Text size="xs" className="text-secondary">
+                  {activeDownloadRow.progress ?? 0}%
+                </Text>
+              </View>
+              <View className="h-1.5 bg-neutral-subtle rounded-full overflow-hidden">
+                <View
+                  className="h-full bg-primary rounded-full"
+                  style={{ width: `${activeDownloadRow.progress ?? 0}%` }}
+                />
+              </View>
+              <View className="flex-row justify-end gap-3">
+                {activeDownloadRow.status === "active" && (
+                  <Pressable onPress={handlePauseDownload} className="px-2 py-1">
+                    <Text size="xs" className="text-primary">
+                      Pause
+                    </Text>
+                  </Pressable>
+                )}
+                {activeDownloadRow.status === "paused" && (
+                  <Pressable onPress={onDownload} className="px-2 py-1">
+                    <Text size="xs" className="text-primary">
+                      Resume
+                    </Text>
+                  </Pressable>
+                )}
+                <Pressable onPress={handleStopDownload} className="px-2 py-1">
+                  <Text size="xs" className="text-primary">
+                    Stop
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
           <Button variant="outline" size="lg" onPress={onShare} disabled={sharing}>
             <Share2 size={18} />
             <ButtonText>{sharing ? "Preparing…" : "Share"}</ButtonText>

@@ -77,5 +77,5 @@ package-lock.json
 dist/
 web-build/
 
-android/
-ios/
+/android/
+/ios/

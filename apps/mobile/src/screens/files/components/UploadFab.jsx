@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View } from "react-native";
 import { useDispatch } from "react-redux";
-import { Plus, FolderOpen, FolderPlus, Camera, Image as ImageIcon } from "lucide-react-native";
+import { Upload, FolderOpen, FolderPlus, Camera, Image as ImageIcon } from "lucide-react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 
@@ -40,8 +40,11 @@ export default function UploadFab({ folderId = null, onCreateFolder = null }) {
       setCameraDenied(true);
       return;
     }
-    setShowPickerSheet(false);
+    // Sheet closes only after the camera UI resolves — closing first would unmount GlassBottomSheet's
+    // Modal while the camera is presented on top of it, tearing down its parent view controller
+    // mid-presentation and freezing the app (orphaned callback, corrupted view hierarchy).
     const result = await ImagePicker.launchCameraAsync();
+    setShowPickerSheet(false);
     if (!result.canceled && result.assets?.[0]) {
       const { uri, fileName, mimeType } = result.assets[0];
       const name = fileName ?? `photo-${Date.now()}.jpg`;
@@ -55,44 +58,60 @@ export default function UploadFab({ folderId = null, onCreateFolder = null }) {
   }
 
   async function pickFile() {
+    // See takePhoto — sheet closes only after the picker resolves. multiple: each selected file is
+    // enqueued and the queue drains them one at a time (see uploadQueue.js).
+    const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: true });
     setShowPickerSheet(false);
-    const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
-    if (!result.canceled && result.assets?.[0]) {
-      const { uri, name, mimeType } = result.assets[0];
-      try {
-        await enqueue(uri, name, mimeType ?? "application/octet-stream", folderId);
-      } catch {
-        reportUploadError(name);
+    if (!result.canceled) {
+      for (const asset of result.assets ?? []) {
+        const { uri, name, mimeType } = asset;
+        try {
+          await enqueue(uri, name, mimeType ?? "application/octet-stream", folderId);
+        } catch {
+          reportUploadError(name);
+        }
       }
     }
   }
 
   async function pickPhoto() {
+    // See takePhoto's comment — sheet closes only after the picker resolves, not before.
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images", "videos"],
+      allowsMultipleSelection: true,
+    });
     setShowPickerSheet(false);
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images", "videos"] });
-    if (!result.canceled && result.assets?.[0]) {
-      const { uri, fileName, mimeType } = result.assets[0];
-      const name = fileName ?? "photo.jpg";
-      try {
-        await enqueue(uri, name, mimeType ?? "image/jpeg", folderId);
-      } catch {
-        reportUploadError(name);
+    if (!result.canceled) {
+      const assets = result.assets ?? [];
+      for (let i = 0; i < assets.length; i++) {
+        const { uri, type, fileName, mimeType } = assets[i];
+        // mediaTypes includes videos, so the fallback name/mime must be media-aware — a video without
+        // a fileName stored as .jpg breaks thumbnailing/playback. The index keeps each row's dest
+        // path distinct within a multi-select batch.
+        const isVideo = type === "video" || mimeType?.startsWith("video/");
+        const name = fileName ?? `${isVideo ? "video" : "photo"}-${Date.now()}-${i}.${isVideo ? "mp4" : "jpg"}`;
+        const resolvedMime = mimeType ?? (isVideo ? "video/mp4" : "image/jpeg");
+        try {
+          await enqueue(uri, name, resolvedMime, folderId);
+        } catch {
+          reportUploadError(name);
+        }
       }
     }
   }
 
   return (
     <>
-      <View className="absolute bottom-6 right-6">
+      <View className="absolute bottom-8 right-6">
         {activeCount > 0 ? (
-          <View className="absolute -top-2 -right-2 z-10 bg-primary rounded-full w-5 h-5 items-center justify-center">
+          <View className="absolute -top-2 -right-2 bg-primary rounded-full min-w-5 h-5 px-1 items-center justify-center border-2 border-background">
             <Text size="xs" className="text-white font-bold">
               {activeCount}
             </Text>
           </View>
         ) : null}
         <IconButton
-          icon={<Plus size={24} color="white" />}
+          icon={<Upload size={22} color="white" />}
           variant="primary"
           size="lg"
           onPress={() => setShowPickerSheet(true)}
