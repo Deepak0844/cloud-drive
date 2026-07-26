@@ -177,7 +177,13 @@ export default function SearchScreen({ navigation = {} }) {
           renderItem={({ item }) => (
             <FileListItem
               item={item}
-              onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
+              onPress={() => {
+                const list = data?.items ?? [];
+                navigation.navigate(AppScreens.FILE_DETAIL, {
+                  files: list,
+                  index: list.findIndex((f) => f.id === item.id),
+                });
+              }}
               onLongPress={() => {}}
             />
           )}

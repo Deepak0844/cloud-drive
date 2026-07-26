@@ -251,7 +251,13 @@ export default function HomeScreen({ navigation = {} }) {
           />
           <RecentFilesList
             items={recent?.items ?? []}
-            onNavigate={(item) => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
+            onNavigate={(item) => {
+              const list = recent?.items ?? [];
+              navigation.navigate(AppScreens.FILE_DETAIL, {
+                files: list,
+                index: list.findIndex((f) => f.id === item.id),
+              });
+            }}
             onSeeAll={() => navigation.navigate(AppScreens.RECENT)}
           />
         </ScrollView>

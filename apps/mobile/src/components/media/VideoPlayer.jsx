@@ -12,8 +12,7 @@ import Text from "@components/ui/text/Text";
 // Theme
 import { useTheme } from "@theme/useTheme";
 
-const { width } = Dimensions.get("window");
-const HEIGHT = (width / 16) * 9;
+const { width, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 function formatTime(seconds = 0) {
   const minutes = Math.floor(seconds / 60);
@@ -21,7 +20,7 @@ function formatTime(seconds = 0) {
   return `${minutes}:${paddedSeconds}`;
 }
 
-export default function VideoPlayer({ uri = "", fallbackUri = "", extension = "" }) {
+export default function VideoPlayer({ uri = "", fallbackUri = "", extension = "", controlsVisible = true }) {
   const { colors } = useTheme();
   const headers = TokenStorage.getAuthHeaders();
 
@@ -81,11 +80,11 @@ export default function VideoPlayer({ uri = "", fallbackUri = "", extension = ""
   }
 
   return (
-    <View className="bg-black" style={{ width, height: HEIGHT + 40 }}>
-      <VideoView player={player} style={{ width, height: HEIGHT }} contentFit="contain" nativeControls={false} />
+    <View className="bg-black" style={{ width, height: SCREEN_HEIGHT }}>
+      <VideoView player={player} style={{ width, height: SCREEN_HEIGHT }} contentFit="contain" nativeControls={false} />
 
-      {duration > 0 && (
-        <View className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/55">
+      {duration > 0 && controlsVisible && (
+        <View className="absolute top-14 left-3 px-2 py-0.5 rounded-md bg-black/55">
           <Text size="xs" className="text-neutral-foreground">
             {formatTime(duration)}
             {extension ? ` · ${extension.toUpperCase()}` : ""}
@@ -94,28 +93,33 @@ export default function VideoPlayer({ uri = "", fallbackUri = "", extension = ""
       )}
 
       {isBuffering && (
-        <View className="absolute inset-x-0 top-0 items-center justify-center bg-black/40" style={{ height: HEIGHT }}>
+        <View
+          className="absolute inset-x-0 top-0 items-center justify-center bg-black/40"
+          style={{ height: SCREEN_HEIGHT }}
+        >
           <ActivityIndicator size="large" color={colors.neutral.foreground} />
         </View>
       )}
 
-      <View className="flex-row items-center px-3 gap-2.5 h-10 bg-glass-bar-bg">
-        <Pressable onPress={togglePlay} className="p-1">
-          {isPlaying ? (
-            <Pause size={22} color={colors.neutral.foreground} />
-          ) : (
-            <Play size={22} color={colors.neutral.foreground} />
-          )}
-        </Pressable>
+      {controlsVisible && (
+        <View className="absolute inset-x-0 bottom-24 flex-row items-center px-3 gap-2.5 h-10 bg-glass-bar-bg">
+          <Pressable onPress={togglePlay} className="p-1">
+            {isPlaying ? (
+              <Pause size={22} color={colors.neutral.foreground} />
+            ) : (
+              <Play size={22} color={colors.neutral.foreground} />
+            )}
+          </Pressable>
 
-        <Text size="xs" className="flex-1 text-center text-neutral-foreground">
-          {formatTime(position)} / {formatTime(duration)}
-        </Text>
+          <Text size="xs" className="flex-1 text-center text-neutral-foreground">
+            {formatTime(position)} / {formatTime(duration)}
+          </Text>
 
-        <Pressable onPress={() => player.enterFullscreen?.()} className="p-1">
-          <Maximize size={18} color={colors.neutral.foreground} />
-        </Pressable>
-      </View>
+          <Pressable onPress={() => player.enterFullscreen?.()} className="p-1">
+            <Maximize size={18} color={colors.neutral.foreground} />
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }

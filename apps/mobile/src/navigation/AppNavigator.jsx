@@ -35,7 +35,7 @@ import GlassDrawerContent from "@components/navigation/GlassDrawerContent";
 import HomeScreen from "@screens/home/HomeScreen";
 import MyFilesScreen from "@screens/files/MyFilesScreen";
 import FolderScreen from "@screens/files/FolderScreen";
-import FileDetailScreen from "@screens/files/FileDetailScreen";
+import MediaViewerScreen from "@screens/files/MediaViewerScreen";
 import PhotosScreen from "@screens/photos/PhotosScreen";
 import RecentScreen from "@screens/recent/RecentScreen";
 import FavoritesScreen from "@screens/favorites/FavoritesScreen";
@@ -90,7 +90,6 @@ function FilesStackNavigator() {
     <FilesStack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "transparent" } }}>
       <FilesStack.Screen name={AppScreens.MY_FILES} component={MyFilesScreen} />
       <FilesStack.Screen name={AppScreens.FOLDER} component={FolderScreen} />
-      <FilesStack.Screen name={AppScreens.FILE_DETAIL} component={FileDetailScreen} />
     </FilesStack.Navigator>
   );
 }
@@ -199,7 +198,7 @@ function NormalPhoneRootStack() {
       }}
     >
       <NormalRootStack.Screen name="Tabs" component={NormalTabNavigator} />
-      <NormalRootStack.Screen name={AppScreens.FILE_DETAIL} component={FileDetailScreen} />
+      <NormalRootStack.Screen name={AppScreens.FILE_DETAIL} component={MediaViewerScreen} />
       <NormalRootStack.Screen name={AppScreens.FOLDER} component={FolderScreen} />
       <NormalRootStack.Screen name={AppScreens.SEARCH} component={SearchScreen} />
       <NormalRootStack.Screen name={AppScreens.SETTINGS} component={SettingsScreen} />
@@ -283,6 +282,7 @@ function TabletNavigator() {
         <>
           <Drawer.Screen name={AppScreens.HOME} component={HomeScreen} />
           <Drawer.Screen name={AppScreens.FILES} component={FilesStackNavigator} />
+          <Drawer.Screen name={AppScreens.FILE_DETAIL} component={MediaViewerScreen} />
           <Drawer.Screen name={AppScreens.PHOTOS} component={PhotosScreen} />
           <Drawer.Screen name={AppScreens.RECENT} component={RecentScreen} />
           <Drawer.Screen name={AppScreens.FAVORITES} component={FavoritesScreen} />

@@ -131,7 +131,7 @@ export default function FileActionSheet({
     try {
       const uri = await backgroundTransfer.download(file.id, file.downloadUrl, file.name);
       // download() resolves null when the transfer was paused/cancelled — mirrors
-      // FileDetailScreen.handleShare's guard; without it Sharing.shareAsync(null) throws.
+      // MediaViewerScreen.onShare's guard; without it Sharing.shareAsync(null) throws.
       if (!uri) {
         return;
       }

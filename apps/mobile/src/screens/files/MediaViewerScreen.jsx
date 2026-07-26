@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, Alert, Pressable } from "react-native";
-import { Download, Share2, Star } from "lucide-react-native";
+import { View, Alert } from "react-native";
 import * as Sharing from "expo-sharing";
 
 // Rtk
@@ -20,21 +19,14 @@ import haptics from "@lib/haptics";
 // Hooks
 import { useAppStateActive } from "@hooks/useAppStateActive";
 
-// Theme
-import { useTheme } from "@theme/useTheme";
-
 // Components
 import ScreenLayout from "@components/ui/screen/ScreenLayout";
 import GlassHeader from "@components/ui/header/GlassHeader";
-import GlassCard from "@components/ui/glass/GlassCard";
+import GlassBottomSheet from "@components/ui/glass/GlassBottomSheet";
 import Text from "@components/ui/text/Text";
-import IconButton from "@components/ui/icon-button/IconButton";
-import Button, { ButtonText } from "@components/ui/button/Button";
 import EmptyState from "@components/ui/empty-state/EmptyState";
-import OfflineToggle from "@components/offline/OfflineToggle";
-import ImageViewer from "@components/media/ImageViewer";
-import VideoPlayer from "@components/media/VideoPlayer";
-import AudioPlayer from "@components/media/AudioPlayer";
+import MediaPager from "./components/MediaPager";
+import MediaViewerOverlay from "./components/MediaViewerOverlay";
 
 function MetaRow({ label = "", value = "" }) {
   return (
@@ -54,31 +46,30 @@ function formatDate(ts) {
   return new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" }).format(new Date(ts));
 }
 
-export default function FileDetailScreen({ navigation = {}, route = {} }) {
-  const { file: fileParam = null } = route.params ?? {};
-  const { colors } = useTheme();
+export default function MediaViewerScreen({ navigation = {}, route = {} }) {
+  const { files: filesParam = [], index: indexParam = 0 } = route.params ?? {};
 
-  // The full item travels via route params (web passes the file object the same
-  // way); favorite state is kept locally so the toggle reflects immediately.
-  const [file, setFile] = useState(fileParam);
+  // Local mutable copy so the optimistic favourite toggle has somewhere to write the flipped
+  // value before the mutation resolves — mirrors what this screen did with a single `file` before.
+  const [items, setItems] = useState(filesParam);
+  const [currentIndex, setCurrentIndex] = useState(indexParam);
+  const [overlayVisible, setOverlayVisible] = useState(true);
+  const [infoVisible, setInfoVisible] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [activeDownloadRow, setActiveDownloadRow] = useState(null);
 
   const [toggleFileFavorite] = useToggleFileFavoriteMutation();
 
+  const file = items[currentIndex] ?? null;
   const isImage = file?.mimeType?.startsWith("image/");
   const isVideo = file?.mimeType?.startsWith("video/");
-  const isAudio = file?.mimeType?.startsWith("audio/");
   const isFavourite = file?.isFavorite ?? false;
   const locationName = file?.folder?.name ?? null;
 
-  // previewUrl serves the raw decrypted file with AES-CTR range support. ExoPlayer sniffs content
-  // bytes to select the right extractor regardless of the Content-Type header.
-  const videoUri = file?.previewUrl;
-
-  // Tracks this file's in-progress download row (if any) so Pause/Resume/Stop controls can
-  // target it — native emits an event on every state change on both platforms.
+  // Tracks this file's in-progress download row (if any) so the overlay's pause/resume/stop
+  // controls can target it — the dependency on file?.id re-subscribes automatically whenever
+  // currentIndex moves to a different file.
   const refreshDownloadRow = useCallback(async () => {
     if (!file?.id) return;
     const rows = await transfersRepository.getByStatus(["active", "paused"]);
@@ -152,34 +143,25 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
     }
   }
 
+  function setFavouriteAt(idx, value) {
+    setItems((prev) => prev.map((item, i) => (i === idx ? { ...item, isFavorite: value } : item)));
+  }
+
   async function handleToggleFavourite() {
     if (!file?.id) return;
+    const targetIndex = currentIndex;
     haptics.success();
-    setFile((prev) => ({ ...prev, isFavorite: !prev.isFavorite }));
+    setFavouriteAt(targetIndex, !isFavourite);
     try {
       await toggleFileFavorite({ id: file.id }).unwrap();
     } catch {
-      setFile((prev) => ({ ...prev, isFavorite: !prev.isFavorite }));
+      setFavouriteAt(targetIndex, isFavourite);
     }
   }
 
-  const headerRight = file ? (
-    <View className="flex-row gap-1">
-      <IconButton
-        icon={
-          <Star
-            size={20}
-            color={isFavourite ? colors.warning.DEFAULT : colors.neutral.DEFAULT}
-            fill={isFavourite ? colors.warning.DEFAULT : "none"}
-          />
-        }
-        onPress={handleToggleFavourite}
-        variant="ghost"
-        size="sm"
-      />
-      <OfflineToggle file={file} />
-    </View>
-  ) : null;
+  function handleTap() {
+    setOverlayVisible((prev) => !prev);
+  }
 
   if (!file) {
     return (
@@ -190,91 +172,44 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
     );
   }
 
-  function renderPreview() {
-    if (isImage && file?.previewUrl) {
-      return <ImageViewer uri={file.previewUrl} />;
-    }
-    if (isVideo && videoUri) {
-      return <VideoPlayer uri={videoUri} fallbackUri={file?.hlsUrl} extension={file?.mimeType?.split("/")[1]} />;
-    }
-    if (isAudio && file?.downloadUrl) {
-      return <AudioPlayer uri={file.downloadUrl} />;
-    }
-    return (
-      <GlassCard className="m-4">
-        <Text size="sm" className="text-secondary text-center">
-          No preview available
-        </Text>
-      </GlassCard>
-    );
-  }
-
   return (
-    <ScreenLayout>
-      <GlassHeader title={file.name ?? "File"} onBack={() => navigation.goBack()} right={headerRight} />
+    <ScreenLayout edges={[]}>
+      <MediaPager
+        items={items}
+        index={currentIndex}
+        onIndexChange={setCurrentIndex}
+        controlsVisible={overlayVisible}
+        onTap={handleTap}
+      />
 
-      <ScrollView className="flex-1">
-        {renderPreview()}
+      <MediaViewerOverlay
+        visible={overlayVisible}
+        index={currentIndex}
+        total={items.length}
+        onBack={() => navigation.goBack()}
+        onInfo={() => setInfoVisible(true)}
+        file={file}
+        isFavourite={isFavourite}
+        onToggleFavourite={handleToggleFavourite}
+        downloading={downloading}
+        sharing={sharing}
+        activeDownloadRow={activeDownloadRow}
+        onDownload={onDownload}
+        onShare={onShare}
+        onPauseDownload={handlePauseDownload}
+        onStopDownload={handleStopDownload}
+      />
 
-        <GlassCard className="m-4">
+      <GlassBottomSheet visible={infoVisible} onClose={() => setInfoVisible(false)}>
+        <View className="px-6">
           <MetaRow label="Name" value={file.name ?? "—"} />
           <MetaRow label="Size" value={NumberUtils.formatBytes(file.size)} />
           <MetaRow label="Type" value={file.mimeType ?? "—"} />
           <MetaRow label="Created" value={formatDate(file.createdAt)} />
           <MetaRow label="Modified" value={formatDate(file.updatedAt)} />
           {locationName ? <MetaRow label="Location" value={locationName} /> : null}
-        </GlassCard>
-
-        <View className="px-4 gap-3 pb-4">
-          <Button size="lg" onPress={onDownload} disabled={downloading}>
-            <Download size={18} />
-            <ButtonText>{downloading ? "Downloading…" : "Download"}</ButtonText>
-          </Button>
-          {activeDownloadRow ? (
-            <View className="gap-1">
-              <View className="flex-row justify-between">
-                <Text size="xs" className="text-secondary">
-                  {activeDownloadRow.status === "paused" ? "Paused" : "Downloading…"}
-                </Text>
-                <Text size="xs" className="text-secondary">
-                  {activeDownloadRow.progress ?? 0}%
-                </Text>
-              </View>
-              <View className="h-1.5 bg-neutral-subtle rounded-full overflow-hidden">
-                <View
-                  className="h-full bg-primary rounded-full"
-                  style={{ width: `${activeDownloadRow.progress ?? 0}%` }}
-                />
-              </View>
-              <View className="flex-row justify-end gap-3">
-                {activeDownloadRow.status === "active" && (
-                  <Pressable onPress={handlePauseDownload} className="px-2 py-1">
-                    <Text size="xs" className="text-primary">
-                      Pause
-                    </Text>
-                  </Pressable>
-                )}
-                {activeDownloadRow.status === "paused" && (
-                  <Pressable onPress={onDownload} className="px-2 py-1">
-                    <Text size="xs" className="text-primary">
-                      Resume
-                    </Text>
-                  </Pressable>
-                )}
-                <Pressable onPress={handleStopDownload} className="px-2 py-1">
-                  <Text size="xs" className="text-primary">
-                    Stop
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null}
-          <Button variant="outline" size="lg" onPress={onShare} disabled={sharing}>
-            <Share2 size={18} />
-            <ButtonText>{sharing ? "Preparing…" : "Share"}</ButtonText>
-          </Button>
         </View>
-      </ScrollView>
+      </GlassBottomSheet>
     </ScreenLayout>
   );
 }

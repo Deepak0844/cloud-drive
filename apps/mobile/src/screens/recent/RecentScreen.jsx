@@ -44,7 +44,8 @@ function groupByTime(items) {
 
 export default function RecentScreen({ navigation = {} }) {
   const { data, isLoading, isFetching, refetch } = useGetRecentFilesQuery();
-  const sections = groupByTime(data?.items ?? []);
+  const flatItems = data?.items ?? [];
+  const sections = groupByTime(flatItems);
 
   return (
     <ScreenLayout>
@@ -58,7 +59,12 @@ export default function RecentScreen({ navigation = {} }) {
             <View className="px-4">
               <FileListItem
                 item={item}
-                onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
+                onPress={() =>
+                  navigation.navigate(AppScreens.FILE_DETAIL, {
+                    files: flatItems,
+                    index: flatItems.findIndex((f) => f.id === item.id),
+                  })
+                }
                 onLongPress={() => {}}
               />
             </View>

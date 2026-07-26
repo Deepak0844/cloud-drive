@@ -38,7 +38,13 @@ export default function FavoritesScreen({ navigation = {} }) {
             <View className="px-4 mt-3">
               <FileListItem
                 item={item}
-                onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
+                onPress={() => {
+                  const list = data?.items ?? [];
+                  navigation.navigate(AppScreens.FILE_DETAIL, {
+                    files: list,
+                    index: list.findIndex((f) => f.id === item.id),
+                  });
+                }}
                 onLongPress={() => {}}
               />
             </View>

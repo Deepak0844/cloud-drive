@@ -125,7 +125,12 @@ export default function PhotosScreen({ navigation = {} }) {
                 <FileGrid
                   key={file.id}
                   file={file}
-                  onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file })}
+                  onPress={() =>
+                    navigation.navigate(AppScreens.FILE_DETAIL, {
+                      files: merged,
+                      index: merged.findIndex((f) => f.id === file.id),
+                    })
+                  }
                 />
               ))}
             </View>

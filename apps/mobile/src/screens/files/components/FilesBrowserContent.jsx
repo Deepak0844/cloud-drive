@@ -178,7 +178,10 @@ export default function FilesBrowserContent({ folderId = null, path = [], naviga
     if (selectionMode) {
       toggleSelect(item);
     } else {
-      navigation.navigate(AppScreens.FILE_DETAIL, { file: item });
+      navigation.navigate(AppScreens.FILE_DETAIL, {
+        files,
+        index: files.findIndex((f) => f.id === item.id),
+      });
     }
   }
 
