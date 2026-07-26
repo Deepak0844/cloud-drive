@@ -35,15 +35,17 @@ export default function FavoritesScreen({ navigation = {} }) {
           data={data?.items ?? []}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <FileListItem
-              item={item}
-              onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
-              onLongPress={() => {}}
-            />
+            <View className="px-4 mt-3">
+              <FileListItem
+                item={item}
+                onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
+                onLongPress={() => {}}
+              />
+            </View>
           )}
           refreshing={isFetching && !isLoading}
           onRefresh={refetch}
-          ItemSeparatorComponent={() => <View className="h-px bg-border mx-4" />}
+          ItemSeparatorComponent={() => <View className="h-2" />}
           ListEmptyComponent={isLoading ? null : <EmptyState message="No favourites yet" />}
         />
       </Skeleton>

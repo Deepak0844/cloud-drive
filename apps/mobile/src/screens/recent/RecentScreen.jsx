@@ -1,5 +1,5 @@
 import React from "react";
-import { SectionList } from "react-native";
+import { SectionList, View } from "react-native";
 
 // Rtk
 import { useGetRecentFilesQuery } from "@api/fileApi";
@@ -55,13 +55,16 @@ export default function RecentScreen({ navigation = {} }) {
           sections={sections}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <FileListItem
-              item={item}
-              onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
-              onLongPress={() => {}}
-            />
+            <View className="px-4">
+              <FileListItem
+                item={item}
+                onPress={() => navigation.navigate(AppScreens.FILE_DETAIL, { file: item })}
+                onLongPress={() => {}}
+              />
+            </View>
           )}
           renderSectionHeader={({ section }) => <SectionHeader title={section.title} />}
+          ItemSeparatorComponent={() => <View className="h-2" />}
           refreshing={isFetching && !isLoading}
           onRefresh={refetch}
           contentContainerClassName="pb-4"
