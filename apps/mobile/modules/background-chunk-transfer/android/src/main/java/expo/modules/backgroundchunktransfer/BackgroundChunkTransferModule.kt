@@ -32,9 +32,8 @@ class BackgroundChunkTransferModule : Module() {
       val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()
       val activeId = TransferEventBus.activeTransferId
 
-      // Primary busy guard: must run BEFORE startForegroundService, not as an early return inside
-      // onStartCommand — a service started via startForegroundService() is contractually required
-      // to call startForeground() in time, and skipping that throws
+      // Primary busy guard: must run BEFORE startForegroundService, not inside onStartCommand — a
+      // service started that way must call startForeground() in time or it throws
       // ForegroundServiceDidNotStartInTimeException. Refusing here means that call never happens.
       if (activeId != null && activeId != options.transferId) {
         emitBusy(options.transferId, "upload")
@@ -83,9 +82,8 @@ class BackgroundChunkTransferModule : Module() {
         action = BackgroundChunkTransferService.ACTION_PAUSE
         putExtra("transferId", transferId)
       }
-      // Plain startService, not startForegroundService: this only signals an already-running
-      // foreground service (or, if none is running, does a quick SQLite-only status update with
-      // no foreground work) — it must never be required to call startForeground() itself.
+      // Plain startService: this only signals an already-running foreground service (or, if none is
+      // running, a quick SQLite-only status update) — never required to call startForeground() itself.
       context.startService(intent)
       null
     }

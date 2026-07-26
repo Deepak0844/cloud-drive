@@ -1,10 +1,9 @@
 import AppIntents
 
-/// Widget-target STUB of TransferControlIntent. A `LiveActivityIntent` runs its `perform()` in the
-/// APP's process, so the widget only needs this type to attach to `Button(intent:)`; the system
-/// executes the app target's copy (which drives the transfer engine). This `perform()` is left empty
-/// so the widget never references app-only code. The type name, `@Parameter` set, and `init`s MUST
-/// match the app-target copy (modules/background-chunk-transfer/ios/TransferControlIntent.swift).
+/// Widget-target STUB of TransferControlIntent. A `LiveActivityIntent` runs `perform()` in the APP's
+/// process, so the widget only needs this type to attach to `Button(intent:)`; the system executes
+/// the app target's copy. `perform()` is left empty so the widget never references app-only code.
+/// Type name, `@Parameter` set, and `init`s MUST match the app-target copy.
 @available(iOS 17.0, *)
 struct TransferControlIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Transfer control"

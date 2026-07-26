@@ -34,39 +34,32 @@ class BackgroundChunkTransferService : Service() {
     .writeTimeout(60, TimeUnit.SECONDS)
     .build()
 
-  // Only one transfer runs at a time (serialized by design, see plan Architecture §3), so a
-  // single instance-level slot for the active job is enough — pause/cancel Intents route to
-  // this same running Service instance, not a fresh one, as long as it's still alive.
+  // Only one transfer runs at a time, so a single instance-level slot is enough — pause/cancel
+  // Intents route to this same running Service instance, not a fresh one.
   private var currentTransferId: String? = null
     set(value) {
       field = value
-      // Single source of truth kept in sync so the Module can answer "is this transfer already
-      // running?" synchronously — see TransferEventBus.activeTransferId.
+      // Kept in sync so the Module can answer "is this transfer running?" synchronously — see
+      // TransferEventBus.activeTransferId.
       TransferEventBus.activeTransferId = value
     }
   private var currentUploadJob: Job? = null
   private var currentParams: UploadParams? = null
   private var currentUploadedChunks: Int = 0
-  // Only one of currentParams/currentDownloadParams is ever non-null at a time — the service
-  // runs one transfer at a time regardless of kind (matching the architecture's single-slot
-  // model). currentTransferId (below) is the kind-agnostic "what's active" source of truth.
+  // Only one of currentParams/currentDownloadParams is ever non-null — the service runs one
+  // transfer at a time regardless of kind. currentTransferId is the kind-agnostic "what's active".
   private var currentDownloadParams: DownloadParams? = null
   private var currentDownloadedBytes: Long = 0
   private var currentTotalBytes: Long = -1
-  // uploadChunk/finalizeUpload use OkHttp's blocking execute() inside plain (non-suspend)
-  // functions, which have no coroutine cancellation checkpoints — job.cancel() alone does NOT
-  // interrupt an in-flight blocking call. The actual Call must be cancelled directly.
+  // uploadChunk/finalizeUpload use OkHttp's blocking execute() with no coroutine cancellation
+  // checkpoints, so job.cancel() alone can't interrupt an in-flight call — cancel the Call directly.
   private var currentCall: okhttp3.Call? = null
-  // Distinguishes a deliberate pause/cancel from a genuine failure in runUpload's catch block —
-  // cancelling currentCall surfaces as a plain IOException, not CancellationException, so a type
-  // check alone isn't enough to avoid the markFailed() race.
+  // Distinguishes a deliberate pause/cancel from a genuine failure in runUpload's catch — cancelling
+  // currentCall surfaces as a plain IOException, so a type check alone can't avoid the markFailed race.
   private var isStoppedByUser = false
-  // finalizeUpload() reuses the same currentCall slot as chunk uploads (see executeAuthenticated).
-  // Cancelling that call client-side doesn't undo it server-side — finalize may have already
-  // created the file and consumed uploadId by the time the cancel lands, leaving the row stuck
-  // "paused" with a uploadId Resume's uploadStatus lookup then 404s on. Mirrors iOS's
-  // TransferTaskKind.isFinalize guard in pause(). Only guards pause, not cancel — cancel is a
-  // terminal "discard" action with no later Resume to race.
+  // finalizeUpload reuses the currentCall slot. Cancelling it client-side doesn't undo it
+  // server-side, leaving the row stuck "paused" with a uploadId Resume then 404s on — so pause is
+  // ignored while it's set (mirrors iOS). Guards pause only; cancel is a terminal discard with no Resume.
   private var isFinalizingUpload = false
 
   override fun onBind(intent: Intent?): IBinder? = null
@@ -88,11 +81,10 @@ class BackgroundChunkTransferService : Service() {
           return START_NOT_STICKY
         }
 
-        // Backstop only — BackgroundChunkTransferModule.startDownload already guards the common
-        // case synchronously before ever calling startForegroundService. This only catches the
-        // narrow race where two start calls both pass that check before either's onStartCommand
-        // has set currentTransferId. Must still call startForeground (contractual requirement
-        // for a service launched via startForegroundService), then leave the active job alone.
+        // Backstop only — the Module already guards the common case synchronously. This catches the
+        // narrow race where two starts both pass that check before either sets currentTransferId.
+        // Must still call startForeground (contractual for a startForegroundService launch), then
+        // leave the active job alone.
         if (currentTransferId != null && currentTransferId != params.transferId) {
           reassertForeground()
           emitEvent(params.transferId, "download", "busy", null)
@@ -163,9 +155,9 @@ class BackgroundChunkTransferService : Service() {
   }
 
   /**
-   * Re-satisfies the startForeground contract for a busy-rejected start call that reused this
-   * already-foregrounded Service instance — rebuilds whatever notification the currently active
-   * transfer already has showing, so a would-be-intruding start doesn't wipe or freeze it.
+   * Re-satisfies the startForeground contract for a busy-rejected start that reused this
+   * already-foregrounded Service — rebuilds the active transfer's notification so the intruding start
+   * doesn't wipe or freeze it.
    */
   private fun reassertForeground() {
     val transferId = currentTransferId ?: return
@@ -195,10 +187,8 @@ class BackgroundChunkTransferService : Service() {
     val type = if (downloadParamsAtSignalTime != null) "download" else "upload"
 
     if (isActiveJob && !isCancel && isFinalizingUpload && currentParams != null) {
-      // See isFinalizingUpload's declaration comment — finalize is a point of no return, so a
-      // pause request that lands while it's in flight is ignored entirely rather than racing it.
-      // currentParams != null scopes this to an active upload (a download sets
-      // currentDownloadParams instead), so the guard can never touch a download's pause.
+      // See isFinalizingUpload — finalize is a point of no return, so a pause landing mid-flight is
+      // ignored. currentParams != null scopes this to an upload, so it never touches a download's pause.
       return
     }
 
@@ -209,10 +199,8 @@ class BackgroundChunkTransferService : Service() {
       currentTransferId = null
       currentParams = null
       currentDownloadParams = null
-      // Cancelling a call mid-write can leave its underlying connection in a broken state
-      // inside OkHttp's connection pool; reusing that connection on a later resume/retry can
-      // hang until readTimeout instead of failing fast. Evict so anything that follows opens a
-      // fresh connection.
+      // Cancelling a call mid-write can leave its connection broken in OkHttp's pool; reusing it on a
+      // later resume can hang until readTimeout. Evict so what follows opens a fresh connection.
       httpClient.connectionPool.evictAll()
     }
 
@@ -225,9 +213,8 @@ class BackgroundChunkTransferService : Service() {
         SqliteProgressWriter.markPaused(applicationContext, transferId)
         emitEvent(transferId, type, "paused", null)
         if (isActiveJob && paramsAtSignalTime != null) {
-          // Detach (not remove) so the notification survives pausing — with Resume/Stop actions
-          // instead of Pause/Stop — since the whole point of pause is offering a way back in
-          // from the notification itself, not just from in-app UI.
+          // Detach (not remove) so the notification survives pausing — with Resume/Stop instead of
+          // Pause/Stop — since pause's whole point is offering a way back in from the notification.
           stopForeground(STOP_FOREGROUND_DETACH)
           val resumeParams = paramsAtSignalTime.copy(startChunk = uploadedChunksAtSignalTime)
           notificationManager().notify(NOTIFICATION_ID, buildPausedNotification(resumeParams))
@@ -244,8 +231,7 @@ class BackgroundChunkTransferService : Service() {
     }
 
     if (!isActiveJob) {
-      // This instance was only just created to deliver the signal (no matching live job) —
-      // nothing else to run, so it can stop immediately.
+      // This instance was only created to deliver the signal (no matching live job) — stop immediately.
       stopSelf(startId)
     }
   }
@@ -282,10 +268,8 @@ class BackgroundChunkTransferService : Service() {
       }
 
       isFinalizingUpload = true
-      // Reset in a finally so isFinalizingUpload is true ONLY for the duration of the finalize
-      // call itself — never left set after it returns or throws. Otherwise the flag stayed true
-      // after the upload completed and poisoned the pause guard of the next transfer (including a
-      // later download, since the guard didn't check job type), silently dropping its pause.
+      // Reset in a finally so the flag is true ONLY for the finalize call itself — otherwise it
+      // stays set after completion and poisons the next transfer's pause guard.
       val cloudFileId = try {
         finalizeUpload(params)
       } finally {
@@ -295,16 +279,12 @@ class BackgroundChunkTransferService : Service() {
       showCompleteNotification("Uploaded ${params.fileName}")
       emitEvent(params.transferId, "upload", "complete", 100.0, cloudFileId = cloudFileId)
     } catch (ex: kotlinx.coroutines.CancellationException) {
-      // Pause/cancel already wrote the correct terminal status in handleStopSignal() before
-      // cancelling this job — must rethrow (not swallow) so structured concurrency completes
-      // the coroutine as Cancelled, but must NOT run the markFailed() path below, which would
-      // otherwise race and overwrite "paused"/"cancelled" with "failed".
+      // handleStopSignal already wrote the terminal status — rethrow so the coroutine completes as
+      // Cancelled, but skip the markFailed path below, which would overwrite "paused"/"cancelled".
       throw ex
     } catch (ex: Exception) {
-      // Cancelling currentCall (handleStopSignal) surfaces here as a plain IOException, not
-      // CancellationException, since it interrupts a blocking OkHttp call rather than a
-      // coroutine suspension point — isStoppedByUser is what actually distinguishes a
-      // deliberate pause/cancel (status already correctly written) from a genuine failure.
+      // Cancelling currentCall surfaces here as a plain IOException (it interrupts a blocking call,
+      // not a suspension point) — isStoppedByUser is what distinguishes a pause/cancel from a failure.
       if (!isStoppedByUser) {
         Log.e(TAG, "Upload failed for transfer ${params.transferId} at chunk $currentUploadedChunks/${params.totalChunks}", ex)
         SqliteProgressWriter.markFailed(applicationContext, params.transferId, params.retryCount + 1)
@@ -315,16 +295,13 @@ class BackgroundChunkTransferService : Service() {
   }
 
   /**
-   * Single-request streaming download with Range-header resume — no chunking needed since the
-   * server's serveWithRange already supports HTTP Range requests at the protocol level. Resumes
-   * from wherever the partial destination file on disk already reaches, mirroring how the
-   * upload engine resumes from row.uploadedChunks: the file itself is the resume checkpoint,
-   * no separate offset bookkeeping needed.
+   * Single-request streaming download with Range-header resume — no chunking, since the server's
+   * serveWithRange supports HTTP Range at the protocol level. Resumes from wherever the partial dest
+   * file reaches: the file itself is the resume checkpoint, no separate offset bookkeeping.
    */
   private suspend fun runDownload(params: DownloadParams) {
     try {
-      // destPath arrives as a file:// URI, matching the same convention as localUri for
-      // uploads (see runUpload's RandomAccessFile(Uri.parse(params.localUri).path, ...)).
+      // destPath arrives as a file:// URI, same convention as localUri for uploads.
       val destFile = File(Uri.parse(params.destPath).path!!)
       destFile.parentFile?.mkdirs()
       val resumeOffset = if (destFile.exists()) destFile.length() else 0L
@@ -344,9 +321,8 @@ class BackgroundChunkTransferService : Service() {
 
         val body = resp.body ?: throw java.io.IOException("Download failed: empty body")
         val isPartial = resp.code == 206
-        // If we asked for a Range but the server ignored it (e.g. a proxy stripped the header),
-        // it returns a full 200 body — appending that to the existing partial file would
-        // corrupt it, so start over instead.
+        // If we asked for a Range but the server ignored it (e.g. a proxy stripped the header), it
+        // returns a full 200 body — appending that to the partial file would corrupt it, so start over.
         if (!isPartial && resumeOffset > 0) {
           destFile.delete()
         }
@@ -419,9 +395,9 @@ class BackgroundChunkTransferService : Service() {
   }
 
   /**
-   * Executes an authenticated request, refreshing the access token and retrying exactly once on
-   * a 401 — mirrors customBaseQuery.js's silent-refresh behavior, but native code can't rely on
-   * JS being alive to do it, so it owns the refresh itself.
+   * Executes an authenticated request, refreshing the token and retrying once on 401 — mirrors
+   * customBaseQuery.js's silent-refresh, but native code can't rely on JS being alive, so it owns
+   * the refresh itself.
    */
   private fun executeAuthenticated(baseUrl: String, buildRequest: (token: String) -> Request): okhttp3.Response {
     val firstCall = httpClient.newCall(buildRequest(currentAccessToken()))
@@ -535,10 +511,7 @@ class BackgroundChunkTransferService : Service() {
       .build()
   }
 
-  /**
-   * Resume just re-issues ACTION_START_DOWNLOAD — no byte offset needs to be passed since
-   * runDownload() re-derives it from however much the destination file already has on disk.
-   */
+  /** Resume just re-issues ACTION_START_DOWNLOAD — runDownload re-derives the offset from disk. */
   private fun resumeDownloadPendingIntent(params: DownloadParams): PendingIntent {
     val intent = Intent(this, BackgroundChunkTransferService::class.java).apply {
       action = ACTION_START_DOWNLOAD

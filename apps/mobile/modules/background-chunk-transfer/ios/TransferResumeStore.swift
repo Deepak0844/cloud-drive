@@ -1,17 +1,12 @@
 import Foundation
 
-/// Durable per-transfer record of an upload's static parameters, so the chunk chain can be
-/// continued natively after the app is terminated in the background and relaunched by iOS for its
-/// background-URLSession events — at which point the in-memory `currentParams` is gone.
-///
-/// Only the fields that don't change over the transfer are stored (baseUrl, uploadId, totalChunks,
-/// fileName, mimeType, folderId, localUri); the *progress* — which chunk just finished — is recovered
-/// from the completed task's `taskDescription`, not from here, so the record never needs rewriting
-/// mid-transfer. Serialized via UploadParams.asUserInfo / init?(userInfo:), the same shape already
-/// used for the notification-Resume path, so there is one encoding to keep correct.
-///
-/// Lives under Application Support (created on demand), which survives relaunch and is not the
-/// OS-purgeable Caches dir. Written at startUpload, removed on the transfer's terminal state.
+/// Durable per-transfer record of an upload's static parameters, so the chunk chain can continue
+/// natively after iOS terminates and relaunches the app for its background-URLSession events (when
+/// the in-memory `currentParams` is gone). Only unchanging fields are stored; progress is recovered
+/// from the completed task's `taskDescription`, so the record never needs rewriting mid-transfer.
+/// Serialized via UploadParams.asUserInfo / init?(userInfo:) — the same shape the notification-Resume
+/// path uses. Lives under Application Support (survives relaunch, not OS-purgeable); written at
+/// startUpload, removed on a terminal state.
 enum TransferResumeStore {
   private static var directory: URL {
     let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

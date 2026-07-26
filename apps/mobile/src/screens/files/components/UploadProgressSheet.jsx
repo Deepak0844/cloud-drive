@@ -39,10 +39,8 @@ function UploadRow({ row }) {
   const handlePause = () => nativeTransfer.pause(row.id);
   const handleResume = () =>
     backgroundTransfer.upload(row.id, row.dest, row.name, row.mimeType).catch((ex) => {
-      // Was previously a silent no-op catch — a failed resume looked identical to a working one
-      // with no visible progress yet, with no way to tell them apart. Logging the real error
-      // (and the axios response body when present) is what made the uploadStatus 404 underneath
-      // this bug visible in the first place.
+      // Was a silent no-op catch — a failed resume looked identical to a working one with no
+      // visible progress yet. Logging the real error made the uploadStatus 404 underneath visible.
       console.error(
         "[UploadProgressSheet] #handleResume :: resume failed -",
         row.id,
@@ -115,9 +113,9 @@ export default function UploadProgressSheet() {
   useEffect(() => {
     refreshNow();
 
-    // Native engine emits an event on every state change on both platforms, so refresh
-    // reactively instead of polling. The interval fallback below is unreachable dead code,
-    // kept only pending Phase 7's formal removal of the legacy path (see backgroundTransfer.js).
+    // Native engine emits an event on every state change on both platforms, so refresh reactively
+    // instead of polling. The interval fallback below is unreachable, kept pending removal of the
+    // legacy path (see backgroundTransfer.js).
     if (nativeTransfer.isNativeAvailable) {
       return nativeTransfer.addTransferListener(refreshNow);
     }

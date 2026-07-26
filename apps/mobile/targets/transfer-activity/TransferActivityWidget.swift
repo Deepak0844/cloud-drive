@@ -3,7 +3,7 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-// Widget-extension entry point. A single Live Activity widget, no home-screen/lock-screen widgets.
+// Widget-extension entry point. A single Live Activity widget, no home/lock-screen widgets.
 @main
 struct TransferActivityBundle: WidgetBundle {
   var body: some Widget {
@@ -11,16 +11,14 @@ struct TransferActivityBundle: WidgetBundle {
   }
 }
 
-/// Live Activity for a background transfer. Progress and terminal state are driven from the app
-/// process by TransferActivityController. On iOS 17+ the Lock Screen card and Dynamic Island expanded
-/// view show interactive Pause/Resume/Stop buttons (TransferControlIntent, which runs in the app
-/// process and drives the engine); on iOS 16 it stays display-only.
+/// Live Activity for a background transfer, driven from the app process by TransferActivityController.
+/// On iOS 17+ the Lock Screen card and Dynamic Island show interactive Pause/Resume/Stop buttons
+/// (TransferControlIntent, which runs in the app process); on iOS 16 it stays display-only.
 struct TransferActivityWidget: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: TransferActivityAttributes.self) { context in
-      // No .activityBackgroundTint → the Lock Screen card uses iOS's default glass/material
-      // background. Text uses adaptive .primary/.secondary so it reads on that material in both
-      // light and dark; brand colors remain the accents.
+      // No .activityBackgroundTint → the card uses iOS's default glass background. Text uses adaptive
+      // .primary/.secondary so it reads on that material in light and dark; brand colors are accents.
       TransferCardView(context: context)
         .padding(16)
     } dynamicIsland: { context in
@@ -47,8 +45,7 @@ struct TransferActivityWidget: Widget {
               TransferControls(transferId: context.attributes.transferId, state: context.state.state)
             }
           }
-          // Inset from the Dynamic Island's rounded corners so the full-width buttons/bar aren't
-          // clipped on the left/right edges.
+          // Inset from the Dynamic Island's rounded corners so the full-width buttons/bar aren't clipped.
           .padding(.horizontal, 10)
           .padding(.top, 4)
         }
@@ -117,7 +114,7 @@ private struct IconChip: View {
   }
 }
 
-/// Rounded progress bar with a translucent track and an accent fill; dims/greys out when paused.
+/// Rounded progress bar with a translucent track and an accent fill; greys out when paused.
 private struct TransferProgressBar: View {
   let progress: Double
   let state: String
@@ -135,9 +132,9 @@ private struct TransferProgressBar: View {
   }
 }
 
-/// Pause/Resume/Stop buttons for the Live Activity (iOS 17+). Each button fires TransferControlIntent,
-/// which the system runs in the app process to drive the transfer engine. Shown only while the
-/// transfer is controllable (active or paused).
+/// Pause/Resume/Stop buttons for the Live Activity (iOS 17+). Each fires TransferControlIntent, which
+/// the system runs in the app process to drive the engine. Shown only while the transfer is
+/// controllable (active or paused).
 @available(iOS 17.0, *)
 private struct TransferControls: View {
   let transferId: String
@@ -174,7 +171,7 @@ private struct TransferControls: View {
   }
 }
 
-/// Whether the transfer's current state has controls (active → Pause/Stop, paused → Resume/Stop).
+/// Whether the transfer's state has controls (active → Pause/Stop, paused → Resume/Stop).
 private func isControllable(_ state: String) -> Bool {
   state == "active" || state == "paused"
 }
@@ -197,8 +194,7 @@ private func subtitle(for state: TransferActivityAttributes.ContentState, type: 
   }
 }
 
-/// The right-hand label: a live percent while active/paused, otherwise a human word for the terminal
-/// state. Keeps the compact Dynamic Island slot and the card label in sync.
+/// Right-hand label: a live percent while active/paused, otherwise a word for the terminal state.
 private func trailingLabel(for state: TransferActivityAttributes.ContentState) -> String {
   switch state.state {
   case "uploaded": return "Done"
@@ -210,15 +206,13 @@ private func trailingLabel(for state: TransferActivityAttributes.ContentState) -
   }
 }
 
-// App theme (from global.css design tokens): primary violet, amber warning, green success, red
-// danger, on a dark slate background.
+// App theme (global.css design tokens): primary violet, amber warning, green success, red danger.
 private let brandPrimary = Color(red: 0.655, green: 0.545, blue: 0.980)  // --primary-light  #a78bfa
 private let brandWarning = Color(red: 0.961, green: 0.620, blue: 0.043)  // --warning-light  #f59e0b
 private let brandSuccess = Color(red: 0.133, green: 0.773, blue: 0.369)  // --success-light  #22c55e
 private let brandDanger = Color(red: 0.937, green: 0.267, blue: 0.267)  // --danger-light   #ef4444
 
-/// Accent color per state — violet while transferring, amber when paused, green on success, red on
-/// failure/cancel. Used for the icon, progress fill, and percent so the card reads at a glance.
+/// Accent color per state — violet transferring, amber paused, green success, red failure/cancel.
 private func stateColor(for state: String) -> Color {
   switch state {
   case "paused": return brandWarning
@@ -228,8 +222,7 @@ private func stateColor(for state: String) -> Color {
   }
 }
 
-/// ProgressView clamps internally, but guarding here keeps a stray out-of-range update from
-/// producing a NaN width in the bar.
+/// ProgressView clamps internally, but guarding here keeps a stray update from producing a NaN width.
 private func clampedProgress(_ progress: Double) -> Double {
   min(max(progress, 0), 100)
 }

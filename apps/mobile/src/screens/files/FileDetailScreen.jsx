@@ -73,9 +73,8 @@ export default function FileDetailScreen({ navigation = {}, route = {} }) {
   const isFavourite = file?.isFavorite ?? false;
   const locationName = file?.folder?.name ?? null;
 
-  // previewUrl serves the raw decrypted file with AES-CTR range support (206 + Content-Length).
-  // ExoPlayer's DefaultExtractorsFactory sniffs content bytes and selects the right extractor
-  // (MP4, Matroska, AVI, WebM, …) regardless of the Content-Type header.
+  // previewUrl serves the raw decrypted file with AES-CTR range support. ExoPlayer sniffs content
+  // bytes to select the right extractor regardless of the Content-Type header.
   const videoUri = file?.previewUrl;
 
   // Tracks this file's in-progress download row (if any) so Pause/Resume/Stop controls can

@@ -13,19 +13,17 @@ struct TransferTaskMeta {
 }
 
 extension TransferTaskMeta {
-  /// Stored on each chunk task's `taskDescription` so the transfer id + chunk index survive a
-  /// background relaunch (the in-memory taskMeta cache does not). Format: "<transferId>|chunk|<index>".
-  /// (Finalize runs as a synchronous request, not a background task, so it has no descriptor.)
+  /// Stored on each chunk task's `taskDescription` so id + index survive a background relaunch (the
+  /// in-memory taskMeta cache does not). Format: "<transferId>|chunk|<index>".
   var taskDescriptionValue: String {
     switch kind {
     case .chunk(let index): return "\(transferId)|chunk|\(index)"
     }
   }
 
-  /// Rebuilds the metadata from a relaunched chunk task's `taskDescription`. The temp-file URL is
-  /// re-derived from the deterministic name used when the task was created (chunk-<id>-<index>.bin);
-  /// that temp file may already be gone, which is fine — the next chunk is read from the durable
-  /// source file, not the temp.
+  /// Rebuilds metadata from a relaunched chunk task's `taskDescription`. The temp-file URL is
+  /// re-derived from its deterministic name (chunk-<id>-<index>.bin); that file may already be gone,
+  /// which is fine — the next chunk reads from the durable source file.
   init?(taskDescription: String?) {
     guard let parts = taskDescription?.components(separatedBy: "|"), parts.count == 3, parts[1] == "chunk",
       let index = Int(parts[2])
@@ -40,19 +38,17 @@ extension TransferTaskMeta {
   }
 }
 
-/// Core background chunk-upload engine, mirroring BackgroundChunkTransferService.kt's chunk
-/// loop and executeAuthenticated retry-on-401 logic. Driven by URLSessionDelegate callbacks
-/// rather than sequential blocking calls, since a background URLSession's tasks are
-/// system-managed and keep running after the app suspends or is terminated by the OS.
+/// Core background chunk-upload engine, mirroring BackgroundChunkTransferService.kt. Driven by
+/// URLSessionDelegate callbacks so a background session's tasks keep running after the app suspends
+/// or is terminated by the OS.
 public final class BackgroundChunkTransferManager: NSObject {
   public static let shared = BackgroundChunkTransferManager()
   public static let sessionIdentifier = "expo.modules.backgroundchunktransfer.session"
 
   private static let chunkSize = 5 * 1024 * 1024
 
-  // Single fixed identifier — only one transfer is ever active at a time, so re-adding a
-  // request with this same identifier updates the existing notification in place rather than
-  // stacking, mirroring Android's single shared NOTIFICATION_ID.
+  // Single fixed identifier — only one transfer runs at a time, so re-adding with this identifier
+  // updates the notification in place instead of stacking (mirrors Android's single NOTIFICATION_ID).
   private static let notificationIdentifier = "expo.modules.backgroundchunktransfer.progress"
   private static let categoryActive = "TRANSFER_ACTIVE"
   private static let categoryPaused = "TRANSFER_PAUSED"
@@ -64,24 +60,20 @@ public final class BackgroundChunkTransferManager: NSObject {
   private var isStoppedByUser = false
   private var lastNotifiedPercent = -1
 
-  // Windowed concurrent chunk upload. The engine keeps a window of chunk tasks in flight at once
-  // instead of a strict one-at-a-time chain: when the app is suspended in the background, a full
-  // window of tasks keeps uploading inside nsurlsessiond, so the transfer makes real progress
-  // between iOS's infrequent background wake-ups instead of stalling. The server accepts chunks out
-  // of order (uploadStatus returns a received-index array), so concurrency is safe; `contiguousCompleted`
-  // (the longest 0..N all-received prefix) is the value used for resume, matching the server's offset.
+  // Windowed concurrent chunk upload: keeps a window of chunk tasks in flight rather than a strict
+  // one-at-a-time chain, so nsurlsessiond keeps uploading while the app is suspended between iOS's
+  // infrequent wake-ups. The server accepts chunks out of order; `contiguousCompleted` (the longest
+  // 0..N received prefix) is the resume offset, matching the server's.
   //
-  // Window size is disk-aware (see computeWindowSize). When free space allows, the WHOLE file's
-  // chunks are queued at once, so nsurlsessiond uploads it to completion while the app stays
-  // suspended — smooth, no mid-file plateau, at any size. When storage is tight it falls back to a
-  // sliding window (uploads correctly, with plateaus between iOS wake-ups). Peak scratch is bounded
-  // by the budget below because each completed chunk's temp file is deleted immediately.
+  // Window size is disk-aware (see computeWindowSize): when free space allows the WHOLE file is queued
+  // at once (smooth, no mid-file plateau, any size); when storage is tight it falls back to a sliding
+  // window. Peak scratch is bounded by the budget below since each completed chunk's temp is deleted.
   //
-  // Config knob: maxTempBudgetBytes caps how much scratch a single upload may queue (default 2 GB).
+  // Config knob: maxTempBudgetBytes caps scratch a single upload may queue (default 2 GB).
   private static let maxTempBudgetBytes: Int64 = 2 * 1024 * 1024 * 1024
-  // Never queue temp files past this share of currently-free disk, so an upload can't fill the volume.
+  // Never queue temp files past this share of free disk, so an upload can't fill the volume.
   private static let freeDiskUsableFraction = 0.4
-  // Floor for the sliding window when disk is very constrained, so an upload still makes progress.
+  // Floor for the sliding window when disk is constrained, so an upload still makes progress.
   private static let minWindowChunks = 6
   private var currentWindowSize = 1
   private var pendingChunkQueue: [Int] = []             // indices waiting to be scheduled (FIFO)
@@ -89,13 +81,11 @@ public final class BackgroundChunkTransferManager: NSObject {
   private var completedChunkIndices: Set<Int> = []
   private var contiguousCompleted = 0
   private var isFinalizing = false
-  // Access token read once per transfer and reused for its chunk + finalize tasks. A per-chunk
-  // keychain read (SecureStoreReader) fails while the device is locked, which would stall a
-  // backgrounded upload; caching avoids that. Refreshed on a 401, cleared on terminal states.
+  // Access token read once per transfer and reused for its tasks — a per-chunk keychain read fails
+  // while the device is locked, stalling a backgrounded upload. Refreshed on 401, cleared on terminal.
   private var cachedAccessToken: String?
   // Keeps the app alive across the finalize request when the last chunk lands in the background, so
-  // the transfer flips to "complete" without waiting for iOS's next app wake (otherwise it sits at
-  // 100% "active" until the user opens the app).
+  // the transfer flips to "complete" without waiting for iOS's next wake.
   private var finalizeBackgroundTask: UIBackgroundTaskIdentifier = .invalid
 
   private var taskMeta: [Int: TransferTaskMeta] = [:]
@@ -107,17 +97,15 @@ public final class BackgroundChunkTransferManager: NSObject {
   private var currentDownloadedBytes: Int64 = 0
   private var currentTotalBytes: Int64 = -1
   private var downloadTaskIds: Set<Int> = []
-  // Keyed by transferId — populated asynchronously by cancel(byProducingResumeData:) when the
-  // user pauses, consumed by the next startDownload() call for that transferId to resume via
-  // the OS's native resumeData mechanism rather than a manually-tracked byte offset.
+  // Keyed by transferId — populated by cancel(byProducingResumeData:) on pause, consumed by the next
+  // startDownload for that id to resume via the OS's native resumeData rather than a byte offset.
   private var pausedResumeData: [String: Data] = [:]
 
   private var backgroundCompletionHandler: (() -> Void)?
 
-  // All mutable state above is accessed only on this serial queue. The public entry points
-  // (startUpload/startDownload/pause/resume/cancel) hop onto it, and the URLSession delegate callbacks
-  // run on it too (it backs the delegateQueue below), so a Live Activity / notification button tap can
-  // never race a chunk-completion callback mutating these collections.
+  // All mutable state above is accessed only on this serial queue: the public entry points hop onto
+  // it and the URLSession delegate callbacks run on it (it backs the delegateQueue below), so a
+  // button tap can never race a chunk-completion callback mutating these collections.
   private let workQueue = DispatchQueue(label: "expo.modules.backgroundchunktransfer.work")
 
   private lazy var session: URLSession = {
@@ -134,21 +122,16 @@ public final class BackgroundChunkTransferManager: NSObject {
     super.init()
     Self.registerNotificationCategories()
     UNUserNotificationCenter.current().delegate = self
-    // Eagerly recreate the background URLSession on every launch — including a background relaunch
-    // the OS triggers to deliver a terminated transfer's completed session events. The session is
-    // otherwise created lazily on the first upload, so after a termination there would be no delegate
-    // to receive the pending completion callbacks and the transfer would stall until the app was next
-    // foregrounded. Reconnecting here lets didCompleteWithError fire, where the rehydrate path
-    // continues the chunk chain with no JS involvement. (.shared is forced to init on every launch by
-    // the AppDelegate config plugin, so this runs on every launch.)
+    // Eagerly recreate the background session on every launch — including a background relaunch to
+    // deliver a terminated transfer's session events. Without a delegate reconnected here those
+    // pending callbacks (and the rehydrate path in didCompleteWithError) wouldn't fire until the app
+    // was next foregrounded. (.shared is forced to init on every launch by the AppDelegate plugin.)
     _ = self.session
   }
 
-  /// Registers the Pause/Stop and Resume/Stop action sets once per process launch. Called from
-  /// this singleton's init rather than lazily on first upload, and the AppDelegate plugin forces
-  /// `.shared` to initialize during didFinishLaunching specifically so this registration (and
-  /// the delegate assignment above) happens on every app launch — including a cold launch
-  /// triggered by tapping a notification action — not just whenever the first upload starts.
+  /// Registers the Pause/Stop and Resume/Stop action sets once per launch. Called from init (not
+  /// lazily on first upload) so it runs on every launch — including a cold launch from tapping a
+  /// notification action — via the AppDelegate plugin forcing `.shared` to initialize.
   private static func registerNotificationCategories() {
     let pauseAction = UNNotificationAction(identifier: pauseActionId, title: "Pause", options: [])
     let stopAction = UNNotificationAction(identifier: stopActionId, title: "Stop", options: [.destructive])
@@ -163,17 +146,16 @@ public final class BackgroundChunkTransferManager: NSObject {
     UNUserNotificationCenter.current().setNotificationCategories([activeCategory, pausedCategory])
   }
 
-  /// Called from AppDelegate's handleEventsForBackgroundURLSession hook (wired in a later
-  /// checkpoint) so the system-provided completion handler runs once all relaunch-driven
-  /// delegate callbacks have drained.
+  /// Called from AppDelegate's handleEventsForBackgroundURLSession hook so the system completion
+  /// handler runs once all relaunch-driven delegate callbacks have drained.
   public func setBackgroundCompletionHandler(_ handler: @escaping () -> Void) {
     workQueue.async { [weak self] in self?.backgroundCompletionHandler = handler }
   }
 
   // MARK: - Public API
 
-  /// Whatever transfer currently owns the single tracking slot, regardless of kind — used by the
-  /// busy guard below. Only one of currentParams/currentDownloadParams is ever non-nil at a time.
+  /// The transfer currently owning the single tracking slot, regardless of kind — used by the busy
+  /// guard below. Only one of currentParams/currentDownloadParams is ever non-nil.
   private var activeTransferId: String? {
     currentParams?.transferId ?? currentDownloadParams?.transferId
   }
@@ -189,12 +171,12 @@ public final class BackgroundChunkTransferManager: NSObject {
     currentParams = params
     lastNotifiedPercent = -1
     resetUploadWindow(startChunk: params.startChunk, totalChunks: params.totalChunks)
-    // Read the token once now (foreground → keychain unlocked) and reuse it for every chunk/finalize
-    // task; a fresh read replaces any stale token cached from a previous transfer.
+    // Read the token once now (foreground → keychain unlocked) and reuse it for every task; a fresh
+    // read replaces any stale token cached from a previous transfer.
     cachedAccessToken = SecureStoreReader.readValue(key: "access_token")
     TransferEventBus.activeTransferId = params.transferId
-    // Persist the static params so a background relaunch after termination can rehydrate and finish
-    // the upload headlessly (see didCompleteWithError's rehydrate branch).
+    // Persist static params so a background relaunch after termination can rehydrate and finish
+    // headlessly (see didCompleteWithError's rehydrate branch).
     TransferResumeStore.write(params)
     emitEvent(transferId: params.transferId, type: "upload", status: "active", progress: initialProgress(params))
     // Live Activity is the progress surface while it exists.
@@ -202,7 +184,7 @@ public final class BackgroundChunkTransferManager: NSObject {
     TransferActivityController.shared.update(progress: initialProgress(params))
     if TransferActivityController.shared.isActive {
       // The Activity owns the surface — clear any progress notification orphaned by a prior process
-      // (notifications survive app death just like the Activity), so the two don't both linger.
+      // (notifications survive app death too), so the two don't both linger.
       clearNotification()
     } else {
       showActiveNotification(params: params, progress: Int(initialProgress(params)))
@@ -223,20 +205,17 @@ public final class BackgroundChunkTransferManager: NSObject {
     isFinalizing = false
   }
 
-  /// Chooses how many chunk tasks to keep queued. The budget is the smaller of the configured cap
-  /// (maxTempBudgetBytes) and a safe share of currently-free disk. If the whole file fits the budget
-  /// it's all queued (nsurlsessiond uploads it to completion while suspended — smooth at any size);
-  /// otherwise the largest window the budget allows, floored at minWindowChunks so a low-disk device
-  /// still uploads (windowed, with plateaus).
+  /// Chooses how many chunk tasks to keep queued. Budget is the smaller of the configured cap and a
+  /// safe share of free disk: if the whole file fits it's all queued (smooth at any size); otherwise
+  /// the largest window the budget allows, floored at minWindowChunks so a low-disk device still uploads.
   private func computeWindowSize(totalChunks: Int) -> Int {
     let budgetBytes = min(Self.maxTempBudgetBytes, Int64(Double(Self.availableDiskBytes()) * Self.freeDiskUsableFraction))
     let byBudget = Int(budgetBytes / Int64(Self.chunkSize))
     return min(max(1, totalChunks), max(Self.minWindowChunks, byBudget))
   }
 
-  /// Free space on the volume backing the temp directory, in bytes. Uses the "important usage"
-  /// capacity (what the OS will actually let the app use). Falls back to the configured budget if the
-  /// value can't be read, so scheduling still proceeds.
+  /// Free space on the volume backing the temp directory, in bytes ("important usage" capacity —
+  /// what the OS will actually let the app use). Falls back to the configured budget if unreadable.
   private static func availableDiskBytes() -> Int64 {
     if let values = try? FileManager.default.temporaryDirectory.resourceValues(
       forKeys: [.volumeAvailableCapacityForImportantUsageKey]
@@ -247,8 +226,7 @@ public final class BackgroundChunkTransferManager: NSObject {
   }
 
   /// Keeps up to currentWindowSize chunk tasks in flight, pulling from the pending queue. Called at
-  /// start and after every chunk completion so the window stays full — this is what keeps
-  /// nsurlsessiond uploading while the app is suspended.
+  /// start and after each completion — this is what keeps nsurlsessiond uploading while suspended.
   private func fillUploadWindow() {
     guard let params = currentParams, !isStoppedByUser, !isFinalizing else { return }
     while inFlightChunkTasks.count < currentWindowSize, !pendingChunkQueue.isEmpty {
@@ -257,8 +235,8 @@ public final class BackgroundChunkTransferManager: NSObject {
     }
   }
 
-  /// Puts a chunk back at the front of the queue to be retried (used when a task was cancelled by an
-  /// OS teardown rather than completing). No-op if it already completed or is already queued.
+  /// Puts a chunk back at the front of the queue to retry (used when the OS cancelled a task rather
+  /// than it completing). No-op if it already completed or is queued.
   private func requeueChunk(_ index: Int) {
     guard !completedChunkIndices.contains(index), !pendingChunkQueue.contains(index) else { return }
     pendingChunkQueue.insert(index, at: 0)
@@ -276,8 +254,7 @@ public final class BackgroundChunkTransferManager: NSObject {
   /// Records a chunk as received, advances the contiguous-completed prefix (the resume offset),
   /// updates progress surfaces, and either finalizes (all chunks in) or refills the window.
   private func markChunkComplete(_ index: Int, params: UploadParams) {
-    // Drop it from the queue in case a rehydrate re-queued the whole range including a chunk that had
-    // already completed while suspended — avoids re-uploading it.
+    // Drop it from the queue in case a rehydrate re-queued the whole range — avoids re-uploading it.
     pendingChunkQueue.removeAll { $0 == index }
     completedChunkIndices.insert(index)
     while completedChunkIndices.contains(contiguousCompleted) {
@@ -328,11 +305,9 @@ public final class BackgroundChunkTransferManager: NSObject {
 
   private func _pause(transferId: String) {
     if currentParams?.transferId == transferId {
-      // Once the last chunk lands, finalizeUpload posts the finalize request. Cancelling that
-      // client-side doesn't undo it server-side — the server may have already created the file and
-      // discarded uploadId by the time this cancel lands, leaving the row stuck "paused" with a
-      // uploadId Resume's uploadStatus lookup 404s on. Finalize is a point of no return, so once it
-      // has started just let it resolve to "complete"/"failed".
+      // Once the last chunk lands, finalizeUpload posts the finalize request; cancelling that
+      // client-side doesn't undo it server-side, leaving the row stuck "paused" with an uploadId
+      // Resume's lookup 404s on. Finalize is a point of no return — let it resolve.
       guard !isFinalizing else { return }
       stopActiveTransfer(transferId: transferId, status: "paused")
     } else if currentDownloadParams?.transferId == transferId {
@@ -340,22 +315,19 @@ public final class BackgroundChunkTransferManager: NSObject {
     }
   }
 
-  /// Restarts a paused upload natively — invoked by the Live Activity's Resume button (a
-  /// LiveActivityIntent), which may run in the background with no JS. Rebuilds params from the durable
-  /// resume record + the last-saved contiguous offset, flips the row back to "active", and re-enters
-  /// startUpload (which re-adopts the Live Activity and refills the window). No-op if another transfer
-  /// already holds the single slot or the record is gone (completed/cancelled). Uploads only — a
-  /// paused download has no resume record here and is resumed via the notification path instead.
+  /// Restarts a paused upload natively — invoked by the Live Activity's Resume button, which may run
+  /// in the background with no JS. Rebuilds params from the resume record + last-saved offset, flips
+  /// the row to "active", and re-enters startUpload. No-op if another transfer holds the slot or the
+  /// record is gone. Uploads only — a paused download resumes via the notification path instead.
   func resume(transferId: String) { workQueue.async { [weak self] in self?._resume(transferId: transferId) } }
 
   private func _resume(transferId: String) {
     guard currentParams == nil, currentDownloadParams == nil else { return }
     guard let restored = TransferResumeStore.read(transferId: transferId) else { return }
     let offset = SqliteProgressWriter.readUploadedChunks(transferId: transferId)
-    // startUpload sets currentParams synchronously FIRST; only then flip the SQLite status to
-    // "active". Doing it the other way round leaves a window where status == "active" but
-    // currentParams == nil, in which a straggler completion from the just-cancelled pause tasks would
-    // trip the background-rehydrate path and race a second scheduler against this resume.
+    // startUpload sets currentParams synchronously FIRST, then flip the status to "active". The other
+    // order leaves a window where status is "active" but currentParams is nil, letting a straggler
+    // completion from the cancelled pause tasks trip the rehydrate path and race a second scheduler.
     _startUpload(restored.with(startChunk: offset))
     SqliteProgressWriter.markActive(transferId: transferId)
   }
@@ -368,25 +340,21 @@ public final class BackgroundChunkTransferManager: NSObject {
     } else if currentDownloadParams?.transferId == transferId {
       cancelDownload(transferId: transferId)
     } else {
-      // Not currently in flight — the transfer was already paused, which evicts it from
-      // currentParams/currentDownloadParams (see stopActiveTransfer/pauseDownload). Stop still
-      // needs to take effect for a paused row (both upload and download Stop buttons render
-      // regardless of status), so mark it cancelled directly rather than silently no-op'ing.
-      // Mirrors Android's handleStopSignal, which already marks cancelled unconditionally.
+      // Not in flight — the transfer was already paused, which evicts it from currentParams. Stop
+      // still needs to take effect for a paused row (both Stop buttons render regardless of status),
+      // so mark it cancelled directly rather than no-op'ing (mirrors Android's handleStopSignal).
       let wasDownload = pausedResumeData.removeValue(forKey: transferId) != nil
       // SQLite write precedes the emit so a JS listener re-querying on the event sees "cancelled".
       SqliteProgressWriter.markCancelled(transferId: transferId)
       TransferResumeStore.remove(transferId: transferId)
       emitEvent(transferId: transferId, type: wasDownload ? "download" : "upload", status: "cancelled", progress: nil)
-      // A paused transfer keeps its Live Activity on screen (paused state), so Stopping it here ends
-      // that card.
+      // A paused transfer keeps its Live Activity on screen, so Stopping it here ends that card.
       TransferActivityController.shared.end(state: "cancelled", progress: 0)
     }
   }
 
-  /// Cancelling the in-flight chunk tasks triggers didCompleteWithError asynchronously for each, but
-  /// isStoppedByUser is checked first there, so those only clean up the temp file and return without
-  /// re-emitting or overwriting the status set here.
+  /// Cancelling the in-flight chunk tasks triggers didCompleteWithError per task, but isStoppedByUser
+  /// is checked there first, so those only clean up temp files without overwriting the status set here.
   private func stopActiveTransfer(transferId: String, status: String) {
     guard let params = currentParams, params.transferId == transferId else { return }
     isStoppedByUser = true
@@ -397,9 +365,8 @@ public final class BackgroundChunkTransferManager: NSObject {
     // status, not the still-"active" row it would otherwise race against.
     if status == "paused" {
       SqliteProgressWriter.markPaused(transferId: transferId)
-      // Keep the resume record on pause — resume(transferId:) reads it to restart natively from a
-      // Live Activity / notification button. A straggler cancellation can't auto-resume a paused
-      // transfer because the rehydrate path guards on the SQLite status being "active".
+      // Keep the resume record on pause — resume(transferId:) reads it to restart natively. A
+      // straggler cancellation can't auto-resume because the rehydrate path guards on status "active".
     } else {
       SqliteProgressWriter.markCancelled(transferId: transferId)
       TransferResumeStore.remove(transferId: transferId)
@@ -415,9 +382,9 @@ public final class BackgroundChunkTransferManager: NSObject {
       : 0
 
     if status == "paused" {
-      // Keep the Live Activity on screen, flipped to its paused state (with the Resume button),
-      // rather than ending it — on iOS the card is the sole control surface. The paused notification
-      // only fires as a fallback when there is no live Activity (see showPausedNotification's guard).
+      // Keep the Live Activity on screen in its paused state (with Resume) rather than ending it — on
+      // iOS the card is the sole control surface. The paused notification is only a fallback when
+      // there's no Activity (see showPausedNotification's guard).
       TransferActivityController.shared.markPaused(progress: pausedProgress)
       showPausedNotification(params.with(startChunk: resumeOffset))
     } else {
@@ -467,9 +434,9 @@ public final class BackgroundChunkTransferManager: NSObject {
     params.totalChunks > 0 ? (Double(params.startChunk) * 100.0) / Double(params.totalChunks) : 0
   }
 
-  /// Returns the cached access token, reading the keychain once and caching it if not yet loaded
-  /// (e.g. the first task after a background relaunch). Keeping it in memory means the per-chunk
-  /// tasks don't each hit the keychain, which fails while the device is locked.
+  /// Returns the cached access token, reading the keychain once if not yet loaded (e.g. the first
+  /// task after a background relaunch). Keeping it in memory means per-chunk tasks don't hit the
+  /// keychain, which fails while the device is locked.
   private func accessToken() -> String? {
     if let cachedAccessToken { return cachedAccessToken }
     let token = SecureStoreReader.readValue(key: "access_token")
@@ -477,9 +444,8 @@ public final class BackgroundChunkTransferManager: NSObject {
     return token
   }
 
-  /// Requests a short background-execution assertion so the app stays alive long enough to send the
-  /// finalize request and process its completion (flip to "complete") without waiting for iOS's next
-  /// background-session wake. Ended in the finalize completion / failure paths.
+  /// Requests a short background-execution assertion so the app stays alive to send the finalize
+  /// request and flip to "complete" without waiting for iOS's next wake. Ended in finalize/failure.
   private func beginFinalizeAssertion() {
     endFinalizeAssertion()
     finalizeBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "transfer-finalize") { [weak self] in
@@ -532,13 +498,11 @@ public final class BackgroundChunkTransferManager: NSObject {
     }
   }
 
-  /// Finalizes the upload SYNCHRONOUSLY, inside the last chunk's delegate callback, on a regular
-  /// (non-background) session. This is deliberate: a background-session finalize would need a separate
-  /// OS wake to deliver its completion, so a transfer that hits 100% while the app is backgrounded
-  /// would sit at "active" until the user opened the app. Running it inline here — and holding a brief
-  /// background-execution assertion — means the finalize completes and the row flips to "complete"
-  /// before the app suspends. isFinalizing is already true, so pause is blocked and no new chunks are
-  /// scheduled while this runs.
+  /// Finalizes SYNCHRONOUSLY inside the last chunk's delegate callback, on a non-background session.
+  /// A background-session finalize would need a separate OS wake to deliver its completion, so a
+  /// transfer hitting 100% while backgrounded would sit at "active" until the app was opened. Running
+  /// it inline (under a brief background assertion) flips the row to "complete" before the app
+  /// suspends. isFinalizing is already true, so pause is blocked and no new chunks schedule.
   private func finalizeUpload(_ params: UploadParams) {
     beginFinalizeAssertion()
     defer { endFinalizeAssertion() }
@@ -554,9 +518,8 @@ public final class BackgroundChunkTransferManager: NSObject {
       return
     }
 
-    // folderId/totalSize are always present (folderId as explicit null when absent), matching
-    // the Kotlin/JS finalize payloads exactly — the server's finalize validation requires both
-    // keys present regardless of value.
+    // folderId/totalSize are always present (folderId as explicit null when absent), matching the
+    // Kotlin/JS finalize payloads — the server requires both keys regardless of value.
     let body: [String: Any] = [
       "uploadId": params.uploadId,
       "fileName": params.fileName,
@@ -597,9 +560,9 @@ public final class BackgroundChunkTransferManager: NSObject {
     TransferActivityController.shared.end(state: "uploaded", progress: 100.0)
   }
 
-  /// Sends the finalize POST and blocks the calling (delegate) queue until it completes, returning the
-  /// response body + status. On a non-background ephemeral session so the completion is delivered
-  /// in-process rather than via an OS wake; the timeout bounds the block if the network stalls.
+  /// Sends the finalize POST and blocks the delegate queue until it completes, returning body +
+  /// status. On an ephemeral session so completion is delivered in-process rather than via an OS
+  /// wake; the timeout bounds the block if the network stalls.
   private func syncFinalizeRequest(baseUrl: String, token: String, body: Data) -> (Data?, Int?) {
     let url = URL(string: "\(baseUrl)/api/v1/files/upload/finalize")!
     var request = URLRequest(url: url)
@@ -690,9 +653,8 @@ public final class BackgroundChunkTransferManager: NSObject {
     return URL(fileURLWithPath: uriString)
   }
 
-  // MARK: - Download engine (single request, no chunking — server-side Range support plus
-  // URLSessionDownloadTask's native resumeData mechanism handle resumability at the protocol
-  // level, unlike uploads which need the manual chunk-chaining engine above).
+  // MARK: - Download engine (single request, no chunking — server Range support + the native
+  // resumeData mechanism handle resumability at the protocol level, unlike uploads above).
 
   private func beginDownloadTask(params: DownloadParams, resumeData: Data?) {
     let task: URLSessionDownloadTask
@@ -717,9 +679,8 @@ public final class BackgroundChunkTransferManager: NSObject {
     task.resume()
   }
 
-  /// Unlike chunk uploads, a 401 on a download means the entire response body is just a small
-  /// error payload — there's nothing meaningful to resume, so this restarts the download from
-  /// scratch with a freshly-refreshed token rather than attempting resumeData.
+  /// A 401 on a download means the body is just a small error payload — nothing to resume, so this
+  /// restarts from scratch with a refreshed token rather than attempting resumeData.
   private func handleDownloadUnauthorized(params: DownloadParams) {
     guard (try? TokenRefresher.refresh(session: URLSession(configuration: .ephemeral), baseUrl: params.baseUrl)) != nil else {
       failDownload(params, reason: "Token refresh failed after 401")
@@ -730,11 +691,9 @@ public final class BackgroundChunkTransferManager: NSObject {
 
   // MARK: - Notifications (silent, throttled to whole-percent, in-place updates only)
 
-  /// iOS does NOT replace an already-*delivered* (visible) notification just because a new
-  /// request shares its identifier — that same-identifier replacement only applies to *pending*
-  /// (not-yet-fired) requests. Since every notification here uses trigger: nil (immediate
-  /// delivery), calling add() alone would stack a new visible notification on every update
-  /// instead of updating in place. Explicitly clearing the old one first is what makes this
+  /// iOS does NOT replace an already-delivered (visible) notification just because a new request
+  /// shares its identifier — that only applies to pending requests. Every notification here fires
+  /// immediately (trigger: nil), so add() alone would stack; clearing the old one first makes this
   /// behave like Android's mutable notify(id, ...).
   private func postNotification(_ content: UNMutableNotificationContent) {
     let center = UNUserNotificationCenter.current()
@@ -744,12 +703,10 @@ public final class BackgroundChunkTransferManager: NSObject {
     center.add(request)
   }
 
-  /// Used only for the paused-state notification, which is commonly posted from within
-  /// didReceive's Pause-action handling itself — replacing the same-identifier notification the
-  /// user just tapped an action on, while iOS is still finishing its own handling of that tap,
-  /// can silently drop the replacement. A short defer sidesteps that race. Progress-tick
-  /// notifications don't use this: they fire far too often for a fixed delay to be safe (updates
-  /// could arrive out of order and show stale progress).
+  /// Used only for the paused-state notification, often posted from within didReceive's Pause
+  /// handling — replacing the same-identifier notification the user just tapped, while iOS is still
+  /// handling that tap, can silently drop the replacement. A short defer sidesteps that race.
+  /// Progress ticks don't use this: they fire too often for a fixed delay to be safe.
   private func postNotificationDeferred(_ content: UNMutableNotificationContent) {
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
       self?.postNotification(content)
@@ -758,9 +715,8 @@ public final class BackgroundChunkTransferManager: NSObject {
 
   private func showActiveNotification(params: UploadParams, progress: Int) {
     // While a Live Activity is live it is the progress surface — suppress the progress-tick
-    // notification to avoid a double surface. Paused/complete notifications are unaffected (they
-    // fire after the Activity has already been ended, and carry buttons the Activity lacks). If the
-    // Activity never started (disabled / request failed), isActive is false and this runs as before.
+    // notification. Paused/complete notifications are unaffected. If the Activity never started
+    // (disabled / request failed), isActive is false and this runs as before.
     guard !TransferActivityController.shared.isActive else { return }
     guard progress != lastNotifiedPercent else { return }
     lastNotifiedPercent = progress
@@ -775,9 +731,8 @@ public final class BackgroundChunkTransferManager: NSObject {
   }
 
   private func showPausedNotification(_ params: UploadParams) {
-    // On iOS the Live Activity is the sole surface: while it is up (paused state, with its Resume
-    // button) no paused notification is posted. This fires only as a fallback when Live Activities
-    // are unavailable.
+    // On iOS the Live Activity is the sole surface: while it's up (paused, with Resume) no paused
+    // notification posts. This fires only as a fallback when Live Activities are unavailable.
     guard !TransferActivityController.shared.isActive else { return }
     let content = UNMutableNotificationContent()
     content.title = "Paused: \(params.fileName)"
@@ -789,8 +744,8 @@ public final class BackgroundChunkTransferManager: NSObject {
   }
 
   private func showCompleteNotification(fileName: String) {
-    // Suppressed while a Live Activity is up — it shows the "Uploaded" terminal state itself. Called
-    // before the Activity is ended (see the completion path), so isActive still reflects the card.
+    // Suppressed while a Live Activity is up — it shows the "Uploaded" state itself. Called before
+    // the Activity is ended, so isActive still reflects the card.
     guard !TransferActivityController.shared.isActive else { return }
     let content = UNMutableNotificationContent()
     content.title = "Uploaded \(fileName)"
@@ -874,12 +829,9 @@ extension BackgroundChunkTransferManager: UNUserNotificationCenterDelegate {
     }
   }
 
-  /// Lets the notification show while the app is in the foreground too — without this,
-  /// foreground-delivered local notifications are suppressed by default. Progress-tick updates
-  /// (categoryActive) only get the list entry, not a banner — otherwise every chunk/percent
-  /// change would pop up and interrupt whatever the user is doing in the foreground. Paused,
-  /// complete, and other one-off state changes still banner, since those are discrete events
-  /// worth surfacing, not a continuous stream of ticks.
+  /// Lets notifications show in the foreground too (otherwise suppressed by default). Progress ticks
+  /// (categoryActive) get only the list entry, not a banner, so every percent change doesn't interrupt
+  /// the user; paused/complete and other one-off changes still banner.
   public func userNotificationCenter(
     _ center: UNUserNotificationCenter,
     willPresent notification: UNNotification,
@@ -926,13 +878,11 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
     }
 
     // Rehydrate after a background relaunch: iOS restarted the app headless to deliver this
-    // completion, so currentParams (and the whole singleton) is fresh. Restore the static params from
-    // the durable resume record and the last-persisted contiguous offset from SQLite, re-establish the
-    // window, and re-adopt the orphaned Live Activity — so the upload continues with no JS involvement.
-    // Only done when there is no current transfer at all (a non-nil-but-different id is a stale
-    // straggler, dropped by the guard below). If the record is missing (user force-quit — iOS does not
-    // relaunch background sessions then), there is nothing to continue; the JS reconcile on the next
-    // manual open handles it.
+    // completion, so the singleton is fresh. Restore params from the resume record + last-persisted
+    // offset, re-establish the window, and re-adopt the orphaned Live Activity so the upload continues
+    // with no JS. Only when there's no current transfer (a different id is a stale straggler, dropped
+    // below). If the record is missing (force-quit — iOS doesn't relaunch then), the JS reconcile on
+    // next open handles it.
     if currentParams == nil,
       SqliteProgressWriter.readStatus(transferId: meta.transferId) == "active",
       let restored = TransferResumeStore.read(transferId: meta.transferId) {
@@ -951,10 +901,9 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
       return
     }
 
-    // A chunk task cancelled with no in-process user action = the OS tore the background session down
-    // (memory reclaim or a user force-quit — iOS cancels background tasks in both). Not a failure:
-    // requeue the chunk so the window re-uploads it (server chunk writes are idempotent). A user pause
-    // sets isStoppedByUser and is handled above, so this never fires for a deliberate pause.
+    // A chunk cancelled with no user action = the OS tore down the background session (memory reclaim
+    // or force-quit). Not a failure: requeue the chunk so the window re-uploads it (server chunk
+    // writes are idempotent). A user pause sets isStoppedByUser and is handled above.
     if let error, (error as NSError).code == NSURLErrorCancelled {
       try? FileManager.default.removeItem(at: meta.tempFileUrl)
       if case .chunk(let index) = meta.kind {
@@ -984,16 +933,15 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
     // Success — each chunk's temp file is deleted as soon as its upload is acknowledged.
     try? FileManager.default.removeItem(at: meta.tempFileUrl)
 
-    // Only chunk tasks run on the background session (finalize is a synchronous request), so this is
-    // always a chunk completion.
+    // Only chunk tasks run on the background session (finalize is synchronous), so this is always a
+    // chunk completion.
     if case .chunk(let index) = meta.kind {
       markChunkComplete(index, params: params)
     }
   }
 
-  /// Mirrors executeAuthenticated's 401-then-retry-once behavior — refreshes the token and
-  /// re-uploads the SAME temp file (not yet deleted) rather than re-reading the chunk from the
-  /// source file, since the bytes already on disk are still correct.
+  /// Mirrors executeAuthenticated's 401-then-retry-once — refreshes the token and re-uploads the SAME
+  /// temp file (not yet deleted) rather than re-reading the chunk from source.
   private func handleUnauthorized(params: UploadParams, meta: TransferTaskMeta) {
     guard let newToken = try? TokenRefresher.refresh(session: URLSession(configuration: .ephemeral), baseUrl: params.baseUrl) else {
       try? FileManager.default.removeItem(at: meta.tempFileUrl)
@@ -1018,11 +966,10 @@ extension BackgroundChunkTransferManager: URLSessionTaskDelegate {
     retryTask.resume()
   }
 
-  /// For a successful download, urlSession(_:downloadTask:didFinishDownloadingTo:) already
-  /// handled completion and removed this taskIdentifier from downloadTaskIds before this fires
-  /// (error == nil in that case) — this only has real work to do for a genuine failure. A
-  /// user-initiated pause/cancel already wrote its own terminal state before triggering this,
-  /// so isStoppedByUser being true here means "nothing more to do," not "something went wrong."
+  /// For a successful download, didFinishDownloadingTo already handled completion and removed this id
+  /// from downloadTaskIds (error == nil), so this only has real work for a genuine failure. A
+  /// user-initiated pause/cancel already wrote its terminal state, so isStoppedByUser here means
+  /// "nothing more to do."
   private func handleDownloadTaskCompletion(taskIdentifier: Int, error: Error?) {
     downloadTaskIds.remove(taskIdentifier)
     guard let error else { return }
@@ -1042,11 +989,9 @@ extension BackgroundChunkTransferManager: URLSessionDownloadDelegate {
     totalBytesWritten: Int64,
     totalBytesExpectedToWrite: Int64
   ) {
-    // Must match the specific currentDownloadTask, not just "any known download task id" — a
-    // task that was just cancelled via pause (then immediately resumed under the same
-    // transferId) can keep delivering residual buffered didWriteData calls for a brief window
-    // after being superseded; without this identity check those stale calls would be
-    // misattributed to the new task since both share the same transferId.
+    // Must match the specific currentDownloadTask, not just any known download id — a task cancelled
+    // via pause (then resumed under the same transferId) can deliver residual buffered didWriteData
+    // calls briefly after being superseded; this identity check drops those stale calls.
     guard downloadTask === currentDownloadTask, let params = currentDownloadParams else { return }
     currentDownloadedBytes = totalBytesWritten
     currentTotalBytes = totalBytesExpectedToWrite
@@ -1100,8 +1045,7 @@ extension BackgroundChunkTransferManager: URLSessionDownloadDelegate {
     currentDownloadTask = nil
     TransferEventBus.activeTransferId = nil
     emitEvent(transferId: params.transferId, type: "download", status: "complete", progress: 100.0, localUri: params.destPath)
-    // Notification first (no-ops while the Activity is up), then end the Activity on the "Downloaded"
-    // terminal state — the card is the only surface on iOS, notification is the fallback.
+    // Notification first (no-ops while the Activity is up), then end the Activity on "Downloaded".
     showDownloadCompleteNotification(fileName: params.fileName)
     TransferActivityController.shared.end(state: "downloaded", progress: 100.0)
   }

@@ -8,17 +8,16 @@ import transfersRepository from "@db/repositories/transfersRepository";
 // Lib
 import backgroundTransfer from "@lib/backgroundTransfer";
 
-// Single-flight guard: only one drain loop runs at a time. A trigger (another enqueue, a
-// foreground/sync event, the photo-backup listener) that arrives while a drain is in progress
-// records that another pass is needed via drainRequested, rather than being dropped.
+// Single-flight guard: only one drain loop runs at a time. A trigger arriving mid-drain records that
+// another pass is needed via drainRequested rather than being dropped.
 let isDraining = false;
 let drainRequested = false;
 
 async function drainQueue() {
   if (isDraining) {
     // Record the request instead of no-op'ing: closes the window where a row committed just as the
-    // loop's final empty getByStatus query returned would otherwise wait for an unrelated later
-    // trigger (the "stranded at 0%" TOCTOU). The outer do/while below re-runs for it.
+    // loop's final empty query returned would otherwise wait for a later trigger (the "stranded at
+    // 0%" TOCTOU). The outer do/while re-runs for it.
     drainRequested = true;
     return;
   }
@@ -26,13 +25,12 @@ async function drainQueue() {
   try {
     do {
       drainRequested = false;
-      // Re-query the next pending row after every upload rather than snapshotting the list once:
-      // the native engine is single-slot, so a file enqueued while an earlier upload is already in
-      // flight is rejected as "busy" and reset to "pending" (see backgroundTransfer.js's
-      // _uploadViaNative), and without this loop nothing would ever retry it — the "second upload
-      // stuck at 0%" bug. "paused" is deliberately excluded — pausing is an explicit user action,
-      // and draining it here would silently auto-resume on every trigger, defeating the Pause
+      // Re-query the next pending row after every upload rather than snapshotting once: the native
+      // engine is single-slot, so a file enqueued mid-flight is rejected "busy" and reset to
+      // "pending", and without this loop nothing would retry it (the "second upload stuck at 0%"
+      // bug). "paused" is excluded — draining it would silently auto-resume and defeat the Pause
       // button. Oldest-first (createdAt) so the queue is FIFO in selection order.
+      // eslint-disable-next-line no-constant-condition -- intentional loop, exited via the break below
       while (true) {
         const [row] = (await transfersRepository.getByStatus(["pending"]))
           .filter((r) => r.type === "upload")
@@ -51,10 +49,9 @@ async function drainQueue() {
           continue;
         }
 
-        // A row still "pending" after upload() returned means the native engine was busy with a
-        // different transfer (e.g. an active download holds the single slot) — every other outcome
-        // moves it off "pending" (complete/failed/paused/cancelled). Break and let the next trigger
-        // resume, rather than spinning on the same row in a tight loop.
+        // A row still "pending" after upload() returned means the engine was busy with a different
+        // transfer — every other outcome moves it off "pending". Break and let the next trigger
+        // resume rather than spinning on the same row.
         const [after] = await transfersRepository.getById(row.id);
         if (after?.status === "pending") break;
       }
@@ -64,10 +61,9 @@ async function drainQueue() {
   }
 }
 
-// Strictly-increasing createdAt across enqueues, so files added within the same wall-clock
-// millisecond (a multi-select batch) still sort in insertion order — Date.now()'s ms precision
-// alone ties, and drainQueue's createdAt sort would then not be FIFO. Only the row's createdAt
-// uses this; updatedAt keeps the plain wall-clock value.
+// Strictly-increasing createdAt across enqueues, so files added within the same millisecond (a
+// multi-select batch) still sort in insertion order — plain Date.now() would tie and break the
+// FIFO drain sort. Only createdAt uses this; updatedAt keeps the plain wall-clock value.
 let lastCreatedAtMs = 0;
 function nextCreatedAt() {
   lastCreatedAtMs = Math.max(Date.now(), lastCreatedAtMs + 1);
@@ -77,12 +73,9 @@ function nextCreatedAt() {
 async function enqueue(localUri, fileName, mimeType, folderId = null) {
   const transferId = uuid.v4();
 
-  // Picker libraries (expo-image-picker/expo-document-picker) hand back a file under Caches — an
-  // OS-purgeable, non-backed-up directory. A paused upload can easily outlive that file (a
-  // reinstall, or the OS reclaiming space under pressure), silently breaking Resume with no
-  // visible error. Copying into documentDirectory up front makes the source file as durable as
-  // the transfer row itself; the copy is deleted once the upload completes (see
-  // backgroundTransfer.js's upload()).
+  // Picker libraries hand back a file under Caches — an OS-purgeable directory a paused upload can
+  // outlive, silently breaking Resume. Copying into documentDirectory up front makes the source as
+  // durable as the transfer row; the copy is deleted once the upload completes (see upload()).
   const destDir = `${FileSystem.documentDirectory}pending-uploads/${transferId}`;
   await FileSystem.makeDirectoryAsync(destDir, { intermediates: true }).catch(() => {});
   const dest = `${destDir}/${fileName}`;
@@ -101,10 +94,8 @@ async function enqueue(localUri, fileName, mimeType, folderId = null) {
     updatedAt: new Date().toISOString(),
   });
 
-  // Fire-and-forget: kick the drain but don't await it, so enqueuing several files in a row
-  // (multi-select) inserts every row promptly instead of blocking each enqueue on the previous
-  // file's full upload. drainQueue is single-flight, so the first call drives the loop and the
-  // rest are no-ops.
+  // Fire-and-forget: kick the drain without awaiting, so a multi-select batch inserts every row
+  // promptly instead of blocking each enqueue on the previous upload. drainQueue is single-flight.
   drainQueue().catch(() => {});
 }
 

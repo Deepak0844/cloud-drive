@@ -1,27 +1,23 @@
 const { withAppDelegate } = require("@expo/config-plugins");
 
 const IMPORT_MARKER = "import ReactAppDependencyProvider";
-// Swift 6 requires a matching explicit access level across all imports of the same module in a
-// file once any import in that file declares one — AppDelegate.swift's "internal import Expo"
-// forces every other import here to declare its access level too, or the build fails with
-// "ambiguous implicit access level".
+// Swift 6 requires a matching explicit access level across all imports in a file once any import
+// declares one — AppDelegate.swift's "internal import Expo" forces this import to declare one too,
+// or the build fails with "ambiguous implicit access level".
 const IMPORT_LINE = "internal import BackgroundChunkTransfer";
 
 const LAUNCH_MARKER = "    let delegate = ReactNativeDelegate()";
-const LAUNCH_TOUCH = `    // Force BackgroundChunkTransferManager's singleton to initialize on every app launch
-    // (including a cold launch triggered by tapping a notification action), not just whenever
-    // the first upload starts — its init registers UNNotificationCategories and sets the
-    // UNUserNotificationCenter delegate, both of which must be in place before any notification
-    // action tap can be serviced.
+const LAUNCH_TOUCH = `    // Force BackgroundChunkTransferManager's singleton to init on every app launch (including a
+    // cold launch from a notification tap) — its init registers categories and sets the delegate,
+    // both needed before any notification action can be serviced.
     _ = BackgroundChunkTransferManager.shared
 
 ${LAUNCH_MARKER}`;
 
 const MARKER = "  // Universal Links";
 
-const HANDLER = `  // Background URLSession relaunch handoff (background-chunk-transfer) — the OS calls
-  // this to wake/relaunch the app when a background upload's session events are ready to be
-  // delivered, even if the app isn't running.
+const HANDLER = `  // Background URLSession relaunch handoff — the OS calls this to wake/relaunch the app when a
+  // background upload's session events are ready, even if the app isn't running.
   public override func application(
     _ application: UIApplication,
     handleEventsForBackgroundURLSession identifier: String,

@@ -1,14 +1,11 @@
 import Foundation
 import SQLite3
 
-/// Writes directly to the `transfers` table in the same app.db that expo-sqlite/Drizzle manages
-/// on the JS side, so progress and status survive while JS isn't running — mirrors
-/// SqliteProgressWriter.kt on Android exactly (same table, same column names, same semantics).
-/// This is what makes UploadProgressSheet/FileDetailScreen's SQLite-backed UI correct on iOS: a
-/// JS-side "write to SQLite when I receive an event" approach would miss the case where a
-/// notification action tap cold-relaunches the app specifically to service it — there is no
-/// pre-existing JS listener for that transfer in the fresh process, but this Swift code path
-/// still runs and persists the state change regardless.
+/// Writes directly to the `transfers` table in the same app.db that expo-sqlite/Drizzle manages on
+/// the JS side, so progress and status survive while JS isn't running — mirrors
+/// SqliteProgressWriter.kt on Android (same table, columns, semantics). A JS-side "write on event"
+/// approach would miss a notification-action tap that cold-relaunches the app to service it (no JS
+/// listener exists yet in the fresh process); this Swift path still persists the change.
 enum SqliteProgressWriter {
   private static let busyTimeoutMs: Int32 = 5000
 
@@ -50,8 +47,8 @@ enum SqliteProgressWriter {
     }
   }
 
-  // SQLITE_TRANSIENT tells sqlite3 to copy the string immediately, since the Swift String's
-  // underlying buffer isn't guaranteed to stay alive for the statement's lifetime otherwise.
+  // SQLITE_TRANSIENT tells sqlite3 to copy the string immediately — the Swift String's buffer isn't
+  // guaranteed to outlive the statement otherwise.
   private static let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
   private static func bindText(_ statement: OpaquePointer, _ index: Int32, _ value: String) {
@@ -69,9 +66,8 @@ enum SqliteProgressWriter {
     }
   }
 
-  /// Reads the last-persisted contiguous uploaded-chunk count for a transfer, used to re-establish
-  /// the upload window after a background relaunch (the in-memory progress is gone). Returns 0 if the
-  /// row is missing or uploaded_chunks is NULL.
+  /// Reads the last-persisted contiguous uploaded-chunk count, used to re-establish the upload window
+  /// after a background relaunch. Returns 0 if the row is missing or uploaded_chunks is NULL.
   static func readUploadedChunks(transferId: String) -> Int {
     var result = 0
     withDatabase { db in
@@ -90,9 +86,8 @@ enum SqliteProgressWriter {
     return result
   }
 
-  /// Reads the current status of a transfer ("active" | "paused" | "cancelled" | "complete" |
-  /// "failed"), or nil if the row is missing. Used to gate background rehydrate so a paused/cancelled
-  /// transfer is not auto-resumed by a straggler task completion.
+  /// Reads a transfer's current status, or nil if the row is missing. Gates background rehydrate so a
+  /// paused/cancelled transfer isn't auto-resumed by a straggler task completion.
   static func readStatus(transferId: String) -> String? {
     var result: String?
     withDatabase { db in
@@ -112,7 +107,7 @@ enum SqliteProgressWriter {
   }
 
   /// Flips a transfer back to "active" — used when a Live Activity / notification Resume restarts it
-  /// natively (no JS running), so the row and the UI reflect the resumed state.
+  /// natively (no JS running), so the row and UI reflect the resumed state.
   static func markActive(transferId: String) {
     withDatabase { db in
       exec(db, sql: "UPDATE transfers SET status = 'active', updated_at = ? WHERE id = ?") { statement in

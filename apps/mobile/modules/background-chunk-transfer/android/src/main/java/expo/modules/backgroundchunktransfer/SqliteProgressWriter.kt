@@ -9,11 +9,9 @@ import java.util.Locale
 import java.util.TimeZone
 
 /**
- * Writes directly to the `transfers` table in the same app.db that expo-sqlite/Drizzle manages
- * on the JS side, so progress survives while JS isn't running (app backgrounded). app.db is in
- * rollback-journal mode (verified against the real on-device file, not WAL), so writes use a
- * busy timeout and stay single-statement/autocommit to minimize lock contention with the JS
- * connection rather than relying on WAL's multi-writer support.
+ * Writes directly to the `transfers` table in the same app.db that expo-sqlite/Drizzle manages on
+ * the JS side, so progress survives while JS isn't running. app.db is in rollback-journal mode (not
+ * WAL), so writes use a busy timeout and stay single-statement/autocommit to minimize lock contention.
  */
 object SqliteProgressWriter {
   private const val DB_NAME = "app.db"
@@ -30,8 +28,7 @@ object SqliteProgressWriter {
     // (confirmed on-device: /data/data/<pkg>/files/SQLite/app.db).
     val dbPath = java.io.File(context.filesDir, "SQLite/$DB_NAME")
     val db = SQLiteDatabase.openDatabase(dbPath.path, null, SQLiteDatabase.OPEN_READWRITE)
-    // PRAGMA busy_timeout returns a result row, and Android's execSQL() rejects any statement
-    // that does (throws "Queries can be performed using ... query or rawQuery methods only").
+    // PRAGMA busy_timeout returns a result row; Android's execSQL() rejects any statement that does.
     db.rawQuery("PRAGMA busy_timeout = $BUSY_TIMEOUT_MS", null).use { it.moveToFirst() }
     return db
   }

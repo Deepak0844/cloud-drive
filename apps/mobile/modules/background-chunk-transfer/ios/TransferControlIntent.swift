@@ -1,10 +1,9 @@
 import AppIntents
 
 /// Live Activity button intent (iOS 17+). A `LiveActivityIntent`'s `perform()` runs in the APP's
-/// process — iOS launches the app in the background to run it — so this app-target copy calls the
-/// transfer engine directly. The widget target compiles a STUB copy (targets/transfer-activity/)
-/// whose only job is to provide the type for `Button(intent:)`; the system always executes THIS
-/// implementation. The type name, `@Parameter` set, and `init`s MUST match the widget stub.
+/// process, so this app-target copy calls the transfer engine directly. The widget target compiles a
+/// STUB copy (targets/transfer-activity/) just to provide the type for `Button(intent:)`; the system
+/// always executes THIS implementation. Type name, `@Parameter` set, and `init`s MUST match the stub.
 @available(iOS 17.0, *)
 struct TransferControlIntent: LiveActivityIntent {
   static var title: LocalizedStringResource = "Transfer control"

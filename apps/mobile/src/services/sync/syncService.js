@@ -8,14 +8,10 @@ async function drainUploadQueue() {
 }
 
 /**
- * Reconciles "active" transfer rows against native in-flight state instead of blindly
- * re-invoking — the native engine survives backgrounding on its own, so an "active" row usually
- * just means a transfer that's still genuinely running (re-invoking would start a second
- * concurrent transfer for the same work). Only a row that native confirms it does NOT currently
- * own gets re-invoked (e.g. the process was killed mid-transfer and the OS restarted the app
- * fresh). "paused" rows are deliberately excluded — pausing is now a real, explicit user action
- * (in-app or from the notification), and auto-resuming a paused row on every foreground open
- * would silently defeat the Pause button.
+ * Reconciles "active" transfer rows against native in-flight state instead of blindly re-invoking —
+ * the native engine survives backgrounding, so "active" usually just means still genuinely running.
+ * Only a row native confirms it does NOT own gets re-invoked (e.g. the process was killed and the OS
+ * restarted fresh). "paused" rows are excluded — auto-resuming them would defeat the Pause button.
  */
 async function reconcileActiveTransfers() {
   const activeRows = await transfersRepository.getByStatus(["active"]);

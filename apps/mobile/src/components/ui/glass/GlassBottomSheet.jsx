@@ -12,34 +12,26 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
-// Comfortably larger than any real sheet height, so the sheet fully clears
-// the screen on close regardless of how tall its content ends up being —
-// sidesteps needing a layout-measurement callback to know the exact height.
+// Comfortably larger than any real sheet height, so the sheet fully clears the screen on close
+// regardless of content height — sidesteps needing a layout-measurement callback for the exact height.
 const OFFSCREEN_Y = SCREEN_HEIGHT + 100;
 const DISMISS_DRAG_THRESHOLD = 120;
 const DISMISS_VELOCITY_THRESHOLD = 800;
 const ANIMATION_DURATION = 220;
 
 /**
- * Glass-styled bottom sheet — Modal-hosted, animated with react-native-reanimated and
- * gesture-handler's modern `Gesture.Pan()` + `GestureDetector` API. Deliberately avoids a
- * ref-based presentation library: that approach silently failed to present under
- * react-native-reanimated 4 (present() never opens the sheet, no error) — see
- * github.com/gorhom/react-native-bottom-sheet/issues/2547. Keeps the `{visible, children}` shape
- * plus `onClose`, fired on backdrop tap and swipe-to-dismiss.
- *
- * The Modal's content is wrapped in its own GestureHandlerRootView: on iOS a Modal presents in a
- * separate view hierarchy that the app-root GestureHandlerRootView does not cover, so without a
- * root view inside the Modal the GestureDetector would silently receive no gestures.
+ * Glass-styled bottom sheet — animated with reanimated + gesture-handler's `Gesture.Pan()` /
+ * `GestureDetector`. Avoids a ref-based presentation library, which silently failed to present under
+ * reanimated 4 (gorhom/react-native-bottom-sheet#2547). Keeps the `{visible, children}` shape plus
+ * `onClose`, fired on backdrop tap and swipe-to-dismiss. The Modal content has its own
+ * GestureHandlerRootView because on iOS a Modal presents in a separate view hierarchy the app-root
+ * one doesn't cover, so gestures would otherwise be dropped.
  *
  * `presentation`:
- *  - "modal" (default): Modal-hosted with a dimming, touch-capturing backdrop — the blocking
- *    presentation used by the action/picker sheets, one at a time.
- *  - "inline": renders directly in the normal view hierarchy with no Modal and no backdrop —
- *    non-blocking, so content behind it stays interactive and it can coexist with other sheets.
- *    Used by the always-on upload progress sheet, which auto-presents while a picker's Modal is
- *    still dismissing; a Modal would be silently dropped by UIKit in that race (see the earlier
- *    "sheet won't open after the image picker" fix).
+ *  - "modal" (default): Modal-hosted with a dimming, touch-capturing backdrop — blocking, one at a time.
+ *  - "inline": no Modal, no backdrop — non-blocking, so content behind stays interactive and it can
+ *    coexist with other sheets. Used by the upload progress sheet, which auto-presents while a
+ *    picker's Modal is still dismissing (a Modal would be dropped by UIKit in that race).
  */
 export default function GlassBottomSheet({
   visible = false,
@@ -55,20 +47,18 @@ export default function GlassBottomSheet({
       setMounted(true);
       sheetY.value = withTiming(0, { duration: ANIMATION_DURATION });
     } else {
-      // Guard on `finished`: a reopen starting a new animation on sheetY cancels this one with
-      // finished=false, and an unguarded setMounted(false) would clobber the reopen's
-      // setMounted(true), leaving the Modal unmounted even though visible is true.
+      // Guard on `finished`: a reopen cancels this animation with finished=false, and an unguarded
+      // setMounted(false) would clobber the reopen's setMounted(true), leaving the Modal unmounted.
       sheetY.value = withTiming(OFFSCREEN_Y, { duration: ANIMATION_DURATION }, (finished) => {
         if (finished) scheduleOnRN(setMounted, false);
       });
     }
   }, [visible, sheetY]);
 
-  // Unmounts the Modal itself, rather than leaning on the parent to flip `visible` back to false
-  // in response to onClose. A parent that hardcodes `visible` would otherwise leave this Modal —
-  // and its full-screen backdrop Pressable — mounted forever after a dismiss, silently absorbing
-  // every touch in the app behind an invisible overlay. onClose is still called so parents that DO
-  // track visible state stay in sync.
+  // Unmounts the Modal itself rather than leaning on the parent to flip `visible` back. A parent
+  // that hardcodes `visible` would otherwise leave this Modal (and its full-screen backdrop) mounted
+  // forever, absorbing every touch behind an invisible overlay. onClose still fires to keep parents
+  // that DO track visible state in sync.
   function finishDismiss() {
     setMounted(false);
     onClose();
@@ -82,8 +72,8 @@ export default function GlassBottomSheet({
 
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
-      // Clamp to the resting position: the sheet follows the finger downward (toward dismiss) but
-      // an upward drag can't pull it above its anchored bottom position (no floating to the top).
+      // Clamp to the resting position: the sheet follows the finger downward but an upward drag
+      // can't pull it above its anchored bottom position.
       sheetY.value = Math.max(0, event.translationY);
     })
     .onEnd((event) => {
@@ -114,9 +104,8 @@ export default function GlassBottomSheet({
     </Animated.View>
   );
 
-  // Inline: no Modal, no dimming backdrop. Renders in the normal view hierarchy (under the
-  // app-root GestureHandlerRootView, so gestures work without a nested one) and leaves the content
-  // behind it interactive.
+  // Inline: no Modal, no backdrop. Renders in the normal view hierarchy (under the app-root
+  // GestureHandlerRootView, so gestures work without a nested one) and leaves content behind interactive.
   if (presentation === "inline") {
     return sheet;
   }
